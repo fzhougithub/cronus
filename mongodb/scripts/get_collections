@@ -1,0 +1,45 @@
+from pymongo import MongoClient
+
+def list_collections(mongo_address, database_name):
+    """
+    Connects to a MongoDB server and lists all collections in a specified database.
+
+    Args:
+        mongo_address: The connection string for the MongoDB server (e.g., "mongodb://localhost:27017").
+        database_name: The name of the database to connect to.
+
+    Returns:
+        A list of collection names in the specified database, or None if an error occurs.
+    """
+    try:
+        # Create a MongoClient instance
+        client = MongoClient(mongo_address)
+
+        # Get a database instance
+        db = client[database_name]
+
+        # Get a list of collection names
+        collection_names = db.list_collection_names()
+
+        return collection_names
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+    finally:  # Ensure the client is closed even if an error occurs
+        if 'client' in locals() and client: # Check if client is defined before attempting to close
+            client.close()
+
+
+if __name__ == "__main__":
+    mongo_address = input("Enter the MongoDB connection string (e.g., mongodb://localhost:27017): ")
+    database_name = input("Enter the database name: ")
+
+    collections = list_collections(mongo_address, database_name)
+
+    if collections:
+        print("Collections in the database:")
+        for collection_name in collections:
+            print(collection_name)
+    else:
+        print("Failed to retrieve collection names.")

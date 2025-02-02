@@ -1,0 +1,5 @@
+Per python, create virtual environment using
+python3 -m venv p3
+Then, refer to the requirement.txt to install required python modules
+Keep update the requirements file by 
+pip3 freeze > requirements.txt
