@@ -1,0 +1,56 @@
+1. price_generate.py check
+	db.pricehistory.find({volume: { $ne: null }})
+	db.pricehistory.countDocuments({volume:null})
+	db.pricehistory.countDocuments({volume: { $ne :null }})
+	db.pricehistory.countDocuments({volume: { $exists : false }})
+	db.pricehistory.countDocuments({ $or: [{volume: { $exists : false }},{volume: null} ] })
+	db.pricehistory.countDocuments({ $and: [{volume: { $exists : false }},{volume: null} ] })
+	
+	let nullCount = db.pricehistory.countDocuments({ volume: null });
+	print("Number of documents with volume null:", nullCount);
+
+	db.pricehistory.aggregate([
+	  { $match: { timestamp : { $gte : new Date(Date.now() - 10*60*1000) } } },
+	  { $group: { _id: null, totalprice: { $sum: "$price" } } }
+	]).toArray()[0].totalprice
+
+db.pricehistory.aggregate([
+  {
+    $group: {
+      _id: { name: "$name", timestamp: "$timestamp" },
+      docs: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }
+]).forEach(doc => {
+  doc.docs.slice(1).forEach(idToRemove => { // Slice to remove the first element (the one to keep)
+    db.pricehistory.deleteOne({ _id: idToRemove });
+    print("Removed document with _id:", idToRemove);
+  });
+});
+
+db.pricehistory.createIndex( { symbol: 1, timestamp: -1 }, { unique: true } )
+db.pricehistory.getIndexes()
+
+
+db.pricehistory.find({},{symbol:1,timestamp:1,_id:0})
+
+ db.pricehistory.aggregate([
+...   {
+...     $group: {
+...       _id: { type: { $type: "$timestamp" } }, // Group by the type of the timestamp field
+...       count: { $sum: 1 } // Count the occurrences of each type
+...     }
+...   }
+... ])
+[ { _id: { type: 'date' }, count: 324 } ]
+
+
+db.currentOp({ "locks": 1, "idle": true }).inprog.forEach((op) => { if (op.locks) { print("Operation ID:", op.opid); print("Connection ID:", op.connectionId); print("Locks:", JSON.stringify(op.locks, null, 2)); /* Use JSON.stringify with indentation*/ print("--------------------"); } });
+
+

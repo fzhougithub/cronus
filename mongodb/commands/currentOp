@@ -1,0 +1,342 @@
+{
+  inprog: [
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'Checkpointer',
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      opid: 4043195,
+      op: 'none',
+      ns: '',
+      command: {},
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'conn122',
+      connectionId: 122,
+      client: '127.0.0.1:47974',
+      clientMetadata: {
+        driver: {
+          name: 'NetworkInterfaceTL-ReplicaSetMonitor-TaskExecutor',
+          version: '6.0.20'
+        },
+        os: {
+          type: 'Linux',
+          name: 'Oracle Linux Server release 9.1',
+          architecture: 'x86_64',
+          version: 'Kernel 5.15.167.4-microsoft-standard-WSL2'
+        }
+      },
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      threaded: true,
+      opid: 4043532,
+      secs_running: Long('4'),
+      microsecs_running: Long('4987894'),
+      op: 'command',
+      ns: 'admin.$cmd',
+      command: {
+        hello: 1,
+        maxAwaitTimeMS: Long('10000'),
+        topologyVersion: {
+          processId: ObjectId('679dca1d9d2d897d8c0a3d58'),
+          counter: Long('6')
+        },
+        internalClient: { minWireVersion: 17, maxWireVersion: 17 },
+        maxTimeMSOpOnly: Long('20000'),
+        '$db': 'admin'
+      },
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'NoopWriter',
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      opid: 4043604,
+      op: 'none',
+      ns: '',
+      command: {},
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'conn651',
+      connectionId: 651,
+      client: '127.0.0.1:36544',
+      clientMetadata: {
+        driver: {
+          name: 'NetworkInterfaceTL-ReplicaSetMonitor-TaskExecutor',
+          version: '6.0.20'
+        },
+        os: {
+          type: 'Linux',
+          name: 'Oracle Linux Server release 9.1',
+          architecture: 'x86_64',
+          version: 'Kernel 5.15.167.4-microsoft-standard-WSL2'
+        }
+      },
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      threaded: true,
+      opid: 4043533,
+      secs_running: Long('4'),
+      microsecs_running: Long('4976283'),
+      op: 'command',
+      ns: 'admin.$cmd',
+      command: {
+        hello: 1,
+        maxAwaitTimeMS: Long('10000'),
+        topologyVersion: {
+          processId: ObjectId('679dca1d9d2d897d8c0a3d58'),
+          counter: Long('6')
+        },
+        internalClient: { minWireVersion: 17, maxWireVersion: 17 },
+        maxTimeMSOpOnly: Long('20000'),
+        '$db': 'admin'
+      },
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'conn780',
+      connectionId: 780,
+      client: '172.17.224.1:57903',
+      appName: 'mongosh 2.3.8',
+      clientMetadata: {
+        application: { name: 'mongosh 2.3.8' },
+        driver: { name: 'nodejs|mongosh', version: '6.12.0|2.3.8' },
+        platform: 'Node.js v20.18.1, LE',
+        os: {
+          name: 'linux',
+          architecture: 'x64',
+          version: '3.10.0-327.22.2.el7.x86_64',
+          type: 'Linux'
+        }
+      },
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      threaded: true,
+      opid: 4043535,
+      secs_running: Long('4'),
+      microsecs_running: Long('4902159'),
+      op: 'command',
+      ns: 'admin.$cmd',
+      command: {
+        hello: 1,
+        maxAwaitTimeMS: 10000,
+        topologyVersion: {
+          processId: ObjectId('679dca1d9d2d897d8c0a3d58'),
+          counter: Long('6')
+        },
+        '$clusterTime': {
+          clusterTime: Timestamp({ t: 1738709466, i: 1 }),
+          signature: {
+            hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+            keyId: 0
+          }
+        },
+        '$db': 'admin'
+      },
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'JournalFlusher',
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      opid: 4043608,
+      op: 'none',
+      ns: '',
+      command: {},
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'OplogCapMaintainerThread-local.oplog.rs',
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      opid: 8,
+      op: 'none',
+      ns: '',
+      command: {},
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {
+        FeatureCompatibilityVersion: { acquireCount: { w: Long('1') } },
+        ReplicationStateTransition: { acquireCount: { w: Long('1') } },
+        Global: { acquireCount: { w: Long('1') } }
+      },
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'conn779',
+      connectionId: 779,
+      client: '172.17.224.1:57883',
+      appName: 'MongoDB Compass',
+      clientMetadata: {
+        application: { name: 'MongoDB Compass' },
+        driver: { name: 'nodejs', version: '6.12.0' },
+        platform: 'Node.js v20.18.1, LE',
+        os: {
+          name: 'win32',
+          architecture: 'x64',
+          version: '10.0.19045',
+          type: 'Windows_NT'
+        }
+      },
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      threaded: true,
+      opid: 4043591,
+      secs_running: Long('1'),
+      microsecs_running: Long('1167876'),
+      op: 'command',
+      ns: 'admin.$cmd',
+      command: {
+        hello: 1,
+        maxAwaitTimeMS: 10000,
+        topologyVersion: {
+          processId: ObjectId('679dca1d9d2d897d8c0a3d58'),
+          counter: Long('6')
+        },
+        '$clusterTime': {
+          clusterTime: Timestamp({ t: 1738709446, i: 1 }),
+          signature: {
+            hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+            keyId: 0
+          }
+        },
+        '$db': 'admin'
+      },
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'conn793',
+      connectionId: 793,
+      client: '172.17.224.1:58206',
+      appName: 'mongosh 2.3.8',
+      clientMetadata: {
+        application: { name: 'mongosh 2.3.8' },
+        driver: { name: 'nodejs|mongosh', version: '6.12.0|2.3.8' },
+        platform: 'Node.js v20.18.1, LE',
+        os: {
+          name: 'linux',
+          architecture: 'x64',
+          version: '3.10.0-327.22.2.el7.x86_64',
+          type: 'Linux'
+        }
+      },
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      threaded: true,
+      opid: 4043613,
+      lsid: {
+        id: UUID('4323e45e-8317-419c-be0e-b1b609ca6f3f'),
+        uid: Binary.createFromBase64('47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=', 0)
+      },
+      secs_running: Long('0'),
+      microsecs_running: Long('279'),
+      op: 'command',
+      ns: 'admin.$cmd.aggregate',
+      command: {
+        aggregate: 1,
+        pipeline: [
+          {
+            '$currentOp': {
+              allUsers: true,
+              idleConnections: false,
+              truncateOps: false
+            }
+          },
+          { '$match': {} }
+        ],
+        cursor: {},
+        lsid: { id: UUID('4323e45e-8317-419c-be0e-b1b609ca6f3f') },
+        '$clusterTime': {
+          clusterTime: Timestamp({ t: 1738713587, i: 1 }),
+          signature: {
+            hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+            keyId: 0
+          }
+        },
+        '$readPreference': { mode: 'primaryPreferred' },
+        '$db': 'admin'
+      },
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    },
+    {
+      type: 'op',
+      host: 'Wentao:27017',
+      desc: 'OplogApplier-0',
+      active: true,
+      currentOpTime: '2025-02-04T15:59:47.453-08:00',
+      effectiveUsers: [ { user: '__system', db: 'local' } ],
+      opid: 4043602,
+      op: 'none',
+      ns: '',
+      command: {},
+      numYields: 0,
+      locks: {},
+      waitingForLock: false,
+      lockStats: {},
+      waitingForFlowControl: false,
+      flowControlStats: {}
+    }
+  ],
+  ok: 1
+}

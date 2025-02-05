@@ -1,0 +1,5 @@
+mongosh mongodb://192.168.1.75:27017/fzhou --eval "db.getCollectionInfos()" --quiet --json | jq -r '.[] | .info.uuid | .["$binary"].base64'
+A/CimKJHQ1WcSn77/QrAZw==
+aq4uUHz2SbW4e4/y9Aw9Aw==
+
+
