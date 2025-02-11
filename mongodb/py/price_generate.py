@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta
 
 # MongoDB connection details
-MONGO_URI = "mongodb://192.168.1.75:27017"  # Replace with your MongoDB URI
+MONGO_URI = "mongodb://fzhou:jgmjxdd@192.168.1.75:27017"  # Replace with your MongoDB URI
 DATABASE_NAME = "fzhou"
 COLLECTION_NAME = "pricehistory"
 

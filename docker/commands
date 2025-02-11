@@ -1,0 +1,13 @@
+docker imges
+docker search rockylinux
+docker pull rockylinux:9
+docker run -it rockylinux:9 bash
+docker info
+
+docker ps -a
+docker ps -l
+docker stop container_id
+
+docker pull amazon/dynamodb-local
+ docker run -p 8000:8000 amazon/dynamodb-local
+:
