@@ -8,4 +8,13 @@ yum install xterm
 2) install the package: sudo dnf install ./xorg-x11-apps-7.7-21.el8.x86_64.rpm
 3) startup xclock: xclock
 
+https://stackoverflow.com/questions/61110603/how-to-set-up-working-x11-forwarding-on-wsl2
+
+Should exactly follow above instruction
+1. Start VcxSrv without Access Control
+2. On distro, add below to .bashrc
+
+export DISPLAY=$(ip route list default | awk '{print $3}'):0
+export LIBGL_ALWAYS_INDIRECT=1
+
 
