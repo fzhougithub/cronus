@@ -7,3 +7,11 @@ netsh interface portproxy add v4tov4 listenport=22 listenaddress=0.0.0.0 connect
 
 Suppose this command can share the network ssh login
 
+netsh advfirewall firewall add rule name="Open Port 22" dir=in action=allow protocol=TCP localport=22
+netsh advfirewall firewall add rule name="Open Port 22 Outbound" dir=out action=allow protocol=TCP localport=22
+
+or using powershell
+New-NetFirewallRule -DisplayName "Open Port 22" -Direction Inbound -LocalPort 22 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "Open Port 22 Outbound" -Direction Outbound -LocalPort 22 -Protocol TCP -Action Allow
+
+
