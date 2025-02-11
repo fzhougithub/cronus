@@ -1,0 +1,9 @@
+netsh interface portproxy add v4tov4 listenport=27017 listenaddress=0.0.0.0 connectport=27017 connectaddress=172.17.233.185
+
+Above command shared he wsl internal mongodb port 27017 to laptop address and port. 
+You need to define the firewall rule that allow the port open on laptop level
+
+netsh interface portproxy add v4tov4 listenport=22 listenaddress=0.0.0.0 connectport=22 connectaddress=172.17.233.185
+
+Suppose this command can share the network ssh login
+
