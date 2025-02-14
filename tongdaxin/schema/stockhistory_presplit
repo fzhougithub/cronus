@@ -1,0 +1,33 @@
+// Define database and collection
+const dbName = "stock";
+const collName = "stockhistory";
+
+// Define shard key
+const shardKey = { symbol: "hashed" }; // or { symbol: 1 } based on your setup
+
+// Define number of shards
+const numberOfShards = 3;
+
+// Estimate total symbols (adjust as needed)
+const totalSymbols = 6000;
+
+// Calculate chunk size per shard
+const symbolsPerShard = Math.ceil(totalSymbols / numberOfShards);
+
+// Generate split points
+let splitPoints = [];
+for (let i = 1; i < numberOfShards; i++) {
+  // For hashed shard key, use a hash value range
+  // Alternatively, for ranged shard key, use symbol values
+  let upperBound = i * symbolsPerShard;
+  splitPoints.push({ symbol: upperBound });
+}
+
+// Execute splitVector command
+db.runCommand({
+  splitVector: `${dbName}.${collName}`,
+  keyPattern: shardKey,
+  maxChunkSizeBytes: 64 * 1024 * 1024, // 64MB (default)
+  chunkSize: symbolsPerShard, // Adjust based on your data distribution
+  bounds: splitPoints
+});

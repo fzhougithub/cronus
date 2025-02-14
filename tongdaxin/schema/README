@@ -1,0 +1,9 @@
+to load the schema, login to mongosh
+use stock
+load('/var/tellme/work/cronus/tongdaxin/schema/stockhistory')
+
+or, you can directly load using eval option with mongosh
+
+mongosh "mongodb://localhost:27017/stock" -eval "source('/var/tellme/work/cronus/tongdaxin/schema/stockhistory_presplit')"
+
+But, with the mongodb 6, the splitVector method, manually split chunk, are not allowed. 
