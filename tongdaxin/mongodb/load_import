@@ -1,0 +1,15 @@
+#!/bin/bash
+
+shpath=/var/tellme/stock/sh
+szpath=/var/tellme/stock/sz
+shlist=$(ls $shpath)
+szlist=$(ls $szpath)
+
+for i in $szlist; do 
+	mongoimport --uri "mongodb://192.168.1.75:27017" -d stock -c stockhistory --type csv --columnsHaveTypes --fields "symbol.string(),day.date(2006-01-02),o.decimal(),h.decimal(),l.decimal(),c.decimal(),amount.decimal(),v.decimal()"  --file $szpath/$i
+done
+
+for i in $shlist; do 
+	mongoimport --uri "mongodb://192.168.1.75:27017" -d stock -c stockhistory --type csv --columnsHaveTypes --fields "symbol.string(),day.date(2006-01-02),o.decimal(),h.decimal(),l.decimal(),c.decimal(),amount.decimal(),v.decimal()"  --file $shpath/$i
+done
+

@@ -2,7 +2,12 @@ The pythong code demonstrate how to load the data from tongdaxin into mongodb
 https://www.cnblogs.com/yuyanc/p/16867362.html
 
 Even the mongoimport is very fast
- mongoimport --uri "mongodb://192.168.1.75:27017" -d stock -c stockhistory2 --type csv --file /var/tellme/stock/sz/sz399905.day --fields day,o,h,l,c,amount,v
+mongoimport --uri "mongodb://192.168.1.75:27017" -d stock -c stockhistory2 --type csv --fields symbol,day,o,h,l,c,amount,v,lc --file /var/tellme/stock/sz/sz399974.day
+
+mongoimport --uri "mongodb://192.168.1.75:27017" -d stock -c stockhistory --type csv --columnsHaveTypes --fields "symbol.string(),day.date(2006-01-02),o.decimal(),h.decimal(),l.decimal(),c.decimal(),amount.decimal(),v.decimal()"  --file a
+
+Above one almost kill me!!! I hate the schema defined validator!!
+
 
 But the issue of mongoimport is, there is no symbol data in csv file. 
 
@@ -11,3 +16,8 @@ Per the current code generated csv, there is space instead of the comma, so, nee
  sed 's/\ /,/g' sz399974.day|sed 's/^/399974,/g' > /var/tmp/sz399974.day
 
 Do it to support the mongodbimport
+
+python3 pickup1.py /var/tmp/sz399974.day 20250101
+Above one could only pickup the data after certain day, so the load will be more easy. 
+
+sed -i -E 's/([0-9]{4})([0-9]{2})([0-9]{2})/\1-\2-\3/' /var/tellme/stock/sz/sz399974.day
