@@ -5,3 +5,9 @@ Even the mongoimport is very fast
  mongoimport --uri "mongodb://192.168.1.75:27017" -d stock -c stockhistory2 --type csv --file /var/tellme/stock/sz/sz399905.day --fields day,o,h,l,c,amount,v
 
 But the issue of mongoimport is, there is no symbol data in csv file. 
+
+Per the current code generated csv, there is space instead of the comma, so, need to keep modify the code to add symbol and replace space with comma
+
+ sed 's/\ /,/g' sz399974.day|sed 's/^/399974,/g' > /var/tmp/sz399974.day
+
+Do it to support the mongodbimport
