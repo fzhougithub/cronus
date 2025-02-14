@@ -1,0 +1,21 @@
+from struct import unpack
+
+ofile = open('data/sh000001.day', 'rb')
+buf = ofile.read()
+ofile.close()
+
+ifile = open('data/sh000001.txt', 'w')
+num = len(buf)
+no = num // 32
+b = 0
+e = 32
+
+for i in range(no):
+    a = unpack('IIIIIfII', buf[b:e])
+    line = f"{a[0]} {a[1] / 100.0} {a[2] / 100.0} {a[3] / 100.0} {a[4] / 100.0} {a[5] / 10.0} {a[6]} {a[7]}\n"
+    # print(line)
+    ifile.write(line)
+    b += 32
+    e += 32
+
+ifile.close()
