@@ -1,0 +1,7 @@
+The pythong code demonstrate how to load the data from tongdaxin into mongodb
+https://www.cnblogs.com/yuyanc/p/16867362.html
+
+Even the mongoimport is very fast
+ mongoimport --uri "mongodb://192.168.1.75:27017" -d stock -c stockhistory2 --type csv --file /var/tellme/stock/sz/sz399905.day --fields day,o,h,l,c,amount,v
+
+But the issue of mongoimport is, there is no symbol data in csv file. 

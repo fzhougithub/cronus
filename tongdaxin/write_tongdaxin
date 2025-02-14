@@ -1,0 +1,26 @@
+#!/bin/bash
+
+szpath=/var/tellme/stock/sz
+shpath=/var/tellme/stock/sh
+szlist=$(ls $szpath)
+shlist=$(ls $shpath)
+
+# Test mongodb connection
+conn_str="mongodb://192.168.1.75:27017"
+
+if  mongosh "$conn_str" -eval 'db.runCommand({ping:1})' ;then
+	echo Mongodb is OK for loading
+else
+	echo Mongodb hearbeat failed
+	exit 1
+fi
+
+for i in $szlist; do 
+	echo $i $(date) 
+	python3 write_tongdaxin.py "mongodb://192.168.1.75" stock stockhistory /var/tellme/stock/sz/$i
+done
+
+for i in $shlist; do 
+	echo $i; $(date)
+	python3 write_tongdaxin.py "mongodb://192.168.1.75" stock stockhistory /var/tellme/stock/sh/$i
+done

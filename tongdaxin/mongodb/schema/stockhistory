@@ -9,6 +9,10 @@ db.createCollection("stockhistory", {
           bsonType: "string",
           description: "must be a string and is required"
         },
+        day: {
+          bsonType: "date",
+          description: "must be a date and is required"
+        },
         o: {
           bsonType: "number",
           description: "must be a number and is required"
@@ -37,6 +41,11 @@ db.createCollection("stockhistory", {
     }
   }
 })
+
+db.stockhistory.createIndex(
+  { symbol: 1, day: 1 },
+  { unique: true }
+)
 
 // Shard the collection with 'symbol' as the shard key
 sh.shardCollection("stock.stockhistory", { symbol: "hashed" })
