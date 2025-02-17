@@ -1,0 +1,21 @@
+#!/bin/bash
+
+shpath=/var/tellme/stock/sh
+szpath=/var/tellme/stock/sz
+shlist=$(ls $shpath)
+szlist=$(ls $szpath)
+
+cat /dev/null > /mnt/c/Downloads/szhistory.csv
+cat /dev/null > /mnt/c/Downloads/shhistory.csv
+for i in $szlist; do 
+	echo $i
+	cat $szpath/$i >> /mnt/c/Downloads/szhistory.csv
+done
+for i in $shlist; do 
+	echo $i 
+	cat $shpath/$i >> /mnt/c/Downloads/shhistory.csv
+done
+
+mysqlimport -ustock --socket=/var/tellme/mysql/mysql.sock --fields-terminated-by=',' --fields-enclosed-by='"' --lines-terminated-by='\n' --replace stock  /mnt/c/Downloads/szhistory.csv
+
+mysqlimport -ustock --socket=/var/tellme/mysql/mysql.sock --fields-terminated-by=',' --fields-enclosed-by='"' --lines-terminated-by='\n' --replace stock  /mnt/c/Downloads/shhistory.csv

@@ -1,0 +1,12 @@
+create database stock;
+create table stockhistory(symbol char(6),day date,o decimal(9,2),h  decimal(9,2),l  decimal(9,2),c  decimal(9,2), amount  decimal(12,2),v  decimal(12,2),lastc  decimal(9,2)) engine=innodb;
+
+
+UNINSTALL COMPONENT 'file://component_validate_password';
+https://dev.mysql.com/doc/refman/8.4/en/validate-password-installation.html#:~:text=UNINSTALL%20COMPONENT%20unloads%20the%20component%2C%20and%20unregisters%20it%20from%20the%20mysql.
+
+[root@DESKTOP-Q7EP4O1 mysql]# mysqlimport -ustock --socket=/var/tellme/mysql/mysql.sock --fields-terminated-by=',' --fie
+lds-enclosed-by='"' --lines-terminated-by='\n' stock  /var/tmp/stockhistory.txt
+stock.stockhistory: Records: 2293  Deleted: 0  Skipped: 0  Warnings: 0
+
+

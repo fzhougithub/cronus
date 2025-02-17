@@ -1,0 +1,19 @@
+#!/bin/bash
+
+szpath=/mnt/c/zd_zxjtzq_flatjy/vipdoc/sz/lday
+shpath=/mnt/c/zd_zxjtzq_flatjy/vipdoc/sh/lday
+szlist=$(ls /mnt/c/zd_zxjtzq_flatjy/vipdoc/sz/lday)
+shlist=$(ls /mnt/c/zd_zxjtzq_flatjy/vipdoc/sh/lday)
+
+
+if [ ! -z /var/telme/stock/sz ];then
+	mkdir -p /var/tellme/stock/sz
+	mkdir -p /var/tellme/stock/sh
+fi
+
+for i in $szlist; do 
+	echo $i 
+	python3 read_tongdaxin.py $szpath/$i /var/tellme/stock/sz/$i
+done
+
+for i in $shlist; do echo $i; python3 read_tongdaxin.py $shpath/$i /var/tellme/stock/sh/$i; done

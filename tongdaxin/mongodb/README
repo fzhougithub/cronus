@@ -21,3 +21,28 @@ python3 pickup1.py /var/tmp/sz399974.day 20250101
 Above one could only pickup the data after certain day, so the load will be more easy. 
 
 sed -i -E 's/([0-9]{4})([0-9]{2})([0-9]{2})/\1-\2-\3/' /var/tellme/stock/sz/sz399974.day
+
+Why no result
+
+[direct: mongos] stock> db.stockhistory.find({symbol:'002216', day:{$eq:{$dateFromString:{dateString:"2021-08-04",format:"%Y-%m-%d"}}}})
+
+[direct: mongos] stock> db.stockhistory.find({day:{$eq:{$dateFromString:{dateString:"2021-08-05",format:"%Y-%m-%d"}}}})
+
+This one work
+https://www.mongodb.com/docs/manual/reference/operator/aggregation/dateFromString/#std-label-dateFromString-format-specifiers
+
+db.stockhistory.find({
+  symbol: '002216',
+  day: {
+    $gte: ISODate("2024-08-05T00:00:00.000Z"), // Start of the day
+    $lt: ISODate("2024-08-06T00:00:00.000Z")  // Start of the *next* day
+  }
+})
+
+ mongoexport "mongodb://192.168.1.75:27017/stock" -c stockhistory --fields=symbol,day,o,h
+,l,c,amount,v --type=csv --quiet --out=/var/tmp/stockhistory.csv
+
+Issue: Mongo Compass running well, but the mongoexport stop without error
+
+The config, logAppend:true should be there, otherwise, the log maybe binary
+

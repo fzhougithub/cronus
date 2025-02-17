@@ -1,0 +1,26 @@
+ CREATE TABLE `szhistory` (
+  `symbol` char(6) NOT NULL,
+  `day` date NOT NULL,
+  `o` decimal(9,2) DEFAULT NULL,
+  `h` decimal(9,2) DEFAULT NULL,
+  `l` decimal(9,2) DEFAULT NULL,
+  `c` decimal(9,2) DEFAULT NULL,
+  `amount` decimal(15,2) DEFAULT NULL,
+  `v` decimal(15,2) DEFAULT NULL,
+  `lastc` decimal(15,2) DEFAULT NULL,
+  PRIMARY KEY (`symbol`,`day`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+CREATE TABLE `shhistory` (
+  `symbol` char(6) NOT NULL,
+  `day` date NOT NULL,
+  `o` decimal(9,2) DEFAULT NULL,
+  `h` decimal(9,2) DEFAULT NULL,
+  `l` decimal(9,2) DEFAULT NULL,
+  `c` decimal(9,2) DEFAULT NULL,
+  `amount` decimal(15,2) DEFAULT NULL,
+  `v` decimal(15,2) DEFAULT NULL,
+  `lastc` decimal(15,2) DEFAULT NULL,
+  PRIMARY KEY (`symbol`,`day`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+

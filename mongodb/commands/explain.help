@@ -1,0 +1,284 @@
+[direct: mongos] stock> db.stockhistory.aggregate([
+...   { $count: "count" } // Count all documents
+... ]).explain("executionStats")
+{
+  serverInfo: {
+    host: 'Wentao',
+    port: 27017,
+    version: '6.0.20',
+    gitVersion: 'ef4efd469fb0c5626c629c4f0f21398c9b5dd08f'
+  },
+  serverParameters: {
+    internalQueryFacetBufferSizeBytes: 104857600,
+    internalQueryFacetMaxOutputDocSizeBytes: 104857600,
+    internalLookupStageIntermediateDocumentMaxSizeBytes: 104857600,
+    internalDocumentSourceGroupMaxMemoryBytes: 104857600,
+    internalQueryMaxBlockingSortMemoryUsageBytes: 104857600,
+    internalQueryProhibitBlockingMergeOnMongoS: 0,
+    internalQueryMaxAddToSetBytes: 104857600,
+    internalDocumentSourceSetWindowFieldsMaxMemoryBytes: 104857600
+  },
+  mergeType: 'mongos',
+  splitPipeline: {
+    shardsPart: [
+      {
+        '$group': { _id: { '$const': null }, count: { '$sum': { '$const': 1 } } }
+      }
+    ],
+    mergerPart: [
+      {
+        '$mergeCursors': {
+          lsid: {
+            id: UUID('6b483a68-6e4c-49fe-b2a2-57802f27163f'),
+            uid: Binary.createFromBase64('47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=', 0)
+          },
+          compareWholeSortKey: false,
+          tailableMode: 'normal',
+          nss: 'stock.stockhistory',
+          allowPartialResults: false,
+          recordRemoteOpWaitTime: false
+        }
+      },
+      {
+        '$group': {
+          _id: '$$ROOT._id',
+          count: { '$sum': '$$ROOT.count' },
+          '$doingMerge': true
+        }
+      },
+      { '$project': { count: true, _id: false } }
+    ]
+  },
+  shards: {
+    shardRS3: {
+      host: 'Wentao:27023',
+      stages: [
+        {
+          '$cursor': {
+            queryPlanner: {
+              namespace: 'stock.stockhistory',
+              indexFilterSet: false,
+              parsedQuery: {},
+              queryHash: '5F5FC979',
+              planCacheKey: '5F5FC979',
+              maxIndexedOrSolutionsReached: false,
+              maxIndexedAndSolutionsReached: false,
+              maxScansToExplodeReached: false,
+              winningPlan: {
+                stage: 'SHARDING_FILTER',
+                inputStage: { stage: 'COLLSCAN', direction: 'forward' }
+              },
+              rejectedPlans: []
+            },
+            executionStats: {
+              executionSuccess: true,
+              nReturned: 4314442,
+              executionTimeMillis: 12579,
+              totalKeysExamined: 0,
+              totalDocsExamined: 4314442,
+              executionStages: {
+                stage: 'SHARDING_FILTER',
+                nReturned: 4314442,
+                executionTimeMillisEstimate: 2171,
+                works: 4314443,
+                advanced: 4314442,
+                needTime: 0,
+                needYield: 0,
+                saveState: 4315,
+                restoreState: 4315,
+                isEOF: 1,
+                chunkSkips: 0,
+                inputStage: {
+                  stage: 'COLLSCAN',
+                  nReturned: 4314442,
+                  executionTimeMillisEstimate: 936,
+                  works: 4314443,
+                  advanced: 4314442,
+                  needTime: 0,
+                  needYield: 0,
+                  saveState: 4315,
+                  restoreState: 4315,
+                  isEOF: 1,
+                  direction: 'forward',
+                  docsExamined: 4314442
+                }
+              }
+            }
+          },
+          nReturned: Long('4314442'),
+          executionTimeMillisEstimate: Long('11633')
+        },
+        {
+          '$group': {
+            _id: { '$const': null },
+            count: { '$sum': { '$const': 1 } }
+          },
+          maxAccumulatorMemoryUsageBytes: { count: Long('80') },
+          totalOutputDataSizeBytes: Long('333'),
+          usedDisk: false,
+          spills: Long('0'),
+          nReturned: Long('1'),
+          executionTimeMillisEstimate: Long('12576')
+        }
+      ]
+    },
+    shardRS1: {
+      host: 'Wentao:27021',
+      stages: [
+        {
+          '$cursor': {
+            queryPlanner: {
+              namespace: 'stock.stockhistory',
+              indexFilterSet: false,
+              parsedQuery: {},
+              queryHash: '5F5FC979',
+              planCacheKey: '5F5FC979',
+              maxIndexedOrSolutionsReached: false,
+              maxIndexedAndSolutionsReached: false,
+              maxScansToExplodeReached: false,
+              winningPlan: {
+                stage: 'SHARDING_FILTER',
+                inputStage: { stage: 'COLLSCAN', direction: 'forward' }
+              },
+              rejectedPlans: []
+            },
+            executionStats: {
+              executionSuccess: true,
+              nReturned: 4552162,
+              executionTimeMillis: 12963,
+              totalKeysExamined: 0,
+              totalDocsExamined: 4552162,
+              executionStages: {
+                stage: 'SHARDING_FILTER',
+                nReturned: 4552162,
+                executionTimeMillisEstimate: 2335,
+                works: 4552163,
+                advanced: 4552162,
+                needTime: 0,
+                needYield: 0,
+                saveState: 4553,
+                restoreState: 4553,
+                isEOF: 1,
+                chunkSkips: 0,
+                inputStage: {
+                  stage: 'COLLSCAN',
+                  nReturned: 4552162,
+                  executionTimeMillisEstimate: 890,
+                  works: 4552163,
+                  advanced: 4552162,
+                  needTime: 0,
+                  needYield: 0,
+                  saveState: 4553,
+                  restoreState: 4553,
+                  isEOF: 1,
+                  direction: 'forward',
+                  docsExamined: 4552162
+                }
+              }
+            }
+          },
+          nReturned: Long('4552162'),
+          executionTimeMillisEstimate: Long('12241')
+        },
+        {
+          '$group': {
+            _id: { '$const': null },
+            count: { '$sum': { '$const': 1 } }
+          },
+          maxAccumulatorMemoryUsageBytes: { count: Long('80') },
+          totalOutputDataSizeBytes: Long('333'),
+          usedDisk: false,
+          spills: Long('0'),
+          nReturned: Long('1'),
+          executionTimeMillisEstimate: Long('12953')
+        }
+      ]
+    },
+    shardRS2: {
+      host: 'Wentao:27022',
+      stages: [
+        {
+          '$cursor': {
+            queryPlanner: {
+              namespace: 'stock.stockhistory',
+              indexFilterSet: false,
+              parsedQuery: {},
+              queryHash: '5F5FC979',
+              planCacheKey: '5F5FC979',
+              maxIndexedOrSolutionsReached: false,
+              maxIndexedAndSolutionsReached: false,
+              maxScansToExplodeReached: false,
+              winningPlan: {
+                stage: 'SHARDING_FILTER',
+                inputStage: { stage: 'COLLSCAN', direction: 'forward' }
+              },
+              rejectedPlans: []
+            },
+            executionStats: {
+              executionSuccess: true,
+              nReturned: 4569860,
+              executionTimeMillis: 13042,
+              totalKeysExamined: 0,
+              totalDocsExamined: 4569860,
+              executionStages: {
+                stage: 'SHARDING_FILTER',
+                nReturned: 4569860,
+                executionTimeMillisEstimate: 2419,
+                works: 4569861,
+                advanced: 4569860,
+                needTime: 0,
+                needYield: 0,
+                saveState: 4572,
+                restoreState: 4572,
+                isEOF: 1,
+                chunkSkips: 0,
+                inputStage: {
+                  stage: 'COLLSCAN',
+                  nReturned: 4569860,
+                  executionTimeMillisEstimate: 1028,
+                  works: 4569861,
+                  advanced: 4569860,
+                  needTime: 0,
+                  needYield: 0,
+                  saveState: 4572,
+                  restoreState: 4572,
+                  isEOF: 1,
+                  direction: 'forward',
+                  docsExamined: 4569860
+                }
+              }
+            }
+          },
+          nReturned: Long('4569860'),
+          executionTimeMillisEstimate: Long('12249')
+        },
+        {
+          '$group': {
+            _id: { '$const': null },
+            count: { '$sum': { '$const': 1 } }
+          },
+          maxAccumulatorMemoryUsageBytes: { count: Long('80') },
+          totalOutputDataSizeBytes: Long('333'),
+          usedDisk: false,
+          spills: Long('0'),
+          nReturned: Long('1'),
+          executionTimeMillisEstimate: Long('13032')
+        }
+      ]
+    }
+  },
+  command: {
+    aggregate: 'stockhistory',
+    pipeline: [ { '$count': 'count' } ],
+    cursor: {}
+  },
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1739572641, i: 2 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1739572640, i: 1 })
+}

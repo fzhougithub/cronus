@@ -1,0 +1,41 @@
+[direct: mongos] stock> console.log('Current',new Date())
+Current ISODate('2025-02-17T00:40:53.502Z')
+
+db.stockhistory.aggregate([
+  { 
+    $match: { 
+      h: { $lt: 10000 } 
+    } 
+  },
+  {
+    $group: {
+      _id: "$symbol",
+      maxH: { $max: "$h" },
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $match: { 
+      count: { $gt: 500 } 
+    }
+  },
+  {
+    $project: {
+      symbol: "$_id",
+      maxH: 1,
+      count: 1
+    }
+  },
+  {
+    $sort: { 
+      maxH: -1 
+    }
+  },
+  { 
+    $limit: 10 
+  }
+]);
+
+b.stockhistory.find({symbol:"000506",day:{$gte: ISODate('2024-08-30T00:00:00.000Z'),$lte: ISODate('2024-09-20T00:00:00.000Z')}})
+
+
