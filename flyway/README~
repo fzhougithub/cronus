@@ -17,18 +17,8 @@ flyway -url="jdbc:mongodb://192.168.1.75:27017/stock" -user=fzhou
 -locations="filesystem:C:\Users\Admin\Downloads\work\cronus\flyway\migrations"
 -baselineOnMigrate=true migrate
 
-Database: mongodb://192.168.1.75:27017/stock (Mongo DB 6.0)
------------------------------------------------------------------------------
-You are using a preview feature 'MongoDB support'.
-Please report any issues you encounter to DatabaseDevOps@red-gate.com
------------------------------------------------------------------------------
-Successfully validated 1 migration (execution time 00:02.265s)
-Current version of schema "stock": 1
-Schema "stock" is up to date. No migration necessary.
+
 On Windows powershell
-
-
-
 $env:FLYWAY_CONFIG_FILES="C:\Users\Admin\Downloads\work\cronus\flyway\flyway.conf"
 
 
