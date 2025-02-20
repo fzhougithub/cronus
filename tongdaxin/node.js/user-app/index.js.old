@@ -1,0 +1,31 @@
+var express = require('express');
+
+const app = express();
+
+app.get('/', (req,res) => {
+  res.send("Server is running");
+});
+
+const users = [
+  { id: 1, name: 'Sakilesh', age: 25 },
+  { id: 2, name: 'Vaipesh', age: 24},
+  { id: 3, name: 'Hupesh', age: 22 },
+  { id: 4, name: 'Ganjesh', age: 21 }
+];
+
+app.get('/users/:id', (req,res) => {
+    const userId = parseInt(req.params.id); // converts parameter tye to Integer
+
+    const user = users.find((u) => u.id === userId);
+    if (user) {
+    // If user is found, send their details with 200 code
+    res.status(200).send(`User name is ${user.name} and the age is ${user.age}`);
+    } else {
+    // If user is not found, send a 404 response
+    res.status(404).send('User not found');
+    }
+});
+
+app.listen(5000, () => {
+  console.log("Server listen on http://localhost:5000");
+});

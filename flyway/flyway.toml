@@ -1,0 +1,21 @@
+databaseType = "mongodb"
+id = "e5643231-8abf-4e35-8b20-7bbbc86e9a23"
+name = "stock_mongodb"
+
+[flyway]
+locations = [ "filesystem:migrations" ]
+mixed = true
+outOfOrder = true
+schemaModelLocation = "schema-model"
+sqlMigrationSuffixes = [ ".js" ]
+validateMigrationNaming = true
+
+[flyway.check]
+majorTolerance = 0
+
+[flywayDesktop]
+developmentEnvironment = "development"
+shadowEnvironment = "shadow"
+
+[redgateCompare]
+filterFile = "filter.rgf"

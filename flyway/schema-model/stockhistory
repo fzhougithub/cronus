@@ -1,0 +1,51 @@
+// Define the collection schema (optional, but recommended)
+db.createCollection("stockhistory", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["symbol", "o", "h", "l", "c", "amount", "v"],
+      properties: {
+        symbol: {
+          bsonType: "string",
+          description: "must be a string and is required"
+        },
+        day: {
+          bsonType: "date",
+          description: "must be a date and is required"
+        },
+        o: {
+          bsonType: "number",
+          description: "must be a number and is required"
+        },
+        h: {
+          bsonType: "number",
+          description: "must be a number and is required"
+        },
+        l: {
+          bsonType: "number",
+          description: "must be a number and is required"
+        },
+        c: {
+          bsonType: "number",
+          description: "must be a number and is required"
+        },
+        amount: {
+          bsonType: "number",
+          description: "must be a number and is required"
+        },
+        v: {
+          bsonType: "number",
+          description: "must be a number and is required"
+        }
+      }
+    }
+  }
+})
+
+db.stockhistory.createIndex(
+  { symbol: 1, day: 1 },
+  { unique: true }
+)
+
+// Shard the collection with 'symbol' as the shard key
+sh.shardCollection("stock.stockhistory", { symbol: "hashed" })

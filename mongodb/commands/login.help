@@ -1,0 +1,40 @@
+Turning on authorization for mongos (the MongoDB sharded cluster router) involves enabling authentication and authorization on all members of your sharded cluster, including the config servers, shard servers, and the mongos instances themselves.  It's a multi-step process, and it's crucial to do this carefully, especially in a production environment, as incorrect configuration can lead to cluster downtime.
+
+So, you have to add user into config server, and turn on the authentication in config server, shard server, instead of mongos router. 
+
+admin> db.createUser({ user:"fzhou",pwd:'xxxxxxxxxx',roles:[{role:"root",db:"admin"}]})
+
+Then, you need to modify config server, shards server, and rolling restart them
+
+cd /var/tellme/mongodb_configserver1
+openssl rand -base64 741 > keyfile
+chmod 400 keyfile
+chown mongod.mongod keyfile
+
+cp keyfile ../mongodb_shard1/.
+cp keyfile ../mongodb_shard2/.
+cp keyfile ../mongodb_shard3/.
+
+Add 
+security:
+  authorization: enabled
+  keyFile: /var/telme/xxxxx/keyfile
+
+rolling restart the instances
+
+finally, the mongos is special, because it has no data directory, you have to find a place to hold the keyfile
+In our case, we put it in configserver1 directory
+
+security:
+  keyFile: /var/tellme/mongodb_configserver1/keyfile
+
+After finally restart it
+
+mongosh "mongodb://fzhou:xxxxxxx@localhost:27017" --authenticationDatabase admin
+
+if something wrong, login mongos
+use admin
+db.runCommand({ flushRouterConfig: 1 })
+
+In our case, if you forgot to add those config into the server, primary reference issue will be there
+

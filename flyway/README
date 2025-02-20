@@ -1,0 +1,11 @@
+https://flyway.red-gate.com/download-cli
+
+mkdir /var/tellme/work/cronus/flyway
+cd /var/tellme/work/cronus/flyway
+
+flyway init -init.projectName=stock_mongodb -init.databaseType=mongodb
+
+flyway -environment="mongodb" -url="jdbc:mongodb://192.168.1.75:27017/admin" -user=fzhou -password=jgmjxdd -locations="filesystem:/var/tellme/work/cronus/flyway" info
+
+
+

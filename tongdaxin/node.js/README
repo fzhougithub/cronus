@@ -1,0 +1,9 @@
+https://pradeep15a.medium.com/
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash # Replace with the latest version
+
+Anytime want to use node.js environment
+. .nvm_env
+
+https://www.digitalocean.com/community/tutorials/how-to-install-node-js-on-rocky-linux-9
+dnf install nodejs -y
