@@ -1,0 +1,19 @@
+The default linux sqlserver does not allow remote connection
+
+Start sqlserver directly in single user mode
+/opt/mssql/bin/sqlservr -m
+
+sqlcmd -S localhost -U sa -C
+
+sp_configure 'remote access', 1;
+GO
+RECONFIGURE;
+GO
+QUIT
+
+
+
+If still erorr
+https://learn.microsoft.com/en-us/sql/connect/odbc/connection-troubleshooting?view=sql-server-ver16
+
+

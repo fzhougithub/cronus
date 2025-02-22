@@ -1,0 +1,27 @@
+1. Install Binary
+
+sudo curl -o /etc/yum.repos.d/mssql-server.repo https://packages.microsoft.com/config/rhel/8/mssql-server-2022.repo
+ wget https://packages.microsoft.com/keys/microsoft.asc -O microsoft.asc
+  rpm --import microsoft.asc
+yum install -y mssql-server
+
+firewall-cmd --zone=public --add-port=1433/tcp --permanent
+firewall-cmd --reload
+
+curl https://packages.microsoft.com/config/rhel/9/prod.repo | sudo tee /etc/yum.repos.d/mssql-release.repo
+sudo yum install -y mssql-tools18 unixODBC-devel
+
+Add the /opt mssql path and the tool path into profile
+
+mssql-conf list
+
+Per docker sql server install
+https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-wsl-2?view=sql-server-linux-ver15
+
+2. Setup and Start Service
+opt/mssql/bin/mssql-conf setup
+When you setup, should anser the questoin like where to put the data files
+You can also, link the installed stuff
+
+ln -s /var/tellme/mssql /var/opt/mssql
+chown mssql.mssql /var/opt/mssql

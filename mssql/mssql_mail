@@ -1,0 +1,18 @@
+dnf update
+dnf install epel-release
+dnf provides ssmtp
+dnf install ssmtp
+
+vi /etc/ssmtp/ssmtp.conf
+root=zhouxuesong001@outlook.com
+mailhub=smtp.office365.com:587  # Or 465 for SSL
+rewriteDomain=outlook.com
+hostname=DESKTOP-Q7EP4O1
+FromLineOverride=YES
+UseTLS=YES
+UseSTARTTLS=YES
+AuthUser=zhouxuesong001@outlook.com
+AuthPass=xxxxxxxxxx
+
+
+
