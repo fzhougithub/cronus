@@ -1,0 +1,22 @@
+You need to generate the certificate by yourself, because the trusted certificate option is missing in SSRS GUI
+
+Add the part into mssql.conf
+
+[network]
+tlscert = /var/opt/mssql/ssl/mssql.pem
+tlskey = /var/opt/mssql/ssl/mssql.key
+forceencryption = true
+
+openssl req -x509 -nodes -days 36500 -newkey rsa:2048 -keyout /var/opt/mssql/ssl/mssql.key -out /var/opt/mssql/ssl/mssql.pem -subj "/CN=172.17.55.68" -addext "extendedKeyUsage=serverAuth"
+ 
+finally, above command fixed the issue, remember the two files should be 600
+
+Then, need to add the pem key into windows mmc
+- Open MMC (mmc > Add Snap-in > Certificates > Computer Account > Local Computer).
+- Go to Trusted Root Certification Authorities > Certificates.
+- Find your certificate (look for CN=172.17.55.68).
+- Double-click it and check:
+- General tab: “This certificate is intended for the following purpose(s): Server Authentication” and “Valid from/to” includes today (February 22, 2025).
+- Certification Path tab: Shows only one entry (CN=172.17.55.68) with “Certificate status: This certificate is OK.
+
+Then, finally you can connect
