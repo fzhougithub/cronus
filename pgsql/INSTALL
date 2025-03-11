@@ -1,0 +1,26 @@
+# Install the repository RPM:
+sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+# Disable the built-in PostgreSQL module:
+sudo dnf -qy module disable postgresql
+
+# Install PostgreSQL:
+sudo dnf install -y postgresql17-server
+
+# Optionally initialize the database and enable automatic start:
+sudo /usr/pgsql-17/bin/postgresql-17-setup initdb
+sudo systemctl enable postgresql-17
+sudo systemctl start postgresql-17
+
+ /usr/pgsql-17/bin/postgresql-17-setup initdb
+
+peer only for local
+
+2. Create tablespaces(tablespace name should not be inside the data directory)
+mkdir -p /var/tellme/pgsql/cca
+chown postgres:postgres /var/tellme/pgsql/cca
+chmod 700 /var/tellme/pgsql/cca
+
+change tablespace location, just need to modify the pg_tblspc relevant symbolic link to new location, 
+
+Same way create temp directory, 

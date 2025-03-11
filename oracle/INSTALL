@@ -1,0 +1,16 @@
+
+sudo dnf -y install oracle-database-preinstall-21c
+Download rpm https://www.oracle.com/database/technologies/xe-downloads.html
+Looks like oracle does support the rocky 9, maybe can directly install it. 
+ dnf install oracle-database-preinstall-23ai.x86_64
+
+https://www.oracle.com/database/free/get-started/
+
+https://docs.oracle.com/en/database/oracle/oracle-database/23/xeinl/installing-oracle-database-free.html
+
+wget https://download.oracle.com/otn-pub/otn_software/db-free/oracle-database-free-23ai-1.0-1.el9.x86_64.rpm
+this is the real rpm should be installed, it is 1.3GB
+
+
+
+
