@@ -11,6 +11,14 @@ https://docs.oracle.com/en/database/oracle/oracle-database/23/xeinl/installing-o
 wget https://download.oracle.com/otn-pub/otn_software/db-free/oracle-database-free-23ai-1.0-1.el9.x86_64.rpm
 this is the real rpm should be installed, it is 1.3GB
 
+/etc/init.d/oracle-free-23ai configure
+
+Suppose this config will generate the listener.ora file. 
+
+/opt/oracle/product/23ai/dbhomeFree/
+How to generate the tns file
+
+
 
 
 
