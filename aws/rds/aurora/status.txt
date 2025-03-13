@@ -1,0 +1,25 @@
+mysql> status
+--------------
+
+Connection id:		43
+Current database:	
+Current user:		admin@108-233-125-131.lightspeed.sntcca.sbcglobal.net
+SSL:			Cipher in use is TLS_AES_256_GCM_SHA384
+Current pager:		stdout
+Using outfile:		'status.txt'
+Using delimiter:	;
+Server version:		8.0.40 Source distribution
+Protocol version:	10
+Connection:		database-1.cfgcwuosua5o.us-west-1.rds.amazonaws.com via TCP/IP
+Server characterset:	utf8mb4
+Db     characterset:	utf8mb4
+Client characterset:	utf8mb4
+Conn.  characterset:	utf8mb4
+TCP port:		3306
+Binary data as:		Hexadecimal
+Uptime:			1 hour 11 min 55 sec
+
+Threads: 3  Questions: 14712  Slow queries: 0  Opens: 420  Flush tables: 3  Open tables: 279  Queries per second avg: 3.409
+--------------
+
+mysql> \t

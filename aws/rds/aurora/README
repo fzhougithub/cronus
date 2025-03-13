@@ -1,0 +1,4 @@
+mysql -h database-1.cfgcwuosua5o.us-west-1.rds.amazonaws.com -P 3306 -u admin -p --batch -e "show variables"
+mysql -h database-1.cfgcwuosua5o.us-west-1.rds.amazonaws.com -u admin -p -e "CALL mysql.rds_show_configuration;" --profile awsrds
+pager less -S
+show variables

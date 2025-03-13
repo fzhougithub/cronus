@@ -1,0 +1,11 @@
+yum install awscli
+aws --version
+aws configure sso
+
+https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html
+ https://console.aws.amazon.com/rds/
+
+setup sso is tough, need browser, 2 way authentication, accesss control assignment. 
+ aws sso login --profile AdministratorAccess-142012336648
+
+

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+	echo $0 db-instance-name
+	echo example: $0 database-1
+	exit 1
+fi
+
+aws rds  describe-db-log-files --db-instance-identifier $1 --profile awsrds

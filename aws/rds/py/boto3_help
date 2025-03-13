@@ -1,0 +1,39 @@
+https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/rds.html
+looks like all of the aws rds command, the boto3 wrapper it again, why could not find a way to simplify all of parameters? 
+
+The real operation should be like type any character, the options are prompt, hmmm. or using shell to construct all of the simple code?
+
+(p3) [root@DESKTOP-Q7EP4O1 py]# desc_log database-1 |jq ".DescribeDBLogFiles[]|{LogFileName,Size}"
+{
+  "LogFileName": "error/mysql-error.log",
+  "Size": 0
+}
+{
+  "LogFileName": "error/mysql-error-running.log",
+  "Size": 0
+}
+{
+  "LogFileName": "error/mysql-error-running.log.2025-03-11.9",
+  "Size": 3233
+}
+{
+  "LogFileName": "mysqlUpgrade",
+  "Size": 1013
+}
+
+(p3) [root@DESKTOP-Q7EP4O1 py]# desc_log database-1 | jq -r '.DescribeDBLogFiles[] | "\(.LogFileName) \(.Size)"'
+error/mysql-error.log 0
+error/mysql-error-running.log 0
+error/mysql-error-running.log.2025-03-11.9 3233
+mysqlUpgrade 1013
+
+
+The other example about the aws query , this part is also ridiculas
+
+(p3) [root@DESKTOP-Q7EP4O1 py]# aws rds describe-db-instances --db-instance-identifier database-1 --profile awsrds --query 'DBInstances[0].DBParameterGroups[0].DBParameterGroupName' --output text
+default.mysql8.0
+
+(p3) [root@DESKTOP-Q7EP4O1 py]# aws rds describe-db-instances --db-instance-identifier database-1 --profile awsrds |jq -r '.DBInstances[0].DBParameterGroups[0].DBParameterGroupName'
+default.mysql8.0
+
+Exactly same thing, why make the whole thing so complicate? And add those into the aws command? So stupid. jq is jq, so, aws should be full filled with those garbage work. 

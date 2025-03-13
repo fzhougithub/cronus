@@ -1,0 +1,43 @@
+[root@DESKTOP-Q7EP4O1 rds]# aws rds   describe-db-log-files --db-instance-identifier database-1 --profile awsrds
+{
+    "DescribeDBLogFiles": [
+        {
+            "LogFileName": "error/mysql-error.log",
+            "LastWritten": 1741694400322,
+            "Size": 0
+        },
+        {
+            "LogFileName": "error/mysql-error-running.log",
+            "LastWritten": 1741683602424,
+            "Size": 0
+        },
+        {
+            "LogFileName": "error/mysql-error-running.log.2025-03-11.9",
+            "LastWritten": 1741680088789,
+            "Size": 3233
+        },
+        {
+            "LogFileName": "mysqlUpgrade",
+            "LastWritten": 1741680090459,
+            "Size": 1013
+        }
+    ]
+}
+
+aws rds download-db-log-file-portion --db-instance-identifier database-1 --log-file-name error/mysql-error.log --profile awsrds --output text
+aws rds download-db-log-file-portion --db-instance-identifier database-1 --log-file-name error/mysql-error.log.2025-03-11.9 --profile awsrds --output text
+
+aws rds download-db-log-file-portion --db-instance-identifier database-1 --log-file-name error/mysql-error-running.log.2025-03-11.9 --profile awsrds --output text --starting-token 0 --number-of-lines 100
+
+ aws rds describe-db-instances --db-instance-identifier database-1 --profile awsrds |jq -r '.DBInstances[]| .DBParameterGroups[]| "\(.DBParameterGroupName)"'
+default.mysql8.0
+
+(p3) [root@DESKTOP-Q7EP4O1 py]#  aws rds describe-db-instances --db-instance-identifier database-1 --profile awsrds |jq -r '.DBInstances[]| .DBParameterGroups[]| {DBParameterGroupName}'
+{
+  "DBParameterGroupName": "default.mysql8.0"
+}
+
+aws rds describe-db-parameters --db-parameter-group-name default.mysql8.0 --profile awsrds > default.mysql8.0.json
+cat default.mysql8.0.json |jq -r '.Parameters[]|"\(.ParameterName),\(.ParameterValue)"'|grep -v null
+
+mysql -h database-1.<region>.rds.amazonaws.com -u admin -p -e "CALL mysql.rds_show_configuration;" --profile awsrds
