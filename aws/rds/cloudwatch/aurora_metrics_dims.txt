@@ -1,0 +1,96 @@
+WriteThroughput: EngineName=mysql
+ReadLatency: DBInstanceIdentifier=database-1
+WriteLatency: 
+CPUUtilization: DBInstanceIdentifier=database-1
+ReadIOPS: DBInstanceIdentifier=database-1
+LVMReadIOPS: 
+LVMReadIOPS: DBInstanceIdentifier=database-1
+NetworkTransmitThroughput: 
+LVMReadIOPS: DatabaseClass=db.t4g.micro
+CPUUtilization: EngineName=mysql
+ReadLatency: DatabaseClass=db.t4g.micro
+WriteIOPS: 
+ReadLatency: 
+ReadIOPS: EngineName=mysql
+NetworkReceiveThroughput: DBInstanceIdentifier=database-1
+WriteThroughput: 
+LVMWriteIOPS: EngineName=mysql
+WriteLatency: EngineName=mysql
+WriteIOPS: DBInstanceIdentifier=database-1
+WriteLatency: DatabaseClass=db.t4g.micro
+LVMWriteIOPS: DatabaseClass=db.t4g.micro
+CPUUtilization: 
+ReadIOPS: DatabaseClass=db.t4g.micro
+ReadLatency: EngineName=mysql
+NetworkTransmitThroughput: DBInstanceIdentifier=database-1
+ReadThroughput: DBInstanceIdentifier=database-1
+DiskQueueDepth: DatabaseClass=db.t4g.micro
+WriteLatency: DBInstanceIdentifier=database-1
+WriteIOPS: DatabaseClass=db.t4g.micro
+WriteThroughput: DatabaseClass=db.t4g.micro
+ReadThroughput: 
+WriteIOPS: EngineName=mysql
+ReadIOPS: 
+NetworkTransmitThroughput: EngineName=mysql
+CPUUtilization: DatabaseClass=db.t4g.micro
+LVMWriteIOPS: 
+NetworkTransmitThroughput: DatabaseClass=db.t4g.micro
+DiskQueueDepth: 
+WriteThroughput: DBInstanceIdentifier=database-1
+DiskQueueDepth: DBInstanceIdentifier=database-1
+NetworkReceiveThroughput: 
+ReadThroughput: EngineName=mysql
+DiskQueueDepth: EngineName=mysql
+NetworkReceiveThroughput: DatabaseClass=db.t4g.micro
+LVMReadIOPS: EngineName=mysql
+ReadThroughput: DatabaseClass=db.t4g.micro
+NetworkReceiveThroughput: EngineName=mysql
+LVMWriteIOPS: DBInstanceIdentifier=database-1
+DatabaseConnections: EngineName=mysql
+CPUCreditBalance: DatabaseClass=db.t4g.micro
+FreeableMemory: 
+SwapUsage: DatabaseClass=db.t4g.micro
+CPUSurplusCreditBalance: DatabaseClass=db.t4g.micro
+SwapUsage: 
+CPUSurplusCreditBalance: EngineName=mysql
+BurstBalance: DBInstanceIdentifier=database-1
+BinLogDiskUsage: 
+BurstBalance: DatabaseClass=db.t4g.micro
+BinLogDiskUsage: DBInstanceIdentifier=database-1
+CPUCreditUsage: EngineName=mysql
+BinLogDiskUsage: DatabaseClass=db.t4g.micro
+CPUSurplusCreditsCharged: EngineName=mysql
+CPUCreditUsage: DatabaseClass=db.t4g.micro
+EBSByteBalance%: EngineName=mysql
+CPUSurplusCreditBalance: DBInstanceIdentifier=database-1
+SwapUsage: DBInstanceIdentifier=database-1
+FreeStorageSpace: EngineName=mysql
+CPUCreditUsage: DBInstanceIdentifier=database-1
+CPUCreditUsage: 
+CPUCreditBalance: 
+BurstBalance: 
+EBSIOBalance%: DatabaseClass=db.t4g.micro
+CPUCreditBalance: DBInstanceIdentifier=database-1
+FreeStorageSpace: 
+FreeableMemory: EngineName=mysql
+EBSByteBalance%: 
+FreeableMemory: DatabaseClass=db.t4g.micro
+CPUSurplusCreditBalance: 
+CPUSurplusCreditsCharged: 
+EBSByteBalance%: DBInstanceIdentifier=database-1
+CPUSurplusCreditsCharged: DBInstanceIdentifier=database-1
+EBSIOBalance%: DBInstanceIdentifier=database-1
+FreeStorageSpace: DatabaseClass=db.t4g.micro
+FreeStorageSpace: DBInstanceIdentifier=database-1
+EBSIOBalance%: EngineName=mysql
+CPUSurplusCreditsCharged: DatabaseClass=db.t4g.micro
+DatabaseConnections: 
+DatabaseConnections: DBInstanceIdentifier=database-1
+BinLogDiskUsage: EngineName=mysql
+BurstBalance: EngineName=mysql
+EBSIOBalance%: 
+EBSByteBalance%: DatabaseClass=db.t4g.micro
+CPUCreditBalance: EngineName=mysql
+SwapUsage: EngineName=mysql
+FreeableMemory: DBInstanceIdentifier=database-1
+DatabaseConnections: DatabaseClass=db.t4g.micro

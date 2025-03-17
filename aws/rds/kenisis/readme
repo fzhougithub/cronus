@@ -1,0 +1,5 @@
+Your Aurora DB cluster pushes activities to an Amazon Kinesis data stream in near real time. The Kinesis stream is created automatically. From Kinesis, you can configure AWS services such as Amazon Data Firehose and AWS Lambda to consume the stream and store the data.
+
+What are the backend tech used for amazon kinesis data stream? What are Amazon Data Firehose and AWS Lambda?
+
+

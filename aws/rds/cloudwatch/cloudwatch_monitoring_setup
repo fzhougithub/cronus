@@ -1,0 +1,392 @@
+aws sso login --profile awsrds
+aws cloudwatch list-metrics --namespace AWS/RDS | jq -r '.Metrics[].MetricName' | sort -u
+aws cloudwatch list-metrics --namespace AWS/RDS --dimensions Name=DBInstanceIdentifier,Value=database-1 --profile awsrds | jq -r '.Metrics[].MetricName' | sort -u
+
+aws cloudwatch list-metrics --namespace AWS/RDS --dimensions Name=DBClusterIdentifier,Value=my-cluster --profile awsrds | jq -r '.Metrics[].MetricName' | sort -u
+
+aws cloudwatch list-metrics --namespace AWS/RDS --profile awsrds | jq '.Metrics[] | {MetricName, Dimensions}'
+
+aws cloudwatch list-metrics --namespace AWS/RDS --profile awsrds | jq -r '.Metrics[] | .MetricName + ": " + (.Dimensions | if . == null or length == 0 then "" else map("\(.Name)=\(.Value)") | join(", ") end)'
+
+aws cloudwatch list-metrics --namespace AWS/RDS --profile awsrds | jq -r '.Metrics[] | .MetricName + ": " + (.Dimensions | if . == null or length == 0 then "" else map("\(.Name)=\(.Value)") | join(", ") end)' > aurora_metrics_dims.txt
+
+uniq:
+
+aws cloudwatch list-metrics --namespace AWS/RDS --profile awsrds | jq -r '.Metrics[] | .MetricName + ": " + (.Dimensions | if . == null or length == 0 then "" else map("\(.Name)=\(.Value)") | join(", ") end)' | sort -u -t ':' -k 1,1 >  aurora_metrics_dims_uniq.txt
+
+
+#Monitoring Option 1: Turn on the database monitoring 
+
+aws rds describe-db-instances --db-instance-identifier database-1 --profile awsrds | jq '.DBInstances[].MonitoringInterval'
+0
+aws rds modify-db-instance --db-instance-identifier database-1 --monitoring-interval 60 --monitoring-role-arn arn:aws:iam::142012336648:role/rds-monitoring-role --profile awsrds
+
+#above command turn on the monitoring, the arn is amazon resource number, 
+[root@DESKTOP-Q7EP4O1 cloudwatch]# aws iam get-role --role-name rds-monitoring-role --profile awsrds
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "rds-monitoring-role",
+        "RoleId": "AROASCEEYJIEG2HDRH5BD",
+        "Arn": "arn:aws:iam::142012336648:role/rds-monitoring-role",
+        "CreateDate": "2025-03-11T07:59:02+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "monitoring.rds.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        },
+        "MaxSessionDuration": 3600,
+        "RoleLastUsed": {}
+    }
+}
+
+
+
+aws rds modify-db-instance --db-instance-identifier database-1 --monitoring-interval 60 --monitoring-role-arn arn:aws:iam::142012336648:role/rds-monitoring-role --profile awsrds
+
+[root@DESKTOP-Q7EP4O1 cloudwatch]# aws rds modify-db-instance --db-instance-identifier database-1 --monitoring-interval 60 --monitoring-role-arn arn:aws:iam::142012336648:role/rds-monitoring-role --profile awsrds
+{
+    "DBInstance": {
+        "DBInstanceIdentifier": "database-1",
+        "DBInstanceClass": "db.t4g.micro",
+        "Engine": "mysql",
+        "DBInstanceStatus": "available",
+        "MasterUsername": "admin",
+        "Endpoint": {
+            "Address": "database-1.cfgcwuosua5o.us-west-1.rds.amazonaws.com",
+            "Port": 3306,
+            "HostedZoneId": "Z10WI91S59XXQN"
+        },
+        "AllocatedStorage": 20,
+        "InstanceCreateTime": "2025-03-11T08:01:45.668000+00:00",
+        "PreferredBackupWindow": "10:27-10:57",
+        "BackupRetentionPeriod": 1,
+        "DBSecurityGroups": [],
+        "VpcSecurityGroups": [
+            {
+                "VpcSecurityGroupId": "sg-54a64a2f",
+                "Status": "active"
+            }
+        ],
+        "DBParameterGroups": [
+            {
+                "DBParameterGroupName": "default.mysql8.0",
+                "ParameterApplyStatus": "in-sync"
+            }
+        ],
+        "AvailabilityZone": "us-west-1a",
+        "DBSubnetGroup": {
+            "DBSubnetGroupName": "default-vpc-b26741d5",
+            "DBSubnetGroupDescription": "Created from the RDS Management Console",
+            "VpcId": "vpc-b26741d5",
+            "SubnetGroupStatus": "Complete",
+            "Subnets": [
+                {
+                    "SubnetIdentifier": "subnet-aba0b6cc",
+                    "SubnetAvailabilityZone": {
+                        "Name": "us-west-1a"
+                    },
+                    "SubnetOutpost": {},
+                    "SubnetStatus": "Active"
+                },
+                {
+                    "SubnetIdentifier": "subnet-f2aa88a9",
+                    "SubnetAvailabilityZone": {
+                        "Name": "us-west-1c"
+                    },
+                    "SubnetOutpost": {},
+                    "SubnetStatus": "Active"
+                }
+            ]
+        },
+        "PreferredMaintenanceWindow": "sat:11:09-sat:11:39",
+        "PendingModifiedValues": {},
+        "LatestRestorableTime": "2025-03-16T13:45:00+00:00",
+        "MultiAZ": false,
+        "EngineVersion": "8.0.40",
+        "AutoMinorVersionUpgrade": true,
+        "ReadReplicaDBInstanceIdentifiers": [],
+        "LicenseModel": "general-public-license",
+        "OptionGroupMemberships": [
+            {
+                "OptionGroupName": "default:mysql-8-0",
+                "Status": "in-sync"
+            }
+        ],
+        "PubliclyAccessible": true,
+        "StorageType": "gp2",
+        "DbInstancePort": 0,
+        "StorageEncrypted": true,
+        "KmsKeyId": "arn:aws:kms:us-west-1:142012336648:key/3afb7781-3e90-4fa0-aeff-295937ecfecb",
+        "DbiResourceId": "db-3BSNBKW7FEBH2CGOOWP7XEPF7U",
+        "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+        "DomainMemberships": [],
+        "CopyTagsToSnapshot": true,
+        "MonitoringInterval": 60,
+        "MonitoringRoleArn": "arn:aws:iam::142012336648:role/rds-monitoring-role",
+        "DBInstanceArn": "arn:aws:rds:us-west-1:142012336648:db:database-1",
+        "IAMDatabaseAuthenticationEnabled": false,
+        "DatabaseInsightsMode": "standard",
+        "PerformanceInsightsEnabled": false,
+        "DeletionProtection": false,
+        "AssociatedRoles": [],
+        "MaxAllocatedStorage": 1000,
+        "TagList": [],
+        "CustomerOwnedIpEnabled": false,
+        "BackupTarget": "region",
+        "NetworkType": "IPV4",
+        "StorageThroughput": 0,
+        "CertificateDetails": {
+            "CAIdentifier": "rds-ca-rsa2048-g1",
+            "ValidTill": "2026-03-11T08:00:58+00:00"
+        },
+        "DedicatedLogVolume": false,
+        "EngineLifecycleSupport": "open-source-rds-extended-support-disabled"
+    }
+}
+
+#Optin 2: Creatre your own IAM and montoring
+
+Save json file monitoring-policy.json
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    }
+  ]
+}
+
+aws iam create-policy --policy-name RDSEnhancedMonitoringPolicy --policy-document file://monitoring-policy.json --profile awsrds
+{
+    "Policy": {
+        "PolicyName": "RDSEnhancedMonitoringPolicy",
+        "PolicyId": "ANPASCEEYJIEEJGSAOLFX",
+        "Arn": "arn:aws:iam::142012336648:policy/RDSEnhancedMonitoringPolicy",
+        "Path": "/",
+        "DefaultVersionId": "v1",
+        "AttachmentCount": 0,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "CreateDate": "2025-03-16T13:54:11+00:00",
+        "UpdateDate": "2025-03-16T13:54:11+00:00"
+    }
+}
+
+Create role, save below json as trust-policy.json
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "monitoring.rds.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+
+aws iam create-role --role-name MyRDSEnhancedMonitoringRole --assume-role-policy-document file://trust-policy.json --profile awsrds
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "MyRDSEnhancedMonitoringRole",
+        "RoleId": "AROASCEEYJIEGVD2JE7JL",
+        "Arn": "arn:aws:iam::142012336648:role/MyRDSEnhancedMonitoringRole",
+        "CreateDate": "2025-03-16T13:56:53+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "monitoring.rds.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        }
+    }
+}
+
+Attach policy to the role
+
+[root@DESKTOP-Q7EP4O1 cloudwatch]# aws sts get-caller-identity --profile awsrds
+{
+    "UserId": "AROASCEEYJIEAW35MCNKP:fzhourds",
+    "Account": "142012336648",
+    "Arn": "arn:aws:sts::142012336648:assumed-role/AWSReservedSSO_AdministratorAccess_e2cf5831d388ddfc/fzhourds"
+}
+
+[root@DESKTOP-Q7EP4O1 cloudwatch]# aws iam list-policies --profile awsrds | grep RDSEnhancedMonitoringPolicy
+            "PolicyName": "RDSEnhancedMonitoringPolicy",
+            "Arn": "arn:aws:iam::142012336648:policy/RDSEnhancedMonitoringPolicy",
+
+
+[root@DESKTOP-Q7EP4O1 cloudwatch]# aws iam get-role --role-name MyRDSEnhancedMonitoringRole --profile awsrds
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "MyRDSEnhancedMonitoringRole",
+        "RoleId": "AROASCEEYJIEGVD2JE7JL",
+        "Arn": "arn:aws:iam::142012336648:role/MyRDSEnhancedMonitoringRole",
+        "CreateDate": "2025-03-16T13:56:53+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "monitoring.rds.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        },
+        "MaxSessionDuration": 3600,
+        "RoleLastUsed": {}
+    }
+}
+
+
+aws iam attach-role-policy --role-name MyRDSEnhancedMonitoringRole --policy-arn arn:aws:iam::142012336648:policy/RDSEnhancedMonitoringPolicy --profile awsrds
+
+
+Finally, you have to setup the monitoring either using default role, or the role you created, below are two of them
+
+aws rds modify-db-instance --db-instance-identifier database-1 --monitoring-interval 60 --monitoring-role-arn arn:aws:iam::142012336648:role/MyRDSEnhancedMonitoringRole --profile awsrds
+
+or, using default role
+
+aws rds modify-db-instance --db-instance-identifier database-1 --monitoring-interval 60 --monitoring-role-arn arn:aws:iam::142012336648:role/rds-monitoring-role --profile awsrds
+
+
+For example, using our own policy and role
+
+[root@DESKTOP-Q7EP4O1 cloudwatch]# aws rds modify-db-instance --db-instance-identifier database-1 --monitoring-interval 60 --monitoring-role-arn arn:aws:iam::142012336648:role/MyRDSEnhancedMonitoringRole --profile awsrds
+{
+    "DBInstance": {
+        "DBInstanceIdentifier": "database-1",
+        "DBInstanceClass": "db.t4g.micro",
+        "Engine": "mysql",
+        "DBInstanceStatus": "available",
+        "MasterUsername": "admin",
+        "Endpoint": {
+            "Address": "database-1.cfgcwuosua5o.us-west-1.rds.amazonaws.com",
+            "Port": 3306,
+            "HostedZoneId": "Z10WI91S59XXQN"
+        },
+        "AllocatedStorage": 20,
+        "InstanceCreateTime": "2025-03-11T08:01:45.668000+00:00",
+        "PreferredBackupWindow": "10:27-10:57",
+        "BackupRetentionPeriod": 1,
+        "DBSecurityGroups": [],
+        "VpcSecurityGroups": [
+            {
+                "VpcSecurityGroupId": "sg-54a64a2f",
+                "Status": "active"
+            }
+        ],
+        "DBParameterGroups": [
+            {
+                "DBParameterGroupName": "default.mysql8.0",
+                "ParameterApplyStatus": "in-sync"
+            }
+        ],
+        "AvailabilityZone": "us-west-1a",
+        "DBSubnetGroup": {
+            "DBSubnetGroupName": "default-vpc-b26741d5",
+            "DBSubnetGroupDescription": "Created from the RDS Management Console",
+            "VpcId": "vpc-b26741d5",
+            "SubnetGroupStatus": "Complete",
+            "Subnets": [
+                {
+                    "SubnetIdentifier": "subnet-aba0b6cc",
+                    "SubnetAvailabilityZone": {
+                        "Name": "us-west-1a"
+                    },
+                    "SubnetOutpost": {},
+                    "SubnetStatus": "Active"
+                },
+                {
+                    "SubnetIdentifier": "subnet-f2aa88a9",
+                    "SubnetAvailabilityZone": {
+                        "Name": "us-west-1c"
+                    },
+                    "SubnetOutpost": {},
+                    "SubnetStatus": "Active"
+                }
+            ]
+        },
+        "PreferredMaintenanceWindow": "sat:11:09-sat:11:39",
+        "PendingModifiedValues": {},
+        "LatestRestorableTime": "2025-03-16T14:05:00+00:00",
+        "MultiAZ": false,
+        "EngineVersion": "8.0.40",
+        "AutoMinorVersionUpgrade": true,
+        "ReadReplicaDBInstanceIdentifiers": [],
+        "LicenseModel": "general-public-license",
+        "OptionGroupMemberships": [
+            {
+                "OptionGroupName": "default:mysql-8-0",
+                "Status": "in-sync"
+            }
+        ],
+        "PubliclyAccessible": true,
+        "StorageType": "gp2",
+        "DbInstancePort": 0,
+        "StorageEncrypted": true,
+        "KmsKeyId": "arn:aws:kms:us-west-1:142012336648:key/3afb7781-3e90-4fa0-aeff-295937ecfecb",
+        "DbiResourceId": "db-3BSNBKW7FEBH2CGOOWP7XEPF7U",
+        "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+        "DomainMemberships": [],
+        "CopyTagsToSnapshot": true,
+        "MonitoringInterval": 60,
+        "EnhancedMonitoringResourceArn": "arn:aws:logs:us-west-1:142012336648:log-group:RDSOSMetrics:log-stream:db-3BSNBKW7FEBH2CGOOWP7XEPF7U",
+        "MonitoringRoleArn": "arn:aws:iam::142012336648:role/MyRDSEnhancedMonitoringRole",
+        "DBInstanceArn": "arn:aws:rds:us-west-1:142012336648:db:database-1",
+        "IAMDatabaseAuthenticationEnabled": false,
+        "DatabaseInsightsMode": "standard",
+        "PerformanceInsightsEnabled": false,
+        "DeletionProtection": false,
+        "AssociatedRoles": [],
+        "MaxAllocatedStorage": 1000,
+        "TagList": [],
+        "CustomerOwnedIpEnabled": false,
+        "BackupTarget": "region",
+        "NetworkType": "IPV4",
+        "StorageThroughput": 0,
+        "CertificateDetails": {
+            "CAIdentifier": "rds-ca-rsa2048-g1",
+            "ValidTill": "2026-03-11T08:00:58+00:00"
+        },
+        "DedicatedLogVolume": false,
+        "EngineLifecycleSupport": "open-source-rds-extended-support-disabled"
+    }
+}
+
+Verify the setup works
+
+(p3) [root@DESKTOP-Q7EP4O1 cloudwatch]# aws rds describe-db-instances --db-instance-identifier database-1 --profile awsrds | jq '.DBInstances[].MonitoringInterval'
+60
+
+
+

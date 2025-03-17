@@ -1,0 +1,14 @@
+The metrics watch using complicate string command, 3 ways to simplify it
+1. alias: Add the major part into the alias definition
+2. Shell scripting
+3. Pythong code
+4. Using json file to preconfig
+
+
+aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name CPUUtilization --dimensions Name=DBInstanceIdentifier,Value=database-1 --start-time 2025-03-14T00:00:00Z --end-time 2025-03-14T16:00:00Z --period 60 --statistics Average --profile awsrds|jq -r '.Datapoints[]|"\(.Timestamp),\(.Average)"'
+
+python check_cpu.py
+./check_cpu
+aws cloudwatch get-metric-statistics --cli-input-json file://metrics_config.json --profile awsrds|jq -r '.Datapoints[]|"\(.Timestamp),\(.Average)"'
+jq '.MetricName = "ReadIOPS" | .Dimensions[0].Value = "database-2"' metrics_config.json > temp.json && mv temp.json metrics_config.json
+aws cloudwatch get-metric-statistics --cli-input-json file://metrics_config.json --profile awsrds

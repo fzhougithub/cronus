@@ -1,0 +1,28 @@
+#!/bin/bash
+
+
+#aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name CPUUtilization --dimensions Name=DBInstanceIdentifier,Value=database-1 --start-time 2025-03-14T00:00:00Z --end-time 2025-03-14T16:00:00Z --period 60 --statistics Average --profile awsrds|jq -r '.Datapoints[]|"\(.Timestamp),\(.Average)"'
+
+# Preconfigured defaults
+NAMESPACE="AWS/RDS"
+PERIOD=60
+STATISTICS="Average"
+PROFILE="awsrds"  # Your profile from earlier chats
+
+# Prompt or accept arguments
+METRIC=${1:-"CPUUtilization"}
+DB_INSTANCE=${2:-"database-1"}
+START_TIME=${3:-$(date -u -d "16 hours ago" +"%Y-%m-%dT%H:%M:%SZ")}
+END_TIME=${4:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+
+# Run the command
+aws cloudwatch get-metric-statistics \
+    --namespace "$NAMESPACE" \
+    --metric-name "$METRIC" \
+    --dimensions Name=DBInstanceIdentifier,Value="$DB_INSTANCE" \
+    --start-time "$START_TIME" \
+    --end-time "$END_TIME" \
+    --period "$PERIOD" \
+    --statistics "$STATISTICS" \
+    --profile "$PROFILE" \
+    |jq -r '.Datapoints[]|"\(.Timestamp),\(.Average)"'

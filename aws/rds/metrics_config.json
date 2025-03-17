@@ -1,0 +1,14 @@
+{
+    "Namespace": "AWS/RDS",
+    "MetricName": "CPUUtilization",
+    "Dimensions": [
+        {
+            "Name": "DBInstanceIdentifier",
+            "Value": "database-1"
+        }
+    ],
+    "StartTime": "2025-03-14T00:00:00Z",
+    "EndTime": "2025-03-14T16:00:00Z",
+    "Period": 60,
+    "Statistics": ["Average"]
+}

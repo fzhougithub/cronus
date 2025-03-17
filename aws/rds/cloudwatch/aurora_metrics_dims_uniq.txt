@@ -1,0 +1,24 @@
+BinLogDiskUsage: 
+BurstBalance: DBInstanceIdentifier=database-1
+CPUCreditBalance: DatabaseClass=db.t4g.micro
+CPUCreditUsage: EngineName=mysql
+CPUSurplusCreditBalance: DatabaseClass=db.t4g.micro
+CPUSurplusCreditsCharged: EngineName=mysql
+CPUUtilization: DBInstanceIdentifier=database-1
+DatabaseConnections: EngineName=mysql
+DiskQueueDepth: DatabaseClass=db.t4g.micro
+EBSByteBalance%: EngineName=mysql
+EBSIOBalance%: DatabaseClass=db.t4g.micro
+FreeStorageSpace: EngineName=mysql
+FreeableMemory: 
+LVMReadIOPS: 
+LVMWriteIOPS: EngineName=mysql
+NetworkReceiveThroughput: DBInstanceIdentifier=database-1
+NetworkTransmitThroughput: 
+ReadIOPS: DBInstanceIdentifier=database-1
+ReadLatency: DBInstanceIdentifier=database-1
+ReadThroughput: DBInstanceIdentifier=database-1
+SwapUsage: DatabaseClass=db.t4g.micro
+WriteIOPS: 
+WriteLatency: 
+WriteThroughput: EngineName=mysql

@@ -41,3 +41,8 @@ aws rds describe-db-parameters --db-parameter-group-name default.mysql8.0 --prof
 cat default.mysql8.0.json |jq -r '.Parameters[]|"\(.ParameterName),\(.ParameterValue)"'|grep -v null
 
 mysql -h database-1.<region>.rds.amazonaws.com -u admin -p -e "CALL mysql.rds_show_configuration;" --profile awsrds
+
+aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name CPUUtilization --dimensions Name=DBInstanceIdentifier,Value=database-1 --start-time 2025-03-14T00:00:00Z --end-time 2025-03-14T16:00:00Z --period 60 --statistics Average --profile awsrds|jq -r '.Datapoints[]|"\(.Timestamp),\(.Average)"'
+
+
+

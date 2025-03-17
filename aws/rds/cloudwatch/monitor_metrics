@@ -1,0 +1,17 @@
+1.Monitor database-1, single instance
+aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name NetworkTransmitThroughput --dimensions Name=DBInstanceIdentifier,Value=database-1 --start-time 2025-03-16T00:00:00Z --end-time 2025-03-16T12:00:00Z --period 60 --statistics Average --profile awsrds
+
+2. Get the aggregate for db.t4g.micro class
+
+aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name NetworkTransmitThroughput --dimensions Name=DatabaseClass,Value=db.t4g.micro --start-time 2025-03-16T00:00:00Z --end-time 2025-03-16T12:00:00Z --period 60 --statistics Average --profile awsrds
+
+3. Engine-wide 
+
+aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name NetworkTransmitThroughput --dimensions Name=EngineName,Value=mysql --start-time 2025-03-16T00:00:00Z --end-time 2025-03-16T12:00:00Z --period 60 --statistics Average --profile awsrds
+
+
+4. Setup Alert 
+
+aws cloudwatch put-metric-alarm --alarm-name HighNetworkTransmit --metric-name NetworkTransmitThroughput --namespace AWS/RDS --dimensions Name=DBInstanceIdentifier,Value=database-1 --threshold 1000000 --comparison-operator GreaterThanThreshold --period 300 --evaluation-periods 2 --statistic Average --alarm-actions <sns-topic-arn> --profile awsrds
+
+
