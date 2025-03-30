@@ -1,0 +1,34 @@
+1. install ollama on wsl2
+curl -fsSL https://ollama.com/install.sh | sh
+
+[root@DESKTOP-Q7EP4O1 data_load]# curl -fsSL https://ollama.com/install.sh | sh
+>>> Installing ollama to /usr/local
+>>> Downloading Linux amd64 bundle
+######################################################################## 100.0%
+>>> Creating ollama user...
+>>> Adding ollama user to render group...
+>>> Adding ollama user to video group...
+>>> Adding current user to ollama group...
+>>> Creating ollama systemd service...
+>>> Enabling and starting ollama service...
+Created symlink /etc/systemd/system/default.target.wants/ollama.service → /etc/systemd/system/ollama.service.
+>>> The Ollama API is now available at 127.0.0.1:11434.
+>>> Install complete. Run "ollama" from the command line.
+
+
+2. Download deepseek model
+ollama pull deepseek-r1:7b
+
+This downloads the distilled DeepSeek-R1 model with 7 billion parameters (about 4.7GB). Adjust the tag (e.g., :1.5b, :70b) based on your hardware:
+1.5B: ~2.3GB, lightweight, runs on modest systems.
+7B: ~4.7GB, good balance of performance and resource use.
+70B: ~40GB+, needs significant RAM and possibly a GPU.
+
+3. Run deepseek
+ollama run deepseek-r1:7b
+
+
+Chapter 2: Ollama
+https://medium.com/@mauryaanoop3/ollama-a-deep-dive-into-running-large-language-models-locally-part-1-0a4b70b30982#:~:text=Conclusion:,transparent%20future%20for%20LLM%20technology.
+
+

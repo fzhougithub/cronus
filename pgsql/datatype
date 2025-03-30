@@ -1,0 +1,91 @@
+PostgreSQL offers a rich set of data types, catering to various data storage and manipulation needs. Here's a breakdown of the commonly used data types, categorized for clarity:
+
+**1. Numeric Types:**
+
+* **Integer Types:**
+    * `SMALLINT`: 2-byte integer.
+    * `INTEGER` (or `INT`): 4-byte integer.
+    * `BIGINT`: 8-byte integer.
+* **Floating-Point Types:**
+    * `REAL`: 4-byte floating-point number.
+    * `DOUBLE PRECISION`: 8-byte floating-point number.
+* **Decimal Type:**
+    * `NUMERIC` (or `DECIMAL`): Variable-precision numbers, suitable for storing exact numeric values (e.g., currency).
+* **Serial Types (Auto-Incrementing):**
+    * `SMALLSERIAL`: Auto-incrementing 2-byte integer.
+    * `SERIAL`: Auto-incrementing 4-byte integer.
+    * `BIGSERIAL`: Auto-incrementing 8-byte integer.
+
+**2. Character Types:**
+
+* `CHARACTER VARYING` (or `VARCHAR`): Variable-length character strings.
+* `CHARACTER` (or `CHAR`): Fixed-length character strings.
+* `TEXT`: Variable-length character strings of unlimited length.
+
+**3. Date/Time Types:**
+
+* `DATE`: Stores dates (year, month, day).
+* `TIME` [ `WITHOUT TIME ZONE` | `WITH TIME ZONE` ]: Stores times (hour, minute, second).
+* `TIMESTAMP` [ `WITHOUT TIME ZONE` | `WITH TIME ZONE` ]: Stores date and time.
+* `INTERVAL`: Stores time intervals.
+
+**4. Boolean Type:**
+
+* `BOOLEAN`: Stores true or false values.
+
+**5. Binary Data Types:**
+
+* `BYTEA`: Stores binary byte strings.
+
+**6. Network Address Types:**
+
+* `INET`: Stores IPv4 and IPv6 addresses.
+* `CIDR`: Stores IPv4 and IPv6 network address ranges.
+* `MACADDR`: Stores MAC addresses.
+* `MACADDR8`: Stores MAC addresses (EUI-64 format).
+
+**7. UUID Type:**
+
+* `UUID`: Stores Universally Unique Identifiers.
+
+**8. Geometric Types:**
+
+* `POINT`: Stores points in a two-dimensional plane.
+* `LINE`: Stores infinite lines.
+* `LSEG`: Stores line segments.
+* `BOX`: Stores rectangular boxes.
+* `PATH`: Stores open or closed paths.
+* `POLYGON`: Stores polygons.
+* `CIRCLE`: Stores circles.
+
+**9. JSON Types:**
+
+* `JSON`: Stores JSON data as text.
+* `JSONB`: Stores JSON data in a binary format, which is more efficient for processing.
+
+**10. Array Types:**
+
+* PostgreSQL supports arrays of any built-in or user-defined type.
+
+**11. Range Types:**
+
+* Range types represent a range of values of a single type. For example, ranges of integers, timestamps, or dates.
+
+**12. Composite Types:**
+
+* Composite types are user-defined types that represent a structure of other types.
+
+**13. Enumerated Types (ENUM):**
+
+* Enumerated types are user-defined types that consist of a static, ordered set of values.
+
+**14. Object Identifier Types (OIDs):**
+
+* `OID`: Stores object identifiers (internal system identifiers).
+
+**15. XML Type:**
+
+* `XML`: Stores XML data.
+
+This comprehensive list provides a good overview of the core data types available in PostgreSQL. When designing your database schema, carefully choose the appropriate data types to ensure data integrity and optimize performance.
+

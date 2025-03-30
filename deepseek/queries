@@ -1,0 +1,48 @@
+[root@DESKTOP-Q7EP4O1 ~]# curl http://localhost:11434/api/generate -d '{"model": "deepseek-r1:7b", "prompt": "Hello, how are you?"}'
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:45:54.117177157Z","response":"\u003cthink\u003e","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:46:03.896880336Z","response":"\n\n","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:46:14.079939291Z","response":"\u003c/think\u003e","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:46:23.798711124Z","response":"\n\n","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:46:32.785250097Z","response":"Hello","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:46:41.74491072Z","response":"!","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:46:50.911495412Z","response":" I","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:46:59.783480042Z","response":"'m","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:47:08.850999202Z","response":" just","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:47:18.223328104Z","response":" a","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:47:28.290347875Z","response":" virtual","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:47:37.819341881Z","response":" assistant","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:47:47.003359373Z","response":",","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:47:55.993885458Z","response":" so","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:48:05.215064922Z","response":" I","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:48:14.281588433Z","response":" don","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:48:23.184502706Z","response":"'t","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:48:31.906816571Z","response":" have","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:48:40.651796064Z","response":" feelings","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:48:49.595457261Z","response":",","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:48:58.388958982Z","response":" but","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:49:07.350127414Z","response":" thanks","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:49:16.257002581Z","response":" for","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:49:26.240168121Z","response":" asking","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:49:35.599032627Z","response":"!","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:49:44.323785911Z","response":" How","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:49:53.122079481Z","response":" can","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:50:03.39650944Z","response":" I","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:50:12.632036524Z","response":" assist","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:50:21.440561307Z","response":" you","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:50:30.159035141Z","response":" today","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:50:38.991345878Z","response":"?","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:50:56.46667299Z","response":" 😊","done":false}
+{"model":"deepseek-r1:7b","created_at":"2025-03-25T20:51:06.977741925Z","response":"","done":true,"done_reason":"stop","context":[151644,9707,11,1246,525,498,30,151645,151648,271,151649,271,9707,0,358,2776,1101,264,4108,17847,11,773,358,1513,944,614,15650,11,714,9339,369,10161,0,2585,646,358,7789,498,3351,30,26525,232],"total_duration":364005054179,"load_duration":88574948,"prompt_eval_count":9,"prompt_eval_duration":51048277087,"eval_count":35,"eval_duration":312867230896}
+
+import requests
+
+url = "http://localhost:11434/api/generate"
+data = {
+    "model": "deepseek-r1:7b",
+    "prompt": "Write a haiku about rain",
+    "stream": False
+}
+response = requests.post(url, json=data)
+print(response.json()["response"])
+
+

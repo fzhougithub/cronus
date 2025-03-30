@@ -1,0 +1,50 @@
+You're asking for the other PostgreSQL access method options besides `heap`. However, it's important to clarify that "access methods" in PostgreSQL refers more specifically to *index* access methods, not overall table access methods.
+
+Here's a breakdown of the common index access methods you might encounter (and why you won't see them directly listed as the "Access method" for the *table* itself):
+
+**Index Access Methods (Common Options):**
+
+1.  **`btree`:**
+    * **Purpose:** B-tree indexes are the most common type and are used for general-purpose indexing.
+    * **Use Cases:** Suitable for ordered data, range queries, and equality searches.
+    * **Example:** Primary key indexes, unique indexes, and indexes on columns used in `WHERE` clauses with operators like `=`, `<`, `>`, `<=`, `>=`, and `BETWEEN`.
+    * **Your table example:** The `stockhistory_pkey` index is a `btree` index.
+
+2.  **`hash`:**
+    * **Purpose:** Hash indexes are used for equality searches.
+    * **Use Cases:** Suitable for columns where you frequently perform exact match queries (e.g., `WHERE column = value`).
+    * **Limitations:** Not suitable for range queries or ordered data.
+    * **Note:** Hash indexes are not as commonly used as B-tree indexes, and their performance can vary.
+
+3.  **`gist` (Generalized Search Tree):**
+    * **Purpose:** GiST indexes are highly versatile and can be used for indexing various data types and operations.
+    * **Use Cases:** Suitable for geometric data, full-text search, and other complex data types.
+    * **Example:** Indexing spatial data (e.g., points, polygons) or full-text search indexes.
+
+4.  **`gin` (Generalized Inverted Index):**
+    * **Purpose:** GIN indexes are designed for indexing composite data types, such as arrays and JSON documents.
+    * **Use Cases:** Suitable for searching within arrays or JSON objects.
+    * **Example:** Indexing arrays of tags or searching for specific keys in JSON data.
+
+5.  **`spgist` (Space-Partitioned GiST):**
+    * **Purpose:** SP-GiST indexes are a specialized version of GiST indexes optimized for space-partitioned data.
+    * **Use Cases:** Suitable for quadtrees, k-d trees, and other spatial indexing applications.
+
+6.  **`brin` (Block Range Indexes):**
+    * **Purpose:** BRIN indexes are designed for very large tables where the data is naturally ordered.
+    * **Use Cases:** Suitable for time-series data or other data that is physically ordered on disk.
+    * **Limitations:** Less effective for randomly ordered data.
+
+**Why Tables Use `heap`:**
+
+* **Table Storage:** The "Access method: heap" line in your `\dS+` output refers to the *underlying storage structure* of the table itself.
+* **Index Usage:** The index access methods (btree, hash, gist, gin, spgist, brin) are used when *indexes* are created on the table's columns.
+* **Table vs. Index:** A table is a collection of rows, while an index is a separate data structure that helps locate specific rows within the table.
+* **Heap is the base:** All tables use the heap access method as their base. The indexes are what change the way that the data is accessed.
+
+**In summary:**
+
+* Tables use the `heap` access method for their underlying storage.
+* Indexes use other access methods (btree, hash, gist, gin, spgist, brin) to provide efficient data retrieval.
+* The index access methods are what you should focus on when optimizing query performance.
+

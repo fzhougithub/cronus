@@ -1,0 +1,320 @@
+https://medium.com/@redswitches/install-kubernetes-on-rocky-linux-9-b01909d6ba72
+ dnf config-manager — add-repo
+dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+dnf makecache
+
+dnf install -y containerd.io
+dnf install -y iproute-tc
+
+mv /etc/containerd/config.toml /etc/containerd/config.toml.bak
+containerd config default > config.toml
+
+#modify /etc/containerd/config.toml file
+SystemdCgroup = true
+sandbox_image = "registry.k8s.io/pause:3.9"
+
+#Per wsl2 installation, the default systemd controled cgroups got the problem, so, fix it
+vi /etc/containerd/config.toml
+SystemdCgroup = false
+
+vi /var/lib/kubelet/config.yaml
+cgroupDriver: cgroupfs  # (not `systemd`)
+
+#Then, verify the cgroups that kubelet will use
+sudo grep cgroup-driver /var/lib/kubelet/config.yaml
+cgroupDriver: cgroupfs  # (not `systemd`)
+
+stat -fc %T /sys/fs/cgroup/
+tmpfs
+
+vi /etc/modules-load.d/k8s.conf
+overlay
+Br_netfilter
+
+#Use modeprob command to load the module
+modeprobe overlay
+https://github.com/hardkeo/bridge-support-on-wsl2
+Fix the Br_netfilter issue
+
+sudo mkdir -p /lib/modules/$(uname -r)
+sudo tee /lib/modules/$(uname -r)/modules.builtin <<-EOF
+kernel/net/bridge/bridge.ko
+kernel/net/bridge/br_netfilter.ko
+EOF
+
+then you have to restart the wls2 
+
+vi /etc/sysctl.d/k8s.conf
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+
+[root@DESKTOP-Q7EP4O1 ~]# cat /etc/crictl.conf
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 10
+debug: false
+
+sysctl net.bridge.bridge-nf-call-iptables
+cat /proc/net/ip_tables_names
+# Here, the wsl2 is using microsoft kernel, which not support the module load, but the bridge netfilter module is buildin, use above command to make sure
+
+
+vi /etc/yum.repos.d/ol9_epel.repo
+[ol9_developer_EPEL]
+name=Oracle Linux $releasever EPEL Packages for Development ($basearch)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/developer/EPEL/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+yum install iptables-legacy.x86_64 iptables-legacy-devel.x86_64 iptables-legacy-libs.x86_64 -y
+
+sysctl --system
+sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
+sudo update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables 20
+sudo update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 10
+sudo update-alternatives --install /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/iptables-save 20
+sudo update-alternatives --install /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/iptables-save-legacy 10
+sudo update-alternatives --install /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/iptables-restore 20
+sudo update-alternatives --install /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/iptables-restore-legacy 10
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+swapoff -a
+
+sed -e ‘/swap/s/^/#/g’ -i /etc/fstab
+
+4. Install Kubernete Tool
+
+cat /etc/yum.repo.d/k8s.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
+exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+
+dnf install -y {kubelet,kubeadm,kubectl} --disableexcludes=kubernetes
+
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+systemctl disable --now firewalld
+
+kubectl version --client
+
+
+Chapter 2:Create kubernete cluster
+============================================================
+1. Start containerd
+systemctl start containerd
+kubeadm config images pull
+
+1. initialize
+systemctl enable kubelet.service
+kubeadm init --pod-network-cidr=10.244.0.0/16
+
+---- You will see ------
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 172.17.233.185:6443 --token q8h5kc.3g7ebwhkjkaer2rd \
+        --discovery-token-ca-cert-hash sha256:bd1f931b144b9b0f3959e7edb8feaf920e82b44caa1aacf190ff88326a925c0f
+----------------------------------------------------------------
+
+mkdir -p /root/.kube
+sudo cp /etc/kubernetes/admin.conf /root/.kube/config
+sudo chown root:root /root/.kube/config
+
+cat <<EOF | sudo tee /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 10
+debug: false
+EOF
+
+#If the kubeadm init succeessful, the kubelet service will be started
+systemctl status kubelet
+crictl --runtime-endpoint unix:///var/run/containerd/containerd.sock ps -a
+crictl ps -a
+
+[root@Wentao ~]# crictl ps -a
+CONTAINER           IMAGE               CREATED             STATE               NAME                      ATTEMPT             POD ID              POD
+744d4847b0fae       f71614796eb76       7 minutes ago       Running             kube-proxy                0                   976418836e00f       kube-proxy-wqhhv
+fbbe6f79dd3c1       9ea0bd82ed4f6       8 minutes ago       Running             kube-scheduler            0                   70c8470482ead       kube-scheduler-wentao
+87d9c6679e1e8       b0cdcf76ac8e9       8 minutes ago       Running             kube-controller-manager   0                   fb3da6ff0d792       kube-controller-manager-wentao
+d12362d14904e       a9e7e6b294baf       8 minutes ago       Running             etcd                      0                   660be385c06ee       etcd-wentao
+b7bec202b6da0       f44c6888a2d24       8 minutes ago       Running             kube-apiserver            0                   eb7b53d994dc9       kube-apiserver-wentao
+
+Now, the required kubelet components are all online. 
+
+Verify the installation
+[fzhou@Wentao ~]$ cat .kube/config |grep server
+    server: https://172.17.233.185:6443
+[fzhou@Wentao ~]$ kubectl cluster-info
+Kubernetes control plane is running at https://172.17.233.185:6443
+CoreDNS is running at https://172.17.233.185:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+[fzhou@Wentao ~]$ kubectl get nodes
+NAME     STATUS     ROLES           AGE   VERSION
+wentao   NotReady   control-plane   24m   v1.29.15
+[fzhou@Wentao ~]$ kubectl get pods -n kube-system
+NAME                             READY   STATUS    RESTARTS   AGE
+coredns-76f75df574-4kjw6         0/1     Pending   0          24m
+coredns-76f75df574-698dc         0/1     Pending   0          24m
+etcd-wentao                      1/1     Running   0          24m
+kube-apiserver-wentao            1/1     Running   0          24m
+kube-controller-manager-wentao   1/1     Running   0          24m
+kube-proxy-wqhhv                 1/1     Running   0          24m
+kube-scheduler-wentao            1/1     Running   0          24m
+
+Chapter 3: Install CNI network
+Your cluster needs a CNI plugin for pod networking. Since you’re using --pod-network-cidr=10.244.0.0/16, Flannel is a perfect match:
+
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+[fzhou@Wentao ~]$ kubectl get pods -n kube-system -o wide
+NAME                             READY   STATUS    RESTARTS   AGE   IP               NODE     NOMINATED NODE   READINESS GATES
+coredns-76f75df574-4kjw6         1/1     Running   0          26m   10.244.0.3       wentao   <none>           <none>
+coredns-76f75df574-698dc         0/1     Running   0          26m   10.244.0.2       wentao   <none>           <none>
+etcd-wentao                      1/1     Running   0          26m   172.17.233.185   wentao   <none>           <none>
+kube-apiserver-wentao            1/1     Running   0          26m   172.17.233.185   wentao   <none>           <none>
+kube-controller-manager-wentao   1/1     Running   0          26m   172.17.233.185   wentao   <none>           <none>
+kube-proxy-wqhhv                 1/1     Running   0          26m   172.17.233.185   wentao   <none>           <none>
+kube-scheduler-wentao            1/1     Running   0          26m   172.17.233.185   wentao   <none>           <none>
+
+kubectl get nodes
+
+
+===================================================
+BELOW are the fight on Celeron CPU, which is impossible to run kubenet, so, just keep for reference. 
+
+2. Setup for user other than root
+Per fzou user
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# Start kubelet 
+sudo /usr/bin/kubelet --kubeconfig=/etc/kubernetes/kubelet.conf &
+systemctl start kubelet
+
+3. Install Pod Network(Flannel)
+#make a drop in file
+
+vi /etc/systemd/system/kubelet.service.d/10-kubeadm.conf 
+
+[Service]
+ExecStart=
+ExecStart=/usr/bin/kubelet \\
+  --kubeconfig=/etc/kubernetes/kubelet.conf \\
+  --network-plugin=cni \\
+  --pod-infra-container-image=registry.k8s.io/pause:3.9 \\
+  --cluster-dns=10.96.0.10 \\
+  --cluster-domain=cluster.local
+Environment="KUBELET_KUBEADM_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf"
+
+Change the service file 
+
+# /usr/lib/systemd/system/kubelet.service
+[Unit]
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/kubelet --kubeconfig=/etc/kubernetes/kubelet.conf --network-plugin=cni --pod-infra-container-image=registry.k8s.io/pause:3.9 --cluster-dns=10.96.0.10 --cluster-domain=cluster.local
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+Environment="KUBELET_KUBEADM_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf --network-plugin=cni"
+
+[Install]
+WantedBy=multi-user.target
+
+systemctl daemon-reload
+systemctl restart kubelet
+
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+
+Deepseek fix
+==================================================
+
+sudo kubeadm reset -f
+sudo rm -rf /etc/kubernetes/ /var/lib/etcd/
+sudo systemctl restart containerd kubelet
+sudo kubeadm init \
+  --pod-network-cidr=10.244.0.0/16 \
+  --apiserver-advertise-address=$(hostname -I | awk '{print $1}') \
+  --v=5
+
+Fix the crictl ps -a check error
+
+cat <<EOF | sudo tee /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 10
+debug: false
+EOF
+
+For wsl2
+
+sudo kubeadm init \
+  --pod-network-cidr=10.244.0.0/16 \
+  --apiserver-advertise-address=0.0.0.0 \  # Allows binding to any IP
+  --cri-socket=unix:///run/containerd/containerd.sock \
+  --ignore-preflight-errors=all \          # Bypass cgroup/swap checks
+  --v=5
+kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=0.0.0.0 --cri-socket=unix:///run/containerd/containerd.sock --ignore-preflight-errors=all --v=5
+
+cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+[Service]
+ExecStart=
+ExecStart=/usr/bin/kubelet --kubeconfig=/etc/kubernetes/kubelet.conf --cgroup-driver=cgroupfs
+Environment="KUBELET_KUBEADM_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf --cgroup-driver=cgroupfs"
+
+Force cleanup and retry
+sudo kubeadm reset -f
+sudo rm -rf /etc/kubernetes /var/lib/etcd /var/lib/kubelet
+sudo iptables -F && sudo iptables -t nat -F && sudo iptables -t mangle -F && sudo iptables -X
+
+cat <<EOF | sudo tee /etc/cni/net.d/10-containerd-test.conflist
+{
+  "cniVersion": "1.0.0",
+  "name": "containerd-test",
+  "plugins": [
+    {
+      "type": "bridge",
+      "bridge": "cni0",
+      "isGateway": true,
+      "ipMasq": true,
+      "ipam": {
+        "type": "host-local",
+        "subnet": "10.22.0.0/16",
+        "routes": [
+          { "dst": "0.0.0.0/0" }
+        ]
+      }
+    }
+  ]
+}
+EOF
+

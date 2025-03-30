@@ -1,0 +1,108 @@
+Now that your cluster is up, let’s install K8ssandra as per your original goal:
+
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+chmod +x get_helm.sh
+./get_helm.sh
+
+helm repo add k8ssandra https://helm.k8ssandra.io/stable
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+
+kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule-
+
+helm install k8ssandra-operator k8ssandra/k8ssandra-operator -n k8ssandra --create-namespace
+ 
+Another way is to tolerant the taint
+helm install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --version v1.13.3 \
+  --set installCRDs=true \
+  --set "tolerations[0].key=node-role.kubernetes.io/control-plane" \
+  --set "tolerations[0].operator=Exists" \
+  --set "tolerations[0].effect=NoSchedule"
+
+verify
+
+[root@Wentao ~]# kubectl get all -n cert-manager
+NAME                                          READY   STATUS      RESTARTS   AGE
+pod/cert-manager-57688f5dc6-hbvlk             1/1     Running     0          21m
+pod/cert-manager-cainjector-d7f8b5464-2ndw5   1/1     Running     0          21m
+pod/cert-manager-startupapicheck-qhzw5        0/1     Completed   2          21m
+pod/cert-manager-webhook-58fd67545d-mhq5w     1/1     Running     0          21m
+
+NAME                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/cert-manager           ClusterIP   10.100.223.32    <none>        9402/TCP   21m
+service/cert-manager-webhook   ClusterIP   10.111.243.145   <none>        443/TCP    21m
+
+NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/cert-manager              1/1     1            1           21m
+deployment.apps/cert-manager-cainjector   1/1     1            1           21m
+deployment.apps/cert-manager-webhook      1/1     1            1           21m
+
+NAME                                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/cert-manager-57688f5dc6             1         1         1       21m
+replicaset.apps/cert-manager-cainjector-d7f8b5464   1         1         1       21m
+replicaset.apps/cert-manager-webhook-58fd67545d     1         1         1       21m
+
+NAME                                     COMPLETIONS   DURATION   AGE
+job.batch/cert-manager-startupapicheck   1/1           15m        21m
+
+
+Now, issue k8ssandra cluster
+
+vi k8ssandra-cluster.yaml
+apiVersion: k8ssandra.io/v1alpha1
+kind: K8ssandraCluster
+metadata:
+  name: demo
+  namespace: k8ssandra
+spec:
+  cassandra:
+    serverVersion: "4.0.1"
+    datacenters:
+    - metadata:
+        name: dc1
+      size: 1
+    storageConfig:
+      cassandraDataVolumeClaimSpec:
+        storageClassName: standard
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+
+kubectl apply -f k8ssandra-cluster.yaml
+
+
+
+
+TroubleShooting
+=============================
+kubectl get nodes
+kubectl get pods -A
+
+kubectl get all -n cert-manager
+
+kubectl describe pod -n cert-manager <cert-manager-pod-name>
+kubectl logs -n cert-manager <cert-manager-pod-name>
+
+
+curl -v https://charts.jetstack.io
+
+systemctl restart containerd
+systemctl restart kubelet
+
+helm uninstall cert-manager -n cert-manager
+kubectl delete namespace cert-manager
+
+helm repo update
