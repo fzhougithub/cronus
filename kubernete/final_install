@@ -21,7 +21,7 @@ This deploys Flannel as a DaemonSet, setting up the pod network with the 10.244.
 kubeadm reset -f
 systemctl stop kubelet
 systemctl start kubelet
-kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=172.17.55.68 --cri-socket=unix:///run/containerd/containerd.sock --ignore-preflight-errors=all --v=5
+kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=0.0.0.0 --cri-socket=unix:///run/containerd/containerd.sock --ignore-preflight-errors=all --v=5
 cp /etc/kubernetes/admin.conf $HOME/.kube/config
 chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
