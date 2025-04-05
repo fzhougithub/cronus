@@ -1,0 +1,70 @@
+sudo systemctl stop kubelet
+sudo systemctl stop containerd
+
+sudo kubeadm reset
+sudo rm -rf /etc/kubernetes/*
+sudo rm -rf /var/lib/kubelet/*
+sudo rm -rf /root/.kube/*
+
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+
+vi /etc/containerd/config.toml
+[plugins."io.containerd.grpc.v1.cri"]
+  sandbox_image = "registry.k8s.io/pause:3.9"
+# Comment out or remove stream_server_address to avoid TCP confusion
+# stream_server_address = "127.0.0.1"
+# stream_server_port = "0"
+
+
+sudo systemctl restart containerd
+
+sudo systemctl status containerd
+ls -l /run/containerd/containerd.sock
+sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a
+
+sudo tee /etc/systemd/system/kubelet.service.d/10-kubeadm.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/bin/kubelet --kubeconfig=/etc/kubernetes/kubelet.conf --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock --cgroup-driver=systemd
+Environment="KUBELET_KUBEADM_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock --cgroup-driver=systemd"
+EOF
+
+# Above one always has problem, so, use deepseek set
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+
+sudo -i
+kubeadm init phase kubelet-start
+exit
+
+
+
+
+sudo systemctl daemon-reload
+sudo systemctl start kubelet
+sudo systemctl enable kubelet
+
+sudo systemctl status kubelet
+journalctl -u kubelet -n 100
+
+sudo kubeadm config images pull
+
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --v=5
+
+mkdir -p /root/.kube
+sudo cp /etc/kubernetes/admin.conf /root/.kube/config
+sudo chown root:root /root/.kube/config
+
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+kubectl get nodes
+kubectl get pods -n kube-system
+
+
+
+

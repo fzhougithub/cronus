@@ -1,0 +1,74 @@
+systemctl stop rtkit-daemon
+systemctl disable rtkit-daemon
+
+edit /etc/hosts, adding the 172 address for the node
+
+kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=0.0.0.0 --cri-socket=unix:///run/containerd/containerd.sock --ignore-preflight-errors=all --v=5
+
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+This deploys Flannel as a DaemonSet, setting up the pod network with the 10.244.0.0/16 CIDR you specified.
+
+kubeadm reset -f
+systemctl stop kubelet
+systemctl start kubelet
+kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=172.17.55.68 --cri-socket=unix:///run/containerd/containerd.sock --ignore-preflight-errors=all --v=5
+cp /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+
+=============================
+curl -k --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/apiserver-etcd-client.crt --key /etc/kubernetes/pki/apiserver-etcd-client.key https://127.0.0.1:2379/health
+
+curl -k https://127.0.0.1:6443
+curl -k https://172.17.55.68:6443
+
+kubectl get pods -n kube-system
+
+# find id of your container
+ctr -n k8s.io container ls
+# get its pid
+ctr -n k8s.io container info <container-id> | grep proc | grep path
+# find task with pid
+ctr -n k8s.io task ls | grep <pid>
+# kill it
+ctr -n k8s.io task kill <task-id>
+# now you can remove the container too
+ctr -n k8s.io container rm <container-id>
+
+
+notes
+=====================
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 172.17.55.68:6443 --token neouya.qudd5oft6lu26vgt \
+        --discovery-token-ca-cert-hash sha256:d44deb3354cc5fa4be327a49ec037a96e72708037151db4f18375755fa402004
+
+
+[root@DESKTOP-Q7EP4O1 kubernete]# kubectl get pods -n kube-system -w
+NAME                                      READY   STATUS    RESTARTS         AGE
+coredns-76f75df574-9zccf                  1/1     Running   0                6m19s
+coredns-76f75df574-lljfl                  1/1     Running   1 (15s ago)      6m19s
+etcd-desktop-q7ep4o1                      1/1     Running   39 (7m29s ago)   6m54s
+kube-apiserver-desktop-q7ep4o1            1/1     Running   43 (6m59s ago)   6m54s
+kube-controller-manager-desktop-q7ep4o1   1/1     Running   48 (109s ago)    6m54s
+kube-proxy-2p42f                          1/1     Running   4 (116s ago)     6m20s
+kube-scheduler-desktop-q7ep4o1            1/1     Running   46 (59s ago)     6m54s
+

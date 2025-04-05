@@ -1,0 +1,17 @@
+sudo mkdir /sys/fs/cgroup/unified/testgroup
+cat /sys/fs/cgroup/unified/cgroup.controllers
+sudo sh -c "echo $$ > /sys/fs/cgroup/unified/testgroup/cgroup.procs && yes > /dev/null &"
+top
+see yes process got catched
+
+Test cgroup v1
+sudo mkdir /sys/fs/cgroup/cpu/testgroup
+sudo sh -c "echo 50000 > /sys/fs/cgroup/cpu/testgroup/cpu.cfs_quota_us"
+sudo sh -c "echo $$ > /sys/fs/cgroup/cpu/testgroup/tasks && yes > /dev/null &"
+systemctl
+
+systemd-run --scope -p CPUQuota=50% yes > /dev/null
+
+top
+
+

@@ -1,0 +1,13 @@
+Mar 31 17:10:54 DESKTOP-Q7EP4O1 systemd[1]: Stopped kubelet: The Kubernetes Node Agent.
+Mar 31 17:20:19 DESKTOP-Q7EP4O1 systemd[1]: Started kubelet: The Kubernetes Node Agent.
+Mar 31 17:20:19 DESKTOP-Q7EP4O1 kubelet[9445]: Flag --container-runtime-endpoint has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+Mar 31 17:20:19 DESKTOP-Q7EP4O1 kubelet[9445]: Flag --cgroup-driver has been deprecated, This parameter should be set via the config file specified by the Kubelet's --config flag. See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/ for more information.
+
+Mar 31 17:20:19 DESKTOP-Q7EP4O1 kubelet[9445]: I0331 17:20:19.729398    9445 server.go:750] "--cgroups-per-qos enabled, but --cgroup-root was not specified.  defaulting to /"
+
+Mar 31 17:20:19 DESKTOP-Q7EP4O1 kubelet[9445]: I0331 17:20:19.734317    9445 apiserver.go:42] "Waiting for node sync before watching apiserver pods"
+Mar 31 17:20:19 DESKTOP-Q7EP4O1 kubelet[9445]: W0331 17:20:19.736064    9445 reflector.go:539] k8s.io/client-go@v0.0.0/tools/cache/reflector.go:229: failed to list *v1.Node: Get "https://172.17.55.68:6443/api/v1/nodes?fieldSelector=metadata.name%3Ddesktop-q7ep4o1&limit=500&resourceVersion=0": dial tcp 172.17.55.68:6443: connect: connection refused
+
+Mar 31 17:20:19 DESKTOP-Q7EP4O1 kubelet[9445]: E0331 17:20:19.736400    9445 reflector.go:147] k8s.io/client-go@v0.0.0/tools/cache/reflector.go:229: Failed to watch *v1.Node: failed to list *v1.Node: Get "https://172.17.55.68:6443/api/v1/nodes?fieldSelector=metadata.name%3Ddesktop-q7ep4o1&limit=500&resourceVersion=0": dial tcp 172.17.55.68:6443: connect: connection refused
+
+

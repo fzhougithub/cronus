@@ -1,0 +1,13 @@
+https://serverfault.com/questions/1113732/kube-apiserver-started-to-die-on-start-up-after-a-few-months-of-good-work-how
+
+[root@DESKTOP-Q7EP4O1 kubernete]# crictl pods | grep kube-apiserver
+2e014c42f8499       8 minutes ago        Ready               kube-apiserver-desktop-q7ep4o1            kube-system         3                   (default)
+4ede39ec72cc1       13 minutes ago       NotReady            kube-apiserver-desktop-q7ep4o1            kube-system         2                   (default)
+[root@DESKTOP-Q7EP4O1 kubernete]# crictl ps --pod ca01411d447a6
+CONTAINER           IMAGE               CREATED             STATE               NAME                ATTEMPT             POD ID              POD
+[root@DESKTOP-Q7EP4O1 kubernete]# crictl ps --pod 2e014c42f8499
+CONTAINER           IMAGE               CREATED             STATE               NAME                ATTEMPT             POD ID              POD
+b3630e1bfb48f       f44c6888a2d24       8 minutes ago       Running             kube-apiserver      45                  2e014c42f8499       kube-apiserver-desktop-q7ep4o1
+
+
+In this way, you can find the specific container logs

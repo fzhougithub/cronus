@@ -1,0 +1,18 @@
+https://stackoverflow.com/questions/73021599/how-to-enable-cgroup-v2-in-wsl2
+
+Since Linux v5.0, kernel boot option cgroup_no_v1=<list_of_controllers_to_disable> can be used to disable cgroup v1 hierarchies. As a result, your machine should start as cgroup v2 only.
+
+By following WSL documentation, we have to append %UserProfile%\.wslconfig file with:
+
+[wsl2]
+kernelCommandLine = cgroup_no_v1=all
+That's it.
+Just make sure you reboot your WSL instance with the > wsl.exe --shutdown command to pick up new settings.
+You can check the list of enabled controllers in <cgroup_fs_mount_point>/cgroup.controllers file.
+
+Extra tweaks:
+By default, cgroup2 will likely be mounted at /sys/fs/cgroup/unified. Some apps might not like it (docker in particular). Move it to the conventional place with:
+$ mount --move /sys/fs/cgroup/unified /sys/fs/cgroup
+You can achieve similar effect by editing /etc/fstab file:
+cgroup2 /sys/fs/cgroup cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate 0 0
+The receipt #2 has one side-effect where the original cgroup mount point at /sys/fs/cgroup/unified keps "dangling". You could check that by running $ mount | grep cgroup2 or look at /proc/self/mountinfo file. The upside of #2 is that docker service now starts without issues. So, if you can tolerate dangling mounts, the /etc/fstab method is preferred.
