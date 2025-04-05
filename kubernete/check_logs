@@ -9,5 +9,6 @@ CONTAINER           IMAGE               CREATED             STATE               
 CONTAINER           IMAGE               CREATED             STATE               NAME                ATTEMPT             POD ID              POD
 b3630e1bfb48f       f44c6888a2d24       8 minutes ago       Running             kube-apiserver      45                  2e014c42f8499       kube-apiserver-desktop-q7ep4o1
 
+crictl logs 44da6bf198244 |& tail -2
 
 In this way, you can find the specific container logs

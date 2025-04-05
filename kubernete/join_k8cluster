@@ -1,0 +1,152 @@
+On master node
+kubeadm token create --print-join-command
+Get the whole thing, change the ip address to public ip address
+
+Test the remote port
+[root@DESKTOP-Q7EP4O1 ~]# curl -k https://192.168.1.75:6443
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {},
+  "status": "Failure",
+  "message": "forbidden: User \"system:anonymous\" cannot get path \"/\"",
+  "reason": "Forbidden",
+  "details": {},
+  "code": 403
+}
+
+kubeadm join 192.168.1.75:6443 --token d165wu.6ndp4sf44bdkffja --discovery-token-ca-cert-hash sha256:e986cc8817a17c21f2e141d0166a5d3d5dfa3ee207bf6c707dc050d4517864f3 --cri-socket=unix:///run/containerd/containerd.sock
+
+
+Option 3: Add 192.168.1.75 to the Certificate (Advanced, No Reset)
+Update the API server certificate to include 192.168.1.75 without resetting the cluster.
+Steps:
+Install cfssl (on Wentao):
+bash
+
+Collapse
+
+Unwrap
+
+Copy
+curl -L https://github.com/cloudflare/cfssl/releases/download/v1.6.4/cfssl_1.6.4_linux_amd64 -o /usr/local/bin/cfssl
+curl -L https://github.com/cloudflare/cfssl/releases/download/v1.6.4/cfssljson_1.6.4_linux_amd64 -o /usr/local/bin/cfssljson
+chmod +x /usr/local/bin/cfssl /usr/local/bin/cfssljson
+Backup Certificates:
+bash
+
+Collapse
+
+Unwrap
+
+Copy
+cp -r /etc/kubernetes/pki /etc/kubernetes/pki.bak
+Create a CSR with 192.168.1.75:
+bash
+
+Collapse
+
+Unwrap
+
+Copy
+cat <<EOF > apiserver-csr.json
+{
+  "CN": "kubernetes",
+  "hosts": [
+    "127.0.0.1",
+    "10.96.0.1",
+    "172.17.233.185",
+    "192.168.1.75",
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster.local"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "US",
+      "ST": "CA",
+      "L": "San Francisco",
+      "O": "Kubernetes",
+      "OU": "Kubernetes"
+    }
+  ]
+}
+
+ERROR
+================================================
+
+[root@DESKTOP-Q7EP4OROR
+ubernete]# kubeadm join 192.168.1.75:6443 --token d165wu.6ndp4sf44bdkffja --discovery-token-ca-cert-hash sha256:e986cc8817a17c21f2e141d0166a5d3d5dfa3ee207bf6c707dc050d4517864f3 --cri-socket=unix:///run/containerd/containerd.sock --discovery-token-unsafe-skip-ca-verification
+[preflight] Running pre-flight checks
+
+
+
+error execution phase preflight: couldn't validate the identity of the API Server: Get "https://192.168.1.75:6443/api/v1/namespaces/kube-public/configmaps/cluster-info?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for 10.96.0.1, 172.17.233.185, not 192.168.1.75
+To see the stack trace of this error execute with --v=5 or higher
+
+=========================================================
+
+
+Generate New Certificate:
+
+Install cfssl (on Wentao):
+
+curl -L https://github.com/cloudflare/cfssl/releases/download/v1.6.4/cfssl_1.6.4_linux_amd64 -o /usr/local/bin/cfssl
+curl -L https://github.com/cloudflare/cfssl/releases/download/v1.6.4/cfssljson_1.6.4_linux_amd64 -o /usr/local/bin/cfssljson
+
+chmod +x /usr/local/bin/cfssl /usr/local/bin/cfssljson
+Backup Certificates:
+cp -r /etc/kubernetes/pki /etc/kubernetes/pki.bak
+Create a CSR with 192.168.1.75:
+cat <<EOF > apiserver-csr.json
+{
+  "CN": "kubernetes",
+  "hosts": [
+    "127.0.0.1",
+    "10.96.0.1",
+    "172.17.233.185",
+    "192.168.1.75",
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster.local"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "US",
+      "ST": "CA",
+      "L": "San Francisco",
+      "O": "Kubernetes",
+      "OU": "Kubernetes"
+    }
+  ]
+}
+EOF
+
+
+
+cfssl gencert -ca=/etc/kubernetes/pki/ca.crt -ca-key=/etc/kubernetes/pki/ca.key -profile=kubernetes apiserver-csr.json | cfssljson -bare apiserver
+mv apiserver.pem /etc/kubernetes/pki/apiserver.crt
+mv apiserver-key.pem /etc/kubernetes/pki/apiserver.key
+Restart kubelet:
+
+
+systemctl restart kubelet
+
+
+Retry Join (on DESKTOP-Q7EP4O1):
+
+kubeadm join 192.168.1.75:6443 --token d165wu.6ndp4sf44bdkffja --discovery-token-ca-cert-hash sha256:e986cc8817a17c21f2e141d0166a5d3d5dfa3ee207bf6c707dc050d4517864f3 --cri-socket=unix:///run/containerd/containerd.sock
+Pros: Preserves the current cluster state.
+Cons: More complex, requires external tools.
+
+
