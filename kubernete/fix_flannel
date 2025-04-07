@@ -1,5 +1,12 @@
 kubectl -n kube-flannel edit configmap kube-flannel-cfg
-change vxlan to host-gw
+change vxlan to host-gw does not work, because here we are using NAT forward internal host IP to windows IP
+
+change to this
+"Backend": {
+  "Type": "vxlan",
+  "VNI": 1,
+  "Port": 8472
+}
 
 restart flannel pod
 

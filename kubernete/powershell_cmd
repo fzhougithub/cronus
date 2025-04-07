@@ -1,6 +1,8 @@
 netsh interface portproxy add v4tov4 listenport=8472 listenaddress=192.168.1.126 connectport=8472 connectaddres...
 netsh interface portproxy show v4tov4
 
+netsh interface portproxy add v4tov4 listenport=6443 listenaddress=192.168.1.75 connectport=6443 connectaddress=172.17.233.185
+netsh interface portproxy add v4tov4 listenport=6443 listenaddress=192.168.1.126 connectport=6443 connectaddress=172.17.233.68
 netsh interface portproxy add v4tov4 listenport=8472 listenaddress=192.168.1.75 connectport=8472 connectaddress=172.17.233.185
 netsh interface portproxy add v4tov4 listenport=8472 listenaddress=192.168.1.126 connectport=8472 connectaddress=172.17.55.68
 netsh interface portproxy add v4tov4 listenport=10250 listenaddress=192.168.1.75 connectport=10250 connectaddress=172.17.233.185
