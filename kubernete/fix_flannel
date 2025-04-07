@@ -1,0 +1,15 @@
+kubectl -n kube-flannel edit configmap kube-flannel-cfg
+change vxlan to host-gw
+
+restart flannel pod
+
+kubectl -n kube-flannel delete pod -l app=flannel
+
+
+Notes
+==============================
+overly is built-in feature in wsl2
+zcat /proc/config.gz | grep CONFIG_BRIDGE_NETFILTER
+CONFIG_BRIDGE_NETFILTER=y
+
+That means br_netfilter is also built-in

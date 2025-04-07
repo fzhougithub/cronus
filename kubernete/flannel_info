@@ -1,0 +1,7 @@
+However, once the Flannel pods are running, they write config locally into:
+
+/etc/cni/net.d/10-flannel.conflist
+
+/run/flannel/subnet.env
+
+kubectl get pods -n kube-flannel -o wide
