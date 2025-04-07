@@ -1,3 +1,7 @@
+To get the daemonset, use command
+
+kubectl get ds kube-flannel-ds -n kube-flannel -o yaml
+
 kubectl -n kube-flannel edit configmap kube-flannel-cfg
 change vxlan to host-gw does not work, because here we are using NAT forward internal host IP to windows IP
 
@@ -11,6 +15,29 @@ change to this
 restart flannel pod
 
 kubectl -n kube-flannel delete pod -l app=flannel
+
+mkdir -p /etc/kube-flannel
+cp /etc/kubernetes/kubelet.conf /etc/kube-flannel/kubeconfig
+
+kubectl -n kube-flannel edit daemonset kube-flannel-ds
+
+      containers:
+      - args:
+        - --kubeconfig-file=/etc/kube-flannel/kubeconfig
+        - --ip-masq
+        - --kube-subnet-mgr
+
+
+      volumes:
+      - hostPath:
+          path: /etc/kube-flannel/kubeconfig
+          type: File
+        name: flannel-config
+
+        volumeMounts:
+        - mountPath: /etc/kube-flannel/kubeconfig
+          name: flannel-config
+          readOnly: true
 
 
 Notes
