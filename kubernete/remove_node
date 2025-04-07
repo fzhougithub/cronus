@@ -1,0 +1,13 @@
+kubectl drain worker-node-1 --ignore-daemonsets --delete-emptydir-data
+
+kubectl delete node <node-name>
+
+kubeadm reset
+
+rm -rf /etc/cni/net.d
+rm -rf /var/lib/cni/
+rm -rf /var/lib/kubelet/*
+rm -rf /etc/kubernetes/
+
+
+reboot
