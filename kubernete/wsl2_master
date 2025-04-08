@@ -1,0 +1,33 @@
+netsh interface portproxy add v4tov4 listenaddress=192.168.1.75 listenport=6443 connectaddress=172.17.233.185 connectport=6443
+netsh interface portproxy add v4tov4 listenaddress=192.168.1.75 listenport=8472 connectaddress=172.17.233.185 connectport=8472
+
+New-NetFirewallRule -DisplayName "Kubernetes API Server" -Direction Inbound -LocalPort 6443 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "Flannel VXLAN" -Direction Inbound -LocalPort 8472 -Protocol UDP -Action Allow
+
+Or
+
+
+Option 2: Switch WSL2 to a Bridged Network
+By default, WSL2 uses NAT networking. You can switch it to a bridged network, which will allow the WSL2 instance (master node) to get an IP address in the same subnet as the Windows host and worker node.
+
+Configure WSL2 to Use a Bridged Adapter:
+
+Use Hyper-V Manager (or Windows PowerShell) to create a virtual switch in bridged mode.
+Assign the bridged adapter to WSL2.
+Restart WSL2:
+
+PowerShell
+wsl --shutdown
+wsl
+Verify the New IP Address: Inside the WSL2 instance, check the new IP address:
+
+bash
+ip addr show eth0
+The IP address should now be in the same subnet as the Windows host and worker node (e.g., 192.168.1.x).
+
+Update the Worker Node Route: Update the route on the worker node to point directly to the new bridged IP:
+
+bash
+sudo ip route add <new-bridged-IP>/24 via 192.168.1.75
+
+
