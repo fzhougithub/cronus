@@ -1,0 +1,101 @@
+### **Solution: Configure `kubelet` for Containerd on Rocky Linux 9**
+
+Since `cri-o` isn't available in the default Rocky Linux 9 repos and your `/etc/sysconfig/kubelet` is empty, we'll configure `kubelet` to use **containerd** (which is easier to install). Here’s how:
+
+---
+
+### **Step 1: Install Containerd**
+1. Install `containerd` and its dependencies:
+   ```bash
+   sudo dnf install -y containerd
+   ```
+
+2. Start and enable `containerd`:
+   ```bash
+   sudo systemctl enable containerd --now
+   sudo systemctl status containerd  # Verify it’s running
+   ```
+
+3. Generate the default config:
+   ```bash
+   sudo containerd config default > /etc/containerd/config.toml
+   ```
+
+4. Enable CRI plugin (if not already enabled):
+   ```bash
+   sudo sed -i 's/disabled_plugins = \["cri"\]/#disabled_plugins = \["cri"\]/' /etc/containerd/config.toml
+   sudo systemctl restart containerd
+   ```
+
+---
+
+### **Step 2: Configure `/etc/sysconfig/kubelet`**
+Edit the file to point `kubelet` to `containerd`:
+```bash
+sudo tee /etc/sysconfig/kubelet <<EOF
+KUBELET_EXTRA_ARGS="--container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+EOF
+```
+
+#### **Verify the file content:**
+```bash
+cat /etc/sysconfig/kubelet
+```
+Expected output:
+```ini
+KUBELET_EXTRA_ARGS="--container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+```
+
+---
+
+### **Step 3: Restart `kubelet`**
+```bash
+sudo systemctl restart kubelet
+sudo systemctl status kubelet  # Check for errors
+```
+
+---
+
+### **Step 4: Verify Runtime Connection**
+Check `kubelet` logs to confirm it’s using `containerd`:
+```bash
+journalctl -u kubelet -n 50 --no-pager | grep -i runtime
+```
+Expected output:
+```
+Successfully connected to runtime endpoint unix:///run/containerd/containerd.sock
+```
+
+---
+
+### **Troubleshooting**
+1. **If `containerd.sock` doesn’t exist**:
+   - Ensure `containerd` is running:
+     ```bash
+     ls -l /run/containerd/containerd.sock
+     ```
+   - If missing, restart `containerd`:
+     ```bash
+     sudo systemctl restart containerd
+     ```
+
+2. **Permission issues**:
+   - Ensure `/run/containerd` is accessible:
+     ```bash
+     sudo chmod 755 /run/containerd
+     ```
+
+---
+
+### **Why This Works**
+- The `KUBELET_EXTRA_ARGS` in `/etc/sysconfig/kubelet` tells `kubelet` to use `containerd` instead of the default runtime.
+- `containerd` is the industry-standard runtime for Kubernetes (replacing Docker).
+
+---
+
+### **Final Check**
+After these steps:
+1. `kubelet` should start without CRI errors.
+2. `kubeadm join` should work (assuming other preconditions like network/token are met).
+
+Let me know if you hit any snags!

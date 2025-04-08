@@ -1,0 +1,38 @@
+sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sysctl -w net.ipv6.conf.default.disable_ipv6=1
+echo "net.ipv6.conf.all.disable_ipv6=1" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.disable_ipv6=1" >> /etc/sysctl.conf
+
+   
+
+31  mkdir -p /var/tellme/work
+  210  mkdir ~/.kube
+  252  mkdir -p /etc/cri/net.d
+  263  mkdir cni/net.d
+  264  mkdir -p cni/net.d
+  277  mkdir -p /opt/cni/bin
+  281  mkdir -p /etc/kubernetes/manifests
+  286  mkdir -p /etc/kube-flannel
+  315  history|grep mkdir
+
+[root@DESKTOP-Q7EP4O1 kubernete]# history|grep chmod
+  255  chmod 755 /etc/cni/net.d
+  257  chmod 755 /etc/cni/net.d
+  266  chmod 755 /etc/cni/net.d
+  278  chmod 755 /etc/cni/net.d /opt/cni/bin
+  282  chmod 755 /etc/kubernetes/manifests
+  288  chmod 644 /etc/kube-flannel/kubeconfig
+
+
+
+vi /etc/containerd/config.toml
+
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  default_runtime_name = "runc"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+

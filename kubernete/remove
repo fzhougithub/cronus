@@ -1,0 +1,4 @@
+  189  kubectl get nodes
+  190  kubectl cordon desktop-q7ep4o1
+  192  kubectl drain desktop-q7ep4o1 --ignore-daemonsets --delete-emptydir-data --force
+  194  kubectl delete node desktop-q7ep4o1

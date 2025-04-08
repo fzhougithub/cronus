@@ -1,0 +1,17 @@
+kubectl get clusterrole flannel -o yaml
+kubectl get clusterrolebinding flannel -o yaml
+
+kubectl get serviceaccount flannel -n kube-flannel -o yaml
+
+ip addr show
+
+ommon Issues with install-cni​​
+​​Missing CNI Configuration File:​​
+Ensure that the net-conf.json file is correctly generated and placed in /etc/cni/net.d/.
+​​Permission Issues:​​
+Ensure that the install-cni container has the necessary permissions to write to /etc/cni/net.d/.
+
+
+kubectl delete daemonset kube-flannel-ds -n kube-flannel
+
+

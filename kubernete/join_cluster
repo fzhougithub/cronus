@@ -1,3 +1,6 @@
+kubectl -n kube-system get cm kubeadm-config -o yaml
+
+
 Threee major issue when we join
 1. The certificate does not contain the public windows address, to fix it
 

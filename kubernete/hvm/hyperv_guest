@@ -1,0 +1,2 @@
+yum install hyperv-tools
+yum install hyperv-daemons
