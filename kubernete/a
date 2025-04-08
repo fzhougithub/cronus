@@ -1,0 +1,5 @@
+#!/bin/bash
+
+systemctl daemon-reload
+systemctl restart kubelet
+journalctl -u kubelet -n 50 --no-pager

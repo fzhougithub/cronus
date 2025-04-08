@@ -1,0 +1,46 @@
+sudo iptables -t mangle -L -n -v
+sudo iptables -t raw -L -n -v
+sudo iptables -t nat -L -n -v
+sudo iptables -L -n -v
+
+sudo iptables -F
+sudo iptables -t nat -F
+sudo iptables -t mangle -F
+sudo iptables -t raw -F
+sudo iptables -t security -F
+
+delete customer chain
+
+sudo iptables -X
+sudo iptables -t nat -X
+sudo iptables -t mangle -X
+sudo iptables -t raw -X
+sudo iptables -t security -X
+
+Reset policy
+
+sudo iptables -P INPUT ACCEPT
+sudo iptables -P FORWARD ACCEPT
+sudo iptables -P OUTPUT ACCEPT
+
+sudo iptables -t nat -P PREROUTING ACCEPT
+sudo iptables -t nat -P POSTROUTING ACCEPT
+sudo iptables -t nat -P OUTPUT ACCEPT
+
+verify cleanup
+
+sudo iptables -L -n -v
+sudo iptables -t nat -L -n -v
+
+persist change
+
+sudo iptables-save > /etc/iptables/rules.v4
+sudo apt-get install -y iptables-persistent
+sudo systemctl restart netfilter-persistent
+
+Cleanup IPVS
+
+sudo ipvsadm -L -n
+
+sudo ipvsadm --clear
+
