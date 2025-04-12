@@ -1,0 +1,8 @@
+curl -L https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz -o cni-plugins.tgz
+mkdir -p /opt/cni/bin
+tar -xzf cni-plugins.tgz -C /opt/cni/bin
+
+kubectl delete pod -n kube-flannel -l app=flannel
+
+This time, because the required plugin got installed, no problem,
+
