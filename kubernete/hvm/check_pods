@@ -1,0 +1,86 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo Usage:$0 keyword
+	exit 1
+fi
+
+function is_within_one_hour() {
+  local time_ago="$1"
+  local seconds=$(echo "time_ago" |sed -E '
+    s/([0-9]+)h/\1*3600+/g;
+    s/([0-9]+)m/\1*60+/g;
+    s/([0-9]+)s/\1+/g;
+    s/[hms]//g;
+    s/\+$//
+  ' | bc)
+  if [ -n "$seconds" ] && [ "$seconds" -le 3600 ]; then
+    return 0 # Within 1 hour
+  else
+    return 1 # Not within 1 hour or invalid format
+  fi
+}
+
+
+
+#echo $1 Relevent Pods Status
+#echo ====================================================
+#kubectl get pods -A -o wide|grep $1
+#echo ====================================================
+#echo ""
+#echo ""
+#
+rm -rf issuelist cklist
+
+kubectl get pods -A -o wide > pods
+issuepods=$(cat pods|grep $1|grep -v Running|wc -l)
+cat pods|grep $1|grep -v Running >issuelist
+echo $1 Pods Not Running
+echo =============================================
+echo "NAMESPACE      NAME                             READY   STATUS             RESTARTS         AGE     IP              NODE     NOMINATED NODE   READINESS GATES"
+cat issuelist
+echo ""
+
+echo $1 Pods Running with Issue within 1 hour
+echo =================================================
+cat pods|grep Running|grep $1|awk '($5>0 && $6 !~ /h/) {print}'
+echo ""
+
+cat pods|grep Running|grep $1|awk '($5>0 && $6 !~ /h/) {print}'>cklist
+
+
+# Process pods that are NOT running
+echo "--- $1 Logs for Non-Running Pods ---"
+cat issuelist | while IFS= read -r l; do
+    pname=$(echo "$l" | awk '{print $2}')
+    echo "$l"
+    echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    ${PWD}/check_log "$pname"
+    echo ""
+done
+
+echo ""
+
+# Process RUNNING pods with restarts
+echo "--- $1 Logs for Running Pods with Restarts ---"
+cat cklist | grep "$1" | grep "Running" | while IFS= read -r l; do
+    pname=$(echo "$l" | awk '{print $2}')
+    restarts_str=$(echo "$l" | awk '{print $5}')
+    #t=$(echo $l|awk '{print $6}')
+    t=$(echo $l|awk '{print $6}'| sed 's/[()]//g')
+    echo t:$t pname:$pname restarts_str:$restarts_str
+
+    if [[ "$restarts_str" =~ ^[1-9][0-9]*$ ]]; then # Check for restarts > 0
+	if is_within_one_hour "$t"; then	
+		pid="$restarts_str"
+		if [ "$pid" -gt 0 ]; then # Numerical comparison
+	       		echo "$l"
+      	  		echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+       			${PWD}/check_log "$pname"
+        		echo ""
+		fi
+	fi
+    fi
+done
+
+echo ""

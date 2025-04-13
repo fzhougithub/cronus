@@ -1,0 +1,9 @@
+CONTAINER           IMAGE               CREATED             STATE               NAME                 ATTEMPT             POD ID              POD
+6bf64197122cd       4cad75abc83d5       9 seconds ago       Running             nginx                57                  2ee0069a24d42       nginx-978f87bb6-vks76
+8f9566bad6fa9       f71614796eb76       50 seconds ago      Running             kube-proxy           56                  21e2425bfddde       kube-proxy-zvd22
+3a9751449f4ef       ae916d3d8afb2       2 minutes ago       Running             kube-flannel         41                  984882e092b14       kube-flannel-ds-w7zk9
+4aed88c8e063c       f71614796eb76       7 minutes ago       Exited              kube-proxy           55                  41019a9ca7639       kube-proxy-zvd22
+56fb418919036       ae916d3d8afb2       7 minutes ago       Exited              install-cni          0                   984882e092b14       kube-flannel-ds-w7zk9
+982764dfea963       55ce2385d9d8c       7 minutes ago       Exited              install-cni-plugin   41                  984882e092b14       kube-flannel-ds-w7zk9
+63b423f4a9675       ae916d3d8afb2       10 minutes ago      Exited              kube-flannel         40                  bd623f5a71863       kube-flannel-ds-w7zk9
+8b94923118f96       4cad75abc83d5       17 minutes ago      Exited              nginx                56                  63f5afb7ec33f       nginx-978f87bb6-vks76

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo Usage:$0 keyword
+	exit 1
+fi
+
+crictl ps -a > pods 2>/dev/null
+cat pods|grep -v Running|grep $1 > cklist
+
+echo "CONTAINER           IMAGE               CREATED             STATE               NAME                 ATTEMPT             POD ID              POD"
+while read -r l; 
+do
+	echo $l
+	cid=$(echo $l|awk '{print $1}')
+	echo "crictl logs $cid"
+	echo ----------------------------------------------------------
+	crictl logs $cid
+	echo ""
+done<cklist
