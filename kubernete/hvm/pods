@@ -1,9 +1,12 @@
-CONTAINER           IMAGE               CREATED             STATE               NAME                 ATTEMPT             POD ID              POD
-6bf64197122cd       4cad75abc83d5       9 seconds ago       Running             nginx                57                  2ee0069a24d42       nginx-978f87bb6-vks76
-8f9566bad6fa9       f71614796eb76       50 seconds ago      Running             kube-proxy           56                  21e2425bfddde       kube-proxy-zvd22
-3a9751449f4ef       ae916d3d8afb2       2 minutes ago       Running             kube-flannel         41                  984882e092b14       kube-flannel-ds-w7zk9
-4aed88c8e063c       f71614796eb76       7 minutes ago       Exited              kube-proxy           55                  41019a9ca7639       kube-proxy-zvd22
-56fb418919036       ae916d3d8afb2       7 minutes ago       Exited              install-cni          0                   984882e092b14       kube-flannel-ds-w7zk9
-982764dfea963       55ce2385d9d8c       7 minutes ago       Exited              install-cni-plugin   41                  984882e092b14       kube-flannel-ds-w7zk9
-63b423f4a9675       ae916d3d8afb2       10 minutes ago      Exited              kube-flannel         40                  bd623f5a71863       kube-flannel-ds-w7zk9
-8b94923118f96       4cad75abc83d5       17 minutes ago      Exited              nginx                56                  63f5afb7ec33f       nginx-978f87bb6-vks76
+NAMESPACE      NAME                             READY   STATUS    RESTARTS          AGE     IP              NODE     NOMINATED NODE   READINESS GATES
+default        nginx-978f87bb6-vks76            1/1     Running   138 (4m43s ago)   15h     10.244.1.148    rl01     <none>           <none>
+kube-flannel   kube-flannel-ds-bcfpl            1/1     Running   3 (4m20s ago)     11m     192.168.1.168   rl01     <none>           <none>
+kube-flannel   kube-flannel-ds-qlkcl            1/1     Running   0                 11m     192.168.1.80    wentao   <none>           <none>
+kube-system    coredns-76f75df574-bdm4f         1/1     Running   74 (41h ago)      4d23h   10.244.0.45     wentao   <none>           <none>
+kube-system    coredns-76f75df574-lz6w6         1/1     Running   75 (41h ago)      4d23h   10.244.0.44     wentao   <none>           <none>
+kube-system    etcd-wentao                      1/1     Running   215 (41h ago)     5d      192.168.1.80    wentao   <none>           <none>
+kube-system    kube-apiserver-wentao            1/1     Running   195 (41h ago)     5d      192.168.1.80    wentao   <none>           <none>
+kube-system    kube-controller-manager-wentao   1/1     Running   64 (41h ago)      5d      192.168.1.80    wentao   <none>           <none>
+kube-system    kube-proxy-vnfsv                 1/1     Running   0                 15h     192.168.1.80    wentao   <none>           <none>
+kube-system    kube-proxy-wx5x8                 1/1     Running   0                 69s     192.168.1.168   rl01     <none>           <none>
+kube-system    kube-scheduler-wentao            1/1     Running   64 (41h ago)      5d      192.168.1.80    wentao   <none>           <none>

@@ -1,0 +1,24 @@
+# On the etcd server
+[root@Wentao ~]# cat /etc/etcd/etcd.conf
+export ETCDCTL_API=3
+export ETCDCTL_ENDPOINTS=https://127.0.0.1:2379
+export ETCDCTL_CACERT=/etc/kubernetes/pki/etcd/ca.crt
+export ETCDCTL_CERT=/etc/kubernetes/pki/etcd/server.crt
+export ETCDCTL_KEY=/etc/kubernetes/pki/etcd/server.key
+
+
+source /etc/etcd/etcd.conf
+
+ETCDCTL_API=3 etcdctl endpoint health
+ETCDCTL_API=3 etcdctl get / --prefix
+ETCDCTL_API=3 etcdctl --endpoints=http://192.168.1.80:2379 get / --prefix
+
+to unset the environment variables
+ unset ETCDCTL_ENDPOINTS ETCDCTL_CACERT ETCDCTL_CERT ETCDCTL_KEY
+
+If the environment setup got somethig wrong, unset the virables and manually run with parameters
+
+ETCDCTL_API=3 etcdctl   --endpoints=https://192.168.1.80:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key   get / --prefix
+
+Remember, both setup are conflict, you can only use either one
+Also, the worker should go to etcd through api server, not directly, so, above commands only work on master side
