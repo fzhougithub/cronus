@@ -1,0 +1,98 @@
+apiVersion: v1
+data:
+  config.conf: |-
+    apiVersion: kubeproxy.config.k8s.io/v1alpha1
+    bindAddress: 0.0.0.0
+    bindAddressHardFail: false
+    clientConnection:
+      acceptContentTypes: ""
+      burst: 0
+      contentType: ""
+      kubeconfig: /var/lib/kube-proxy/kubeconfig.conf
+      qps: 0
+    configSyncPeriod: 0s
+    conntrack:
+      maxPerCore: 32768
+      min: 131072
+      tcpBeLiberal: false
+      tcpCloseWaitTimeout: null
+      tcpEstablishedTimeout: null
+      udpStreamTimeout: 0s
+      udpTimeout: 0s
+    detectLocal:
+      bridgeInterface: ""
+      interfaceNamePrefix: ""
+    enableProfiling: false
+    healthzBindAddress: ""
+    hostnameOverride: ""
+    iptables:
+      masqueradeBit: 14
+      minSyncPeriod: 1s
+      syncPeriod: 30s
+    ipvs:
+      excludeCIDRs: null
+      minSyncPeriod: 0s
+      scheduler: ""
+      strictARP: false
+      syncPeriod: 0s
+      tcpFinTimeout: 0s
+      tcpTimeout: 0s
+      udpTimeout: 0s
+    kind: KubeProxyConfiguration
+    featureGates:
+      IPv6DualStack: false  # Disable IPv6 dual-stack
+    clusterCIDR: "10.244.0.0/16"  # Your IPv4 CIDR only
+    detectLocalMode: "ClusterCIDR"
+    logging:
+      flushFrequency: 0
+      options:
+        json:
+          infoBufferSize: "0"
+      verbosity: 0
+    metricsBindAddress: ""
+    mode: "iptables"
+    nftables:
+      masqueradeAll: false
+      masqueradeBit: null
+      minSyncPeriod: 0s
+      syncPeriod: 0s
+    nodePortAddresses: []
+    oomScoreAdj: null
+    portRange: ""
+    showHiddenMetricsForVersion: ""
+    winkernel:
+      enableDSR: false
+      forwardHealthCheckVip: false
+      networkName: ""
+      rootHnsEndpointName: ""
+      sourceVip: ""
+  kubeconfig.conf: |-
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - cluster:
+        certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        server: https://192.168.1.80:6443
+      name: default
+    contexts:
+    - context:
+        cluster: default
+        namespace: default
+        user: default
+      name: default
+    current-context: default
+    users:
+    - name: default
+      user:
+        tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+kind: ConfigMap
+metadata:
+  annotations:
+    kubeadm.kubernetes.io/component-config.hash: sha256:d0e06535c121fb536bccaeebcbf7cda0b5408915b4218cd280ba26879815e414
+  creationTimestamp: "2025-04-09T00:36:07Z"
+  labels:
+    app: kube-proxy
+  name: kube-proxy
+  namespace: kube-system
+  resourceVersion: "396987"
+  uid: 65e4c8aa-eced-484f-8de7-0582a406c61f

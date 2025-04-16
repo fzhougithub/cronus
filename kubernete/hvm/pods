@@ -1,12 +1,7 @@
-NAMESPACE      NAME                             READY   STATUS    RESTARTS          AGE     IP              NODE     NOMINATED NODE   READINESS GATES
-default        nginx-978f87bb6-vks76            1/1     Running   138 (4m43s ago)   15h     10.244.1.148    rl01     <none>           <none>
-kube-flannel   kube-flannel-ds-bcfpl            1/1     Running   3 (4m20s ago)     11m     192.168.1.168   rl01     <none>           <none>
-kube-flannel   kube-flannel-ds-qlkcl            1/1     Running   0                 11m     192.168.1.80    wentao   <none>           <none>
-kube-system    coredns-76f75df574-bdm4f         1/1     Running   74 (41h ago)      4d23h   10.244.0.45     wentao   <none>           <none>
-kube-system    coredns-76f75df574-lz6w6         1/1     Running   75 (41h ago)      4d23h   10.244.0.44     wentao   <none>           <none>
-kube-system    etcd-wentao                      1/1     Running   215 (41h ago)     5d      192.168.1.80    wentao   <none>           <none>
-kube-system    kube-apiserver-wentao            1/1     Running   195 (41h ago)     5d      192.168.1.80    wentao   <none>           <none>
-kube-system    kube-controller-manager-wentao   1/1     Running   64 (41h ago)      5d      192.168.1.80    wentao   <none>           <none>
-kube-system    kube-proxy-vnfsv                 1/1     Running   0                 15h     192.168.1.80    wentao   <none>           <none>
-kube-system    kube-proxy-wx5x8                 1/1     Running   0                 69s     192.168.1.168   rl01     <none>           <none>
-kube-system    kube-scheduler-wentao            1/1     Running   64 (41h ago)      5d      192.168.1.80    wentao   <none>           <none>
+CONTAINER           IMAGE               CREATED              STATE               NAME                 ATTEMPT             POD ID              POD
+32193b7cf31a4       9344fce2372f8       About a minute ago   Running             kube-proxy           0                   229506777f9a8       kube-proxy-595vz
+a9c09003ed959       ae916d3d8afb2       About a minute ago   Running             kube-flannel         58                  9acb6e1ebb36b       kube-flannel-ds-bcfpl
+dbdcebd644be8       4cad75abc83d5       3 minutes ago        Exited              nginx                182                 5e54a57c7319d       nginx-978f87bb6-vks76
+13c526c019768       ae916d3d8afb2       4 minutes ago        Exited              install-cni          0                   9acb6e1ebb36b       kube-flannel-ds-bcfpl
+b097f49d6c748       55ce2385d9d8c       4 minutes ago        Exited              install-cni-plugin   6                   9acb6e1ebb36b       kube-flannel-ds-bcfpl
+71364a799f1ec       ae916d3d8afb2       6 minutes ago        Exited              kube-flannel         57                  eabfc39a85492       kube-flannel-ds-bcfpl

@@ -1,0 +1,19 @@
+[root@rl01 docker]# docker ps
+CONTAINER ID   IMAGE                  COMMAND                  CREATED        STATUS        PORTS                                                                                                     NAMES
+1e4a76e0b37a   kindest/node:v1.27.1   "/usr/local/bin/entr…"   24 hours ago   Up 24 hours                                                                                                             k8ssandra-0-worker4
+40353869e055   kindest/node:v1.27.1   "/usr/local/bin/entr…"   24 hours ago   Up 24 hours   0.0.0.0:30080->30080/tcp, 0.0.0.0:30443->30443/tcp, 0.0.0.0:30942->30942/tcp, 127.0.0.1:39655->6443/tcp   k8ssandra-0-control-plane
+6555110031c2   kindest/node:v1.27.1   "/usr/local/bin/entr…"   24 hours ago   Up 24 hours                                                                                                             k8ssandra-0-worker2
+42bb5dbfa3fe   kindest/node:v1.27.1   "/usr/local/bin/entr…"   24 hours ago   Up 24 hours                                                                                                             k8ssandra-0-worker3
+273c9b6b5213   kindest/node:v1.27.1   "/usr/local/bin/entr…"   24 hours ago   Up 24 hours                                                                                                             k8ssandra-0-worker
+6314c91bbdfb   registry:2             "/entrypoint.sh /etc…"   24 hours ago   Up 24 hours   0.0.0.0:5001->5000/tcp                                                                                    kind-registry
+
+docker ps 
+
+one by one shutdown the containers
+
+docker stop container_id
+
+systemctl status docker
+systemctl stop docker
+
+

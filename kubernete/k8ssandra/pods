@@ -1,0 +1,17 @@
+NAMESPACE            NAME                                                READY   STATUS              RESTARTS         AGE    IP              NODE     NOMINATED NODE   READINESS GATES
+cert-manager         cert-manager-5798486f6b-qn9fw                       0/1     CrashLoopBackOff    10 (4s ago)      44m    10.244.1.240    rl01     <none>           <none>
+cert-manager         cert-manager-cainjector-7666685ff5-c8whx            0/1     CrashLoopBackOff    11 (4m56s ago)   44m    10.244.1.236    rl01     <none>           <none>
+cert-manager         cert-manager-webhook-5f594df789-lj2t6               0/1     CrashLoopBackOff    9 (4m25s ago)    44m    10.244.1.239    rl01     <none>           <none>
+default              nginx-978f87bb6-wm5jd                               0/1     CrashLoopBackOff    8 (4m28s ago)    29m    10.244.1.238    rl01     <none>           <none>
+k8ssandra-operator   k8ssandra-operator-5f4f66989d-4drtj                 0/1     ContainerCreating   0                41m    <none>          rl01     <none>           <none>
+k8ssandra-operator   k8ssandra-operator-cass-operator-744ff8dc85-vz5wj   0/1     ContainerCreating   0                41m    <none>          rl01     <none>           <none>
+kube-flannel         kube-flannel-ds-cwhbs                               1/1     Running             0                38s    192.168.1.168   rl01     <none>           <none>
+kube-flannel         kube-flannel-ds-s27s7                               1/1     Running             0                38s    192.168.1.80    wentao   <none>           <none>
+kube-system          coredns-76f75df574-bdm4f                            1/1     Running             74 (2d2h ago)    5d8h   10.244.0.45     wentao   <none>           <none>
+kube-system          coredns-76f75df574-lz6w6                            1/1     Running             75 (2d2h ago)    5d8h   10.244.0.44     wentao   <none>           <none>
+kube-system          etcd-wentao                                         1/1     Running             215 (2d2h ago)   5d8h   192.168.1.80    wentao   <none>           <none>
+kube-system          kube-apiserver-wentao                               1/1     Running             195 (2d2h ago)   5d8h   192.168.1.80    wentao   <none>           <none>
+kube-system          kube-controller-manager-wentao                      1/1     Running             64 (2d2h ago)    5d8h   192.168.1.80    wentao   <none>           <none>
+kube-system          kube-proxy-595vz                                    0/1     CrashLoopBackOff    12 (2m56s ago)   59m    192.168.1.168   rl01     <none>           <none>
+kube-system          kube-proxy-q2kpm                                    1/1     Running             0                77m    192.168.1.80    wentao   <none>           <none>
+kube-system          kube-scheduler-wentao                               1/1     Running             64 (2d2h ago)    5d8h   192.168.1.80    wentao   <none>           <none>

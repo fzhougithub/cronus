@@ -1,0 +1,16 @@
+🚀 Most Common systemd Unit Types:
+Unit Type	File Extension	Description
+Service	.service	Traditional background services (e.g. docker.service, sshd.service)
+Socket	.socket	Socket activation (e.g. docker.socket) — starts services on-demand when socket is used
+Target	.target	Grouping of other units (like multi-user.target, graphical.target) — similar to runlevels
+Device	.device	Kernel devices detected by udev
+Mount	.mount	Mount points for filesystems (e.g. /mnt/data.mount)
+Automount	.automount	Auto-mount points triggered on access
+Timer	.timer	Scheduled jobs (like cron) that trigger services (e.g. backup.timer)
+Path	.path	Watches files or directories and starts a service when they change
+Slice	.slice	Resource control groups (cgroups) for organizing and limiting system resources
+Scope	.scope	External system processes started outside systemd (usually managed by systemd-run)
+Snapshot	.snapshot	Saved state of currently loaded units (used temporarily, mostly internally)
+Swap	.swap	Swap partitions or files
+BusName	.busname	D-Bus service activation (less common these days)
+

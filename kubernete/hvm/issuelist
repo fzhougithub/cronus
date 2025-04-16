@@ -1,0 +1,1 @@
+default        nginx-978f87bb6-vks76            0/1     CrashLoopBackOff   182 (3m32s ago)   23h     10.244.1.193    rl01     <none>           <none>

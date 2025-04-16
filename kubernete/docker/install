@@ -1,0 +1,69 @@
+https://docs.k8ssandra.io/install/local/single-cluster-helm/
+
+Finally give up pure kubernetes environment setup, and just keep the 
+
+  444  dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  445  sudo dnf install -y docker-ce docker-ce-cli containerd.io
+
+  984  cd k8ssandra-operator/
+  985  scripts/setup-kind-multicluster.sh --clusters 1 --kind-worker-nodes 4
+  986  kubectl cluster-info --context kind-k8ssandra-0
+
+[root@rl01 docker]#  kubectl cluster-info --context kind-k8ssandra-0
+Kubernetes control plane is running at https://127.0.0.1:39655
+CoreDNS is running at https://127.0.0.1:39655/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+[root@rl01 docker]# kubectl get nodes
+NAME                        STATUS   ROLES           AGE   VERSION
+k8ssandra-0-control-plane   Ready    control-plane   24h   v1.27.1
+k8ssandra-0-worker          Ready    <none>          24h   v1.27.1
+k8ssandra-0-worker2         Ready    <none>          24h   v1.27.1
+k8ssandra-0-worker3         Ready    <none>          24h   v1.27.1
+k8ssandra-0-worker4         Ready    <none>          24h   v1.27.1
+
+helm repo add jetstack https://charts.jetstack.io
+
+helm repo update
+
+kubectl config use-context kind-k8ssandra-0
+
+helm install cert-manager jetstack/cert-manager \
+     --namespace cert-manager --create-namespace --set installCRDs=true
+
+[root@rl01 docker]# helm install cert-manager jetstack/cert-manager \
+     --namespace cert-manager --create-namespace --set installCRDs=true
+NAME: cert-manager
+LAST DEPLOYED: Wed Apr 16 11:37:16 2025
+NAMESPACE: cert-manager
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+⚠️  WARNING: `installCRDs` is deprecated, use `crds.enabled` instead.
+cert-manager v1.17.1 has been deployed successfully!
+
+In order to begin issuing certificates, you will need to set up a ClusterIssuer
+or Issuer resource (for example, by creating a 'letsencrypt-staging' issuer).
+
+More information on the different types of issuers and how to configure them
+can be found in our documentation:
+
+https://cert-manager.io/docs/configuration/
+
+For information on how to configure cert-manager to automatically provision
+Certificates for Ingress resources, take a look at the `ingress-shim`
+documentation:
+
+https://cert-manager.io/docs/usage/ingress/
+
+
+helm install k8ssandra-operator k8ssandra/k8ssandra-operator -n k8ssandra-operator --create-namespace
+
+[root@rl01 docker]# kubectl get pods -n k8ssandra-operator
+NAME                                               READY   STATUS              RESTARTS   AGE
+k8ssandra-operator-58c54b89d4-47wdq                0/1     ContainerCreating   0          47s
+k8ssandra-operator-cass-operator-d9984f795-4qf5r   0/1     ContainerCreating   0          47s
+
+
