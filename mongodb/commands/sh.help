@@ -1,0 +1,44 @@
+
+  The Shard Class:
+
+    enableSharding                             Enables sharding on a specific database. Uses the enableSharding command
+    commitReshardCollection                    Commits the current reshardCollection on a given collection
+    abortReshardCollection                     Abort the current reshardCollection on a given collection
+    shardCollection                            Enables sharding for a collection. Uses the shardCollection command
+    reshardCollection                          Enables sharding for a collection. Uses the reshardCollection command
+    status                                     Prints a formatted report of the sharding configuration and the information regarding existing chunks in a sharded cluster. The default behavior suppresses the detailed chunk information if the total number of chunks is greater than or equal to 20.
+    addShard                                   Adds a shard to a sharded cluster. Uses the addShard command
+    addShardToZone                             Associates a shard to a zone. Uses the addShardToZone command
+    addShardTag                                3.4+ only. Calls addShardTag for a sharded DB. Aliases to sh.addShardToZone().
+    updateZoneKeyRange                         Associates a range of shard keys to a zone. Uses the updateZoneKeyRange command
+    addTagRange                                3.4+ only. Adds a tag range for a sharded DB. This method aliases to sh.updateZoneKeyRange()
+    removeRangeFromZone                        3.4+ only. Removes an association between a range of shard keys and a zone.
+    removeTagRange                             3.4+ only. Removes tag range for a sharded DB. Aliases to sh.removeRangeFromZone
+    removeShardFromZone                        3.4+ only. Removes the association between a shard and a zone. Uses the removeShardFromZone command
+    removeShardTag                             3.4+ only. Removes a shard tag for a sharded DB. Aliases to sh.removeShardFromZone
+    enableAutoSplit                            Enables auto-splitting for the sharded cluster. Calls update on the config.settings collection
+    disableAutoSplit                           Disables auto-splitting for the sharded cluster. Calls update on the config.settings collection
+    splitAt                                    Divides an existing chunk into two chunks using a specific value of the shard key as the dividing point. Uses the split command
+    splitFind                                  Splits a chunk at the shard key value specified by the query at the median. Uses the split command
+    moveChunk                                  Moves the chunk that contains the document specified by the query to the destination shard. Uses the moveChunk command
+    balancerCollectionStatus                   Returns information on whether the chunks of a sharded collection are balanced. Uses the balancerCollectionStatus command
+    enableBalancing                            Activates the sharded collection balancer process.
+    disableBalancing                           Disable balancing on a single collection in a sharded database. Does not affect balancing of other collections in a sharded cluster.
+    getBalancerState                           Returns true when the balancer is enabled and false if the balancer is disabled. This does not reflect the current state of balancing operations: use sh.isBalancerRunning() to check the balancer’s current state.
+    isBalancerRunning                          Returns true if the balancer process is currently running and migrating chunks and false if the balancer process is not running. Uses the balancerStatus command
+    startBalancer                              Enables the balancer. Uses the balancerStart command
+    stopBalancer                               Disables the balancer. uses the balancerStop command
+    setBalancerState                           Calls sh.startBalancer if state is true, otherwise calls sh.stopBalancer
+    getShardedDataDistribution                 Returns data-size distribution information for all existing sharded collections
+    startAutoMerger                            Globally enable auto-merger (active only if balancer is up)
+    stopAutoMerger                             Globally disable auto-merger
+    isAutoMergerEnabled                        Returns whether the auto-merger is enabled
+    disableAutoMerger                          Disable auto-merging on one collection
+    enableAutoMerger                           Re-enable auto-merge on one collection
+    checkMetadataConsistency                   Returns a cursor with information about metadata inconsistencies
+    shardAndDistributeCollection               Shards a collection and then immediately reshards the collection to the same shard key.
+    moveCollection                             Moves a single unsharded collection to a different shard.
+    abortMoveCollection                        Abort the current moveCollection operation on a given collection
+    unshardCollection                          Unshard the given collection and move all data to the given shard.
+    abortUnshardCollection                     Abort the current unshardCollection operation on a given collection
+

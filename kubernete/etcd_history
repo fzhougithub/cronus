@@ -1,0 +1,81 @@
+[root@Wentao ~]# history|grep etcd
+  381  cp -r /var/lib/etcd .
+  507  cp -r /var/lib/etcd/* ~/k8s-backup/etcd/
+  514  mv /var/lib/etcd /var/lib/etcd-old
+  558  vi etcd.yaml
+  998  ETCDCTL_API=3 etcdctl get / --prefix
+  999  ETCDCTL_API=3 etcdctl endpoint health
+ 1000  ps -ef|grep -i etcd
+ 1003  ETCDCTL_API=3 etcdctl --endpoints=http://192.168.1.80:2379 get / --prefix
+ 1004  sudo systemctl restart etcd
+ 1005  systemctl stats etcd
+ 1006  systemctl status etcd
+ 1007  journalctl -u etcd -n 50 --no-pager
+ 1008  systemctl status etcd
+ 1009  systemctl cat etcd
+ 1010  journalctl -u etcd -n 50 --no-pager|tail -10
+ 1011  find /usr -name etcd
+ 1012  vi /usr/lib/systemd/system/etcd
+ 1013  vi /usr/lib/systemd/system/etcd.service
+ 1015  systemctl status etcd
+ 1016  sytemctl restart etcd
+ 1017  systemctl restart etcd
+ 1018  systemctl status etcd
+ 1019  journalctl -u etcd -n 50 --no-pager|tail -10
+ 1020  find /etc -name *etcd*
+ 1021  find /etc -name etcd.*
+ 1022  ls -larth /etc/etcd/
+ 1023  mkdir /etc/etcd/
+ 1024  vi /etc/etcd/etcd.conf
+ 1025  vi /usr/lib/systemd/system/etcd.service
+ 1027  systemctl restart etcd
+ 1028  systemctl status etcd
+ 1029  journalctl -u etcd -n 50 --no-pager|tail -10
+ 1030  ps -ef|grpe etcd
+ 1031  ps -ef|grep etcd
+ 1032  systemctl stop etcd
+ 1033  ps -ef|grep etcd
+ 1034  systemctl stop etcd
+ 1035  ps -ef|grep etcd
+ 1037  systemctl disable etcd
+ 1038  # Check if etcd is running as a pod
+ 1039  kubectl get pods -n kube-system | grep etcd
+ 1041  sudo ls /etc/kubernetes/manifests/ | grep etcd
+ 1042  # View etcd container
+ 1043  sudo crictl ps | grep etcd
+ 1050  crictl logs 7f5046c92c103 > etcd.log
+ 1051  cat etcd.log
+ 1052  crictl logs 7f5046c92c103 > etcd.log 2>&1
+ 1053  cat etcd.log
+ 1054  cat etcd.log|egrep -i 'reject|error|fail' |tail -50
+ 1056  ETCDCTL_API=3 etcdctl endpoint health
+ 1058  ETCDCTL_API=3 etcdctl   --endpoints=https://127.0.0.1:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key   endpoint health
+ 1059  vi /etc/etcd/etcd.conf
+ 1060  source /etc/etcd/etcd.conf
+ 1061  vi /etc/etcd/etcd.conf
+ 1062  source /etc/etcd/etcd.conf
+ 1063  ETCDCTL_API=3 etcdctl endpoint health
+ 1064  cat /etc/etcd/etcd.conf
+ 1065  ETCDCTL_API=3 etcdctl   --endpoints=https://127.0.0.1:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key   endpoint health
+ 1066  source /etc/etcd/etcd.conf
+ 1067  ETCDCTL_API=3 etcdctl endpoint health
+ 1068  vi /etc/etcd/etcd.conf
+ 1069  source /etc/etcd/etcd.conf
+ 1070  ETCDCTL_API=3 etcdctl endpoint health
+ 1071  cat /etc/etcd/etcd.conf
+ 1072  ETCDCTL_API=3 etcdctl get / --prefix
+ 1073  ETCDCTL_API=3 etcdctl get / --prefix |wc -l4
+ 1074  ETCDCTL_API=3 etcdctl get / --prefix |wc -l
+ 1075  ETCDCTL_API=3 etcdctl --endpoints=http://192.168.1.80:2379 get / --prefix|wc -l
+ 1076  ETCDCTL_API=3 etcdctl --endpoints=http://192.168.1.80:2379 get / --prefix
+ 1077  ETCDCTL_API=3 etcdctl   --endpoints=https://192.168.1.80:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key   get / --prefix
+ 1079  ETCDCTL_API=3 etcdctl   --endpoints=https://192.168.1.80:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key   get / --prefix
+ 1080  vi /etc/etcd/etcd.conf
+ 1081  source /etc/etcd/etcd.conf
+ 1082  ETCDCTL_API=3 etcdctl --endpoints=http://192.168.1.80:2379 get / --prefix
+ 1083  ETCDCTL_API=3 etcdctl  get / --prefix
+ 1084  ETCDCTL_API=3 etcdctl --endpoints=http://192.168.1.80:2379 get / --prefix
+ 1085  ETCDCTL_API=3 etcdctl   --endpoints=https://127.0.0.1:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key   endpoint health
+ 1086  ETCDCTL_API=3 etcdctl   --endpoints=https://192.168.1.80:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key   get / --prefix
+ 1087  ETCDCTL_API=3 etcdctl   get / --prefix
+ 1088  history|grep etcd

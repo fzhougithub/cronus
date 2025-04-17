@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 CONTAINER           IMAGE               CREATED              STATE               NAME                 ATTEMPT             POD ID              POD
 32193b7cf31a4       9344fce2372f8       About a minute ago   Running             kube-proxy           0                   229506777f9a8       kube-proxy-595vz
 a9c09003ed959       ae916d3d8afb2       About a minute ago   Running             kube-flannel         58                  9acb6e1ebb36b       kube-flannel-ds-bcfpl
@@ -5,3 +6,22 @@ dbdcebd644be8       4cad75abc83d5       3 minutes ago        Exited             
 13c526c019768       ae916d3d8afb2       4 minutes ago        Exited              install-cni          0                   9acb6e1ebb36b       kube-flannel-ds-bcfpl
 b097f49d6c748       55ce2385d9d8c       4 minutes ago        Exited              install-cni-plugin   6                   9acb6e1ebb36b       kube-flannel-ds-bcfpl
 71364a799f1ec       ae916d3d8afb2       6 minutes ago        Exited              kube-flannel         57                  eabfc39a85492       kube-flannel-ds-bcfpl
+=======
+CONTAINER           IMAGE               CREATED             STATE               NAME                      ATTEMPT             POD ID              POD
+2ca65f18c60c6       ae916d3d8afb2       20 minutes ago      Running             kube-flannel              0                   502164754d54b       kube-flannel-ds-qlkcl
+e479f899df046       ae916d3d8afb2       20 minutes ago      Exited              install-cni               0                   502164754d54b       kube-flannel-ds-qlkcl
+798d0041a163b       55ce2385d9d8c       20 minutes ago      Exited              install-cni-plugin        0                   502164754d54b       kube-flannel-ds-qlkcl
+a1305554258a3       f71614796eb76       16 hours ago        Running             kube-proxy                0                   8054d068eede7       kube-proxy-vnfsv
+51fdf2f60342a       cbb01a7bd410d       42 hours ago        Running             coredns                   75                  b6df426f886dc       coredns-76f75df574-lz6w6
+65e613c7fd6f8       cbb01a7bd410d       42 hours ago        Running             coredns                   74                  ee553bd4f73ed       coredns-76f75df574-bdm4f
+98d15693bf018       9ea0bd82ed4f6       42 hours ago        Running             kube-scheduler            64                  84358a205e164       kube-scheduler-wentao
+d618e597a9f92       f44c6888a2d24       42 hours ago        Running             kube-apiserver            195                 4e66176b6c65b       kube-apiserver-wentao
+9bfb348b46b38       b0cdcf76ac8e9       42 hours ago        Running             kube-controller-manager   64                  c38b0189961a9       kube-controller-manager-wentao
+7f5046c92c103       a9e7e6b294baf       42 hours ago        Running             etcd                      215                 df872168fcda7       etcd-wentao
+22d7e182e7a20       cbb01a7bd410d       42 hours ago        Exited              coredns                   74                  53fac2687ce66       coredns-76f75df574-lz6w6
+3073224a8d182       cbb01a7bd410d       42 hours ago        Exited              coredns                   73                  adf2574ef8519       coredns-76f75df574-bdm4f
+5b031ebca024f       9ea0bd82ed4f6       42 hours ago        Exited              kube-scheduler            63                  c14f079817444       kube-scheduler-wentao
+8e35efd6dd408       a9e7e6b294baf       42 hours ago        Exited              etcd                      214                 5f8d78b7c4ffc       etcd-wentao
+41a1f9f1f2964       f44c6888a2d24       42 hours ago        Exited              kube-apiserver            194                 365a0065abcf6       kube-apiserver-wentao
+774928efd12e5       b0cdcf76ac8e9       42 hours ago        Exited              kube-controller-manager   63                  0215a72e4776f       kube-controller-manager-wentao
+>>>>>>> 37ba65b (Finish uncessful try on kubernetes)

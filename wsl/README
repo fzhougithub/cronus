@@ -15,3 +15,9 @@ New-NetFirewallRule -DisplayName "Open Port 22" -Direction Inbound -LocalPort 22
 New-NetFirewallRule -DisplayName "Open Port 22 Outbound" -Direction Outbound -LocalPort 22 -Protocol TCP -Action Allow
 
 
+Looks like we have to do same thing for mongodb port 27017
+
+netsh advfirewall firewall add rule name="Open Port 27017" dir=in action=allow protocol=TCP localport=27017
+netsh advfirewall firewall add rule name="Open Port 27017" Outbound" dir=out action=allow protocol=TCP localport=27017
+
+

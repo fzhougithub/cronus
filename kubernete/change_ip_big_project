@@ -1,0 +1,19 @@
+1. Manually change all of the visable files IP 
+
+2. kubectl -n kube-system get cm kubeadm-config -o yaml > kubeadm-config.yaml
+modify if there is advertiseaddress, then, apply
+kubectl apply -f kubeadm-config.yaml
+
+3. regenerate certificate
+
+mkdir -p /etc/kubernetes/pki/backup
+cp -r /etc/kubernetes/pki/* /etc/kubernetes/pki/backup/
+
+
+kubeadm init phase certs all --apiserver-advertise-address 192.168.1.80
+
+kubeadm init phase certs all --apiserver-advertise-address 192.168.1.80
+systemctl restart kubelet
+
+ls /etc/cni/net.d/
+

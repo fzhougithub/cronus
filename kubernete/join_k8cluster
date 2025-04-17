@@ -56,7 +56,7 @@ cat <<EOF > apiserver-csr.json
     "127.0.0.1",
     "10.96.0.1",
     "172.17.233.185",
-    "192.168.1.75",
+    "192.168.1.80",
     "kubernetes",
     "kubernetes.default",
     "kubernetes.default.svc",
@@ -76,6 +76,65 @@ cat <<EOF > apiserver-csr.json
     }
   ]
 }
+
+cfssl gencert -ca=/etc/kubernetes/pki/ca.crt -ca-key=/etc/kubernetes/pki/ca.key -profile=kubernetes apiserver-csr.json | cfssljson -bare apiserver
+
+[root@Wentao kubernete]# cfssl gencert -ca=/etc/kubernetes/pki/ca.crt -ca-key=/etc/kubernetes/pki/ca.key -profile=kubernetes apiserver-csr.json | cfssljson -bare apiserver
+2025/04/08 15:44:28 [INFO] generate received request
+2025/04/08 15:44:28 [INFO] received CSR
+2025/04/08 15:44:28 [INFO] generating key: rsa-2048
+2025/04/08 15:44:29 [INFO] encoded CSR
+2025/04/08 15:44:29 [INFO] signed certificate with serial number 247347478368531120206055884849322018237245097347
+
+
+mv apiserver.pem /etc/kubernetes/pki/apiserver.crt
+mv apiserver-key.pem /etc/kubernetes/pki/apiserver.key
+
+----------------------------------------------------------
+Below are the method from github copilot, will kill you compare with above method from Grok
+Prepare ca-config.json
+{
+  "signing": {
+    "default": {
+      "expiry": "8760h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "expiry": "8760h",
+        "usages": [
+          "signing",
+          "key encipherment",
+          "server auth",
+          "client auth"
+        ]
+      }
+    }
+  }
+}
+
+prepare CA Certificate Signing Request (ca-csr.json):
+
+{
+  "CN": "Kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "US",
+      "ST": "CA",
+      "L": "San Francisco",
+      "O": "Kubernetes",
+      "OU": "CA"
+    }
+  ]
+}
+
+Generate ca certificate and the key
+
+cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
 
 ERROR
 ================================================

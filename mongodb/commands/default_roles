@@ -1,0 +1,45 @@
+[direct: mongos] test> show roles
+[
+  {
+    role: 'dbOwner',
+    db: 'test',
+    isBuiltin: true,
+    roles: [],
+    inheritedRoles: []
+  },
+  {
+    role: 'enableSharding',
+    db: 'test',
+    isBuiltin: true,
+    roles: [],
+    inheritedRoles: []
+  },
+  {
+    role: 'dbAdmin',
+    db: 'test',
+    isBuiltin: true,
+    roles: [],
+    inheritedRoles: []
+  },
+  {
+    role: 'read',
+    db: 'test',
+    isBuiltin: true,
+    roles: [],
+    inheritedRoles: []
+  },
+  {
+    role: 'readWrite',
+    db: 'test',
+    isBuiltin: true,
+    roles: [],
+    inheritedRoles: []
+  },
+  {
+    role: 'userAdmin',
+    db: 'test',
+    isBuiltin: true,
+    roles: [],
+    inheritedRoles: []
+  }
+]

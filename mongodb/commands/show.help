@@ -1,0 +1,8 @@
+[direct: mongos] test> show.help
+  'show databases'/'show dbs': Print a list of all available databases.
+'show collections'/'show tables': Print a list of all collections for current database.
+'show profile': Prints system.profile information.
+'show users': Print a list of all users for current database.
+'show roles': Print a list of all roles for current database.
+'show log <type>': log for current connection, if type is not set uses 'global'
+'show logs': Print all logs.

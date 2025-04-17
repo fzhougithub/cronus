@@ -1,0 +1,1704 @@
+{
+  commands: {
+    _isSelf: {
+      help: '{ _isSelf : 1 } INTERNAL ONLY',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    _killOperations: {
+      help: 'Internal command -- Kill operations on the target server by OperationKey.',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    _mergeAuthzCollections: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    abortReshardCollection: {
+      help: 'Abort any in-progress resharding operations for this collection.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    abortTransaction: {
+      help: 'Aborts a transaction',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    addShard: {
+      help: 'add a new shard to the system',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    addShardToZone: {
+      help: 'adds a shard to zone',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    aggregate: {
+      help: 'Runs the sharded aggregation command. See http://dochub.mongodb.org/core/aggregation for more details.',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    appendOplogNote: {
+      help: 'Performs a no-op entry on the oplog on each shard',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    authenticate: {
+      help: 'no help defined',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    availableQueryOptions: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    balancerCollectionStatus: {
+      help: 'command to check whether the chunks of a given collection are in a quiesced state or there are any which need to be moved because of (1) draining shards, (2) zone violation or (3) imbalance between shards',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    balancerStart: {
+      help: 'Starts or stops the sharding balancer.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    balancerStatus: {
+      help: 'Starts or stops the sharding balancer.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    balancerStop: {
+      help: 'Starts or stops the sharding balancer.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    buildInfo: {
+      help: 'get version #, etc.\n{ buildinfo:1 }',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    cleanupReshardCollection: {
+      help: 'Abort and cleanup any in-progress resharding operations for this collection.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    clearJumboFlag: {
+      help: 'clears the jumbo flag of the chunk that contains the key\n' +
+        "   { clearJumboFlag : 'alleyinsider.blog.posts' , find : { ts : 1 } }\n",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    collMod: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    collStats: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    commitReshardCollection: {
+      help: 'Allow a resharding operation in progress to commit as soon as possible. This may mean a longer critical interval during which writes are blocked.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    commitTransaction: {
+      help: 'Commits a transaction',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    compact: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    compactStructuredEncryptionData: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    configureCollectionBalancing: {
+      help: 'command to check whether the chunks of a given collection are in a quiesced state or there are any which need to be moved because of (1) draining shards, (2) zone violation or (3) imbalance between shards',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    connPoolStats: {
+      help: 'stats about connections between servers in a replica set or sharded cluster.',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    connPoolSync: {
+      help: 'internal',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    connectionStatus: {
+      help: 'no help defined',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    convertToCapped: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    count: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    create: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    createIndexes: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    createRole: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    createUser: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    currentOp: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    dataSize: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    dbStats: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    delete: {
+      help: 'delete documents',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    distinct: {
+      help: "{ distinct : 'collection name' , key : 'a.b' , query : {} }",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    drop: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    dropAllRolesFromDatabase: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    dropAllUsersFromDatabase: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    dropConnections: {
+      help: 'Drop egress connections to specified host and port',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    dropDatabase: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    dropIndexes: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    dropRole: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    dropUser: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    enableSharding: {
+      help: 'Create a database with the provided options.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    endSessions: {
+      help: 'end a set of logical sessions',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    explain: {
+      help: 'explain database reads and writes',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    features: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    filemd5: {
+      help: ' example: { filemd5 : ObjectId(aaaaaaa) , root : "fs" }',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    find: {
+      help: 'query for documents',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    findAndModify: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    flushRouterConfig: {
+      help: 'Flushes the cached routing information for a single collection, entire database (and its collections) or all databases, which would cause full reload from the config server on the next access.\n' +
+        'Usage:\n' +
+        '{flushRouterConfig: 1} flushes all databases\n' +
+        "{flushRouterConfig: 'db'} flushes only the given database (and its collections)\n" +
+        "{flushRouterconfig: 'db.coll'} flushes only the given collection",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    fsync: {
+      help: 'invoke fsync on all shards belonging to the cluster',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    fsyncUnlock: {
+      help: 'invoke fsync unlock on all shards belonging to the cluster',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getClusterParameter: {
+      help: 'Get majority-written cluster parameter value(s) from the config servers',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getCmdLineOpts: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getDefaultRWConcern: {
+      help: 'Gets the default read or write concern for a cluster',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getDiagnosticData: {
+      help: 'get latest diagnostic data collection snapshot',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getLastError: {
+      help: 'no longer supported',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getLog: {
+      help: "{ getLog : '*' }  OR { getLog : 'global' }",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getMore: {
+      help: 'retrieve more documents for a cursor id',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    getParameter: {
+      help: 'get administrative option(s)\n' +
+        'example:\n' +
+        '{ getParameter:1, notablescan:1 }\n' +
+        'pass a document as the value for getParameter to request options\n' +
+        'example:\n' +
+        '{ getParameter:{showDetails: true}, notablescan:1}\n' +
+        'supported:\n' +
+        '  AlwaysRecordTraffic\n' +
+        '  KeysRotationIntervalSec\n' +
+        '  KillSessionsMaxConcurrency\n' +
+        '  KillSessionsPerHostTimeoutMS\n' +
+        '  ShardingTaskExecutorPoolHostTimeoutMS\n' +
+        '  ShardingTaskExecutorPoolMaxConnecting\n' +
+        '  ShardingTaskExecutorPoolMaxSize\n' +
+        '  ShardingTaskExecutorPoolMaxSizeForConfigServers\n' +
+        '  ShardingTaskExecutorPoolMinSize\n' +
+        '  ShardingTaskExecutorPoolMinSizeForConfigServers\n' +
+        '  ShardingTaskExecutorPoolRefreshRequirementMS\n' +
+        '  ShardingTaskExecutorPoolRefreshTimeoutMS\n' +
+        '  ShardingTaskExecutorPoolReplicaSetMatching\n' +
+        '  TransactionRecordMinimumLifetimeMinutes\n' +
+        '  acceptApiVersion2\n' +
+        '  activeFaultDurationSecs\n' +
+        '  aggregateOperationResourceConsumptionMetrics\n' +
+        '  allowMultipleArbiters\n' +
+        '  allowRolesFromX509Certificates\n' +
+        '  authSchemaVersion\n' +
+        '  authenticationMechanisms\n' +
+        '  authorizationManagerCacheSize\n' +
+        '  authorizationManagerPinnedUsers\n' +
+        '  authorizationManagerPinnedUsersRefreshIntervalMillis\n' +
+        '  automationServiceDescriptor\n' +
+        '  awsEC2InstanceMetadataUrl\n' +
+        '  awsECSInstanceMetadataUrl\n' +
+        '  backtraceLogFile\n' +
+        '  batchedExpiredChangeStreamPreImageRemoval\n' +
+        '  bgSyncOplogFetcherBatchSize\n' +
+        '  bsonTestValidationVersion\n' +
+        '  changeSyncSourceThresholdMillis\n' +
+        '  clientCursorMonitorFrequencySecs\n' +
+        '  clusterAuthMode\n' +
+        '  collectionBulkLoaderBatchSizeInBytes\n' +
+        '  collectionClonerBatchSize\n' +
+        '  collectionClonerUsesExhaust\n' +
+        '  configReplicasProbedByHealthMonitoring\n' +
+        '  connPoolMaxConnsPerHost\n' +
+        '  connPoolMaxInUseConnsPerHost\n' +
+        '  connectTimeoutMs\n' +
+        '  cursorTimeoutMillis\n' +
+        '  defaultFindReplicaSetHostTimeoutMS\n' +
+        '  deprecatedWireOpsWarningPeriodInSeconds\n' +
+        '  diagnosticDataCollectionDirectoryPath\n' +
+        '  diagnosticDataCollectionDirectorySizeMB\n' +
+        '  diagnosticDataCollectionEnableLatencyHistograms\n' +
+        '  diagnosticDataCollectionEnabled\n' +
+        '  diagnosticDataCollectionFileSizeMB\n' +
+        '  diagnosticDataCollectionPeriodMillis\n' +
+        '  diagnosticDataCollectionSamplesPerChunk\n' +
+        '  diagnosticDataCollectionSamplesPerInterimUpdate\n' +
+        '  diagnosticDataCollectionVerboseTCMalloc\n' +
+        '  disableJavaScriptJIT\n' +
+        '  disableLogicalSessionCacheRefresh\n' +
+        '  disableNonSSLConnectionLogging\n' +
+        '  disableNonTLSConnectionLogging\n' +
+        '  disableSplitHorizonIPCheck\n' +
+        '  disabledSecureAllocatorDomains\n' +
+        '  documentUnitSizeBytes\n' +
+        '  enableDefaultWriteConcernUpdatesForInitiate\n' +
+        '  enableFinerGrainedCatalogCacheRefresh\n' +
+        '  enableLocalhostAuthBypass\n' +
+        '  enableOverrideClusterChainingSetting\n' +
+        '  enableReconfigRollbackCommittedWritesCheck\n' +
+        '  enableSearchMeta\n' +
+        '  enableTemporarilyUnavailableExceptions\n' +
+        '  enableTestCommands\n' +
+        '  enableTimeoutOfInactiveSessionCursors\n' +
+        '  enforceUserClusterSeparation\n' +
+        '  expiredChangeStreamPreImageRemovalJobSleepSecs\n' +
+        '  fassertOnLockTimeoutForStepUpDown\n' +
+        '  featureFlagAlwaysCreateConfigTransactionsPartialIndexOnStepUp\n' +
+        '  featureFlagBalanceAccordingToDataSize\n' +
+        '  featureFlagBatchMultiDeletes\n' +
+        '  featureFlagBlender\n' +
+        '  featureFlagBucketUnpackWithSort\n' +
+        '  featureFlagChangeStreamPreAndPostImages\n' +
+        '  featureFlagChangeStreamsFurtherEnrichedEvents\n' +
+        '  featureFlagChangeStreamsRewrite\n' +
+        '  featureFlagChangeStreamsVisibility\n' +
+        '  featureFlagClusterWideConfig\n' +
+        '  featureFlagClusterWideConfigM2\n' +
+        '  featureFlagClusteredIndexes\n' +
+        '  featureFlagCollModIndexUnique\n' +
+        '  featureFlagColumnstoreIndexes\n' +
+        '  featureFlagCommandsAcceptCollectionUUID\n' +
+        '  featureFlagCommonQueryFramework\n' +
+        '  featureFlagConcurrencyInChunkMigration\n' +
+        '  featureFlagConnHealthMetrics\n' +
+        '  featureFlagDerivedMetadata\n' +
+        '  featureFlagDocumentSourceListCatalog\n' +
+        '  featureFlagEnableExecutionControl\n' +
+        '  featureFlagEnableShardingOptional\n' +
+        '  featureFlagExactTopNAccumulator\n' +
+        '  featureFlagFLE2\n' +
+        '  featureFlagFileCopyBasedInitialSync\n' +
+        '  featureFlagFill\n' +
+        '  featureFlagFryer\n' +
+        '  featureFlagHealthMonitoring\n' +
+        '  featureFlagInternalTransactions\n' +
+        '  featureFlagLastPointQuery\n' +
+        '  featureFlagLoadBalancer\n' +
+        '  featureFlagLocf\n' +
+        '  featureFlagMigrationRecipientCriticalSection\n' +
+        '  featureFlagMongoStore\n' +
+        '  featureFlagNewPersistedChunkVersionFormat\n' +
+        '  featureFlagNewWriteErrorExceptionFormat\n' +
+        '  featureFlagNoChangeStreamEventsDueToOrphans\n' +
+        '  featureFlagNoMoreAutoSplitter\n' +
+        '  featureFlagOptionalCfgSvr\n' +
+        '  featureFlagOrphanTracking\n' +
+        '  featureFlagPerCollBalancingSettings\n' +
+        '  featureFlagQueryStats\n' +
+        '  featureFlagRecoverableRefineCollectionShardKeyCoordinator\n' +
+        '  featureFlagRecoverableShardsvrReshardCollectionCoordinator\n' +
+        '  featureFlagRequireTenantID\n' +
+        '  featureFlagResharding\n' +
+        '  featureFlagRetryableFindAndModify\n' +
+        '  featureFlagSBEGroupPushdown\n' +
+        '  featureFlagSBELookupPushdown\n' +
+        '  featureFlagSbeFull\n' +
+        '  featureFlagSbePlanCache\n' +
+        '  featureFlagSearchBatchSizeLimit\n' +
+        '  featureFlagSearchMeta\n' +
+        '  featureFlagSearchShardedFacets\n' +
+        '  featureFlagSelectiveBackup\n' +
+        '  featureFlagShardKeyIndexOptionalHashedSharding\n' +
+        '  featureFlagShardMerge\n' +
+        '  featureFlagShardSplit\n' +
+        '  featureFlagShardedLookup\n' +
+        '  featureFlagShardedSearchCustomSort\n' +
+        '  featureFlagShardedTimeSeries\n' +
+        '  featureFlagShardedTimeSeriesUpdateDelete\n' +
+        '  featureFlagShardingDataTransformMetrics\n' +
+        '  featureFlagSortArray\n' +
+        '  featureFlagSpoon\n' +
+        '  featureFlagTimeseriesBucketCompression\n' +
+        '  featureFlagTimeseriesBucketCompressionWithArrays\n' +
+        '  featureFlagTimeseriesMetricIndexes\n' +
+        '  featureFlagTimeseriesUpdatesAndDeletes\n' +
+        '  featureFlagToaster\n' +
+        '  featureFlagUpdateDocumentShardKeyUsingTransactionApi\n' +
+        '  featureFlagUserWriteBlocking\n' +
+        '  featureFlagVectorSearchPublicPreview\n' +
+        '  fileBasedInitialSyncExtendCursorTimeoutMS\n' +
+        '  fileBasedInitialSyncMaxCyclesWithoutProgress\n' +
+        '  fileBasedInitialSyncMaxLagSec\n' +
+        '  findChunksOnConfigTimeoutMS\n' +
+        '  fixedServiceExecutorRecursionLimit\n' +
+        '  fixedServiceExecutorThreadLimit\n' +
+        '  forceRollbackViaRefetch\n' +
+        '  globalConnPoolIdleTimeoutMinutes\n' +
+        '  healthMonitoringIntensities\n' +
+        '  healthMonitoringIntervals\n' +
+        '  heapProfilingEnabled\n' +
+        '  heapProfilingSampleIntervalBytes\n' +
+        '  heartBeatFrequencyMs\n' +
+        '  honorSystemUmask\n' +
+        '  httpVerboseLogging\n' +
+        '  indexEntryUnitSizeBytes\n' +
+        '  indexMaxNumGeneratedKeysPerDocument\n' +
+        '  initialServiceExecutorThreadingModel\n' +
+        '  initialSyncMethod\n' +
+        '  initialSyncOplogBuffer\n' +
+        '  initialSyncOplogBufferPeekCacheSize\n' +
+        '  initialSyncOplogFetcherBatchSize\n' +
+        '  initialSyncSourceReadPreference\n' +
+        '  initialSyncTransientErrorRetryPeriodSeconds\n' +
+        '  internalCascadesOptimizerDisableBranchAndBound\n' +
+        '  internalCascadesOptimizerDisableGroupByAndUnionRIDIntersect\n' +
+        '  internalCascadesOptimizerDisableHashJoinRIDIntersect\n' +
+        '  internalCascadesOptimizerDisableIndexes\n' +
+        '  internalCascadesOptimizerDisableMergeJoinRIDIntersect\n' +
+        '  internalCascadesOptimizerDisableScan\n' +
+        '  internalCascadesOptimizerKeepRejectedPlans\n' +
+        '  internalDocumentSourceCursorBatchSizeBytes\n' +
+        '  internalDocumentSourceDensifyMaxMemoryBytes\n' +
+        '  internalDocumentSourceGroupMaxMemoryBytes\n' +
+        '  internalDocumentSourceLookupCacheSizeBytes\n' +
+        '  internalDocumentSourceSetWindowFieldsMaxMemoryBytes\n' +
+        '  internalGeoNearQuery2DMaxCoveringCells\n' +
+        '  internalGeoPredicateQuery2DMaxCoveringCells\n' +
+        '  internalInsertMaxBatchSize\n' +
+        '  internalLookupStageIntermediateDocumentMaxSizeBytes\n' +
+        '  internalMaxSubPipelineViewDepth\n' +
+        '  internalPartialFilterExpressionMaxDepth\n' +
+        '  internalPipelineLengthLimit\n' +
+        '  internalProhibitShardOperationRetry\n' +
+        '  internalQueryAggMulticastMaxConcurrency\n' +
+        '  internalQueryAggMulticastTimeoutMS\n' +
+        '  internalQueryAlwaysMergeOnPrimaryShard\n' +
+        '  internalQueryAppendIdToSetWindowFieldsSort\n' +
+        '  internalQueryCacheDisableInactiveEntries\n' +
+        '  internalQueryCacheEvictionRatio\n' +
+        '  internalQueryCacheMaxEntriesPerCollection\n' +
+        '  internalQueryCacheMaxSizeBytesBeforeStripDebugInfo\n' +
+        '  internalQueryCacheSize\n' +
+        '  internalQueryCacheWorksGrowthCoefficient\n' +
+        '  internalQueryCollectionMaxDataSizeBytesToChooseHashJoin\n' +
+        '  internalQueryCollectionMaxNoOfDocumentsToChooseHashJoin\n' +
+        '  internalQueryCollectionMaxStorageSizeBytesToChooseHashJoin\n' +
+        '  internalQueryDefaultDOP\n' +
+        '  internalQueryDesugarWhereToFunction\n' +
+        '  internalQueryDisableExchange\n' +
+        '  internalQueryDisableLookupExecutionUsingHashJoin\n' +
+        '  internalQueryDocumentSourceWriterBatchExtraReservedBytes\n' +
+        '  internalQueryEnableCSTParser\n' +
+        '  internalQueryEnableCascadesOptimizer\n' +
+        '  internalQueryEnableLoggingV2OplogEntries\n' +
+        '  internalQueryEnableSamplingCardinalityEstimator\n' +
+        '  internalQueryEnumerationMaxIntersectPerAnd\n' +
+        '  internalQueryEnumerationMaxOrSolutions\n' +
+        '  internalQueryEnumerationPreferLockstepOrEnumeration\n' +
+        '  internalQueryExecYieldIterations\n' +
+        '  internalQueryExecYieldPeriodMS\n' +
+        '  internalQueryExplainSizeThresholdBytes\n' +
+        '  internalQueryFLEAlwaysUseHighCardinalityMode\n' +
+        '  internalQueryFLERewriteMemoryLimit\n' +
+        '  internalQueryFacetBufferSizeBytes\n' +
+        '  internalQueryFacetMaxOutputDocSizeBytes\n' +
+        '  internalQueryForceClassicEngine\n' +
+        '  internalQueryForceIntersectionPlans\n' +
+        '  internalQueryGlobalProfilingFilter\n' +
+        '  internalQueryIgnoreUnknownJSONSchemaKeywords\n' +
+        '  internalQueryJavaScriptFnTimeoutMillis\n' +
+        '  internalQueryJavaScriptHeapSizeLimitMB\n' +
+        '  internalQueryMaxAddToSetBytes\n' +
+        '  internalQueryMaxAllowedDensifyDocs\n' +
+        '  internalQueryMaxBlockingSortMemoryUsageBytes\n' +
+        '  internalQueryMaxDocValidationErrorConsideredValues\n' +
+        '  internalQueryMaxJsEmitBytes\n' +
+        '  internalQueryMaxNumberOfFieldsToChooseFilteredColumnScan\n' +
+        '  internalQueryMaxNumberOfFieldsToChooseUnfilteredColumnScan\n' +
+        '  internalQueryMaxPushBytes\n' +
+        '  internalQueryMaxRangeBytes\n' +
+        '  internalQueryMaxScansToExplode\n' +
+        '  internalQueryPlanEvaluationCollFraction\n' +
+        '  internalQueryPlanEvaluationCollFractionSbe\n' +
+        '  internalQueryPlanEvaluationMaxResults\n' +
+        '  internalQueryPlanEvaluationWorks\n' +
+        '  internalQueryPlanEvaluationWorksSbe\n' +
+        '  internalQueryPlanOrChildrenIndependently\n' +
+        '  internalQueryPlanTieBreakingWithIndexHeuristics\n' +
+        '  internalQueryPlannerEnableHashIntersection\n' +
+        '  internalQueryPlannerEnableIndexIntersection\n' +
+        '  internalQueryPlannerGenerateCoveredWholeIndexScans\n' +
+        '  internalQueryPlannerMaxIndexedSolutions\n' +
+        '  internalQueryProhibitBlockingMergeOnMongoS\n' +
+        '  internalQueryProhibitMergingOnMongoS\n' +
+        '  internalQueryS2GeoCoarsestLevel\n' +
+        '  internalQueryS2GeoFinestLevel\n' +
+        '  internalQueryS2GeoMaxCells\n' +
+        '  internalQuerySlotBasedExecutionDisableGroupPushdown\n' +
+        '  internalQuerySlotBasedExecutionDisableLookupPushdown\n' +
+        '  internalQuerySlotBasedExecutionHashAggApproxMemoryUseInBytesBeforeSpill\n' +
+        '  internalQuerySlotBasedExecutionHashAggForceIncreasedSpilling\n' +
+        '  internalQuerySlotBasedExecutionHashAggMemoryCheckPerAdvanceAtLeast\n' +
+        '  internalQuerySlotBasedExecutionHashAggMemoryCheckPerAdvanceAtMost\n' +
+        '  internalQuerySlotBasedExecutionHashAggMemoryUseCheckMargin\n' +
+        '  internalQuerySlotBasedExecutionHashLookupApproxMe'... 4880 more characters,
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getShardMap: {
+      help: 'lists the set of shards known to this instance',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getShardVersion: {
+      help: " example: { getShardVersion : 'alleyinsider.foo'  } ",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    getnonce: {
+      help: 'internal',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    grantPrivilegesToRole: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    grantRolesToRole: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    grantRolesToUser: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    hello: {
+      help: 'Status information for clients negotiating a connection with this server',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    hostInfo: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    insert: {
+      help: 'insert documents',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    invalidateUserCache: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    isMaster: {
+      help: 'Status information for clients negotiating a connection with this server',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    isdbgrid: {
+      help: 'no help defined',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    killAllSessions: {
+      help: 'kill all logical sessions, for a user, and their operations',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    killAllSessionsByPattern: {
+      help: 'kill logical sessions by pattern',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    killCursors: {
+      help: 'Kill a list of cursor ids',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    killOp: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    killSessions: {
+      help: 'kill a logical session and its operations',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    listCollections: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    listCommands: {
+      help: 'get a list of all db commands',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    listDatabases: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    listIndexes: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    listShards: {
+      help: 'list all shards of the system',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    logRotate: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    logout: {
+      help: 'de-authenticate',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    mapReduce: {
+      help: 'Runs the mapReduce command. See http://dochub.mongodb.org/core/mapreduce for details.',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    mergeChunks: {
+      help: 'Merge Chunks command\n' +
+        'usage: { mergeChunks : <ns>, bounds : [ <min key>, <max key> ] }',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    moveChunk: {
+      help: 'Example: move chunk that contains the doc {num : 7} to shard001\n' +
+        "  { movechunk : 'test.foo' , find : { num : 7 } , to : 'shard0001' }\n" +
+        'Example: move chunk with lower bound 0 and upper bound 10 to shard001\n' +
+        "  { movechunk : 'test.foo' , bounds : [ { num : 0 } , { num : 10 } ]  , to : 'shard001' }\n",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    movePrimary: {
+      help: " example: { moveprimary : 'foo' , to : 'localhost:9999' }",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    moveRange: {
+      help: 'Example: move range starting from {num : 7} to shard001 (max bound automatically chosen)\n' +
+        "  { moveRange : 'test.foo' , min : { num : 7 } , to : 'shard0001' }\n" +
+        'Example: move range with lower bound 0 and upper bound 10 to shard001\n' +
+        "  { moveRange : 'test.foo' , min : { num : 0 } , max: { num : 10 }  , to : 'shard001' }\n",
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    netstat: {
+      help: 'Shows status/reachability of servers in the cluster',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    ping: {
+      help: 'a way to check that the server is alive. responds immediately even if server is in a db lock.',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    planCacheClear: {
+      help: 'Drops one or all plan cache entries for a collection.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    planCacheClearFilters: {
+      help: 'Clears index filter for a single query shape or, if the query shape is omitted, all filters for the collection.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    planCacheListFilters: {
+      help: 'Displays index filters for all query shapes in a collection.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    planCacheSetFilter: {
+      help: 'Sets index filter for a query shape. Overrides existing index filter.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    profile: {
+      help: 'controls the behaviour of the performance profiler, the fraction of eligible operations which are sampled for logging/profiling, and the threshold duration at which ops become eligible. See http://docs.mongodb.org/manual/reference/command/profile',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    refineCollectionShardKey: {
+      help: "Adds a suffix to the shard key of an existing collection ('refines the shard key').",
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    refreshSessions: {
+      help: 'renew a set of logical sessions',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    removeShard: {
+      help: 'remove a shard from the system.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    removeShardFromZone: {
+      help: 'removes a shard from the zone',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    renameCollection: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    repairShardedCollectionChunksHistory: {
+      help: "Administrative command to repair the effects of SERVER-62065. If the collection has been upgraded through a cluster comprised of binaries which do not contain this command, the chunks cache collections on the shards will miss history entries. This command will correct that and will mark such collections as correctly repaired, so that a subsequent invocation will not cause any changes to the routing information. In rare cases where the history entries are missing due to corrupted restore, the 'force:true' parameter can be passed which will force all history entries to be re-added.",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    replSetGetStatus: {
+      help: 'Not supported through mongos',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    reshardCollection: {
+      help: 'Reshard an already sharded collection on a new shard key.',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    revokePrivilegesFromRole: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    revokeRolesFromRole: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    revokeRolesFromUser: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    rolesInfo: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    rotateCertificates: {
+      help: 'Rotate certificates for new SSL connections',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    saslContinue: {
+      help: 'Subsequent steps in a SASL authentication conversation.',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    saslStart: {
+      help: 'First step in a SASL authentication conversation.',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    serverStatus: {
+      help: 'returns lots of administrative server statistics',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setAllowMigrations: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setClusterParameter: {
+      help: 'Set a cluster wide parameter on every node',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setDefaultRWConcern: {
+      help: 'Sets the default read or write concern for a cluster',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setFeatureCompatibilityVersion: {
+      help: "Set the featureCompatibilityVersion used by this cluster. If set to '5.0', then features introduced in versions greater than '5.0' will be disabled If set to '5.3', then features introduced in '6.0' will be disabled. If set to '6.0', then '6.0' features are enabled, and all nodes in the cluster must be binary version 6.0. See https://docs.mongodb.com/master/release-notes/5.0-compatibility/#feature-compatibility.",
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setIndexCommitQuorum: {
+      help: 'Resets the commitQuorum for the given index builds in a collection. Usage:\n' +
+        '{\n' +
+        '    setIndexCommitQuorum: <string> collection name,\n' +
+        '    indexNames: array<string> list of index names,\n' +
+        '    commitQuorum: <string|number|object> option to define the required quorum for\n' +
+        '                  the index builds to commit\n' +
+        '}',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setParameter: {
+      help: 'set administrative option(s)\n' +
+        '{ setParameter:1, <param>:<value> }\n' +
+        'supported:\n' +
+        '  AlwaysRecordTraffic\n' +
+        '  KeysRotationIntervalSec\n' +
+        '  KillSessionsMaxConcurrency\n' +
+        '  KillSessionsPerHostTimeoutMS\n' +
+        '  ShardingTaskExecutorPoolHostTimeoutMS\n' +
+        '  ShardingTaskExecutorPoolMaxConnecting\n' +
+        '  ShardingTaskExecutorPoolMaxSize\n' +
+        '  ShardingTaskExecutorPoolMaxSizeForConfigServers\n' +
+        '  ShardingTaskExecutorPoolMinSize\n' +
+        '  ShardingTaskExecutorPoolMinSizeForConfigServers\n' +
+        '  ShardingTaskExecutorPoolRefreshRequirementMS\n' +
+        '  ShardingTaskExecutorPoolRefreshTimeoutMS\n' +
+        '  ShardingTaskExecutorPoolReplicaSetMatching\n' +
+        '  TransactionRecordMinimumLifetimeMinutes\n' +
+        '  acceptApiVersion2\n' +
+        '  activeFaultDurationSecs\n' +
+        '  aggregateOperationResourceConsumptionMetrics\n' +
+        '  allowMultipleArbiters\n' +
+        '  allowRolesFromX509Certificates\n' +
+        '  authSchemaVersion\n' +
+        '  authenticationMechanisms\n' +
+        '  authorizationManagerCacheSize\n' +
+        '  authorizationManagerPinnedUsers\n' +
+        '  authorizationManagerPinnedUsersRefreshIntervalMillis\n' +
+        '  automationServiceDescriptor\n' +
+        '  awsEC2InstanceMetadataUrl\n' +
+        '  awsECSInstanceMetadataUrl\n' +
+        '  backtraceLogFile\n' +
+        '  batchedExpiredChangeStreamPreImageRemoval\n' +
+        '  bgSyncOplogFetcherBatchSize\n' +
+        '  bsonTestValidationVersion\n' +
+        '  changeSyncSourceThresholdMillis\n' +
+        '  clientCursorMonitorFrequencySecs\n' +
+        '  clusterAuthMode\n' +
+        '  collectionBulkLoaderBatchSizeInBytes\n' +
+        '  collectionClonerBatchSize\n' +
+        '  collectionClonerUsesExhaust\n' +
+        '  configReplicasProbedByHealthMonitoring\n' +
+        '  connPoolMaxConnsPerHost\n' +
+        '  connPoolMaxInUseConnsPerHost\n' +
+        '  connectTimeoutMs\n' +
+        '  cursorTimeoutMillis\n' +
+        '  defaultFindReplicaSetHostTimeoutMS\n' +
+        '  deprecatedWireOpsWarningPeriodInSeconds\n' +
+        '  diagnosticDataCollectionDirectoryPath\n' +
+        '  diagnosticDataCollectionDirectorySizeMB\n' +
+        '  diagnosticDataCollectionEnableLatencyHistograms\n' +
+        '  diagnosticDataCollectionEnabled\n' +
+        '  diagnosticDataCollectionFileSizeMB\n' +
+        '  diagnosticDataCollectionPeriodMillis\n' +
+        '  diagnosticDataCollectionSamplesPerChunk\n' +
+        '  diagnosticDataCollectionSamplesPerInterimUpdate\n' +
+        '  diagnosticDataCollectionVerboseTCMalloc\n' +
+        '  disableJavaScriptJIT\n' +
+        '  disableLogicalSessionCacheRefresh\n' +
+        '  disableNonSSLConnectionLogging\n' +
+        '  disableNonTLSConnectionLogging\n' +
+        '  disableSplitHorizonIPCheck\n' +
+        '  disabledSecureAllocatorDomains\n' +
+        '  documentUnitSizeBytes\n' +
+        '  enableDefaultWriteConcernUpdatesForInitiate\n' +
+        '  enableFinerGrainedCatalogCacheRefresh\n' +
+        '  enableLocalhostAuthBypass\n' +
+        '  enableOverrideClusterChainingSetting\n' +
+        '  enableReconfigRollbackCommittedWritesCheck\n' +
+        '  enableSearchMeta\n' +
+        '  enableTemporarilyUnavailableExceptions\n' +
+        '  enableTestCommands\n' +
+        '  enableTimeoutOfInactiveSessionCursors\n' +
+        '  enforceUserClusterSeparation\n' +
+        '  expiredChangeStreamPreImageRemovalJobSleepSecs\n' +
+        '  fassertOnLockTimeoutForStepUpDown\n' +
+        '  featureFlagAlwaysCreateConfigTransactionsPartialIndexOnStepUp\n' +
+        '  featureFlagBalanceAccordingToDataSize\n' +
+        '  featureFlagBatchMultiDeletes\n' +
+        '  featureFlagBlender\n' +
+        '  featureFlagBucketUnpackWithSort\n' +
+        '  featureFlagChangeStreamPreAndPostImages\n' +
+        '  featureFlagChangeStreamsFurtherEnrichedEvents\n' +
+        '  featureFlagChangeStreamsRewrite\n' +
+        '  featureFlagChangeStreamsVisibility\n' +
+        '  featureFlagClusterWideConfig\n' +
+        '  featureFlagClusterWideConfigM2\n' +
+        '  featureFlagClusteredIndexes\n' +
+        '  featureFlagCollModIndexUnique\n' +
+        '  featureFlagColumnstoreIndexes\n' +
+        '  featureFlagCommandsAcceptCollectionUUID\n' +
+        '  featureFlagCommonQueryFramework\n' +
+        '  featureFlagConcurrencyInChunkMigration\n' +
+        '  featureFlagConnHealthMetrics\n' +
+        '  featureFlagDerivedMetadata\n' +
+        '  featureFlagDocumentSourceListCatalog\n' +
+        '  featureFlagEnableExecutionControl\n' +
+        '  featureFlagEnableShardingOptional\n' +
+        '  featureFlagExactTopNAccumulator\n' +
+        '  featureFlagFLE2\n' +
+        '  featureFlagFileCopyBasedInitialSync\n' +
+        '  featureFlagFill\n' +
+        '  featureFlagFryer\n' +
+        '  featureFlagHealthMonitoring\n' +
+        '  featureFlagInternalTransactions\n' +
+        '  featureFlagLastPointQuery\n' +
+        '  featureFlagLoadBalancer\n' +
+        '  featureFlagLocf\n' +
+        '  featureFlagMigrationRecipientCriticalSection\n' +
+        '  featureFlagMongoStore\n' +
+        '  featureFlagNewPersistedChunkVersionFormat\n' +
+        '  featureFlagNewWriteErrorExceptionFormat\n' +
+        '  featureFlagNoChangeStreamEventsDueToOrphans\n' +
+        '  featureFlagNoMoreAutoSplitter\n' +
+        '  featureFlagOptionalCfgSvr\n' +
+        '  featureFlagOrphanTracking\n' +
+        '  featureFlagPerCollBalancingSettings\n' +
+        '  featureFlagQueryStats\n' +
+        '  featureFlagRecoverableRefineCollectionShardKeyCoordinator\n' +
+        '  featureFlagRecoverableShardsvrReshardCollectionCoordinator\n' +
+        '  featureFlagRequireTenantID\n' +
+        '  featureFlagResharding\n' +
+        '  featureFlagRetryableFindAndModify\n' +
+        '  featureFlagSBEGroupPushdown\n' +
+        '  featureFlagSBELookupPushdown\n' +
+        '  featureFlagSbeFull\n' +
+        '  featureFlagSbePlanCache\n' +
+        '  featureFlagSearchBatchSizeLimit\n' +
+        '  featureFlagSearchMeta\n' +
+        '  featureFlagSearchShardedFacets\n' +
+        '  featureFlagSelectiveBackup\n' +
+        '  featureFlagShardKeyIndexOptionalHashedSharding\n' +
+        '  featureFlagShardMerge\n' +
+        '  featureFlagShardSplit\n' +
+        '  featureFlagShardedLookup\n' +
+        '  featureFlagShardedSearchCustomSort\n' +
+        '  featureFlagShardedTimeSeries\n' +
+        '  featureFlagShardedTimeSeriesUpdateDelete\n' +
+        '  featureFlagShardingDataTransformMetrics\n' +
+        '  featureFlagSortArray\n' +
+        '  featureFlagSpoon\n' +
+        '  featureFlagTimeseriesBucketCompression\n' +
+        '  featureFlagTimeseriesBucketCompressionWithArrays\n' +
+        '  featureFlagTimeseriesMetricIndexes\n' +
+        '  featureFlagTimeseriesUpdatesAndDeletes\n' +
+        '  featureFlagToaster\n' +
+        '  featureFlagUpdateDocumentShardKeyUsingTransactionApi\n' +
+        '  featureFlagUserWriteBlocking\n' +
+        '  featureFlagVectorSearchPublicPreview\n' +
+        '  fileBasedInitialSyncExtendCursorTimeoutMS\n' +
+        '  fileBasedInitialSyncMaxCyclesWithoutProgress\n' +
+        '  fileBasedInitialSyncMaxLagSec\n' +
+        '  findChunksOnConfigTimeoutMS\n' +
+        '  fixedServiceExecutorRecursionLimit\n' +
+        '  fixedServiceExecutorThreadLimit\n' +
+        '  forceRollbackViaRefetch\n' +
+        '  globalConnPoolIdleTimeoutMinutes\n' +
+        '  healthMonitoringIntensities\n' +
+        '  healthMonitoringIntervals\n' +
+        '  heapProfilingEnabled\n' +
+        '  heapProfilingSampleIntervalBytes\n' +
+        '  heartBeatFrequencyMs\n' +
+        '  honorSystemUmask\n' +
+        '  httpVerboseLogging\n' +
+        '  indexEntryUnitSizeBytes\n' +
+        '  indexMaxNumGeneratedKeysPerDocument\n' +
+        '  initialServiceExecutorThreadingModel\n' +
+        '  initialSyncMethod\n' +
+        '  initialSyncOplogBuffer\n' +
+        '  initialSyncOplogBufferPeekCacheSize\n' +
+        '  initialSyncOplogFetcherBatchSize\n' +
+        '  initialSyncSourceReadPreference\n' +
+        '  initialSyncTransientErrorRetryPeriodSeconds\n' +
+        '  internalCascadesOptimizerDisableBranchAndBound\n' +
+        '  internalCascadesOptimizerDisableGroupByAndUnionRIDIntersect\n' +
+        '  internalCascadesOptimizerDisableHashJoinRIDIntersect\n' +
+        '  internalCascadesOptimizerDisableIndexes\n' +
+        '  internalCascadesOptimizerDisableMergeJoinRIDIntersect\n' +
+        '  internalCascadesOptimizerDisableScan\n' +
+        '  internalCascadesOptimizerKeepRejectedPlans\n' +
+        '  internalDocumentSourceCursorBatchSizeBytes\n' +
+        '  internalDocumentSourceDensifyMaxMemoryBytes\n' +
+        '  internalDocumentSourceGroupMaxMemoryBytes\n' +
+        '  internalDocumentSourceLookupCacheSizeBytes\n' +
+        '  internalDocumentSourceSetWindowFieldsMaxMemoryBytes\n' +
+        '  internalGeoNearQuery2DMaxCoveringCells\n' +
+        '  internalGeoPredicateQuery2DMaxCoveringCells\n' +
+        '  internalInsertMaxBatchSize\n' +
+        '  internalLookupStageIntermediateDocumentMaxSizeBytes\n' +
+        '  internalMaxSubPipelineViewDepth\n' +
+        '  internalPartialFilterExpressionMaxDepth\n' +
+        '  internalPipelineLengthLimit\n' +
+        '  internalProhibitShardOperationRetry\n' +
+        '  internalQueryAggMulticastMaxConcurrency\n' +
+        '  internalQueryAggMulticastTimeoutMS\n' +
+        '  internalQueryAlwaysMergeOnPrimaryShard\n' +
+        '  internalQueryAppendIdToSetWindowFieldsSort\n' +
+        '  internalQueryCacheDisableInactiveEntries\n' +
+        '  internalQueryCacheEvictionRatio\n' +
+        '  internalQueryCacheMaxEntriesPerCollection\n' +
+        '  internalQueryCacheMaxSizeBytesBeforeStripDebugInfo\n' +
+        '  internalQueryCacheSize\n' +
+        '  internalQueryCacheWorksGrowthCoefficient\n' +
+        '  internalQueryCollectionMaxDataSizeBytesToChooseHashJoin\n' +
+        '  internalQueryCollectionMaxNoOfDocumentsToChooseHashJoin\n' +
+        '  internalQueryCollectionMaxStorageSizeBytesToChooseHashJoin\n' +
+        '  internalQueryDefaultDOP\n' +
+        '  internalQueryDesugarWhereToFunction\n' +
+        '  internalQueryDisableExchange\n' +
+        '  internalQueryDisableLookupExecutionUsingHashJoin\n' +
+        '  internalQueryDocumentSourceWriterBatchExtraReservedBytes\n' +
+        '  internalQueryEnableCSTParser\n' +
+        '  internalQueryEnableCascadesOptimizer\n' +
+        '  internalQueryEnableLoggingV2OplogEntries\n' +
+        '  internalQueryEnableSamplingCardinalityEstimator\n' +
+        '  internalQueryEnumerationMaxIntersectPerAnd\n' +
+        '  internalQueryEnumerationMaxOrSolutions\n' +
+        '  internalQueryEnumerationPreferLockstepOrEnumeration\n' +
+        '  internalQueryExecYieldIterations\n' +
+        '  internalQueryExecYieldPeriodMS\n' +
+        '  internalQueryExplainSizeThresholdBytes\n' +
+        '  internalQueryFLEAlwaysUseHighCardinalityMode\n' +
+        '  internalQueryFLERewriteMemoryLimit\n' +
+        '  internalQueryFacetBufferSizeBytes\n' +
+        '  internalQueryFacetMaxOutputDocSizeBytes\n' +
+        '  internalQueryForceClassicEngine\n' +
+        '  internalQueryForceIntersectionPlans\n' +
+        '  internalQueryGlobalProfilingFilter\n' +
+        '  internalQueryIgnoreUnknownJSONSchemaKeywords\n' +
+        '  internalQueryJavaScriptFnTimeoutMillis\n' +
+        '  internalQueryJavaScriptHeapSizeLimitMB\n' +
+        '  internalQueryMaxAddToSetBytes\n' +
+        '  internalQueryMaxAllowedDensifyDocs\n' +
+        '  internalQueryMaxBlockingSortMemoryUsageBytes\n' +
+        '  internalQueryMaxDocValidationErrorConsideredValues\n' +
+        '  internalQueryMaxJsEmitBytes\n' +
+        '  internalQueryMaxNumberOfFieldsToChooseFilteredColumnScan\n' +
+        '  internalQueryMaxNumberOfFieldsToChooseUnfilteredColumnScan\n' +
+        '  internalQueryMaxPushBytes\n' +
+        '  internalQueryMaxRangeBytes\n' +
+        '  internalQueryMaxScansToExplode\n' +
+        '  internalQueryPlanEvaluationCollFraction\n' +
+        '  internalQueryPlanEvaluationCollFractionSbe\n' +
+        '  internalQueryPlanEvaluationMaxResults\n' +
+        '  internalQueryPlanEvaluationWorks\n' +
+        '  internalQueryPlanEvaluationWorksSbe\n' +
+        '  internalQueryPlanOrChildrenIndependently\n' +
+        '  internalQueryPlanTieBreakingWithIndexHeuristics\n' +
+        '  internalQueryPlannerEnableHashIntersection\n' +
+        '  internalQueryPlannerEnableIndexIntersection\n' +
+        '  internalQueryPlannerGenerateCoveredWholeIndexScans\n' +
+        '  internalQueryPlannerMaxIndexedSolutions\n' +
+        '  internalQueryProhibitBlockingMergeOnMongoS\n' +
+        '  internalQueryProhibitMergingOnMongoS\n' +
+        '  internalQueryS2GeoCoarsestLevel\n' +
+        '  internalQueryS2GeoFinestLevel\n' +
+        '  internalQueryS2GeoMaxCells\n' +
+        '  internalQuerySlotBasedExecutionDisableGroupPushdown\n' +
+        '  internalQuerySlotBasedExecutionDisableLookupPushdown\n' +
+        '  internalQuerySlotBasedExecutionHashAggApproxMemoryUseInBytesBeforeSpill\n' +
+        '  internalQuerySlotBasedExecutionHashAggForceIncreasedSpilling\n' +
+        '  internalQuerySlotBasedExecutionHashAggMemoryCheckPerAdvanceAtLeast\n' +
+        '  internalQuerySlotBasedExecutionHashAggMemoryCheckPerAdvanceAtMost\n' +
+        '  internalQuerySlotBasedExecutionHashAggMemoryUseCheckMargin\n' +
+        '  internalQuerySlotBasedExecutionHashLookupApproxMemoryUseInBytesBeforeSpill\n' +
+        '  internalQuerySlotBasedExecutionMaxStaticIndexScanIntervals\n' +
+        '  internalQuerySpillingMaxWaitTimeout\n' +
+        '  inter'... 4667 more characters,
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setProfilingFilterGlobally: {
+      help: 'updates a global filter that determines which operations are eligible for logging/profiling',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    setUserWriteBlockMode: {
+      help: 'Set whether user write blocking is enabled',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    shardCollection: {
+      help: 'Shard a collection. Requires key. Optional unique.',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    shutdown: {
+      help: "Shuts down the mongos. Must be run against the admin database and either (1) run from localhost or (2) run while authenticated with the shutdown privilege. Spends 'timeoutSecs' in quiesce mode, where the mongos continues to allow operations to run, but directs clients to route new operations to other mongos nodes.",
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    split: {
+      help: ' example: - split the shard that contains give key\n' +
+        "   { split : 'alleyinsider.blog.posts' , find : { ts : 1 } }\n" +
+        ' example: - split the shard that contains the key with this as the middle\n' +
+        "   { split : 'alleyinsider.blog.posts' , middle : { ts : 1 } }\n" +
+        ' NOTE: this does not move the chunks, it just creates a logical separation.',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    splitVector: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    startRecordingTraffic: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    startSession: {
+      help: 'start a logical session',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    stopRecordingTraffic: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    update: {
+      help: 'update documents',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [ '1' ],
+      deprecatedApiVersions: []
+    },
+    updateRole: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    updateUser: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    updateZoneKeyRange: {
+      help: 'assigns/remove a range of a sharded collection to a zone',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    usersInfo: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: false,
+      adminOnly: false,
+      secondaryOverrideOk: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    validate: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    validateDBMetadata: {
+      help: 'no help defined',
+      requiresAuth: true,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    waitForFailPoint: {
+      help: 'wait for a fail point to be entered a certain number of times',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: true,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    },
+    whatsmyuri: {
+      help: '{whatsmyuri:1}',
+      requiresAuth: false,
+      secondaryOk: true,
+      adminOnly: false,
+      apiVersions: [],
+      deprecatedApiVersions: []
+    }
+  },
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1739405174, i: 1 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1739405174, i: 1 })
+}
