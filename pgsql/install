@@ -1,0 +1,59 @@
+# Install the repository RPM:
+sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+# Disable the built-in PostgreSQL module:
+sudo dnf -qy module disable postgresql
+
+[root@rl01 pgsql]# dnf list|grep postgres|grep 17.4
+postgresql17.x86_64                                  17.4-1PGDG.rhel9                     @pgdg17
+postgresql17-libs.x86_64                             17.4-1PGDG.rhel9                     @pgdg17
+postgresql17-server.x86_64                           17.4-1PGDG.rhel9                     @pgdg17
+postgresql17-contrib.x86_64                          17.4-1PGDG.rhel9                     pgdg17
+postgresql17-devel.x86_64                            17.4-1PGDG.rhel9                     pgdg17
+postgresql17-docs.x86_64                             17.4-1PGDG.rhel9                     pgdg17
+postgresql17-llvmjit.x86_64                          17.4-1PGDG.rhel9                     pgdg17
+postgresql17-plperl.x86_64                           17.4-1PGDG.rhel9                     pgdg17
+postgresql17-plpython3.x86_64                        17.4-1PGDG.rhel9                     pgdg17
+postgresql17-pltcl.x86_64                            17.4-1PGDG.rhel9                     pgdg17
+postgresql17-test.x86_64                             17.4-1PGDG.rhel9                     pgdg17
+
+dnf install perl-IPC-Run
+
+Then, install all for research
+
+[root@rl01 SPECS]# yum install postgresql17-contrib.x86_64 postgresql17-devel.x86_64 postgresql17-llvmjit.x86_64 postgresql17-docs.x86_64 postgresql17-plpython3.x86_64 postgresql17-pltcl.x86_64 postgresql17-test.x86_64
+
+# Install PostgreSQL:
+sudo dnf install -y postgresql17-server
+
+# Optionally initialize the database and enable automatic start:
+
+ln -s /usr/lib/systemd/system/postgresql-17.service /usr/lib/systemd/system/postgresql.service
+
+modify /usr/lib/systemd/system/postgresql.service
+Environment=PGDATA=/var/tellme/pgsql/data
+
+sudo /usr/pgsql-17/bin/postgresql-17-setup initdb
+
+sudo systemctl enable postgresql-17
+sudo systemctl start postgresql-17
+
+peer only for local
+
+2. Create tablespaces(tablespace name should not be inside the data directory)
+mkdir -p /var/tellme/pgsql/cca
+chown postgres:postgres /var/tellme/pgsql/cca
+chmod 700 /var/tellme/pgsql/cca
+
+create tablespace cca location '/var/tellme/pgsql/cca';
+
+change tablespace location, just need to modify the pg_tblspc relevant symbolic link to new location, 
+
+Same way create temp directory, 
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+add
+shared_preload_libraries=pg_stat_statements
+into postgresql.conf file, reload it
+

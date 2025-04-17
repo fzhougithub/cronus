@@ -1,0 +1,78 @@
+🔥 Great question — you're digging into the **mechanics of yum/dnf repo handling**, and this is exactly how you get confident with managing package sources.
+
+---
+
+### 🧠 How DNF/YUM chooses which `[pgdg17*]` section to use:
+
+You're seeing multiple sections in `/etc/yum.repos.d/pgdg-redhat-all.repo`:
+
+```
+[pgdg17]
+[pgdg17-updates-testing]
+[pgdg17-source]
+[pgdg17-updates-testing-source]
+[pgdg17-debuginfo]
+[pgdg17-updates-testing-debuginfo]
+```
+
+But only `pgdg17` appears in your normal `dnf list` output. Why?
+
+---
+
+### 📌 Here's how DNF/YUM decides:
+
+Each section in a `.repo` file is a **separate repo** with its own config — DNF only uses the ones that are:
+
+- **Enabled** (i.e. `enabled=1`)
+- And **match the system's architecture** and **package type**
+
+Let's check what those extra sections are:
+
+| Repo ID                     | Purpose                                | Used by `dnf list`? |
+|----------------------------|----------------------------------------|----------------------|
+| `[pgdg17]`                 | **Main binary repo** (default)         | ✅ Yes               |
+| `[pgdg17-updates-testing]`| Pre-release/testing packages            | ❌ (disabled by default) |
+| `[pgdg17-source]`          | Source RPMs                            | ❌ (you don’t install from here) |
+| `[pgdg17-updates-testing-source]` | Testing + source packages       | ❌                    |
+| `[pgdg17-debuginfo]`       | Debugging symbols for developers       | ❌                    |
+| `[pgdg17-updates-testing-debuginfo]` | Debug + testing              | ❌                    |
+
+---
+
+### 🔍 How to verify which ones are active:
+
+Run:
+
+```bash
+dnf repolist all | grep pgdg17
+```
+
+Example output:
+
+```
+pgdg17                             enabled
+pgdg17-updates-testing             disabled
+pgdg17-source                      disabled
+pgdg17-updates-testing-source      disabled
+pgdg17-debuginfo                   disabled
+pgdg17-updates-testing-debuginfo  disabled
+```
+
+This tells you that only `[pgdg17]` is **enabled**, so that’s the only one `dnf list` pulls packages from.
+
+---
+
+### ✅ Summary:
+
+- All the `[pgdg17-*]` sections define *separate* repositories.
+- Only the ones with `enabled=1` will be used by `dnf list`, `dnf install`, etc.
+- The main `[pgdg17]` section is enabled by default — the rest are optional for dev/testing/debug use.
+
+If you want to enable or disable a specific one, just edit the `.repo` file or use:
+
+```bash
+dnf config-manager --set-enabled pgdg17-updates-testing
+dnf config-manager --set-disabled pgdg17-updates-testing
+```
+
+Let me know if you want to use a test repo or pin a package version — happy to help!

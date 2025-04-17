@@ -1,0 +1,34 @@
+-- Grant USAGE (allows the role to access objects in the schema)
+GRANT USAGE ON SCHEMA stock TO root;
+
+-- Grant CREATE (allows the role to create new objects in the schema)
+GRANT CREATE ON SCHEMA stock TO root;
+
+-- Grant all privileges on the schema itself
+GRANT ALL PRIVILEGES ON SCHEMA stock TO root;
+
+-- Grant all privileges on all existing tables in the schema
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA stock TO root;
+
+-- Grant all privileges on all sequences in the schema
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA stock TO root;
+
+-- Alter default privileges for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA stock
+GRANT ALL PRIVILEGES ON TABLES TO root;
+
+-- For future sequences
+ALTER DEFAULT PRIVILEGES IN SCHEMA stock
+GRANT ALL PRIVILEGES ON SEQUENCES TO root;
+
+ALTER SCHEMA stock OWNER TO root;
+
+-- Check schema privileges
+SELECT * FROM information_schema.schema_privileges 
+WHERE schema_name = 'stock';
+
+-- Check table privileges in the schema
+SELECT * FROM information_schema.table_privileges 
+WHERE table_schema = 'stock';
+
+SET search_path TO stock, "$user", public;
