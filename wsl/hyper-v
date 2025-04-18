@@ -1,0 +1,6 @@
+If using hyper-v, to mount the windows drive
+1. share the c drive
+2. install cifs binary
+    yum instal cifs-utils -y
+3. mount using network sharing
+    mount -t cifs //192.168.1.126/c /mnt/c -o username=admin,password=jgmjxdd
