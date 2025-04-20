@@ -9,6 +9,8 @@ Run the following command:
 
 kubectl drain <master-node-name> --ignore-daemonsets --delete-emptydir-data
 
+kubectl drain wentao --ignore-daemonsets --delete-emptydir-data --force --grace-period=0
+
 - Replace `<master-node-name>` with the name of your master node (e.g., `wentao`).
 - The `--ignore-daemonsets` flag ensures that DaemonSet-managed pods (e.g., kube-proxy, kube-flannel) are not evicted.
 - The `--delete-emptydir-data` flag ensures that pods using `emptyDir` volumes are deleted.
@@ -54,7 +56,7 @@ Run the following commands:
 sudo systemctl stop kubelet
 sudo systemctl stop docker
 
-
+kubectl delete pod --all -n kube-system --force --grace-period=0
 ---
 
 ### Step 5: **Shutdown WSL2 Instance**
@@ -102,3 +104,294 @@ Later, after you changed the wsl2 network to bridge, and modify restart all of t
 kubectl uncordon wentao
 
 This will bring the node to normal
+
+
+
+
+
+The issue you're encountering is that after draining and cordoning the master node (`wentao`), Kubernetes control plane processes (`etcd`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`) and other processes (`kube-proxy`, `flanneld`) are still running. This is expected because **draining and cordoning** a node only prevents new pods from being scheduled and evicts non-critical pods, but it does **not** stop the Kubernetes control plane components or static pods running on the master node. These components are managed as **static pods** (defined in `/etc/kubernetes/manifests/`) or by the kubelet, and they are not affected by `kubectl drain` or `kubectl cordon`.
+
+Your goal is to **gracefully shut down all Kubernetes processes** on the master node (`wentao`). Below, I’ll explain why these processes persist, how to safely shut them down, and whether killing them is appropriate. I’ll also address the context of your cluster (e.g., `NotReady` nodes, Flannel issues, and K8ssandra deployment) to ensure a clean shutdown without breaking your cluster.
+
+---
+
+### Why Are Processes Still Running After Drain/Cordon?
+
+1. **Drain and Cordon Behavior**:
+   - `kubectl drain wentao --ignore-daemonsets` evicts all non-daemonset, non-mirror pods from the node and marks it as unschedulable (`SchedulingDisabled`).
+   - `kubectl cordon wentao` only marks the node as unschedulable, preventing new pods from being scheduled.
+   - Neither command affects:
+     - **Static pods** (e.g., `etcd`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`), which are defined in `/etc/kubernetes/manifests/` and managed directly by the kubelet.
+     - **DaemonSet pods** (e.g., `kube-proxy`, `kube-flannel`), which are designed to run on every node (including masters) and are ignored by `--ignore-daemonsets`.
+     - Processes like `flanneld`, which may be running as a containerized process managed by the kubelet.
+
+2. **Static Pods**:
+   - The processes you listed (`etcd`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`) are running as static pods. Their manifests are in `/etc/kubernetes/manifests/` (e.g., `etcd.yaml`, `kube-apiserver.yaml`). The kubelet continuously monitors this directory and restarts these pods if they stop, unless the manifests are removed or the kubelet is stopped.
+
+3. **Kube-Proxy and Flannel**:
+   - `kube-proxy` and `flanneld` are running as DaemonSet pods in the `kube-system` and `kube-flannel` namespaces, respectively. They are not evicted by `drain` because `--ignore-daemonsets` was used.
+
+4. **Containerd Shim**:
+   - The `containerd-shim-runc-v2` process (PID 667) is a low-level container runtime process managing the `etcd` container. It’s part of `containerd`’s lifecycle for running pods.
+
+5. **Cluster Context**:
+   - Both nodes (`wentao` and `rl01`) are `NotReady`, indicating underlying issues (likely related to the Flannel CIDR parsing error and `CrashLoopBackOff` for `kube-flannel` and `kube-proxy`).
+   - The `containerd://1.7.27` runtime is consistent across nodes, which is good (earlier, `wentao` showed Docker chains, but it seems you’ve switched to `containerd`).
+
+---
+
+### Can You Kill the Running Processes?
+- **Killing processes is not recommended** as a first step because:
+  - Abruptly killing `etcd`, `kube-apiserver`, or other control plane components can corrupt the cluster state, especially if `etcd` doesn’t shut down cleanly.
+  - The kubelet will restart static pods unless their manifests are removed or the kubelet is stopped.
+  - Killing `kube-proxy` or `flanneld` without stopping their DaemonSets will cause them to be rescheduled.
+- **Instead**, you should **gracefully shut down** the processes by stopping the kubelet, removing static pod manifests, and stopping DaemonSet pods. This ensures the cluster state remains consistent and avoids data corruption.
+
+---
+
+### Steps to Gracefully Shut Down All Kubernetes Processes on `wentao`
+
+To shut down all Kubernetes-related processes (`etcd`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `kube-proxy`, `flanneld`) on the master node (`wentao`), follow these steps:
+
+#### Step 1: Verify Cluster State
+Before shutting down, confirm the cluster’s health and ensure you have backups, as shutting down the control plane will make the cluster temporarily unusable.
+
+1. **Check Nodes**:
+   ```bash
+   kubectl get nodes -o wide
+   ```
+   Both `wentao` and `rl01` are `NotReady`, so the cluster is already unstable. This suggests shutting down `wentao` won’t worsen the situation significantly, but we’ll proceed cautiously.
+
+2. **Check Pods**:
+   ```bash
+   kubectl get pods -A
+   ```
+   Note the state of `kube-flannel`, `kube-proxy`, `cert-manager`, and K8ssandra pods. They’re likely in `CrashLoopBackOff` or `ContainerCreating`.
+
+3. **Backup etcd**:
+   Since `etcd` stores the cluster state, back it up:
+   ```bash
+   ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+     --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+     --cert=/etc/kubernetes/pki/etcd/server.crt \
+     --key=/etc/kubernetes/pki/etcd/server.key \
+     snapshot save /root/etcd-backup.db
+   ```
+   Verify the backup:
+   ```bash
+   ls -l /root/etcd-backup.db
+   ```
+
+#### Step 2: Stop Kubelet
+The kubelet manages static pods and DaemonSet pods. Stopping it will halt most Kubernetes processes.
+
+1. **Stop Kubelet**:
+   On `wentao`:
+   ```bash
+   systemctl stop kubelet
+   systemctl status kubelet
+   ```
+
+2. **Verify Processes**:
+   Check if static pods are still running:
+   ```bash
+   ps -ef | grep kube
+   ```
+   The `etcd`, `kube-apiserver`, `kube-controller-manager`, and `kube-scheduler` processes should stop, as their containers are managed by the kubelet. If they persist, proceed to Step 3.
+
+#### Step 3: Remove Static Pod Manifests
+If stopping the kubelet doesn’t stop the control plane processes (e.g., due to a stale kubelet state), move the static pod manifests.
+
+1. **List Manifests**:
+   ```bash
+   ls /etc/kubernetes/manifests/
+   ```
+   You should see:
+   - `etcd.yaml`
+   - `kube-apiserver.yaml`
+   - `kube-controller-manager.yaml`
+   - `kube-scheduler.yaml`
+
+2. **Move Manifests**:
+   Move them to a backup directory:
+   ```bash
+   mkdir /root/kube-manifests-backup
+   mv /etc/kubernetes/manifests/*.yaml /root/kube-manifests-backup/
+   ```
+
+3. **Wait and Verify**:
+   The kubelet (if still running) will detect the missing manifests and stop the pods. Wait 30 seconds and check:
+   ```bash
+   ps -ef | grep kube
+   ```
+   The control plane processes (`etcd`, `kube-apiserver`, etc.) should be gone.
+
+#### Step 4: Stop DaemonSet Pods (`kube-proxy`, `flanneld`)
+The `kube-proxy` and `flanneld` processes are running as DaemonSet pods and won’t stop automatically.
+
+1. **Delete Pods**:
+   Since `wentao` is cordoned, deleting the pods will prevent them from rescheduling:
+   ```bash
+   kubectl -n kube-system delete pod -l k8s-app=kube-proxy --field-selector spec.nodeName=wentao
+   kubectl -n kube-flannel delete pod -l app=flannel --field-selector spec.nodeName=wentao
+   ```
+
+2. **Verify**:
+   ```bash
+   kubectl -n kube-system get pods -o wide
+   kubectl -n kube-flannel get pods -o wide
+   ```
+   Ensure no `kube-proxy` or `flanneld` pods are running on `wentao`.
+
+3. **Stop Containerd (Optional)**:
+   If `kube-proxy` or `flanneld` processes persist, stop `containerd` to terminate all containers:
+   ```bash
+   systemctl stop containerd
+   systemctl status containerd
+   ```
+
+#### Step 5: Clean Up Remaining Processes
+If any processes (e.g., `containerd-shim-runc-v2`, `/pause`) are still running:
+
+1. **Check Processes**:
+   ```bash
+   ps -ef | grep containerd
+   ps -ef | grep kube
+   ```
+
+2. **Gracefully Terminate**:
+   Send a `SIGTERM` to allow clean shutdown:
+   ```bash
+   kill -15 <pid>
+   ```
+   Replace `<pid>` with the PID of `containerd-shim-runc-v2` (e.g., 667) or other processes. Wait 10 seconds and check:
+   ```bash
+   ps -ef | grep <pid>
+   ```
+
+3. **Force Kill (Last Resort)**:
+   If processes don’t terminate, use `SIGKILL`:
+   ```bash
+   kill -9 <pid>
+   ```
+   **Warning**: Avoid killing `etcd` directly unless you’ve backed it up, as it risks data corruption.
+
+#### Step 6: Verify Shutdown
+Ensure no Kubernetes processes are running:
+```bash
+ps -ef | grep kube
+ps -ef | grep containerd
+```
+Only `containerd` itself (not `containerd-shim`) may remain if the service is still active.
+
+#### Step 7: Address Cluster Stability
+Since both nodes are `NotReady` and Flannel is failing due to the CIDR parsing error (`10.244.0.0/16,fd00:10:244::/48`), you’ll need to fix this before bringing `wentao` back online or deploying K8ssandra.
+
+1. **Fix Flannel ConfigMap**:
+   The error suggests a dual-stack CIDR issue. Edit the ConfigMap to use single-stack IPv4:
+   ```bash
+   kubectl -n kube-flannel edit configmap kube-flannel-cfg
+   ```
+   Set:
+   ```yaml
+   net-conf.json: |
+     {
+       "Network": "10.244.0.0/16",
+       "EnableNFTables": false,
+       "Backend": {
+         "Type": "vxlan"
+       }
+     }
+   ```
+
+2. **Clear CNI Files**:
+   On both nodes:
+   ```bash
+   rm -f /etc/cni/net.d/10-flannel.conflist
+   ```
+
+3. **Restart Services**:
+   On `rl01` (worker node, assuming it’s still running):
+   ```bash
+   systemctl restart kubelet
+   systemctl restart containerd
+   ```
+
+4. **Reapply Flannel**:
+   ```bash
+   kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+   ```
+
+5. **Verify Flannel**:
+   ```bash
+   kubectl -n kube-flannel get pods
+   iptables -L FLANNEL-FWD -v
+   ```
+
+#### Step 8: Bring `wentao` Back Online (Optional)
+If you want to restart the master node after shutting down:
+
+1. **Restore Manifests**:
+   ```bash
+   mv /root/kube-manifests-backup/*.yaml /etc/kubernetes/manifests/
+   ```
+
+2. **Start Kubelet and Containerd**:
+   ```bash
+   systemctl start containerd
+   systemctl start kubelet
+   ```
+
+3. **Uncordon Node**:
+   ```bash
+   kubectl uncordon wentao
+   ```
+
+4. **Verify Control Plane**:
+   ```bash
+   kubectl get pods -n kube-system
+   kubectl get nodes
+   ```
+
+#### Step 9: Proceed with K8ssandra
+Once the cluster is stable (nodes `Ready`, Flannel running), redeploy `cert-manager` and K8ssandra:
+```bash
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.15.1/cert-manager.yaml
+kubectl -n k8ssandra-operator delete pod -l app.kubernetes.io/name=k8ssandra-operator
+kubectl -n k8ssandra-operator delete pod -l app.kubernetes.io/name=cass-operator
+```
+Apply the `K8ssandraCluster` as before.
+
+---
+
+### Should You Kill Processes?
+- **Avoid killing** `etcd`, `kube-apiserver`, `kube-controller-manager`, or `kube-scheduler` directly unless you’ve stopped the kubelet and removed their manifests. Use `kill -15` only for `containerd-shim` or other non-critical processes if they persist.
+- **Preferred method**: Stop the kubelet and move manifests to ensure a graceful shutdown.
+- **Last resort**: Use `kill -9` only after backing up `etcd` and confirming no other option works.
+
+---
+
+### Why This Happened
+- **Drain/Cordon Limitations**: These commands don’t affect static pods or DaemonSets, which is why control plane and `kube-proxy`/`flanneld` processes persisted.
+- **Cluster Instability**: The `NotReady` nodes and Flannel CIDR error indicate deeper issues that must be fixed to deploy K8ssandra.
+- **Static Pods**: The kubelet keeps restarting these unless manifests are removed.
+
+---
+
+### If Issues Persist
+Share:
+- Flannel logs after fixing the ConfigMap:
+  ```bash
+  kubectl -n kube-flannel logs kube-flannel-ds-<suffix>
+  ```
+- Node and pod status:
+  ```bash
+  kubectl get nodes
+  kubectl get pods -A
+  ```
+- Process list after shutdown attempt:
+  ```bash
+  ps -ef | grep kube
+  ```
+
+This will help confirm if all processes are stopped and if Flannel is fixed. Let me know the results or if you need guidance on restarting the cluster!

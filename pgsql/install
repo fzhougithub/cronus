@@ -17,6 +17,9 @@ postgresql17-plpython3.x86_64                        17.4-1PGDG.rhel9           
 postgresql17-pltcl.x86_64                            17.4-1PGDG.rhel9                     pgdg17
 postgresql17-test.x86_64                             17.4-1PGDG.rhel9                     pgdg17
 
+modify /etc/yum.repos.d/rocky.repo
+enable it
+
 dnf install perl-IPC-Run
 
 Then, install all for research

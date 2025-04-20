@@ -1,0 +1,63 @@
+ SELECT * FROM pg_stat_wal_receiver;
+
+ SELECT CASE
+         WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn()
+         THEN 0
+         ELSE EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))
+       END AS replication_lag_seconds;
+
+ replication_lag_seconds
+-------------------------
+             1155.346784
+(1 row)
+
+
+-- Standby
+ALTER SYSTEM SET hot_standby_feedback = 'on';
+ALTER SYSTEM SET max_standby_streaming_delay = '5000';
+ALTER SYSTEM SET maintenance_work_mem = '256MB';
+ALTER SYSTEM SET wal_receiver_status_interval = '1s';
+ALTER SYSTEM SET wal_buffers = '16MB';
+ALTER SYSTEM SET wal_receiver_timeout = '60s';
+
+-- Primary
+ALTER SYSTEM SET max_wal_senders = 10;
+ALTER SYSTEM SET wal_compression = 'on';
+ALTER SYSTEM SET max_wal_size = '1GB';
+ALTER SYSTEM SET min_wal_size = '80MB';
+ALTER SYSTEM SET wal_sender_timeout = '60s';
+ALTER SYSTEM SET wal_keep_size = '512MB';
+
+SELECT pg_reload_conf();
+
+taskset -cp 0 <pid_of_startup_process>
+[root@Wentao scripts]# taskset -cp 1750751
+pid 1750751's current affinity list: 0-3
+
+because the apply is single process, 
+
+
+ 1012  taskset -cp 1750751
+ 1013  iftop -i eth0
+ 1014  iftop -i eth0 -f "port 5432"
+ 1015  nload eth0
+ 1016  renice -n -10 1750751
+ 1017  ps -p 1750751 -o pid,pri,nice
+ 1018  top
+
+
+SELECT pg_wal_replay_pause();
+SELECT pg_wal_replay_resume();
+
+SHOW wal_keep_size;
+SHOW archive_mode;
+SHOW archive_command;
+
+wait_event
+CheckpointerMain
+BgwriterMain
+RecoveryWalStream
+ArchiverMain
+WalSummarizerWal
+WalReceiverMain
+(7 rows)
