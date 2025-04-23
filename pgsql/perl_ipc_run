@@ -2,14 +2,21 @@ All of below solution from AI tools are garbage
 
 The perl-IPC-Run package is not typically included in the base Rocky Linux 9 repositories. To install it, you need to enable the CodeReady Builder (CRB) repository, which provides additional packages. You can then use the dnf package manager to install the package. 
 Here's a step-by-step guide:
+
 Enable the CRB repository:
 Open the /etc/yum.repos.d/rocky.repo file using a text editor.
 Locate the [crb] section.
 Change enabled=0 to enabled=1.
 Save the file.
-Run the command: sudo dnf update. 
+Run the command: 
+
+sudo dnf update. 
+
 Install the perl-IPC-Run package:
-Use the following command: sudo dnf install perl-IPC-Run. 
+Use the following command: 
+
+sudo dnf install perl-IPC-Run
+
 Optional: Check for dependencies:
 If you encounter issues, you might also need to install perl-IO-Tty as a dependency, using sudo dnf install perl-IO-Tty. 
 

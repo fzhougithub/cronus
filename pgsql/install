@@ -26,6 +26,8 @@ Then, install all for research
 
 [root@rl01 SPECS]# yum install postgresql17-contrib.x86_64 postgresql17-devel.x86_64 postgresql17-llvmjit.x86_64 postgresql17-docs.x86_64 postgresql17-plpython3.x86_64 postgresql17-pltcl.x86_64 postgresql17-test.x86_64
 
+yum install pg_cron_17
+
 # Install PostgreSQL:
 sudo dnf install -y postgresql17-server
 
