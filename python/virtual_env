@@ -1,0 +1,11 @@
+Per python, create virtual environment using
+python3 -m venv p3
+python3 -m pip install --upgrade pip
+pip3 install PyYAML
+
+ python3 -c "import yaml; yaml.safe_load(open('/etc/els1/elasticsearch.yml'))"
+
+
+Then, refer to the requirement.txt to install required python modules
+Keep update the requirements file by
+pip3 freeze > requirements.txt

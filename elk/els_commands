@@ -1,0 +1,27 @@
+[root@rl01 elk]# ls -larth /usr/share/elasticsearch/bin/
+total 3.3M
+-rwxr-xr-x. 1 root root  353 Apr 10 03:12 elasticsearch-users
+-rwxr-xr-x. 1 root root  353 Apr 10 03:12 elasticsearch-syskeygen
+-rwxr-xr-x. 1 root root 3.2M Apr 10 03:12 elasticsearch-sql-cli-8.18.0.jar
+-rwxr-xr-x. 1 root root  403 Apr 10 03:12 elasticsearch-sql-cli
+-rwxr-xr-x. 1 root root  353 Apr 10 03:12 elasticsearch-setup-passwords
+-rwxr-xr-x. 1 root root  353 Apr 10 03:12 elasticsearch-service-tokens
+-rwxr-xr-x. 1 root root  353 Apr 10 03:12 elasticsearch-saml-metadata
+-rwxr-xr-x. 1 root root  353 Apr 10 03:12 elasticsearch-reset-password
+-rwxr-xr-x. 1 root root  376 Apr 10 03:12 elasticsearch-reconfigure-node
+-rwxr-xr-x. 1 root root  352 Apr 10 03:12 elasticsearch-croneval
+-rwxr-xr-x. 1 root root  353 Apr 10 03:12 elasticsearch-create-enrollment-token
+-rwxr-xr-x. 1 root root  376 Apr 10 03:12 elasticsearch-certutil
+-rwxr-xr-x. 1 root root  376 Apr 10 03:12 elasticsearch-certgen
+-rwxr-xr-x. 1 root root  332 Apr 10 03:14 systemd-entrypoint
+-rwxr-xr-x. 1 root root   55 Apr 10 03:17 elasticsearch-shard
+-rwxr-xr-x. 1 root root  172 Apr 10 03:17 elasticsearch-plugin
+-rwxr-xr-x. 1 root root   55 Apr 10 03:17 elasticsearch-node
+-rwxr-xr-x. 1 root root   87 Apr 10 03:17 elasticsearch-keystore
+-rwxr-xr-x. 1 root root   84 Apr 10 03:17 elasticsearch-geoip
+-rwxr-xr-x. 1 root root 2.6K Apr 10 03:17 elasticsearch-env-from-file
+-rwxr-xr-x. 1 root root  674 Apr 10 03:17 elasticsearch-cli
+-rwxr-xr-x. 1 root root  101 Apr 10 03:17 elasticsearch
+drwxr-xr-x. 7 root root  129 Apr 26 00:30 ..
+-rwxr-xr-x. 1 root root 2.6K Apr 26 01:48 elasticsearch-env
+drwxr-xr-x. 2 root root 4.0K Apr 26 01:48 .

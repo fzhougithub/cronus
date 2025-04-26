@@ -1,0 +1,112 @@
+1. install jdk
+2. install elasticsearch
+rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+3. Create the repo file /etc/yum.repods.d/elasticsearch.repo
+
+ [elasticsearch-8.x]
+   name=Elasticsearch repository for 8.x packages
+   baseurl=https://artifacts.elastic.co/packages/8.x/yum
+   gpgcheck=1
+   gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+   enabled=1
+   autorefresh=1
+   type=rpm-md
+
+ dnf install elasticsearch -y
+
+make copy of /usr/lib/systemd/system/elasticsearch.service to 3 copies, els1.service, els2.service and els3.service
+RuntimeDirectory=els1
+Environment=ES_PATH_CONF=/etc/els1
+Environment=PID_DIR=/var/run/els1
+#EnvironmentFile=-/etc/sysconfig/elasticsearch
+
+replace the relevant value to els2 or els3 in relevant file
+
+cp /etc/elasticsearch/* /etc/els1/.
+cp /etc/elasticsearch/* /etc/els2/.
+cp /etc/elasticsearch/* /etc/els3/.
+
+chown -R root.elasticsearch /etc/els1
+chown -R root.elasticsearch /etc/els2
+chown -R root.elasticsearch /etc/els3
+
+mkdir /var/tellme/els1
+mkdir /var/tellme/els2
+mkdir /var/tellme/els3
+mkdir /var/tellme/log/els1
+mkdir /var/tellme/log/els2
+mkdir /var/tellme/log/els3
+
+chown -R elasticsearch.elasticsearch /var/tellme/els1
+chown -R elasticsearch.elasticsearch /var/tellme/els2
+chown -R elasticsearch.elasticsearch /var/tellme/els3
+
+
+vi each elsN elasticsearch.yml file
+
+   cluster.name: els
+   network.host: 0.0.0.0
+   http.port: 9200
+
+the port should be different, 9200,9201,9203
+
+example
+
+[root@rl01 elasticsearch]# grep -v '#' /etc/els1/elasticsearch.yml|sed '/^$/d'
+cluster.name: els
+node.name: els1
+node.attr.rack: r1
+path.data: /var/tellme/els1
+path.logs: /var/tellme/log/els1
+network.host: 0.0.0.0
+http.port: 9201
+discovery.seed_hosts: ["127.0.0.1:9201", "127.0.0.1:9202"]
+cluster.initial_master_nodes: ["els1", "els2"]
+action.destructive_requires_name: false
+xpack.security.enabled: true
+xpack.security.enrollment.enabled: true
+xpack.security.http.ssl:
+  enabled: true
+  keystore.path: certs/http.p12
+xpack.security.transport.ssl:
+  enabled: true
+  verification_mode: certificate
+  keystore.path: certs/transport.p12
+  truststore.path: certs/transport.p12
+http.host: 0.0.0.0
+transport.host: 0.0.0.0
+
+python3 -c "import yaml; yaml.safe_load(open('/etc/els1/elasticsearch.yml'))"
+
+
+Make the relevant config for els2 and els3
+
+Adjust the jvm setup
+
+[root@rl01 ~]# grep -v "#" /etc/els1/jvm.options|sed '/^$/d'
+-XX:+UseG1GC
+-Djava.io.tmpdir=${ES_TMPDIR}
+20-:--add-modules=jdk.incubator.vector
+23:-XX:CompileCommand=dontinline,java/lang/invoke/MethodHandle.setAsTypeCache
+23:-XX:CompileCommand=dontinline,java/lang/invoke/MethodHandle.asTypeUncached
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:+ExitOnOutOfMemoryError
+-XX:HeapDumpPath=/var/tellme/els1
+-XX:ErrorFile=/var/tellme/log/els1/hs_err_pid%p.log
+-Xlog:gc*,gc+age=trace,safepoint:file=/var/tellme/log/els1/gc.log:utctime,level,pid,tags:filecount=32,filesize=64m
+
+remeber to setup /etc/els1/jvm.options.d/2g.options
+[root@rl01 ~]# cat /etc/els1/jvm.options.d/2g.options
+-Xms4g
+-Xmx4g
+
+To start multi instance on one node, should modify and get rid off the /etc/system/elasticsearch.env file, it is the killer
+
+curl -X GET "http://localhost:9201"
+
+5. Reset the els login password
+
+elasticsearch-reset-password -u elastic -auto
+elasticsearch-reset-password -u elastic -i
+
+
