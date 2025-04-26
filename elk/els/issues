@@ -1,0 +1,56 @@
+[root@rl01 elk]# iptables -L -n
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+
+Chain KUBE-FIREWALL (2 references)
+target     prot opt source               destination
+DROP       all  -- !127.0.0.0/8          127.0.0.0/8          /* block incoming localnet connections */ ! ctstate RELATED,ESTABLISHED,DNAT
+
+Chain KUBE-KUBELET-CANARY (0 references)
+target     prot opt source               destination
+
+Because of it, the curl varification curl command fail, the previous setup kube environment block the els
+
+iptables -I INPUT -p tcp -d 127.0.0.1 --dport 9201 -j ACCEPT
+iptables -I INPUT -p tcp -d 127.0.0.1 --dport 9202 -j ACCEPT
+iptables -I INPUT -p tcp -d 127.0.0.1 --dport 9203 -j ACCEPT
+
+
+2. Even turn off the xpack security setup from elasticsearch.yaml file, still complain the security issue
+https://opster.com/guides/elasticsearch/security/how-to-disable-security-in-elasticsearch/
+add one line into config file
+
+xpack.security.enabled: false
+
+[root@rl01 ~]# export ES_CONF_PATH=/etc/els1
+[root@rl01 ~]# elasticsearch-keystore list
+autoconfiguration.password_hash
+keystore.seed
+xpack.security.http.ssl.keystore.secure_password
+xpack.security.transport.ssl.keystore.secure_password
+xpack.security.transport.ssl.truststore.secure_password
+[root@rl01 ~]# elasticsearch-keystore remove xpack.security.transport.ssl.keystore.secure_password
+[root@rl01 ~]# elasticsearch-keystore remove xpack.security.transport.ssl.truststore.secure_password
+[root@rl01 ~]# elasticsearch-keystore remove xpack.security.http.ssl.keystore.secure_password
+[root@rl01 ~]# elasticsearch-keystore list
+autoconfiguration.password_hash
+keystore.seed
+
+Then, the elasticsearch.keystore file ownership will be changed to root.root, you have to change it back to root.elasticsearch
+
+no need to run daemon-reload
+
+just systemctl restart els1
+
+Then, it works. 
+
+systemctl status els1
+curl -X GET "http://192.168.1.168:9201/_cluster/health?pretty"

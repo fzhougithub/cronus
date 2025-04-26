@@ -1,0 +1,17 @@
+# https://www.elastic.co/guide/en/elasticsearch/reference/index.html
+
+cluster.name: els
+node.name: els1
+node.attr.rack: r1
+path.data: /var/tellme/els1
+path.logs: /var/tellme/log/els1
+#bootstrap.memory_lock: true
+network.host: 0.0.0.0
+http.port: 9201
+transport.port: 9301
+discovery.seed_hosts: ["192.168.1.168:9301", "192.168.1.168:9302"]
+cluster.initial_master_nodes: ["els1", "els2"]
+action.destructive_requires_name: false
+http.host: 0.0.0.0
+transport.host: 0.0.0.0
+xpack.security.enabled: false

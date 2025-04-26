@@ -110,3 +110,40 @@ elasticsearch-reset-password -u elastic -auto
 elasticsearch-reset-password -u elastic -i
 
 
+[root@rl01 els]# systemctl status els1
+curl -X GET "http://192.168.1.168:9201/_cluster/health?pretty"
+● els1.service - Elasticsearch
+     Loaded: loaded (/usr/lib/systemd/system/els1.service; disabled; preset: disabled)
+     Active: active (running) since Sat 2025-04-26 05:05:06 PDT; 19min ago
+       Docs: https://www.elastic.co
+   Main PID: 312751 (java)
+      Tasks: 67 (limit: 98035)
+     Memory: 2.4G
+        CPU: 1min 19.112s
+     CGroup: /system.slice/els1.service
+             ├─312751 /usr/share/elasticsearch/jdk/bin/java -Xms4m -Xmx64m -XX:+UseSerialGC -Dcli.name=server -Dcli.script=/usr/share/elasticsearch/bin/elas>
+             ├─312812 /usr/share/elasticsearch/jdk/bin/java -Des.networkaddress.cache.ttl=60 -Des.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch ->
+             └─312832 /usr/share/elasticsearch/modules/x-pack-ml/platform/linux-x86_64/bin/controller
+
+Apr 26 05:04:04 rl01 systemd[1]: Starting Elasticsearch...
+Apr 26 05:05:06 rl01 systemd[1]: Started Elasticsearch.
+{
+  "cluster_name" : "els",
+  "status" : "green",
+  "timed_out" : false,
+  "number_of_nodes" : 2,
+  "number_of_data_nodes" : 2,
+  "active_primary_shards" : 0,
+  "active_shards" : 0,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 0,
+  "unassigned_primary_shards" : 0,
+  "delayed_unassigned_shards" : 0,
+  "number_of_pending_tasks" : 0,
+  "number_of_in_flight_fetch" : 0,
+  "task_max_waiting_in_queue_millis" : 0,
+  "active_shards_percent_as_number" : 100.0
+}
+
+
