@@ -1,0 +1,23 @@
+1. Many way to link logstash to target node log file
+Using a Network Filesystem (NFS or Samba):
+
+On 192.168.1.80 (PostgreSQL server):
+NFS: You would need to install the NFS server software (nfs-kernel-server on Debian/Ubuntu, nfs-utils on CentOS/RHEL/Fedora) and configure it to export the directory containing the PostgreSQL log file (/var/tellme/pgsql/) to the Logstash server. You might need to create this directory if it doesn't exist. You also need to ensure proper firewall rules are in place to allow NFS traffic.
+Samba (SMB/CIFS): You would need to install the Samba server software (samba on most distributions) and configure it to share the directory containing the PostgreSQL log file (/var/tellme/pgsql/) with the Logstash server. You'll also need to set up Samba users and permissions.
+On the Logstash server: You would then mount the exported NFS share or the Samba share to a local directory. The path in your Logstash file input would point to this local mount point.
+Using rsync or scp (Less Real-Time):
+
+On 192.168.1.80 (PostgreSQL server): Ensure rsync or openssh-server (for scp) is installed.
+On the Logstash server: You would set up a cron job or a similar mechanism to periodically copy the log file from 192.168.1.80 to a local directory on the Logstash server. Logstash would then read the local copy. This approach is not ideal for real-time log analysis.
+Using a Log Shipping Agent (e.g., Filebeat):
+
+On 192.168.1.80 (PostgreSQL server): You would install a lightweight log shipper like Filebeat. Filebeat would be configured to read the PostgreSQL log file and send the events directly to your Logstash instance (or even directly to Elasticsearch). This is often the most efficient and recommended approach for remote log collection in the Elastic Stack.
+On the Logstash server: You would configure a Logstash input plugin (like the beats input) to receive the data from Filebeat.
+Scenario 2: Logstash runs on the same server as PostgreSQL (192.168.1.80).
+
+In this simpler case, you likely don't need to install anything extra or pre-create directories specifically for Logstash's access to the log file, assuming the directory /var/tellme/pgsql/ and the log file postgresql.log already exist and the user running Logstash has the necessary read permissions.
+
+Therefore, to answer your question directly:
+
+If Logstash runs on a different server: You will likely need to install either NFS server, Samba server, or a log shipping agent like Filebeat on the 192.168.1.80 server. You might also need to create the directory /var/tellme/pgsql/ if it doesn't already exist and ensure PostgreSQL is writing logs there.
+If Logstash runs on 192.168.1.80: You primarily need to ensure the directory /var/tellme/pgsql/ and the log file exist and are readable by the Logstash user.

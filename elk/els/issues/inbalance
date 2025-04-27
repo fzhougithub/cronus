@@ -1,0 +1,272 @@
+curl -s GET "http://192.168.1.168:9201/_cluster/health?pretty"
+[root@rl01 els1]# curl -s GET "http://192.168.1.168:9201/_cluster/health?pretty"
+{
+  "cluster_name" : "els",
+  "status" : "green",
+  "timed_out" : false,
+  "number_of_nodes" : 3,
+  "number_of_data_nodes" : 3,
+  "active_primary_shards" : 40,
+  "active_shards" : 80,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 0,
+  "unassigned_primary_shards" : 0,
+  "delayed_unassigned_shards" : 0,
+  "number_of_pending_tasks" : 0,
+  "number_of_in_flight_fetch" : 0,
+  "task_max_waiting_in_queue_millis" : 0,
+  "active_shards_percent_as_number" : 100.0
+}
+
+[root@rl01 els1]# curl -s GET "http://192.168.1.168:9201/_cat/shards?v&h=index,shard,prirep,state,node&s=node"
+<html><body><h1>503 Service Unavailable</h1>No server is available to handle this request.</body></html>index                                                              shard prirep state   node
+.ds-.logs-deprecation.elasticsearch-default-2025.04.27-000001      0     r      STARTED els1
+.internal.alerts-observability.uptime.alerts-default-000001        0     r      STARTED els1
+.slo-observability.summary-v3.4.temp                               0     r      STARTED els1
+.apm-custom-link                                                   0     p      STARTED els1
+.internal.alerts-default.alerts-default-000001                     0     p      STARTED els1
+.internal.alerts-observability.slo.alerts-default-000001           0     r      STARTED els1
+.ds-ilm-history-7-2025.04.26-000001                                0     p      STARTED els1
+.internal.alerts-observability.logs.alerts-default-000001          0     r      STARTED els1
+.kibana_analytics_8.18.0_001                                       0     r      STARTED els1
+.internal.alerts-ml.anomaly-detection.alerts-default-000001        0     r      STARTED els1
+.apm-agent-configuration                                           0     r      STARTED els1
+.kibana_task_manager_8.18.0_001                                    0     p      STARTED els1
+.slo-observability.summary-v3.4                                    0     p      STARTED els1
+.kibana-siem-rule-migrations-integrations                          0     r      STARTED els1
+.ds-pgsql-template-2025.04.27-000001                               0     p      STARTED els1
+.ds-pgsql-template-2025.04.27-000001                               2     r      STARTED els1
+.internal.alerts-transform.health.alerts-default-000001            0     p      STARTED els1
+.kibana_usage_counters_8.18.0_001                                  0     r      STARTED els1
+.internal.alerts-observability.metrics.alerts-default-000001       0     p      STARTED els1
+.geoip_databases                                                   0     r      STARTED els1
+.kibana_ingest_8.18.0_001                                          0     r      STARTED els1
+.internal.alerts-ml.anomaly-detection-health.alerts-default-000001 0     p      STARTED els1
+.kibana-siem-rule-migrations-prebuiltrules                         0     p      STARTED els1
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      0     p      STARTED els1
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      2     p      STARTED els1
+.kibana_alerting_cases_8.18.0_001                                  0     p      STARTED els1
+.ds-.logs-deprecation.elasticsearch-default-2025.04.27-000001      0     p      STARTED els2
+.kibana_8.18.0_001                                                 0     r      STARTED els2
+.apm-custom-link                                                   0     r      STARTED els2
+.internal.alerts-default.alerts-default-000001                     0     r      STARTED els2
+.ds-ilm-history-7-2025.04.26-000001                                0     r      STARTED els2
+.ds-.kibana-event-log-ds-2025.04.26-000001                         0     p      STARTED els2
+.internal.alerts-observability.logs.alerts-default-000001          0     p      STARTED els2
+.kibana_entities-definitions-1                                     0     p      STARTED els2
+.internal.alerts-observability.apm.alerts-default-000001           0     p      STARTED els2
+.internal.alerts-observability.threshold.alerts-default-000001     0     p      STARTED els2
+.internal.alerts-stack.alerts-default-000001                       0     r      STARTED els2
+.kibana_analytics_8.18.0_001                                       0     p      STARTED els2
+.async-search                                                      0     r      STARTED els2
+.slo-observability.summary-v3.4                                    0     r      STARTED els2
+.kibana-siem-rule-migrations-integrations                          0     p      STARTED els2
+.apm-source-map                                                    0     r      STARTED els2
+.ds-pgsql-template-2025.04.27-000001                               1     r      STARTED els2
+.ds-pgsql-template-2025.04.27-000001                               2     p      STARTED els2
+.kibana_security_solution_8.18.0_001                               0     p      STARTED els2
+.kibana_usage_counters_8.18.0_001                                  0     p      STARTED els2
+.internal.alerts-observability.metrics.alerts-default-000001       0     r      STARTED els2
+.slo-observability.sli-v3.4                                        0     p      STARTED els2
+pgsql-2024.01.01-000001                                            0     r      STARTED els2
+.internal.alerts-ml.anomaly-detection-health.alerts-default-000001 0     r      STARTED els2
+.internal.alerts-security.alerts-default-000001                    0     r      STARTED els2
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      0     r      STARTED els2
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      1     r      STARTED els2
+.internal.alerts-observability.uptime.alerts-default-000001        0     p      STARTED els3
+.kibana_8.18.0_001                                                 0     p      STARTED els3
+.slo-observability.summary-v3.4.temp                               0     p      STARTED els3
+.internal.alerts-observability.slo.alerts-default-000001           0     p      STARTED els3
+.ds-.kibana-event-log-ds-2025.04.26-000001                         0     r      STARTED els3
+.kibana_entities-definitions-1                                     0     r      STARTED els3
+.internal.alerts-observability.apm.alerts-default-000001           0     r      STARTED els3
+.internal.alerts-observability.threshold.alerts-default-000001     0     r      STARTED els3
+.internal.alerts-stack.alerts-default-000001                       0     p      STARTED els3
+.internal.alerts-ml.anomaly-detection.alerts-default-000001        0     p      STARTED els3
+.apm-agent-configuration                                           0     p      STARTED els3
+.kibana_task_manager_8.18.0_001                                    0     r      STARTED els3
+.async-search                                                      0     p      STARTED els3
+.apm-source-map                                                    0     p      STARTED els3
+.ds-pgsql-template-2025.04.27-000001                               0     r      STARTED els3
+.ds-pgsql-template-2025.04.27-000001                               1     p      STARTED els3
+.kibana_security_solution_8.18.0_001                               0     r      STARTED els3
+.internal.alerts-transform.health.alerts-default-000001            0     r      STARTED els3
+.geoip_databases                                                   0     p      STARTED els3
+.slo-observability.sli-v3.4                                        0     r      STARTED els3
+pgsql-2024.01.01-000001                                            0     p      STARTED els3
+.kibana_ingest_8.18.0_001                                          0     p      STARTED els3
+.kibana-siem-rule-migrations-prebuiltrules                         0     r      STARTED els3
+.internal.alerts-security.alerts-default-000001                    0     p      STARTED els3
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      1     p      STARTED els3
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      2     r      STARTED els3
+.kibana_alerting_cases_8.18.0_001                                  0     r      STARTED els3
+
+
+[root@rl01 els1]# curl -s GET "http://192.168.1.168:9201/_cat/nodes?v&h=name,ip,heap*,ram*,disk*"
+<html><body><h1>503 Service Unavailable</h1>No server is available to handle this request.</body></html>name ip            heap.current heap.percent heap.max ram.current ram.percent ram.max disk.total disk.used disk.avail disk.used_percent
+els3 192.168.1.168      735.2mb           35      2gb      13.3gb          89  14.9gb     69.9gb    20.9gb     48.9gb             29.97
+els2 192.168.1.168        1.1gb           56      2gb      13.3gb          89  14.9gb     69.9gb    20.9gb     48.9gb             29.97
+els1 192.168.1.168          1gb           52      2gb      13.3gb          89  14.9gb     69.9gb    20.9gb     48.9gb             29.97
+
+[root@rl01 els1]# for i in {1..3};do ls -larth /var/tellme/log/els$i/;done
+total 138M
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 01:54 els_audit.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 01:54 els_index_search_slowlog.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 01:54 els_index_indexing_slowlog.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 03:17 gc.log.00
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 03:17 gc.log.01
+-rwxrwxrwx. 1 elasticsearch elasticsearch  47K Apr 26 03:27 gc.log.02
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 03:27 gc.log.03
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 03:27 gc.log.04
+-rwxrwxrwx. 1 elasticsearch elasticsearch  32K Apr 26 03:27 gc.log.05
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 03:30 gc.log.06
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 03:30 gc.log.07
+-rwxrwxrwx. 1 elasticsearch elasticsearch  35K Apr 26 03:31 gc.log.08
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 04:16 gc.log.09
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 04:16 gc.log.10
+-rwxrwxrwx. 1 elasticsearch elasticsearch  38K Apr 26 04:16 gc.log.11
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 04:19 gc.log.12
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 04:19 gc.log.13
+-rwxrwxrwx. 1 elasticsearch elasticsearch  30K Apr 26 04:20 gc.log.14
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 04:23 gc.log.15
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 04:24 gc.log.16
+-rwxrwxrwx. 1 elasticsearch elasticsearch  32K Apr 26 04:24 gc.log.17
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 05:04 gc.log.18
+-rwxrwxrwx. 1 elasticsearch elasticsearch 3.0K Apr 26 05:04 gc.log.19
+drwxrwxrwx. 2 root          root          4.0K Apr 26 05:04 .
+drwxrwxrwx. 7 root          root            72 Apr 26 15:01 ..
+-rwxrwxrwx. 1 elasticsearch elasticsearch  72M Apr 26 23:17 els_server.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch  66M Apr 26 23:17 els.log
+-rwxrwxrwx. 1 elasticsearch elasticsearch 1.1K Apr 27 00:35 els_deprecation.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch 359K Apr 27 01:42 gc.log
+total 1.4M
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 02:44 els_audit.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 02:44 els_index_search_slowlog.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 02:44 els_index_indexing_slowlog.json
+drwxrwxrwx. 7 root          root            72 Apr 26 15:01 ..
+-rw-r--r--. 1 elasticsearch elasticsearch 613K Apr 27 00:09 els-2025-04-26-1.log.gz
+-rw-r--r--. 1 elasticsearch elasticsearch 747K Apr 27 00:09 els-2025-04-26-1.json.gz
+drwxrwxrwx. 2 root          root          4.0K Apr 27 00:09 .
+-rwxrwxrwx. 1 elasticsearch elasticsearch 1.8K Apr 27 00:41 els_deprecation.json
+-rw-r--r--. 1 elasticsearch elasticsearch  23K Apr 27 01:39 els_server.json
+-rw-r--r--. 1 elasticsearch elasticsearch  12K Apr 27 01:39 els.log
+total 80K
+-rwxrwxrwx. 1 elasticsearch elasticsearch   0 Apr 26 05:34 els_audit.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch   0 Apr 26 05:34 els_deprecation.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch   0 Apr 26 05:34 els_index_search_slowlog.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch   0 Apr 26 05:34 els_index_indexing_slowlog.json
+drwxrwxrwx. 2 root          root          170 Apr 26 05:34 .
+drwxrwxrwx. 7 root          root           72 Apr 26 15:01 ..
+-rwxrwxrwx. 1 elasticsearch elasticsearch 55K Apr 26 23:17 els_server.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch 21K Apr 26 23:17 els.log
+
+curl -s GET "http://192.168.1.168:9201/_cat/indices"
+green open .internal.alerts-ml.anomaly-detection.alerts-default-000001        aUOmkBlzQBCLbIzeLi1HSw 1 1      0 0  498b 249b 249b
+green open .internal.alerts-default.alerts-default-000001                     oZRwdUeBQ3KdFjlAXUUxnA 1 1      0 0  498b 249b 249b
+green open .internal.alerts-security.alerts-default-000001                    7reX5maaTx-R66hQRhiOfA 1 1      0 0  498b 249b 249b
+green open .ds-pgsql-template-2025.04.27-000001                               2toWvqVDTFu518HeiUQ2_g 3 1      0 0 1.4kb 747b 747b
+green open .internal.alerts-ml.anomaly-detection-health.alerts-default-000001 bzoFxgAIQMKs8nbOqWK3sw 1 1      0 0  498b 249b 249b
+green open .internal.alerts-observability.uptime.alerts-default-000001        UxCsFKYaRXeM4uxK8we9qg 1 1      0 0  498b 249b 249b
+green open pgsql-2024.01.01-000001                                            VJcbm7DNSLOZYCRiBDvgaQ 1 1      0 0  498b 249b 249b
+green open .internal.alerts-observability.logs.alerts-default-000001          xHpV5kzKRTSCZwR-aok-bg 1 1      0 0  498b 249b 249b
+green open .ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      2IBvyYqXQMOgPck7OH7riw 3 1 133956 0  44mb 22mb 22mb
+green open .internal.alerts-observability.apm.alerts-default-000001           rlyJ2zg0RYyojGQ331B6MA 1 1      0 0  498b 249b 249b
+green open .internal.alerts-observability.slo.alerts-default-000001           Y8rtnXswTOykzJCaXrT0CA 1 1      0 0  498b 249b 249b
+green open .internal.alerts-transform.health.alerts-default-000001            9ZOOASQBTAuPeBKOzlmTAg 1 1      0 0  498b 249b 249b
+green open .internal.alerts-observability.metrics.alerts-default-000001       gsM2HPVNTI2WsBFRfVLRqg 1 1      0 0  498b 249b 249b
+green open .internal.alerts-stack.alerts-default-000001                       Dq3rQ5wJSJqsWULaUaYg4Q 1 1      0 0  498b 249b 249b
+green open .internal.alerts-observability.threshold.alerts-default-000001     dxdC5CsrThW5hTuqidh3Xw 1 1      0 0  498b 249b 249b
+[root@rl01 els1]# du -hs /var/tellme/els*
+du: cannot access '/var/tellme/els1/indices/e7cLoyt_SdWPQ0F7kKvw5g/0/index/_52m_ES812Postings_0.tmd': No such file or directory
+59M     /var/tellme/els1
+21M     /var/tellme/els2
+55M     /var/tellme/els3
+
+[root@rl01 els1]# curl -s GET "http://192.168.1.168:9201/_cat/shards?v&h=index,shard,prirep,state,node,store&s=node"
+index                                                              shard prirep state   node   store
+.internal.alerts-ml.anomaly-detection.alerts-default-000001        0     r      STARTED els1    249b
+.kibana_alerting_cases_8.18.0_001                                  0     p      STARTED els1   6.9kb
+.slo-observability.summary-v3.4.temp                               0     r      STARTED els1    249b
+.apm-custom-link                                                   0     p      STARTED els1    249b
+.internal.alerts-observability.uptime.alerts-default-000001        0     r      STARTED els1    249b
+.ds-.logs-deprecation.elasticsearch-default-2025.04.27-000001      0     r      STARTED els1  34.2kb
+.ds-ilm-history-7-2025.04.26-000001                                0     p      STARTED els1 131.9kb
+.apm-agent-configuration                                           0     r      STARTED els1    249b
+.internal.alerts-observability.metrics.alerts-default-000001       0     p      STARTED els1    249b
+.internal.alerts-ml.anomaly-detection-health.alerts-default-000001 0     p      STARTED els1    249b
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      0     p      STARTED els1   7.4mb
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      2     p      STARTED els1   7.5mb
+.kibana_task_manager_8.18.0_001                                    0     p      STARTED els1 169.8kb
+.kibana-siem-rule-migrations-integrations                          0     r      STARTED els1    249b
+.kibana-siem-rule-migrations-prebuiltrules                         0     p      STARTED els1    249b
+.internal.alerts-observability.slo.alerts-default-000001           0     r      STARTED els1    249b
+.ds-pgsql-template-2025.04.27-000001                               0     p      STARTED els1    249b
+.ds-pgsql-template-2025.04.27-000001                               2     r      STARTED els1    249b
+.internal.alerts-observability.logs.alerts-default-000001          0     r      STARTED els1    249b
+.geoip_databases                                                   0     r      STARTED els1  37.4mb
+.slo-observability.summary-v3.4                                    0     p      STARTED els1    249b
+.internal.alerts-transform.health.alerts-default-000001            0     p      STARTED els1    249b
+.kibana_ingest_8.18.0_001                                          0     r      STARTED els1    249b
+.internal.alerts-default.alerts-default-000001                     0     p      STARTED els1    249b
+.kibana_analytics_8.18.0_001                                       0     r      STARTED els1     3mb
+.kibana_usage_counters_8.18.0_001                                  0     r      STARTED els1 100.3kb
+.internal.alerts-observability.apm.alerts-default-000001           0     p      STARTED els2    249b
+.internal.alerts-security.alerts-default-000001                    0     r      STARTED els2    249b
+.apm-custom-link                                                   0     r      STARTED els2    249b
+.ds-.logs-deprecation.elasticsearch-default-2025.04.27-000001      0     p      STARTED els2  34.2kb
+.ds-ilm-history-7-2025.04.26-000001                                0     r      STARTED els2   132kb
+.async-search                                                      0     r      STARTED els2    250b
+.internal.alerts-observability.metrics.alerts-default-000001       0     r      STARTED els2    249b
+.internal.alerts-ml.anomaly-detection-health.alerts-default-000001 0     r      STARTED els2    249b
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      0     r      STARTED els2   7.4mb
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      1     r      STARTED els2   7.3mb
+.kibana_security_solution_8.18.0_001                               0     p      STARTED els2    31kb
+.kibana-siem-rule-migrations-integrations                          0     p      STARTED els2    249b
+pgsql-2024.01.01-000001                                            0     r      STARTED els2    249b
+.kibana_8.18.0_001                                                 0     r      STARTED els2  89.5kb
+.internal.alerts-observability.threshold.alerts-default-000001     0     p      STARTED els2    249b
+.ds-.kibana-event-log-ds-2025.04.26-000001                         0     p      STARTED els2   6.3kb
+.ds-pgsql-template-2025.04.27-000001                               1     r      STARTED els2    249b
+.ds-pgsql-template-2025.04.27-000001                               2     p      STARTED els2    249b
+.internal.alerts-observability.logs.alerts-default-000001          0     p      STARTED els2    249b
+.slo-observability.sli-v3.4                                        0     p      STARTED els2    249b
+.apm-source-map                                                    0     r      STARTED els2    249b
+.slo-observability.summary-v3.4                                    0     r      STARTED els2    249b
+.internal.alerts-stack.alerts-default-000001                       0     r      STARTED els2    249b
+.internal.alerts-default.alerts-default-000001                     0     r      STARTED els2    249b
+.kibana_analytics_8.18.0_001                                       0     p      STARTED els2     3mb
+.kibana_usage_counters_8.18.0_001                                  0     p      STARTED els2  48.4kb
+.kibana_entities-definitions-1                                     0     p      STARTED els2  27.7kb
+.internal.alerts-ml.anomaly-detection.alerts-default-000001        0     p      STARTED els3    249b
+.internal.alerts-observability.apm.alerts-default-000001           0     r      STARTED els3    249b
+.kibana_alerting_cases_8.18.0_001                                  0     r      STARTED els3   6.9kb
+.slo-observability.summary-v3.4.temp                               0     p      STARTED els3    249b
+.internal.alerts-security.alerts-default-000001                    0     p      STARTED els3    249b
+.internal.alerts-observability.uptime.alerts-default-000001        0     p      STARTED els3    249b
+.async-search                                                      0     p      STARTED els3    250b
+.apm-agent-configuration                                           0     p      STARTED els3    249b
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      1     p      STARTED els3   7.4mb
+.ds-pgsql-wentao-2025.04.27-2025.04.27-000001                      2     r      STARTED els3   7.5mb
+.kibana_task_manager_8.18.0_001                                    0     r      STARTED els3 122.2kb
+.kibana_security_solution_8.18.0_001                               0     r      STARTED els3    31kb
+pgsql-2024.01.01-000001                                            0     p      STARTED els3    249b
+.kibana-siem-rule-migrations-prebuiltrules                         0     r      STARTED els3    249b
+.kibana_8.18.0_001                                                 0     p      STARTED els3  56.1kb
+.internal.alerts-observability.threshold.alerts-default-000001     0     r      STARTED els3    249b
+.ds-.kibana-event-log-ds-2025.04.26-000001                         0     r      STARTED els3   6.3kb
+.internal.alerts-observability.slo.alerts-default-000001           0     p      STARTED els3    249b
+.ds-pgsql-template-2025.04.27-000001                               0     r      STARTED els3    249b
+.ds-pgsql-template-2025.04.27-000001                               1     p      STARTED els3    249b
+.slo-observability.sli-v3.4                                        0     r      STARTED els3    249b
+.geoip_databases                                                   0     p      STARTED els3  37.4mb
+.apm-source-map                                                    0     p      STARTED els3    249b
+.internal.alerts-stack.alerts-default-000001                       0     p      STARTED els3    249b
+.internal.alerts-transform.health.alerts-default-000001            0     r      STARTED els3    249b
+.kibana_ingest_8.18.0_001                                          0     p      STARTED els3    249b
+.kibana_entities-definitions-1                                     0     r      STARTED els3  32.7kb
+
+
+v: Adds a header row to the output.
+h=index,shard,prirep,state,node,store: Specifies that you want to see columns labeled "index", "shard", "prirep" (primary/replica), "state", "node", and "store" (size).
+s=node: Sorts the output rows by the "node" column.

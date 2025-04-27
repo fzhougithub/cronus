@@ -1,0 +1,28 @@
+Install filebeat on target database side
+
+sudo rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+sudo sh -c 'echo "[beats-elastic-co_repo]
+name=Elastic Beats Repository
+baseurl=https://artifacts.elastic.co/packages/8.x/yum
+enabled=1
+autorefresh=1
+gpgcheck=1
+gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch" > /etc/yum.repos.d/beats.repo'
+sudo yum install filebeat # or dnf install filebeat
+
+config filebeat
+
+vi /etc/filebeat/filebeat.yml
+filebeat.inputs:
+- type: filestream
+  enabled: true
+  paths:
+    - /var/tellme/pgsql/postgresql.log
+  fields:
+    log_type: postgresql
+  fields_under_root: true
+
+output.logstash:
+  hosts: ["192.168.1.168:5044"]   # Logstash server IP
+
+

@@ -146,4 +146,5 @@ Apr 26 05:05:06 rl01 systemd[1]: Started Elasticsearch.
   "active_shards_percent_as_number" : 100.0
 }
 
-
+alias es-curl='curl -s -X GET'
+es-curl "http://192.168.1.168:9201/_cluster/health" | jq .

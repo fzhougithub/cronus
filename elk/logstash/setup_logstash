@@ -1,0 +1,51 @@
+# Add the repository
+sudo rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+sudo cat > /etc/yum.repos.d/logstash.repo <<EOF
+[logstash-7.x]
+name=Elastic repository for 7.x packages
+baseurl=https://artifacts.elastic.co/packages/7.x/yum
+gpgcheck=1
+gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+enabled=1
+autorefresh=1
+type=rpm-md
+EOF
+
+# Install Logstash
+sudo yum install logstash
+
+
+ mkdir -p /var/tellme/logstash/data
+ mkdir -p /var/tellme/log/logstash
+chown logstash.logstash -R /var/tellme/logstash/
+
+Then, config logstash
+
+vi /etc/logstash/conf.d/postgresql.conf
+
+
+input {
+  beats {
+    port => 5044  # This opens 5044 for Filebeat
+    client_inactivity_timeout => 30  # Close idle connections after 30s
+    threads => 2                     # Match pipeline.workers
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://192.168.1.168:9201"]
+    index => "pgsql-%{[host][hostname]}"       # Base index name
+    ilm_enabled => true                        # Enable ILM
+    ilm_rollover_alias => "pgsql-%{[host][hostname]}-write"  # Alias for rollover
+    ilm_pattern => "{now/d}-000001"            # Date suffix (optional)
+    ilm_policy => "pgsql_logs_policy"          # Policy name (matches Step 1)
+  }
+}
+
+restart the logstash
+
+Test config using command
+
+sudo -u logstash /usr/share/logstash/bin/logstash --path.settings /etc/logstash -t
+

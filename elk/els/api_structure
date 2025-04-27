@@ -1,0 +1,39 @@
+You're asking about the top-level API structure in Elasticsearch, at the same level as `_cluster`. These top-level endpoints provide access to different categories of information and actions within your Elasticsearch instance.
+
+Here are some other common top-level API paths in Elasticsearch, at the same level as `_cluster`:
+
+**Core Management & Information:**
+
+* **`_cat/`**: Provides a concise and tabular output of various cluster information, making it easy to read in a terminal. Examples include:
+    * `_cat/health`: Similar to `_cluster/health` but in a table format.
+    * `_cat/indices`: Lists all indices in the cluster.
+    * `_cat/nodes`: Lists all nodes in the cluster.
+    * `_cat/shards`: Provides details about the shards in your indices.
+    * `_cat/allocation`: Shows shard allocation across nodes.
+* **`_nodes/`**: Provides detailed information about the nodes in your cluster. You can target specific nodes or retrieve cluster-wide node statistics.
+    * `_nodes`: Basic node information.
+    * `_nodes/stats`: Comprehensive statistics about each node (CPU, memory, disk, etc.).
+    * `_nodes/hot_threads`: Shows the hot threads running on each node.
+* **`_indices/` or the index name directly (e.g., `your_index/`)**: Used for managing and interacting with indices.
+    * `_indices`: Provides cluster-level index information and management options.
+    * `your_index`: Targets a specific index for operations like creating, deleting, updating mappings, and settings.
+    * `_all`: Targets all indices.
+* **`_search/` or `your_index/_search/`**: Used for searching data within one or more indices.
+* **`_bulk/`**: Allows performing multiple indexing or other operations in a single request.
+* **`_msearch/`**: Enables executing multiple search requests in a single request.
+* **`_ingest/`**: Manages ingest pipelines, which are used to process documents before indexing.
+* **`_scripts/`**: Manages stored scripts that can be used in queries and aggregations.
+* **`_tasks/`**: Monitors and manages currently running tasks in the cluster.
+* **`_snapshot/`**: Manages snapshots for backing up and restoring your cluster's data.
+* **`_security/`**: Used for managing security features like users, roles, and authentication (if Security is enabled).
+* **`_license/`**: Manages the Elasticsearch license (if applicable).
+* **`_features/`**: Lists the features enabled in your Elasticsearch instance.
+
+**Examples of using these endpoints:**
+
+* Get a list of all indices: `http://192.168.1.168:9201/_cat/indices`
+* Get the health of all indices: `http://192.168.1.168:9201/_indices/health`
+* Search within the `my_index`: `http://192.168.1.168:9201/my_index/_search`
+* Get statistics for all nodes: `http://192.168.1.168:9201/_nodes/stats`
+
+This list covers many of the common top-level API endpoints in Elasticsearch. The specific endpoints available might vary slightly depending on your Elasticsearch version and any installed plugins. For a comprehensive list, refer to the official Elasticsearch REST API documentation for your version.

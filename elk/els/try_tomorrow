@@ -1,0 +1,369 @@
+The presence of `kubernetes` keywords in the index template for your Filebeat-created index (`.ds-pgsql-wentao-2025.04.27-000001`) is unexpected, as your Filebeat configuration is set up to collect PostgreSQL logs from `/var/tellme/pgsql/postgresql.log` and not Kubernetes-related data. This suggests that the index template applied by Filebeat includes default or inherited mappings for Kubernetes fields, likely due to Filebeat’s default template or a misconfiguration. I’ll explain why this is happening, how it affects your setup, and how to fix it to ensure the index template is tailored for PostgreSQL logs. The response will be concise, tailored to your production-grade RHEL/CentOS-like environment, and aligned with your setup (Filebeat 8.18.0, Elasticsearch at `192.168.1.168:9201`, Kibana, and a three-node cluster).
+
+---
+
+### Why Are Kubernetes Keywords in the Index Template?
+The `kubernetes` fields (e.g., `kubernetes.pod.name`, `kubernetes.namespace`) appear in the index template because Filebeat’s default index template, loaded during the `filebeat setup --index-management` command, includes mappings for a wide range of data types, including Kubernetes metadata. Here’s a detailed explanation:
+
+1. **Default Filebeat Index Template**:
+   - Filebeat 8.18.0 uses a default index template that supports all Elastic Common Schema (ECS) fields, which include mappings for various data sources like logs, metrics, and Kubernetes metadata.
+   - When you ran `sudo filebeat setup --index-management -E 'output.elasticsearch.hosts=["http://192.168.1.168:9201"]'`, Filebeat applied a template named `pgsql` (as specified in `setup.template.name: "pgsql"` in `filebeat.yml`), but this template inherits ECS mappings, which include `kubernetes.*` fields for scenarios where Filebeat collects Kubernetes logs (e.g., via the Kubernetes module or autodiscover).
+
+2. **Your Configuration**:
+   - Your `filebeat.yml` specifies:
+     ```yaml
+     output.elasticsearch:
+       hosts: ["http://192.168.1.168:9201"]
+       index: "pgsql-%{[host][hostname]}-%{+yyyy.MM.dd}"
+       setup.template.name: "pgsql"
+       setup.template.pattern: "pgsql-*"
+     ```
+   - The `setup.template.name` and `setup.template.pattern` define the template, but you didn’t override the default mappings, so Filebeat used its generic ECS-based template, which includes `kubernetes` fields.
+
+3. **Data Stream Naming**:
+   - The index name `.ds-pgsql-wentao-2025.04.27-2025.04.27-000001` indicates Filebeat is using an Elasticsearch **data stream**, which is enabled by default when `setup.ilm.enabled: true` is set. Data streams automatically apply a template that includes ECS mappings, contributing to the `kubernetes` fields.
+
+4. **Impact**:
+   - The `kubernetes` fields in the template don’t affect your PostgreSQL logs, as your logs won’t populate these fields unless you’re collecting Kubernetes data.
+   - However, the bloated template can increase index overhead slightly and cause confusion in Kibana when exploring mappings or fields.
+
+---
+
+### How to Fix: Tailor the Index Template for PostgreSQL Logs
+To remove the `kubernetes` keywords and create a lean index template specific to PostgreSQL logs, you can override Filebeat’s default template with a custom one. Below is the updated procedure, building on your current setup.
+
+#### Updated Procedure Summary
+**Goal**: Ensure Filebeat 8.18.0 creates indices for PostgreSQL logs without unrelated mappings (e.g., `kubernetes` fields), injecting data directly into Elasticsearch (`192.168.1.168:9201`).
+
+##### 1. Stop Filebeat
+Temporarily stop Filebeat to prevent new data from being indexed while updating the template:
+
+```bash
+sudo systemctl stop filebeat
+```
+
+##### 2. Create a Custom Index Template
+Define a minimal index template for PostgreSQL logs, excluding unnecessary ECS fields like `kubernetes`.
+
+- **File**: `/etc/filebeat/pgsql_template.json`
+- **Content**:
+
+```json
+```json
+{
+  "index_patterns": ["pgsql-*"],
+  "data_stream": {},
+  "template": {
+    "settings": {
+      "index": {
+        "lifecycle.name": "pgsql_logs_policy",
+        "number_of_shards": 1,
+        "number_of_replicas": 1
+      }
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "message": { "type": "text" },
+        "log_source": { "type": "keyword" },
+        "host": {
+          "properties": {
+            "hostname": { "type": "keyword" }
+          }
+        },
+        "postgresql": {
+          "properties": {
+            "log": {
+              "properties": {
+                "message": { "type": "text" },
+                "level": { "type": "keyword" },
+                "timestamp": { "type": "date" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+```
+
+**Notes**:
+- Matches `pgsql-*` indices and links to `pgsql_logs_policy`.
+- Includes minimal fields for PostgreSQL logs (e.g., `message`, `log_source`, `host.hostname`, `postgresql.log.*`).
+- Excludes `kubernetes` and other unrelated ECS fields.
+
+Apply the template to Elasticsearch:
+
+```bash
+curl -X PUT "http://192.168.1.168:9201/_index_template/pgsql" -H "Content-Type: application/json" -d @/etc/filebeat/pgsql_template.json
+```
+
+Verify:
+```bash
+curl -s -X GET "http://192.168.1.168:9201/_index_template/pgsql" | jq .
+```
+
+Check for `kubernetes`:
+```bash
+curl -s -X GET "http://192.168.1.168:9201/_index_template/pgsql" | jq . | grep kubernetes
+```
+
+If no output, the template is clean.
+
+##### 3. Update Filebeat Configuration
+Modify `/etc/filebeat/filebeat.yml` to use the custom template and ensure data stream compatibility:
+
+```yaml
+```yaml
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/tellme/pgsql/postgresql.log
+  fields:
+    log_source: postgresql
+  fields_under_root: true
+  multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  multiline.negate: true
+  multiline.match: after
+
+processors:
+  - add_host_metadata: ~
+
+output.elasticsearch:
+  hosts: ["http://192.168.1.168:9201"]
+  index: "pgsql-%{[host][hostname]}-%{+yyyy.MM.dd}"
+  setup.ilm.enabled: true
+  setup.ilm.rollover_alias: "pgsql-logs"
+  setup.ilm.pattern: "000001"
+  setup.ilm.policy: "pgsql_logs_policy"
+  setup.template.enabled: false
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+```
+```
+
+**Changes**:
+- Added `setup.template.enabled: false` to prevent Filebeat from overwriting the custom template with its default ECS-based one.
+- Kept the rest unchanged to maintain indexing and ILM.
+
+##### 4. Verify ILM Policy
+Ensure the `pgsql_logs_policy` exists (as set up previously):
+
+```bash
+curl -s -X GET "http://192.168.1.168:9201/_ilm/policy/pgsql_logs_policy" | jq .
+```
+
+If missing, create it:
+
+```bash
+curl -X PUT "http://192.168.1.168:9201/_ilm/policy/pgsql_logs_policy" -H "Content-Type: application/json" -d '{
+  "policy": {
+    "phases": {
+      "hot": {
+        "actions": {
+          "rollover": {
+            "max_size": "50gb",
+            "max_age": "30d"
+          }
+        }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": {
+          "delete": {}
+        }
+      }
+    }
+  }
+}'
+```
+
+##### 5. Delete Existing Data Stream (Optional)
+If you want to start fresh with the new template, delete the existing data stream and its indices:
+
+```bash
+curl -X DELETE "http://192.168.1.168:9201/.ds-pgsql-wentao-2025.04.27-2025.04.27-000001"
+```
+
+**Note**: This removes existing data. Skip if you want to keep current logs and apply the new template to future indices.
+
+##### 6. Test Filebeat Configuration
+Validate:
+
+```bash
+sudo filebeat test config
+sudo filebeat test output
+```
+
+Ensure port 9201 is open on the Elasticsearch server:
+
+```bash
+sudo firewall-cmd --list-ports | grep 9201
+sudo firewall-cmd --add-port=9201/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+##### 7. Start Filebeat
+Restart Filebeat:
+
+```bash
+sudo systemctl start filebeat
+sudo systemctl enable filebeat
+```
+
+Check status:
+```bash
+sudo systemctl status filebeat
+```
+
+Inspect logs:
+```bash
+sudo cat /var/log/filebeat/filebeat
+```
+
+##### 8. Verify Data in Elasticsearch
+Check for new indices:
+```bash
+curl -s -X GET "http://192.168.1.168:9201/_cat/indices?v"
+```
+
+Example output:
+```
+health status index                    uuid                   pri re rep docs.count docs.deleted store.size pri.store.size
+green  open   .ds-pgsql-wentao-2025.04.27-2025.04.27-000001   abc123  1   1   0      1000         0          1mb        1mb
+```
+
+Verify the template has no `kubernetes` fields:
+```bash
+curl -s -X GET "http://192.168.1.168:9201/_index_template/pgsql" | jq . | grep kubernetes
+```
+
+Test the rollover alias:
+```bash
+curl -s -X GET "http://192.168.1.168:9201/pgsql-logs/_search?pretty" | jq .
+```
+
+##### 9. Configure Kibana (Optional)
+Visualize logs:
+1. Access `http://<kibana-server-ip>:5601`.
+2. Go to **Management > Stack Management > Index Patterns**.
+3. Create an index pattern (`pgsql-*`).
+4. Set the time field (`@timestamp`) and save.
+5. Use **Discover** to view logs.
+
+---
+
+### Alternative: Use PostgreSQL Module
+If the `kubernetes` fields came from enabling the PostgreSQL module (e.g., via `filebeat modules enable postgresql`), the module’s default template includes ECS fields. To use the module instead of a custom input:
+
+1. Enable the module:
+   ```bash
+   sudo filebeat modules enable postgresql
+   ```
+
+2. Configure the module:
+   Edit `/etc/filebeat/modules.d/postgresql.yml`:
+   ```yaml
+   - module: postgresql
+     log:
+       enabled: true
+       var.paths: ["/var/tellme/pgsql/postgresql.log"]
+   ```
+
+3. Update `filebeat.yml` to disable the custom input:
+   ```yaml
+   filebeat.inputs: []
+   filebeat.config.modules:
+     path: ${path.config}/modules.d/*.yml
+     reload.enabled: false
+   processors:
+     - add_host_metadata: ~
+   output.elasticsearch:
+     hosts: ["http://192.168.1.168:9201"]
+     index: "pgsql-%{[host][hostname]}-%{+yyyy.MM.dd}"
+     setup.ilm.enabled: true
+     setup.ilm.rollover_alias: "pgsql-logs"
+     setup.ilm.pattern: "000001"
+     setup.ilm.policy: "pgsql_logs_policy"
+     setup.template.enabled: false
+   logging.level: info
+   logging.to_files: true
+   logging.files:
+     path: /var/log/filebeat
+     name: filebeat
+     keepfiles: 7
+   ```
+
+4. Apply the custom template (Step 2) to override the module’s default ECS mappings.
+
+**Note**: The PostgreSQL module expects standard log formats. If your logs are non-standard, stick with the custom input.
+
+---
+
+### Key Notes
+- **Why Kubernetes Fields**:
+  - Filebeat’s default ECS-based template, applied via `filebeat setup --index-management`, includes `kubernetes` mappings for versatility, but these are unnecessary for your PostgreSQL logs.
+  - The custom template removes them, reducing overhead and confusion.
+
+- **Filebeat User**:
+  - Your setup lacks a `filebeat` user, so Filebeat likely runs as `root`. The permissions in Step 2 ensure access, but consider creating a `filebeat` user:
+    ```bash
+    sudo useradd -r -s /sbin/nologin -M filebeat
+    ```
+
+- **Log Format**:
+  - The `multiline` pattern assumes timestamps like `2025-04-26`. Share a log sample if issues arise:
+    ```bash
+    head -n 5 /var/tellme/pgsql/postgresql.log
+    ```
+
+- **SELinux**:
+  - If SELinux is enabled:
+    ```bash
+    sudo semanage fcontext -a -t filebeat_log_t "/var/tellme/pgsql/postgresql.log"
+    sudo restorecon -v /var/tellme/pgsql/postgresql.log
+    sudo setsebool -P http_client_connect 1
+    ```
+
+- **Log Rotation**:
+  - Ensure log rotation:
+    ```bash
+    cat << EOF | sudo tee /etc/logrotate.d/postgresql
+    /var/tellme/pgsql/postgresql.log {
+        daily
+        rotate 7
+        compress
+        missingok
+        create 0640 postgres postgres
+    }
+    EOF
+    ```
+
+- **Cluster Context**:
+  - Your cluster now has indices (e.g., `.ds-pgsql-wentao-2025.04.27-2025.04.27-000001`), confirming Filebeat is working. The custom template will clean up future indices.
+
+---
+
+### Troubleshooting
+If the new template doesn’t apply or `kubernetes` fields persist:
+- Check Filebeat logs: `sudo cat /var/log/filebeat/filebeat`
+- Verify template: `curl -s -X GET "http://192.168.1.168:9201/_index_template/pgsql" | jq .`
+- Confirm indices: `curl -s -X GET "http://192.168.1.168:9201/_cat/indices?v"`
+- Share outputs, log sample, and server distribution (if not RHEL/CentOS).
+
+---
+
+### Next Steps
+- Apply the updated procedure to remove `kubernetes` fields.
+- Once confirmed, we can address the second part (e.g., Logstash error).
+- Let me know if you hit issues or prefer the PostgreSQL module approach!
+
+This should ensure your PostgreSQL logs are indexed cleanly, ready for Kibana visualization.

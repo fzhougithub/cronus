@@ -1,0 +1,3 @@
+curl -s GET "http://192.168.1.168:9201/.ds-pgsql-wentao-2025.04.27-2025.04.27-000001/_search?size=100" | jq '.hits.hits[]._source | tostring' | grep "Wentao" | wc -l
+
+

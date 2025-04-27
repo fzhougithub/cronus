@@ -1,0 +1,176 @@
+### **How to Set Up ILM (Index Lifecycle Management)**
+
+https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management
+ILM is an **Elasticsearch feature** (not Logstash) that automates index management (rollover, retention, deletion). Here’s how to configure it for PostgreSQL logs:
+
+---
+
+## **Step 1: Define an ILM Policy in Elasticsearch**
+
+Run this in Kibana Dev Tools or via `curl` to create a policy that:
+1. Rolls over indices when they reach `50GB` or after `1 day`.
+2. Deletes logs older than `30 days`.
+
+run below using kibana dev-tools, it can auto run elasticsearch command without the http header stuff. 
+
+PUT _ilm/policy/pgsql_logs_policy
+{
+  "policy": {
+    "phases": {
+      "hot": {                                 
+        "actions": {
+          "rollover": {
+            "max_size": "50GB",               
+            "max_age": "1d"
+          }
+        }
+      },
+      "delete": {                            
+        "min_age": "30d",                   
+        "actions": {
+          "delete": {}
+        }
+      }
+    }
+  }
+}
+
+
+---
+
+## **Step 2: Create an Index Template for PostgreSQL Logs**
+Link the ILM policy to new indices matching `pgsql-*`:
+```bash
+PUT _index_template/pgsql_logs_template
+{
+  "index_patterns": ["pgsql-*"],               // Applies to all pgsql- indices
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "pgsql_logs_policy",  // Attach ILM policy
+      "index.lifecycle.rollover_alias": "pgsql"     // Required for rollover
+    },
+    "mappings": {                              // Optional: Predefine fields
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "log_level": { "type": "keyword" },
+        "postgresql_server": { "type": "keyword" }
+      }
+    }
+  }
+}
+```
+
+---
+
+## **Step 3: Configure Logstash to Use ILM**
+Update your Logstash `output.elasticsearch` to:
+- Use a **write alias** (`pgsql-write`) for ILM rollover.
+- Let ILM manage index naming (no need for `-%{+YYYY.MM.dd}`).
+
+```ruby
+output {
+  elasticsearch {
+    hosts => ["http://localhost:9200"]
+    index => "pgsql-%{[host][hostname]}"       # Base index name
+    ilm_enabled => true                        # Enable ILM
+    ilm_rollover_alias => "pgsql-%{[host][hostname]}-write"  # Alias for rollover
+    ilm_pattern => "{now/d}-000001"            # Date suffix (optional)
+    ilm_policy => "pgsql_logs_policy"          # Policy name (matches Step 1)
+  }
+}
+```
+
+---
+
+## **Key Notes**
+1. **ILM Works in Elasticsearch**:  
+   - Logstash just directs indices to the correct alias/policy.
+   - Elasticsearch handles rollover, sharding, and deletion.
+
+2. **Alias Requirement**:  
+   - ILM requires a **write alias** (e.g., `pgsql-write`) to track the active index.
+
+3. **Initial Index Setup**:  
+   Manually create the first index (only once):
+   ```bash
+   PUT pgsql-2024.01.01-000001
+   {
+     "aliases": {
+       "pgsql-write": { "is_write_index": true }
+     }
+   }
+   ```
+   *(Subsequent indices are auto-created by ILM.)*
+
+---
+
+## **Verify ILM is Working**
+1. Check index status:
+   ```bash
+   GET _ilm/explain/pgsql-*
+   ```
+2. View rollover history:
+   ```bash
+   GET _cat/indices/pgsql-*?v&h=index,creation.date,ilm.phase
+   ```
+
+---
+
+### **Troubleshooting**
+- **Error: `index.lifecycle.rollover_alias not set`**  
+  → Ensure the alias exists and is marked as `is_write_index`.
+- **Indices not rolling over**  
+  → Check if `max_size` or `max_age` thresholds are met.
+
+---
+
+### **When to Skip ILM**
+- **Small log volumes**: Use date-based indices (`-%{+YYYY.MM.dd}`) instead.
+- **Static indices**: If you manually manage retention (e.g., `DELETE pgsql-*-2023*`).
+
+For most PostgreSQL logging setups, **ILM is the best choice** for automation. Let me know if you hit snags!
+
+
+
+
+
+[root@rl01 elk]# curl -X GET "http://localhost:9201/_ilm/policy/pgsql_logs_policy?pretty"
+{
+  "pgsql_logs_policy" : {
+    "version" : 1,
+    "modified_date" : "2025-04-26T22:53:23.734Z",
+    "policy" : {
+      "phases" : {
+        "delete" : {
+          "min_age" : "30d",
+          "actions" : {
+            "delete" : {
+              "delete_searchable_snapshot" : true
+            }
+          }
+        },
+        "hot" : {
+          "min_age" : "0ms",
+          "actions" : {
+            "rollover" : {
+              "max_age" : "1d",
+              "max_size" : "50gb"
+            }
+          }
+        }
+      }
+    },
+    "in_use_by" : {
+      "indices" : [
+        "pgsql-2024.01.01-000001"
+      ],
+      "data_streams" : [ ],
+      "composable_templates" : [
+        "pgsql_logs_template"
+      ]
+    }
+  }
+}
+
+
+

@@ -1,0 +1,64 @@
+sudo dnf install kibana  # For RHEL/CentOS 8 or later
+# OR
+sudo yum install kibana  # For RHEL/CentOS 7
+
+sudo vi /etc/kibana/kibana.yml
+server.port: 5601
+server.host: "0.0.0.0"  # Listen on all interfaces (secure with firewall)
+elasticsearch.hosts: ["http://192.168.1.168:9201"]
+
+mkdir -p /var/tellme/kibana/data
+mkdir -p /var/tellme/log/kibana
+
+sudo chown -R kibana:kibana /etc/kibana /var/telme/log/kibana
+sudo chmod -R u+rwX /etc/kibana /var/tellme/log/kibana
+
+sudo systemctl enable kibana
+sudo systemctl start kibana
+
+sudo firewall-cmd --add-port=5601/tcp --permanent
+sudo firewall-cmd --add-source=<your-ip-or-range> --permanent
+sudo firewall-cmd --reload
+
+use ngnix or apache to add https to kibana
+ngnix
+server {
+    listen 443 ssl;
+    server_name kibana.example.com;
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+    location / {
+        proxy_pass http://localhost:5601;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+sudo semanage port -a -t http_port_t -p tcp 5601
+
+Access kibana
+
+http://<server-ip>:5601
+
+curl -s -X GET "http://<server-ip>:5601/api/status" | jq .
+
+remember to check the other config files
+
+[root@rl01 ~]# rpm -ql kibana-8.18.0-1.x86_64|grep "/etc"
+/etc/kibana/kibana.yml
+/etc/kibana/node.options
+/etc/sysconfig/kibana
+
+
+======================================================================
+
+Per windows
+
+Download the Kibana ZIP from https://www.elastic.co/downloads/kibana.
+Extract and edit config/kibana.yml
+
+server.port: 5601
+server.host: "localhost"
+elasticsearch.hosts: ["http://192.168.1.168:9201"]
+
+Run bin\kibana.bat and access http://localhost:5601.

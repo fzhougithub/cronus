@@ -1,0 +1,189 @@
+Install filebeat on target database side
+
+https://www.elastic.co/docs/reference/beats/filebeat/filebeat-installation-configuration
+
+rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+vi /etc/yum.repos.d/elastic.repo
+
+[elastic-9.x]
+name=Elastic repository for 9.x packages
+baseurl=https://artifacts.elastic.co/packages/9.x/yum
+gpgcheck=1
+gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+enabled=1
+autorefresh=1
+type=rpm-md
+
+Add the user monitored user into filebeat group
+
+yum install filebeat # or dnf install filebeat
+Add the user monitored user into filebeat group
+But this should be useless because the 8.x and 9.x using UMask=0027 instead of user and usergroup. So, it open to all of the logs 
+
+sudo usermod -aG postgres filebeat
+
+Config ILM on elasticsearch side
+curl -X PUT "http://192.168.1.168:9201/_ilm/policy/pgsql_logs_policy" -H "Content-Type: application/json" -d '{
+  "policy": {
+    "phases": {
+      "hot": {
+        "actions": {
+          "rollover": {
+            "max_size": "50gb",
+            "max_age": "30d"
+          }
+        }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": {
+          "delete": {}
+        }
+      }
+    }
+  }
+}'
+
+curl -s -X GET "http://192.168.1.168:9201/_ilm/policy/pgsql_logs_policy" | jq .
+
+[root@Wentao modules.d]# curl -s -X GET "http://192.168.1.168:9201/_ilm/policy/pgsql_logs_policy" | jq .
+{
+  "pgsql_logs_policy": {
+    "version": 2,
+    "modified_date": "2025-04-27T05:22:07.828Z",
+    "policy": {
+      "phases": {
+        "delete": {
+          "min_age": "90d",
+          "actions": {
+            "delete": {
+              "delete_searchable_snapshot": true
+            }
+          }
+        },
+        "hot": {
+          "min_age": "0ms",
+          "actions": {
+            "rollover": {
+              "max_age": "30d",
+              "max_size": "50gb"
+            }
+          }
+        }
+      }
+    },
+    "in_use_by": {
+      "indices": [
+        "pgsql-2024.01.01-000001"
+      ],
+      "data_streams": [],
+      "composable_templates": [
+        "pgsql-template",
+        "pgsql_logs_template"
+      ]
+    }
+  }
+}
+
+Setup template
+
+sudo filebeat setup --template -E 'output.elasticsearch.hosts=["http://192.168.1.168:9201"]'
+sudo filebeat setup --ilm-policy -E 'output.elasticsearch.hosts=["http://192.168.1.168:9201"]'
+
+Test configuration
+
+sudo filebeat test config
+sudo filebeat test output
+
+Make sure there is no firewall
+
+sudo firewall-cmd --list-ports | grep 9201
+
+Refer to the config guide https://www.elastic.co/guide/en/beats/filebeat/index.html
+
+vi /etc/filebeat/filebeat.yml
+
+filebeat.inputs:
+- type: log
+  id: wentao
+  enabled: true
+  paths:
+    - /var/tellme/pgsql/postgresql.log
+  include_lines: ['^ERR', '^WARN']
+  fields:
+    log_source: postgresql
+  fields_under_root: true
+  multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  multiline.negate: true
+  multiline.match: after
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: true
+  reload.period: 5m
+setup.template.settings:
+  index.number_of_shards: 3
+name: wentao
+fields:
+  env: dev
+setup.dashboards.enabled: true
+setup.kibana:
+  host: "192.168.1.168:5601"
+  space.id: dev
+output.elasticsearch:
+  hosts: ["192.168.1.168:9201"]
+  index: "pgsql-%{[host][hostname]}-%{+yyyy.MM.dd}"
+  setup.ilm.enabled: true
+  setup.ilm.rollover_alias: "pgsql-logs"
+  setup.ilm.pattern: "000001"
+  setup.ilm.policy: "pgsql_logs_policy"
+  setup.template.name: "pgsql"
+  setup.template.pattern: "pgsql-*"
+  preset: balanced
+  protocol: "http"
+processors:
+  - add_host_metadata: ~
+      when.not.contains.tags: forwarded
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+
+filebeat setup -e
+# This command run for long time, and finally completed
+
+Then, systemctl start filebeat
+
+tongs of issues, first is the log not showing up
+
+use below command to check the frontend running result. 
+
+filebeat -e -c /etc/filebeat/filebeat.yml -d "*"
+
+
+
+
+
+
+
+
+
+
+config filebeat
+
+vi /etc/filebeat/filebeat.yml
+filebeat.inputs:
+- type: filestream
+  enabled: true
+  paths:
+    - /var/tellme/pgsql/postgresql.log
+  fields:
+    log_type: postgresql
+  fields_under_root: true
+
+output.logstash:
+  hosts: ["192.168.1.168:5044"]   # Logstash server IP
+
+
