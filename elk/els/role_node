@@ -1,0 +1,44 @@
+The string `cdfhilmrstw` in the `node.role` column of the `_cat/nodes` output represents the different roles that an Elasticsearch node can fulfill. Each letter corresponds to a specific role. Here's a breakdown of what each letter means:
+
+* **`c` (coordinating node):** A node that handles incoming client requests, routes them to the appropriate nodes, and gathers and returns the results. Every node can act as a coordinating node by default.
+
+* **`d` (data node):** A node that holds data shards and performs data-related operations like indexing, searching, and aggregations. These nodes are responsible for the bulk of the I/O and CPU usage related to your data.
+
+* **`f` (frozen tier data node):** A data node that holds data in the frozen tier. This tier is designed for very large, less frequently accessed, read-only data. It uses significantly less heap memory but has higher latency for queries.
+
+* **`h` (hot tier data node):** A data node that holds your most recent and frequently accessed data. This tier is optimized for fast read and write operations and typically resides on high-performance storage.
+
+* **`i` (ingest node):** A node that can execute pre-processing pipelines to transform and enrich documents before they are indexed. Ingest nodes help offload this work from the data nodes.
+
+* **`l` (machine learning node):** A node that runs machine learning jobs, such as anomaly detection and forecasting.
+
+* **`m` (master-eligible node):** A node that is eligible to be elected as the master node. Master nodes are responsible for cluster-level operations like managing the cluster state, allocating shards, and creating/deleting indices.
+
+* **`r` (remote-eligible node):** A node that is eligible to act as a gateway to a remote cluster for cross-cluster search and cross-cluster replication.
+
+* **`s` (voting-only master-eligible node):** A master-eligible node that can participate in master elections and acknowledge cluster state updates but is not eligible to become the master itself. This is often used in larger clusters to increase the number of voting members without increasing the resource load on potential master nodes.
+
+* **`t` (transform node):** A node that runs transform jobs, which are continuous data processing jobs that summarize, pivot, and aggregate data.
+
+* **`w` (warm tier data node):** A data node that holds data that is accessed less frequently than hot data but still needs to be available for querying. This tier often uses less expensive storage than the hot tier.
+
+**In your case, `cdfhilmrstw` indicates that each of your nodes (`els1`, `els2`, and `els3`) is configured to fulfill almost all possible roles:**
+
+* It can act as a **coordinating node** (`c`).
+* It can **hold data** (`d`).
+* It can hold **frozen tier data** (`f`).
+* It can hold **hot tier data** (`h`).
+* It can act as an **ingest node** (`i`).
+* It is **master-eligible** (`m`).
+* It is **remote-eligible** (`r`).
+* It can act as a **voting-only master-eligible node** (`s`).
+* It can run **transform jobs** (`t`).
+* It can hold **warm tier data** (`w`).
+
+This kind of configuration, where nodes have many roles, is common in smaller Elasticsearch clusters or development environments. In larger production clusters, it's often best practice to dedicate specific nodes to certain roles (e.g., dedicated master nodes, dedicated data nodes, dedicated ingest nodes) to optimize performance and stability.
+
+The asterisk (`*`) next to `els2` in the `master` column simply indicates that among these master-eligible nodes, `els2` is currently the active master.
+
+https://www.instaclustr.com/blog/understanding-and-configuring-elasticsearch-node-types/#:~:text=Coordinating%20nodes%20are%20sometimes%20called,are%20by%20default%20coordinating%20nodes.
+
+

@@ -1,0 +1,886 @@
+1. Create index
+
+[root@rl01 ~]# esput books?pretty
+curl -s -X PUT "http://192.168.1.168:9201/books?pretty"
+{
+  "acknowledged" : true,
+  "shards_acknowledged" : true,
+  "index" : "books"
+}
+
+2. Add data into index
+
+els1 post books/_doc 
+{
+  "name": "Sun Rise",
+  "author": "Neal Jibson",
+  "release_date": "2002-06-01",
+  "page_count": 570
+}
+
+[root@rl01 els]# elasticsearch-cli --cluster els1 post books/_doc '{
+  "name": "Sun Rise",
+  "author": "Neal Jibson",
+  "release_date": "2002-06-01",
+  "page_count": 570
+}'
+{
+  "_index": "books",
+  "_id": "KQtFkJYBLf0Ar8OwsfwD",
+  "_version": 1,
+  "result": "created",
+  "_shards": {
+    "total": 2,
+    "successful": 2,
+    "failed": 0
+  },
+  "_seq_no": 0,
+  "_primary_term": 1
+}
+
+== Key point is the '{ should be at the end of the command, otherwise, the elasticsearch-cli will not recognize the body part, it is so interesting
+
+3. Using bulk
+
+els1 POST /_bulk '
+{ "index" : { "_index" : "books" } }
+{"name": "Revelation Space", "author": "Alastair Reynolds", "release_date": "2000-03-15", "page_count": 585}
+{ "index" : { "_index" : "books" } }
+{"name": "1984", "author": "George Orwell", "release_date": "1985-06-01", "page_count": 328}
+{ "index" : { "_index" : "books" } }
+{"name": "Fahrenheit 451", "author": "Ray Bradbury", "release_date": "1953-10-15", "page_count": 227}
+{ "index" : { "_index" : "books" } }
+{"name": "Brave New World", "author": "Aldous Huxley", "release_date": "1932-06-01", "page_count": 268}
+{ "index" : { "_index" : "books" } }
+{"name": "The Handmaids Tale", "author": "Margaret Atwood", "release_date": "1985-06-01", "page_count": 311}
+'
+
+[root@rl01 els]# els1 POST /_bulk '
+{ "index" : { "_index" : "books" } }
+{"name": "Revelation Space", "author": "Alastair Reynolds", "release_date": "2000-03-15", "page_count": 585}
+{ "index" : { "_index" : "books" } }
+{"name": "1984", "author": "George Orwell", "release_date": "1985-06-01", "page_count": 328}
+{ "index" : { "_index" : "books" } }
+{"name": "Fahrenheit 451", "author": "Ray Bradbury", "release_date": "1953-10-15", "page_count": 227}
+{ "index" : { "_index" : "books" } }
+{"name": "Brave New World", "author": "Aldous Huxley", "release_date": "1932-06-01", "page_count": 268}
+{ "index" : { "_index" : "books" } }
+{"name": "The Handmaids Tale", "author": "Margaret Atwood", "release_date": "1985-06-01", "page_count": 311}
+'
+{
+  "errors": false,
+  "took": 0,
+  "items": [
+    {
+      "index": {
+        "_index": "books",
+        "_id": "XAtLkJYBLf0Ar8Owgfwr",
+        "_version": 1,
+        "result": "created",
+        "_shards": {
+          "total": 2,
+          "successful": 2,
+          "failed": 0
+        },
+        "_seq_no": 2,
+        "_primary_term": 1,
+        "status": 201
+      }
+    },
+    {
+      "index": {
+        "_index": "books",
+        "_id": "XQtLkJYBLf0Ar8Owgfwr",
+        "_version": 1,
+        "result": "created",
+        "_shards": {
+          "total": 2,
+          "successful": 2,
+          "failed": 0
+        },
+        "_seq_no": 3,
+        "_primary_term": 1,
+        "status": 201
+      }
+    },
+    {
+      "index": {
+        "_index": "books",
+        "_id": "XgtLkJYBLf0Ar8Owgfwr",
+        "_version": 1,
+        "result": "created",
+        "_shards": {
+          "total": 2,
+          "successful": 2,
+          "failed": 0
+        },
+        "_seq_no": 4,
+        "_primary_term": 1,
+        "status": 201
+      }
+    },
+    {
+      "index": {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_version": 1,
+        "result": "created",
+        "_shards": {
+          "total": 2,
+          "successful": 2,
+          "failed": 0
+        },
+        "_seq_no": 5,
+        "_primary_term": 1,
+        "status": 201
+      }
+    },
+    {
+      "index": {
+        "_index": "books",
+        "_id": "YAtLkJYBLf0Ar8Owgfwr",
+        "_version": 1,
+        "result": "created",
+        "_shards": {
+          "total": 2,
+          "successful": 2,
+          "failed": 0
+        },
+        "_seq_no": 6,
+        "_primary_term": 1,
+        "status": 201
+      }
+    }
+  ]
+}
+
+
+4. Add the new doc with different fields
+
+els1 POST /books/_doc '
+{
+  "name": "The Great Gatsby",
+  "author": "F. Scott Fitzgerald",
+  "release_date": "1925-04-10",
+  "page_count": 180,
+  "language": "EN" 
+}'
+
+Then, view the mapping
+
+GET /books/_mapping
+[root@rl01 els]# els1 GET /books/_mapping
+{
+  "books": {
+    "mappings": {
+      "properties": {
+        "author": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "language": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "page_count": {
+          "type": "long"
+        },
+        "release_date": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}
+
+
+5. Create explicitly mapping
+
+els1 PUT /my-explicit-mappings-books '
+{
+  "mappings": {
+    "dynamic": false,  
+    "properties": {  
+      "name": { "type": "text" },
+      "author": { "type": "text" },
+      "release_date": { "type": "date", "format": "yyyy-MM-dd" },
+      "page_count": { "type": "integer" }
+    }
+  }
+}'
+[root@rl01 els]# els1 PUT /my-explicit-mappings-books '
+{
+  "mappings": {
+    "dynamic": false,
+    "properties": {
+      "name": { "type": "text" },
+      "author": { "type": "text" },
+      "release_date": { "type": "date", "format": "yyyy-MM-dd" },
+      "page_count": { "type": "integer" }
+    }
+  }
+}'
+{
+  "acknowledged": true,
+  "shards_acknowledged": true,
+  "index": "my-explicit-mappings-books"
+}
+
+4. Search Index
+
+[root@rl01 els]# els1 GET books/_search|grep _id
+        "_id": "KQtFkJYBLf0Ar8OwsfwD",
+        "_id": "OAtHkJYBLf0Ar8Owjvyb",
+        "_id": "XAtLkJYBLf0Ar8Owgfwr",
+        "_id": "XQtLkJYBLf0Ar8Owgfwr",
+        "_id": "XgtLkJYBLf0Ar8Owgfwr",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_id": "YAtLkJYBLf0Ar8Owgfwr",
+        "_id": "bwtNkJYBLf0Ar8OwcPz8",
+
+match query
+
+els1 GET books/_search '
+{
+  "query": {
+    "match": {
+      "name": "brave"
+    }
+  }
+}'
+{
+  "took": 3,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 1.5767484,
+    "hits": [
+      {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_score": 1.5767484,
+        "_source": {
+          "name": "Brave New World",
+          "author": "Aldous Huxley",
+          "release_date": "1932-06-01",
+          "page_count": 268
+        }
+      }
+    ]
+  }
+}
+
+
+{
+  "took": 3,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 1.5767484,
+    "hits": [
+      {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_score": 1.5767484,
+        "_source": {
+          "name": "Brave New World",
+          "author": "Aldous Huxley",
+          "release_date": "1932-06-01",
+          "page_count": 268
+        }
+      }
+    ]
+  }
+}
+
+
+{
+  "took": 3,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 1.5767484,
+    "hits": [
+      {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_score": 1.5767484,
+        "_source": {
+          "name": "Brave New World",
+          "author": "Aldous Huxley",
+          "release_date": "1932-06-01",
+          "page_count": 268
+        }
+      }
+    ]
+  }
+}
+
+
+{
+  "took": 3,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 1.5767484,
+    "hits": [
+      {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_score": 1.5767484,
+        "_source": {
+          "name": "Brave New World",
+          "author": "Aldous Huxley",
+          "release_date": "1932-06-01",
+          "page_count": 268
+        }
+      }
+    ]
+  }
+}
+
+
+{
+  "took": 3,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 1.5767484,
+    "hits": [
+      {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_score": 1.5767484,
+        "_source": {
+          "name": "Brave New World",
+          "author": "Aldous Huxley",
+          "release_date": "1932-06-01",
+          "page_count": 268
+        }
+      }
+    ]
+  }
+}
+
+
+{
+  "took": 3,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 1.5767484,
+    "hits": [
+      {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_score": 1.5767484,
+        "_source": {
+          "name": "Brave New World",
+          "author": "Aldous Huxley",
+          "release_date": "1932-06-01",
+          "page_count": 268
+        }
+      }
+    ]
+  }
+}
+
+
+{
+  "took": 3,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 1,
+      "relation": "eq"
+    },
+    "max_score": 1.5767484,
+    "hits": [
+      {
+        "_index": "books",
+        "_id": "XwtLkJYBLf0Ar8Owgfwr",
+        "_score": 1.5767484,
+        "_source": {
+          "name": "Brave New World",
+          "author": "Aldous Huxley",
+          "release_date": "1932-06-01",
+          "page_count": 268
+        }
+      }
+    ]
+  }
+}
+
+
+6. Delete the index
+
+DELETE /books
+DELETE /my-explicit-mappings-books
+
+https://www.elastic.co/guide/en/elasticsearch/reference/8.18/esql.html
+
+ES|QL
+
+curl -X PUT "localhost:9200/sample_data?pretty" -H 'Content-Type: application/json' -d'
+{
+  "mappings": {
+    "properties": {
+      "client_ip": {
+        "type": "ip"
+      },
+      "message": {
+        "type": "keyword"
+      }
+    }
+  }
+}
+'
+curl -X PUT "localhost:9201[root@rl01 els]# curl -X PUT "localhost:9201/sample_data/_bulk?pretty" -H 'Content-Type: application/json' -d'
+{"index": {}}
+{"@timestamp": "2023-10-23T12:15:03.360Z", "client_ip": "172.21.2.162", "message": "Connected to 10.1.0.3", "event_duration": 3450233}
+{"index": {}}
+{"@timestamp": "2023-10-23T12:27:28.948Z", "client_ip": "172.21.2.113", "message": "Connected to 10.1.0.2", "event_duration": 2764889}
+{"index": {}}
+{"@timestamp": "2023-10-23T13:33:34.937Z", "client_ip": "172.21.0.5", "message": "Disconnected", "event_duration": 1232382}
+{"index": {}}
+{"@timestamp": "2023-10-23T13:51:54.732Z", "client_ip": "172.21.3.15", "message": "Connection error", "event_duration": 725448}
+{"index": {}}
+{"@timestamp": "2023-10-23T13:52:55.015Z", "client_ip": "172.21.3.15", "message": "Connection error", "event_duration": 8268153}
+{"index": {}}
+{"@timestamp": "2023-10-23T13:53:55.832Z", "client_ip": "172.21.3.15", "message": "Connection error", "event_duration": 5033755}
+{"index": {}}
+{"@timestamp": "2023-10-23T13:55:01.543Z", "client_ip": "172.21.3.15", "message": "Connected to 10.1.0.1", "event_duration": 1756467}
+'
+{
+  "errors" : false,
+  "took" : 200,
+  "items" : [
+    {
+      "index" : {
+        "_index" : "sample_data",
+        "_id" : "_AthkJYBLf0Ar8OwKvys",
+        "_version" : 1,
+        "result" : "created",
+        "_shards" : {
+          "total" : 2,
+          "successful" : 2,
+          "failed" : 0
+        },
+        "_seq_no" : 0,
+        "_primary_term" : 1,
+        "status" : 201
+      }
+    },
+    {
+      "index" : {
+        "_index" : "sample_data",
+        "_id" : "_QthkJYBLf0Ar8OwKvys",
+        "_version" : 1,
+        "result" : "created",
+        "_shards" : {
+          "total" : 2,
+          "successful" : 2,
+          "failed" : 0
+        },
+        "_seq_no" : 1,
+        "_primary_term" : 1,
+        "status" : 201
+      }
+    },
+    {
+      "index" : {
+        "_index" : "sample_data",
+        "_id" : "_gthkJYBLf0Ar8OwKvys",
+        "_version" : 1,
+        "result" : "created",
+        "_shards" : {
+          "total" : 2,
+          "successful" : 2,
+          "failed" : 0
+        },
+        "_seq_no" : 2,
+        "_primary_term" : 1,
+        "status" : 201
+      }
+    },
+    {
+      "index" : {
+        "_index" : "sample_data",
+        "_id" : "_wthkJYBLf0Ar8OwKvys",
+        "_version" : 1,
+        "result" : "created",
+        "_shards" : {
+          "total" : 2,
+          "successful" : 2,
+          "failed" : 0
+        },
+        "_seq_no" : 3,
+        "_primary_term" : 1,
+        "status" : 201
+      }
+    },
+    {
+      "index" : {
+        "_index" : "sample_data",
+        "_id" : "AAthkJYBLf0Ar8OwKv2s",
+        "_version" : 1,
+        "result" : "created",
+        "_shards" : {
+          "total" : 2,
+          "successful" : 2,
+          "failed" : 0
+        },
+        "_seq_no" : 4,
+        "_primary_term" : 1,
+        "status" : 201
+      }
+    },
+    {
+      "index" : {
+        "_index" : "sample_data",
+        "_id" : "AQthkJYBLf0Ar8OwKv2s",
+        "_version" : 1,
+        "result" : "created",
+        "_shards" : {
+          "total" : 2,
+          "successful" : 2,
+          "failed" : 0
+        },
+        "_seq_no" : 5,
+        "_primary_term" : 1,
+        "status" : 201
+      }
+    },
+    {
+      "index" : {
+        "_index" : "sample_data",
+        "_id" : "AgthkJYBLf0Ar8OwKv2s",
+        "_version" : 1,
+        "result" : "created",
+        "_shards" : {
+          "total" : 2,
+          "successful" : 2,
+          "failed" : 0
+        },
+        "_seq_no" : 6,
+        "_primary_term" : 1,
+        "status" : 201
+      }
+    }
+  ]
+}
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+       @timestamp       |   client_ip   |event_duration |       message       
+------------------------+---------------+---------------+---------------------
+2023-10-23T12:15:03.360Z|172.21.2.162   |3450233        |Connected to 10.1.0.3
+2023-10-23T12:27:28.948Z|172.21.2.113   |2764889        |Connected to 10.1.0.2
+2023-10-23T13:33:34.937Z|172.21.0.5     |1232382        |Disconnected         
+2023-10-23T13:51:54.732Z|172.21.3.15    |725448         |Connection error     
+2023-10-23T13:52:55.015Z|172.21.3.15    |8268153        |Connection error     
+2023-10-23T13:53:55.832Z|172.21.3.15    |5033755        |Connection error     
+2023-10-23T13:55:01.543Z|172.21.3.15    |1756467        |Connected to 10.1.0.1
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| WHERE event_duration > 5000000
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+       @timestamp       |   client_ip   |event_duration |    message     
+------------------------+---------------+---------------+----------------
+2023-10-23T13:52:55.015Z|172.21.3.15    |8268153        |Connection error
+2023-10-23T13:53:55.832Z|172.21.3.15    |5033755        |Connection error
+
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| SORT @timestamp DESC
+| LIMIT 3
+  """
+}
+
+       @timestamp       |   client_ip   |event_duration |       message       
+------------------------+---------------+---------------+---------------------
+2023-10-23T13:55:01.543Z|172.21.3.15    |1756467        |Connected to 10.1.0.1
+2023-10-23T13:53:55.832Z|172.21.3.15    |5033755        |Connection error     
+2023-10-23T13:52:55.015Z|172.21.3.15    |8268153        |Connection error     
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| EVAL duration_ms = event_duration/1000000.0
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+       @timestamp       |   client_ip   |event_duration |       message       |  duration_ms  
+------------------------+---------------+---------------+---------------------+---------------
+2023-10-23T12:15:03.360Z|172.21.2.162   |3450233        |Connected to 10.1.0.3|3.450233       
+2023-10-23T12:27:28.948Z|172.21.2.113   |2764889        |Connected to 10.1.0.2|2.764889       
+2023-10-23T13:33:34.937Z|172.21.0.5     |1232382        |Disconnected         |1.232382       
+2023-10-23T13:51:54.732Z|172.21.3.15    |725448         |Connection error     |0.725448       
+2023-10-23T13:52:55.015Z|172.21.3.15    |8268153        |Connection error     |8.268153       
+2023-10-23T13:53:55.832Z|172.21.3.15    |5033755        |Connection error     |5.033755       
+2023-10-23T13:55:01.543Z|172.21.3.15    |1756467        |Connected to 10.1.0.1|1.756467 
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| EVAL duration_ms = ROUND(event_duration/1000000.0, 1)
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+       @timestamp       |   client_ip   |event_duration |       message       |  duration_ms  
+------------------------+---------------+---------------+---------------------+---------------
+2023-10-23T12:15:03.360Z|172.21.2.162   |3450233        |Connected to 10.1.0.3|3.5            
+2023-10-23T12:27:28.948Z|172.21.2.113   |2764889        |Connected to 10.1.0.2|2.8            
+2023-10-23T13:33:34.937Z|172.21.0.5     |1232382        |Disconnected         |1.2            
+2023-10-23T13:51:54.732Z|172.21.3.15    |725448         |Connection error     |0.7            
+2023-10-23T13:52:55.015Z|172.21.3.15    |8268153        |Connection error     |8.3            
+2023-10-23T13:53:55.832Z|172.21.3.15    |5033755        |Connection error     |5.0            
+2023-10-23T13:55:01.543Z|172.21.3.15    |1756467        |Connected to 10.1.0.1|1.8     
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| STATS median_duration = MEDIAN(event_duration)
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+median_duration
+---------------
+2764889.0      
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| STATS median_duration = MEDIAN(event_duration), max_duration = MAX(event_duration)
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+median_duration| max_duration  
+---------------+---------------
+2764889.0      |8268153        
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| STATS median_duration = MEDIAN(event_duration) BY client_ip
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+median_duration|   client_ip   
+---------------+---------------
+1232382.0      |172.21.0.5     
+2764889.0      |172.21.2.113   
+3450233.0      |172.21.2.162   
+3395111.0      |172.21.3.15    
+
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| EVAL event_duration/1000000.0
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+       @timestamp       |   client_ip   |event_duration |       message       |event_duration/1000000.0
+------------------------+---------------+---------------+---------------------+------------------------
+2023-10-23T12:15:03.360Z|172.21.2.162   |3450233        |Connected to 10.1.0.3|3.450233                
+2023-10-23T12:27:28.948Z|172.21.2.113   |2764889        |Connected to 10.1.0.2|2.764889                
+2023-10-23T13:33:34.937Z|172.21.0.5     |1232382        |Disconnected         |1.232382                
+2023-10-23T13:51:54.732Z|172.21.3.15    |725448         |Connection error     |0.725448                
+2023-10-23T13:52:55.015Z|172.21.3.15    |8268153        |Connection error     |8.268153                
+2023-10-23T13:53:55.832Z|172.21.3.15    |5033755        |Connection error     |5.033755                
+2023-10-23T13:55:01.543Z|172.21.3.15    |1756467        |Connected to 10.1.0.1|1.756467   
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| EVAL event_duration/1000000.0
+| STATS MEDIAN(`event_duration/1000000.0`)
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+MEDIAN(`event_duration/1000000.0`)
+----------------------------------
+2.764889 
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| STATS c = COUNT(*) BY bucket = BUCKET(@timestamp, 24, "2023-10-23T00:00:00Z", "2023-10-23T23:59:59Z")
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+       c       |         bucket         
+---------------+------------------------
+2              |2023-10-23T12:00:00.000Z
+5              |2023-10-23T13:00:00.000Z
+
+
+POST /_query?format=txt
+{
+  "query": """
+FROM sample_data
+| KEEP @timestamp, event_duration
+| STATS median_duration = MEDIAN(event_duration) BY bucket = BUCKET(@timestamp, 24, "2023-10-23T00:00:00Z", "2023-10-23T23:59:59Z")
+  """
+}
+
+#! No limit defined, adding default limit of [1000]
+median_duration|         bucket         
+---------------+------------------------
+3107561.0      |2023-10-23T12:00:00.000Z
+1756467.0      |2023-10-23T13:00:00.000Z
+
+
+
+PUT clientips/_bulk '
+{ "index" : {}}
+{ "client_ip": "172.21.0.5", "env": "Development" }
+{ "index" : {}}
+{ "client_ip": "172.21.2.113", "env": "QA" }
+{ "index" : {}}
+{ "client_ip": "172.21.2.162", "env": "QA" }
+{ "index" : {}}
+{ "client_ip": "172.21.3.15", "env": "Production" }
+{ "index" : {}}
+{ "client_ip": "172.21.3.16", "env": "Production" }
+'
+
+cat << EOF > /tmp/clientips_bulk.json
+{"index":{}}
+{"client_ip":"172.21.0.5","env":"Development"}
+{"index":{}}
+{"client_ip":"172.21.2.113","env":"QA"}
+{"index":{}}
+{"client_ip":"172.21.2.162","env":"QA"}
+{"index":{}}
+{"client_ip":"172.21.3.15","env":"Production"}
+{"index":{}}
+{"client_ip":"172.21.3.16","env":"Production"}
+
+EOF
+
+[root@rl01 els]# cat -e /tmp/clientips_bulk.json
+{"index":{}}$
+{"client_ip":"172.21.0.5","env":"Development"}$
+{"index":{}}$
+{"client_ip":"172.21.2.113","env":"QA"}$
+{"index":{}}$
+{"client_ip":"172.21.2.162","env":"QA"}$
+{"index":{}}$
+{"client_ip":"172.21.3.15","env":"Production"}$
+{"index":{}}$
+{"client_ip":"172.21.3.16","env":"Production"}$
+$
+
+

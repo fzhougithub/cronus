@@ -1,0 +1,89 @@
+SELECT * FROM system_schema.keyspaces;
+
+rpm --import https://downloads.apache.org/cassandra/KEYS
+rpm -q gpg-pubkey --info
+
+
+[cassandra]
+name=Apache Cassandra
+baseurl=https://redhat.cassandra.apache.org/42x/
+gpgcheck=1
+enable=1
+repo_gpgcheck=1
+gpgkey=https://downloads.apache.org/cassandra/KEYS
+
+
+ yum install cassandra.noarch cassandra-tools.noarch
+
+ 1191  mkdir -p /var/tellme/cassandra/commitlog
+ 1192  mkdir -p /var/tellme/cassandra/data
+ 1193  mkdir -p /var/tellme/cassandra/cdc_raw
+ 1194  mkdir -p /var/tellme/cassandra/saved_caches
+ 1195  mkdir -p /var/tellme/cassandra/hints
+ 1196  chown -R cassandra.cassandra /var/tellme/cassandra
+
+vi /etc/cassandra/conf/cassandra.yaml , change all to our directory
+seeds
+name
+dir
+rpn_address
+listen_address
+
+vi /etc/cassandra/conf/cassandra-env.sh
+
+per the log, better to give the fix location, otherwise, try 
+
+cassandra-env.sh
+JVM_OPTS="$JVM_OPTS -Dcassandra.logdir=/var/tellme/log/cassandra"
+
+jvm.options
+-Dcassandra.logdir=/path/to/custom/logs
+finally
+
+It is in cassandra-env.sh
+
+# Sets the path where logback and GC logs are written.
+if [ "x$CASSANDRA_LOG_DIR" = "x" ] ; then
+    CASSANDRA_LOG_DIR=/var/tellme/log/cassandra
+fi
+
+
+2. cqlsh does not work, becase assume 3.6, but the real is 3.9 python
+
+sudo cp -r /usr/lib/python3.6/site-packages/cqlshlib /usr/lib/python3.9/site-packages/
+
+ls -l /usr/lib/python3.9/site-packages/cqlshlib
+
+It make the cqlsh works. 
+
+Below is from internet, still waiting for our version
+
+[Unit]
+Description=Cassandra
+After=network.target
+
+[Service]
+RuntimeDirectory=cassandra
+PIDFile=/var/run/cassandra/cassandra.pid
+Environment=CASSANDRA_HOME=/usr/share/cassandra
+Environment=CASSANDRA_CONF=/etc/cassandra/conf
+Environment=CASSANDRA_INCLUDE=/usr/share/cassandra/cassandra.in.sh
+Environment=CASSANDRA_OWNR=cassandra
+User=cassandra
+Group=cassandra
+Type=forking
+ExecStart=/usr/sbin/cassandra -p /var/run/cassandra/cassandra.pid
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=100000
+LimitMEMLOCK=infinity
+LimitNPROC=32768
+LimitAS=infinity
+Restart=always
+TimeoutStopSec=180
+SuccessExitStatus=143
+
+
+[Install]
+WantedBy=multi-user.target
+

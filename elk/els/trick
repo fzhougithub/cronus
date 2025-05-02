@@ -1,3 +1,39 @@
+Using go install elasticsearch-cli command, create the envronment file, and use alias to simplify the command
+
+# User specific environment and startup programs
+export PATH=$PATH:/usr/pgsql-17/bin:/root/go/bin:/usr/share/go/bin:/usr/share/elasticsearch/bin
+alias work='cd /var/tellme/work/cronus'
+alias els1='/root/go/bin/elasticsearch-cli --cluster els1'
+alias els2='/root/go/bin/elasticsearch-cli --cluster els2'
+alias els3='/root/go/bin/elasticsearch-cli --cluster els3'
+esget () {
+  echo "curl -s -X GET \"http://192.168.1.168:9201/$1\""
+  curl -s -X GET "http://192.168.1.168:9201/$1"
+}
+
+esput () {
+  echo "curl -s -X PUT \"http://192.168.1.168:9201/$1\""
+  curl -s -X PUT "http://192.168.1.168:9201/$1"
+}
+
+espost () {
+  echo "curl -s -X POST \"http://192.168.1.168:9201/$1\""
+  curl -s -X POST "http://192.168.1.168:9201/$1"
+}
+
+
+
+[root@rl01 els]# cat ~/.elasticsearch-cli/els1
+host: "http://192.168.1.168"
+port: 9201
+insecure: true
+timeout: 10
+
+This way, you can easy paste the demo code 
+
+els1 get /books
+
+
 Using function in profile to simplify the curl command for the elasticsearch query
 
 esget () {
@@ -7,3 +43,46 @@ esget () {
 Then, you can directly call this function like
 
 esget .ds-pgsql-wentao-2025.04.27-2025.04.27-000001/_search?size=20 |jq .|grep _id
+
+esget _cat
+
+[root@rl01 els]# esget _cat
+=^.^=
+/_cat/allocation
+/_cat/shards
+/_cat/shards/{index}
+/_cat/master
+/_cat/nodes
+/_cat/tasks
+/_cat/indices
+/_cat/indices/{index}
+/_cat/segments
+/_cat/segments/{index}
+/_cat/count
+/_cat/count/{index}
+/_cat/recovery
+/_cat/recovery/{index}
+/_cat/health
+/_cat/pending_tasks
+/_cat/aliases
+/_cat/aliases/{alias}
+/_cat/thread_pool
+/_cat/thread_pool/{thread_pools}
+/_cat/plugins
+/_cat/fielddata
+/_cat/fielddata/{fields}
+/_cat/nodeattrs
+/_cat/repositories
+/_cat/snapshots/{repository}
+/_cat/templates
+/_cat/component_templates
+/_cat/ml/anomaly_detectors
+/_cat/ml/anomaly_detectors/{job_id}
+/_cat/ml/datafeeds
+/_cat/ml/datafeeds/{datafeed_id}
+/_cat/ml/trained_models
+/_cat/ml/trained_models/{model_id}
+/_cat/ml/data_frame/analytics
+/_cat/ml/data_frame/analytics/{id}
+/_cat/transforms
+/_cat/transforms/{transform_id}
