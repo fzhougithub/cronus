@@ -1,0 +1,60 @@
+https://opster.com/guides/elasticsearch/security/x-pack/
+For instance, you can use role-based access control (RBAC) to secure access to your Elasticsearch data and APIs. Here’s how you can create a role and assign it to a user:
+
+1. Open the Kibana interface and navigate to Management > Security > Roles.
+2. Click on ‘Create role’ and specify the role name.
+3. In the ‘Cluster privileges’ section, add the necessary privileges.
+4. In the ‘Index privileges’ section, specify the indices that this role can access and the operations it can perform.
+5. Save the role and navigate to Management > Security > Users.
+6. Create a new user or select an existing one, and assign the newly created role to this user.
+
+Since Elasticsearch 8.0, X-Pack security features are enabled by default when bootstrapping a new cluster. In earlier versions, X-Pack security was disabled by default and had to be enabled explicitly by setting `xpack.security.enabled: true` in the `elasticsearch.yml` configuration file.
+
+
+
+
+
+
+
+
+
+elasticsearch-certutil ca -days 3650
+
+This tool assists you in the generation of X.509 certificates and certificate
+signing requests for use with SSL/TLS in the Elastic stack.
+
+The 'ca' mode generates a new 'certificate authority'
+This will create a new X.509 certificate and private key that can be used
+to sign certificate when running in 'cert' mode.
+
+Use the 'ca-dn' option if you wish to configure the 'distinguished name'
+of the certificate authority
+
+By default the 'ca' mode produces a single PKCS#12 output file which holds:
+    * The CA certificate
+    * The CA's private key
+
+If you elect to generate PEM format certificates (the -pem option), then the output will
+be a zip file containing individual files for the CA certificate and private key
+
+Please enter the desired output file [elastic-stack-ca.p12]:
+Enter password for elastic-stack-ca.p12 :
+
+# The above command generate 3 files in certs directory
+
+[root@rl01 els]# ls -larth /etc/els1/certs
+total 28K
+-rw-r-----. 1 elasticsearch elasticsearch 5.8K Apr 26 00:41 transport.p12
+-rw-r-----. 1 elasticsearch elasticsearch 9.9K Apr 26 00:41 http.p12
+-rw-r-----. 1 elasticsearch elasticsearch 1.9K Apr 26 00:41 http_ca.crt
+drwxr-x---. 2 elasticsearch elasticsearch   62 Apr 26 00:41 .
+drwxr-xr-x. 4 elasticsearch elasticsearch 4.0K Apr 26 05:04 ..
+
+Generate the key pairs for all of the nodes
+
+https://www.elastic.co/docs/reference/elasticsearch/command-line-tools/certutil
+
+
+./elasticsearch-certutil -multiple --out node_certs.zip --name node --dns rl01 --ip 192.168.1.168 --name node --dns rl01 --ip 192.168.1.168 --name node --dns rl01 --ip 192.168.1.168
+
+

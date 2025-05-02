@@ -1,0 +1,9 @@
+Using function in profile to simplify the curl command for the elasticsearch query
+
+esget () {
+  curl -s -X GET http://192.168.1.168:9201/$1
+}
+
+Then, you can directly call this function like
+
+esget .ds-pgsql-wentao-2025.04.27-2025.04.27-000001/_search?size=20 |jq .|grep _id
