@@ -1,0 +1,310 @@
+GET /joe_pizza_data/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        { "term": { "type": "order" } },
+        { "range": {
+            "created_at": {
+              "gte": "2025-04-01T00:00:00Z",
+              "lte": "2025-04-30T23:59:59Z"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "by_food_item": {
+      "nested": { "path": "order_items" },
+      "aggs": {
+        "by_id": {
+          "terms": { "field": "order_items.food_item_id" },
+          "aggs": {
+            "total_quantity": { "sum": { "field": "order_items.quantity" } }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+{
+  "error": {
+    "root_cause": [
+      {
+        "type": "illegal_argument_exception",
+        "reason": "Fielddata is disabled on [order_items.food_item_id] in [restaurant_management]. Text fields are not optimised for operations that require per-document field data like aggregations and sorting, so these operations are disabled by default. Please use a keyword field instead. Alternatively, set fielddata=true on [order_items.food_item_id] in order to load field data by uninverting the inverted index. Note that this can use significant memory."
+      }
+    ],
+    "type": "search_phase_execution_exception",
+    "reason": "all shards failed",
+    "phase": "query",
+    "grouped": true,
+    "failed_shards": [
+      {
+        "shard": 0,
+        "index": "restaurant_management",
+        "node": "kkH7b3JmSgKrYT1y1Yf8WA",
+        "reason": {
+          "type": "illegal_argument_exception",
+          "reason": "Fielddata is disabled on [order_items.food_item_id] in [restaurant_management]. Text fields are not optimised for operations that require per-document field data like aggregations and sorting, so these operations are disabled by default. Please use a keyword field instead. Alternatively, set fielddata=true on [order_items.food_item_id] in order to load field data by uninverting the inverted index. Note that this can use significant memory."
+        }
+      }
+    ],
+    "caused_by": {
+      "type": "illegal_argument_exception",
+      "reason": "Fielddata is disabled on [order_items.food_item_id] in [restaurant_management]. Text fields are not optimised for operations that require per-document field data like aggregations and sorting, so these operations are disabled by default. Please use a keyword field instead. Alternatively, set fielddata=true on [order_items.food_item_id] in order to load field data by uninverting the inverted index. Note that this can use significant memory.",
+      "caused_by": {
+        "type": "illegal_argument_exception",
+        "reason": "Fielddata is disabled on [order_items.food_item_id] in [restaurant_management]. Text fields are not optimised for operations that require per-document field data like aggregations and sorting, so these operations are disabled by default. Please use a keyword field instead. Alternatively, set fielddata=true on [order_items.food_item_id] in order to load field data by uninverting the inverted index. Note that this can use significant memory."
+      }
+    }
+  },
+  "status": 400
+}
+
+
+1. Update the mapping of your restaurant_management index. You need to add a keyword sub-field to order_items.food_item_id or, ideally, re-map order_items.food_item_id to be of type keyword if you don't need full-text search on it.
+
+PUT /restaurant_management/_mapping
+{
+  "properties": {
+    "order_items": {
+      "type": "nested",
+      "properties": {
+        "food_item_id": {
+          "type": "keyword"
+          // If you also need full-text search, use a multi-field:
+          // "fields": {
+          //   "text": { "type": "text" },
+          //   "keyword": { "type": "keyword" }
+          // }
+        },
+        "quantity": { "type": "integer" }
+        // ... other properties of order_items
+      }
+    },
+    "type": { "type": "keyword" },
+    "created_at": { "type": "date" },
+    "tenant_id": { "type": "keyword" }
+    // ... other top-level properties
+  }
+}
+
+GET /joe_pizza_data/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        { "term": { "type": "order" } },
+        { "range": {
+            "created_at": {
+              "gte": "2025-04-01T00:00:00Z",
+              "lte": "2025-04-30T23:59:59Z"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "by_food_item": {
+      "nested": { "path": "order_items" },
+      "aggs": {
+        "by_id": {
+          "terms": { "field": "order_items.food_item_id" }, // If re-mapped
+          // OR
+          //"terms": { "field": "order_items.food_item_id.keyword" }, // If using multi-field
+          "aggs": {
+            "total_quantity": { "sum": { "field": "order_items.quantity" } }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+2. Node recommand
+
+PUT /restaurant_management/_mapping
+{
+  "properties": {
+    "order_items": {
+      "type": "nested",
+      "properties": {
+        "food_item_id": {
+          "type": "text",
+          "fielddata": true
+        },
+        "quantity": { "type": "integer" }
+        // ... other properties of order_items
+      }
+    },
+    "type": { "type": "keyword" },
+    "created_at": { "type": "date" },
+    "tenant_id": { "type": "keyword" }
+    // ... other top-level properties
+  }
+}
+
+Final Solution
+
+1. Recreate a new index with correct mapping
+
+PUT /new_restaurant_management
+{
+  "mappings": {
+    "properties": {
+      "order_items": {
+        "type": "nested",
+        "properties": {
+          "food_item_id": { "type": "keyword" },
+          "quantity": { "type": "integer" }
+          // ... other properties of order_items
+        }
+      },
+      "type": { "type": "keyword" },
+      "created_at": { "type": "date" },
+      "tenant_id": { "type": "keyword" }
+      // ... other top-level properties
+    }
+  }
+}
+
+POST /_reindex
+{
+  "source": { "index": "joe_pizza_data" },
+  "dest": { "index": "joe_pizza_data_v2" }
+}
+
+GET /joe_pizza_data_v2/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        { "term": { "type": "order" } },
+        { "range": {
+            "created_at": {
+              "gte": "2025-04-01T00:00:00Z",
+              "lte": "2025-04-30T23:59:59Z"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "by_food_item": {
+      "nested": { "path": "order_items" },
+      "aggs": {
+        "by_id": {
+          "terms": { "field": "order_items.food_item_id" },
+          "aggs": {
+            "total_quantity": { "sum": { "field": "order_items.quantity" } }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+{
+  "took": 19,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 2,
+      "relation": "eq"
+    },
+    "max_score": 0,
+    "hits": [
+      {
+        "_index": "joe_pizza_data_v2",
+        "_id": "pgtdnpYBLf0Ar8OwQf5-",
+        "_score": 0,
+        "_source": {
+          "tenant_id": "joe_pizza_123",
+          "type": "order",
+          "buyer_id": "alice_123",
+          "restaurant_id": "joe_pizza_123",
+          "order_items": [
+            {
+              "food_item_id": "margherita_pizza_123",
+              "quantity": 2,
+              "customizations": [
+                {
+                  "name": "cheese",
+                  "value": "extra"
+                },
+                {
+                  "name": "topping",
+                  "value": "no onions"
+                }
+              ]
+            }
+          ],
+          "pickup_time": "2025-05-01T12:30:00Z",
+          "order_status": "pending",
+          "created_at": "2025-04-30T11:00:00Z"
+        }
+      },
+      {
+        "_index": "joe_pizza_data_v2",
+        "_id": "pwtpnpYBLf0Ar8OwhP4r",
+        "_score": 0,
+        "_source": {
+          "tenant_id": "joe_pizza_123",
+          "type": "order",
+          "buyer_id": "alice_123",
+          "restaurant_id": "joe_pizza_123",
+          "order_items": [
+            {
+              "food_item_id": "margherita_pizza_123",
+              "quantity": 1,
+              "customizations": [
+                {
+                  "name": "crust",
+                  "value": "gluten-free"
+                }
+              ]
+            }
+          ],
+          "pickup_time": "2025-05-01T13:00:00Z",
+          "order_status": "pending",
+          "created_at": "2025-04-30T12:00:00Z"
+        }
+      }
+    ]
+  },
+  "aggregations": {
+    "by_food_item": {
+      "doc_count": 2,
+      "by_id": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "margherita_pizza_123",
+            "doc_count": 2,
+            "total_quantity": {
+              "value": 3
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+

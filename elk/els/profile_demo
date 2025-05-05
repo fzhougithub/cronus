@@ -1,0 +1,1041 @@
+{
+  "took": 112,
+  "timed_out": false,
+  "_shards": {
+    "total": 5,
+    "successful": 5,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 2,
+      "relation": "eq"
+    },
+    "max_score": 0,
+    "hits": [
+      {
+        "_index": "restaurant_management_2",
+        "_id": "pwtpnpYBLf0Ar8OwhP4r",
+        "_score": 0,
+        "_source": {
+          "tenant_id": "joe_pizza_123",
+          "type": "order",
+          "buyer_id": "alice_123",
+          "restaurant_id": "joe_pizza_123",
+          "order_items": [
+            {
+              "food_item_id": "margherita_pizza_123",
+              "quantity": 1,
+              "customizations": [
+                {
+                  "name": "crust",
+                  "value": "gluten-free"
+                }
+              ]
+            }
+          ],
+          "pickup_time": "2025-05-01T13:00:00Z",
+          "order_status": "pending",
+          "created_at": "2025-04-30T12:00:00Z"
+        }
+      },
+      {
+        "_index": "restaurant_management_2",
+        "_id": "pgtdnpYBLf0Ar8OwQf5-",
+        "_score": 0,
+        "_source": {
+          "tenant_id": "joe_pizza_123",
+          "type": "order",
+          "buyer_id": "alice_123",
+          "restaurant_id": "joe_pizza_123",
+          "order_items": [
+            {
+              "food_item_id": "margherita_pizza_123",
+              "quantity": 2,
+              "customizations": [
+                {
+                  "name": "cheese",
+                  "value": "extra"
+                },
+                {
+                  "name": "topping",
+                  "value": "no onions"
+                }
+              ]
+            }
+          ],
+          "pickup_time": "2025-05-01T12:30:00Z",
+          "order_status": "pending",
+          "created_at": "2025-04-30T11:00:00Z"
+        }
+      }
+    ]
+  },
+  "aggregations": {
+    "by_food_item": {
+      "doc_count": 2,
+      "by_id": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "margherita_pizza_123",
+            "doc_count": 2,
+            "total_quantity": {
+              "value": 3
+            }
+          }
+        ]
+      }
+    }
+  },
+  "profile": {
+    "shards": [
+      {
+        "id": "[F3vQbnwyQCOUBAPPHjQJhg][restaurant_management_2][4]",
+        "node_id": "F3vQbnwyQCOUBAPPHjQJhg",
+        "shard_id": 4,
+        "index": "restaurant_management_2",
+        "cluster": "(local)",
+        "searches": [
+          {
+            "query": [
+              {
+                "type": "BooleanQuery",
+                "description": "#type:order #FieldExistsQuery [field=created_at]",
+                "time_in_nanos": 2246727,
+                "breakdown": {
+                  "set_min_competitive_score_count": 0,
+                  "match_count": 0,
+                  "shallow_advance_count": 0,
+                  "set_min_competitive_score": 0,
+                  "next_doc": 31880,
+                  "match": 0,
+                  "next_doc_count": 2,
+                  "score_count": 1,
+                  "compute_max_score_count": 0,
+                  "compute_max_score": 0,
+                  "advance": 0,
+                  "advance_count": 0,
+                  "count_weight_count": 0,
+                  "score": 5192,
+                  "build_scorer_count": 2,
+                  "create_weight": 567059,
+                  "shallow_advance": 0,
+                  "count_weight": 0,
+                  "create_weight_count": 1,
+                  "build_scorer": 1642596
+                },
+                "children": [
+                  {
+                    "type": "TermQuery",
+                    "description": "type:order",
+                    "time_in_nanos": 132673,
+                    "breakdown": {
+                      "set_min_competitive_score_count": 0,
+                      "match_count": 0,
+                      "shallow_advance_count": 0,
+                      "set_min_competitive_score": 0,
+                      "next_doc": 2332,
+                      "match": 0,
+                      "next_doc_count": 2,
+                      "score_count": 0,
+                      "compute_max_score_count": 0,
+                      "compute_max_score": 0,
+                      "advance": 0,
+                      "advance_count": 0,
+                      "count_weight_count": 0,
+                      "score": 0,
+                      "build_scorer_count": 3,
+                      "create_weight": 29476,
+                      "shallow_advance": 0,
+                      "count_weight": 0,
+                      "create_weight_count": 1,
+                      "build_scorer": 100865
+                    }
+                  },
+                  {
+                    "type": "FieldExistsQuery",
+                    "description": "FieldExistsQuery [field=created_at]",
+                    "time_in_nanos": 106147,
+                    "breakdown": {
+                      "set_min_competitive_score_count": 0,
+                      "match_count": 0,
+                      "shallow_advance_count": 0,
+                      "set_min_competitive_score": 0,
+                      "next_doc": 0,
+                      "match": 0,
+                      "next_doc_count": 0,
+                      "score_count": 0,
+                      "compute_max_score_count": 0,
+                      "compute_max_score": 0,
+                      "advance": 18766,
+                      "advance_count": 2,
+                      "count_weight_count": 0,
+                      "score": 0,
+                      "build_scorer_count": 3,
+                      "create_weight": 1334,
+                      "shallow_advance": 0,
+                      "count_weight": 0,
+                      "create_weight_count": 1,
+                      "build_scorer": 86047
+                    }
+                  }
+                ]
+              }
+            ],
+            "rewrite_time": 453346,
+            "collector": [
+              {
+                "name": "QueryPhaseCollector",
+                "reason": "search_query_phase",
+                "time_in_nanos": 9131492,
+                "children": [
+                  {
+                    "name": "SimpleTopScoreDocCollector",
+                    "reason": "search_top_hits",
+                    "time_in_nanos": 1164662
+                  },
+                  {
+                    "name": "AggregatorCollector: [by_food_item]",
+                    "reason": "aggregation",
+                    "time_in_nanos": 6931553
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "aggregations": [
+          {
+            "type": "NestedAggregator",
+            "description": "by_food_item",
+            "time_in_nanos": 14278033,
+            "breakdown": {
+              "reduce": 0,
+              "build_aggregation_count": 1,
+              "post_collection": 9103,
+              "reduce_count": 0,
+              "initialize_count": 1,
+              "collect_count": 1,
+              "post_collection_count": 1,
+              "build_leaf_collector": 307305,
+              "build_aggregation": 7314741,
+              "build_leaf_collector_count": 1,
+              "initialize": 98006,
+              "collect": 6548878
+            },
+            "debug": {
+              "built_buckets": 1
+            },
+            "children": [
+              {
+                "type": "GlobalOrdinalsStringTermsAggregator",
+                "description": "by_id",
+                "time_in_nanos": 13672278,
+                "breakdown": {
+                  "reduce": 0,
+                  "build_aggregation_count": 1,
+                  "post_collection": 3030,
+                  "reduce_count": 0,
+                  "initialize_count": 1,
+                  "collect_count": 1,
+                  "post_collection_count": 1,
+                  "build_leaf_collector": 96200,
+                  "build_aggregation": 7069157,
+                  "build_leaf_collector_count": 1,
+                  "initialize": 34724,
+                  "collect": 6469167
+                },
+                "debug": {
+                  "segments_with_multi_valued_ords": 0,
+                  "collection_strategy": "remap using single bucket ords",
+                  "segments_with_single_valued_ords": 1,
+                  "total_buckets": 1,
+                  "built_buckets": 1,
+                  "result_strategy": "terms",
+                  "has_filter": false
+                },
+                "children": [
+                  {
+                    "type": "SumAggregator",
+                    "description": "total_quantity",
+                    "time_in_nanos": 6474490,
+                    "breakdown": {
+                      "reduce": 0,
+                      "build_aggregation_count": 1,
+                      "post_collection": 1250,
+                      "reduce_count": 0,
+                      "initialize_count": 1,
+                      "collect_count": 1,
+                      "post_collection_count": 1,
+                      "build_leaf_collector": 53110,
+                      "build_aggregation": 25595,
+                      "build_leaf_collector_count": 1,
+                      "initialize": 4886,
+                      "collect": 6389649
+                    },
+                    "debug": {
+                      "built_buckets": 1
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "fetch": {
+          "type": "fetch",
+          "description": "",
+          "time_in_nanos": 3929547,
+          "breakdown": {
+            "load_stored_fields": 66977,
+            "load_source": 5316,
+            "load_stored_fields_count": 1,
+            "next_reader_count": 1,
+            "load_source_count": 1,
+            "next_reader": 708195
+          },
+          "debug": {
+            "stored_fields": [
+              "_id",
+              "_routing",
+              "_source"
+            ]
+          },
+          "children": [
+            {
+              "type": "FetchFieldsPhase",
+              "description": "",
+              "time_in_nanos": 71364,
+              "breakdown": {
+                "process_count": 1,
+                "process": 23398,
+                "next_reader": 47966,
+                "next_reader_count": 1
+              }
+            },
+            {
+              "type": "FetchSourcePhase",
+              "description": "",
+              "time_in_nanos": 14916,
+              "breakdown": {
+                "process_count": 1,
+                "process": 14018,
+                "next_reader": 898,
+                "next_reader_count": 1
+              },
+              "debug": {
+                "fast_path": 1
+              }
+            },
+            {
+              "type": "StoredFieldsPhase",
+              "description": "",
+              "time_in_nanos": 5758,
+              "breakdown": {
+                "process_count": 1,
+                "process": 2184,
+                "next_reader": 3574,
+                "next_reader_count": 1
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "[kitLzTMMRpqSI4NX4bPAcg][restaurant_management_2][0]",
+        "node_id": "kitLzTMMRpqSI4NX4bPAcg",
+        "shard_id": 0,
+        "index": "restaurant_management_2",
+        "cluster": "(local)",
+        "searches": [
+          {
+            "query": [
+              {
+                "type": "BoostQuery",
+                "description": "(ConstantScore(type:order))^0.0",
+                "time_in_nanos": 506585,
+                "breakdown": {
+                  "set_min_competitive_score_count": 0,
+                  "match_count": 0,
+                  "shallow_advance_count": 0,
+                  "set_min_competitive_score": 0,
+                  "next_doc": 0,
+                  "match": 0,
+                  "score_count": 0,
+                  "next_doc_count": 0,
+                  "compute_max_score_count": 0,
+                  "compute_max_score": 0,
+                  "advance": 0,
+                  "advance_count": 0,
+                  "score": 0,
+                  "count_weight_count": 0,
+                  "build_scorer_count": 1,
+                  "create_weight": 489266,
+                  "shallow_advance": 0,
+                  "count_weight": 0,
+                  "create_weight_count": 1,
+                  "build_scorer": 17319
+                },
+                "children": [
+                  {
+                    "type": "TermQuery",
+                    "description": "type:order",
+                    "time_in_nanos": 16735,
+                    "breakdown": {
+                      "set_min_competitive_score_count": 0,
+                      "match_count": 0,
+                      "shallow_advance_count": 0,
+                      "set_min_competitive_score": 0,
+                      "next_doc": 0,
+                      "match": 0,
+                      "score_count": 0,
+                      "next_doc_count": 0,
+                      "compute_max_score_count": 0,
+                      "compute_max_score": 0,
+                      "advance": 0,
+                      "advance_count": 0,
+                      "score": 0,
+                      "count_weight_count": 0,
+                      "build_scorer_count": 1,
+                      "create_weight": 3439,
+                      "shallow_advance": 0,
+                      "count_weight": 0,
+                      "create_weight_count": 1,
+                      "build_scorer": 13296
+                    }
+                  }
+                ]
+              }
+            ],
+            "rewrite_time": 168318,
+            "collector": [
+              {
+                "name": "QueryPhaseCollector",
+                "reason": "search_query_phase",
+                "time_in_nanos": 549356,
+                "children": [
+                  {
+                    "name": "SimpleTopScoreDocCollector",
+                    "reason": "search_top_hits",
+                    "time_in_nanos": 18277
+                  },
+                  {
+                    "name": "AggregatorCollector: [by_food_item]",
+                    "reason": "aggregation",
+                    "time_in_nanos": 176076
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "aggregations": [
+          {
+            "type": "NestedAggregator",
+            "description": "by_food_item",
+            "time_in_nanos": 798050,
+            "breakdown": {
+              "reduce": 0,
+              "build_aggregation_count": 1,
+              "post_collection": 6302,
+              "initialize_count": 1,
+              "reduce_count": 0,
+              "collect_count": 0,
+              "post_collection_count": 1,
+              "build_leaf_collector": 145131,
+              "build_aggregation": 576977,
+              "build_leaf_collector_count": 1,
+              "initialize": 69640,
+              "collect": 0
+            },
+            "debug": {
+              "built_buckets": 1
+            },
+            "children": [
+              {
+                "type": "GlobalOrdinalsStringTermsAggregator",
+                "description": "by_id",
+                "time_in_nanos": 124797,
+                "breakdown": {
+                  "reduce": 0,
+                  "build_aggregation_count": 1,
+                  "post_collection": 2605,
+                  "initialize_count": 1,
+                  "reduce_count": 0,
+                  "collect_count": 0,
+                  "post_collection_count": 1,
+                  "build_leaf_collector": 77320,
+                  "build_aggregation": 19633,
+                  "build_leaf_collector_count": 1,
+                  "initialize": 25239,
+                  "collect": 0
+                },
+                "debug": {
+                  "segments_with_multi_valued_ords": 0,
+                  "collection_strategy": "remap using single bucket ords",
+                  "segments_with_single_valued_ords": 1,
+                  "total_buckets": 0,
+                  "built_buckets": 1,
+                  "result_strategy": "terms",
+                  "has_filter": false
+                },
+                "children": [
+                  {
+                    "type": "SumAggregator",
+                    "description": "total_quantity",
+                    "time_in_nanos": 70901,
+                    "breakdown": {
+                      "reduce": 0,
+                      "build_aggregation_count": 0,
+                      "post_collection": 1065,
+                      "initialize_count": 1,
+                      "reduce_count": 0,
+                      "collect_count": 0,
+                      "post_collection_count": 1,
+                      "build_leaf_collector": 66064,
+                      "build_aggregation": 0,
+                      "build_leaf_collector_count": 1,
+                      "initialize": 3772,
+                      "collect": 0
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "[kitLzTMMRpqSI4NX4bPAcg][restaurant_management_2][2]",
+        "node_id": "kitLzTMMRpqSI4NX4bPAcg",
+        "shard_id": 2,
+        "index": "restaurant_management_2",
+        "cluster": "(local)",
+        "searches": [
+          {
+            "query": [
+              {
+                "type": "BooleanQuery",
+                "description": "#type:order #FieldExistsQuery [field=created_at]",
+                "time_in_nanos": 21889113,
+                "breakdown": {
+                  "set_min_competitive_score_count": 0,
+                  "match_count": 0,
+                  "shallow_advance_count": 0,
+                  "set_min_competitive_score": 0,
+                  "next_doc": 14996,
+                  "match": 0,
+                  "score_count": 1,
+                  "next_doc_count": 2,
+                  "compute_max_score_count": 0,
+                  "compute_max_score": 0,
+                  "advance": 0,
+                  "advance_count": 0,
+                  "score": 4766,
+                  "count_weight_count": 0,
+                  "build_scorer_count": 2,
+                  "create_weight": 10668039,
+                  "shallow_advance": 0,
+                  "count_weight": 0,
+                  "create_weight_count": 1,
+                  "build_scorer": 11201312
+                },
+                "children": [
+                  {
+                    "type": "TermQuery",
+                    "description": "type:order",
+                    "time_in_nanos": 105937,
+                    "breakdown": {
+                      "set_min_competitive_score_count": 0,
+                      "match_count": 0,
+                      "shallow_advance_count": 0,
+                      "set_min_competitive_score": 0,
+                      "next_doc": 1716,
+                      "match": 0,
+                      "score_count": 0,
+                      "next_doc_count": 2,
+                      "compute_max_score_count": 0,
+                      "compute_max_score": 0,
+                      "advance": 0,
+                      "advance_count": 0,
+                      "score": 0,
+                      "count_weight_count": 0,
+                      "build_scorer_count": 3,
+                      "create_weight": 2957,
+                      "shallow_advance": 0,
+                      "count_weight": 0,
+                      "create_weight_count": 1,
+                      "build_scorer": 101264
+                    }
+                  },
+                  {
+                    "type": "FieldExistsQuery",
+                    "description": "FieldExistsQuery [field=created_at]",
+                    "time_in_nanos": 50297,
+                    "breakdown": {
+                      "set_min_competitive_score_count": 0,
+                      "match_count": 0,
+                      "shallow_advance_count": 0,
+                      "set_min_competitive_score": 0,
+                      "next_doc": 0,
+                      "match": 0,
+                      "score_count": 0,
+                      "next_doc_count": 0,
+                      "compute_max_score_count": 0,
+                      "compute_max_score": 0,
+                      "advance": 6090,
+                      "advance_count": 2,
+                      "score": 0,
+                      "count_weight_count": 0,
+                      "build_scorer_count": 3,
+                      "create_weight": 1485,
+                      "shallow_advance": 0,
+                      "count_weight": 0,
+                      "create_weight_count": 1,
+                      "build_scorer": 42722
+                    }
+                  }
+                ]
+              }
+            ],
+            "rewrite_time": 190805,
+            "collector": [
+              {
+                "name": "QueryPhaseCollector",
+                "reason": "search_query_phase",
+                "time_in_nanos": 820766,
+                "children": [
+                  {
+                    "name": "SimpleTopScoreDocCollector",
+                    "reason": "search_top_hits",
+                    "time_in_nanos": 33342
+                  },
+                  {
+                    "name": "AggregatorCollector: [by_food_item]",
+                    "reason": "aggregation",
+                    "time_in_nanos": 696989
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "aggregations": [
+          {
+            "type": "NestedAggregator",
+            "description": "by_food_item",
+            "time_in_nanos": 904245,
+            "breakdown": {
+              "reduce": 0,
+              "build_aggregation_count": 1,
+              "post_collection": 7043,
+              "initialize_count": 1,
+              "reduce_count": 0,
+              "collect_count": 1,
+              "post_collection_count": 1,
+              "build_leaf_collector": 173447,
+              "build_aggregation": 180366,
+              "build_leaf_collector_count": 1,
+              "initialize": 57461,
+              "collect": 485928
+            },
+            "debug": {
+              "built_buckets": 1
+            },
+            "children": [
+              {
+                "type": "GlobalOrdinalsStringTermsAggregator",
+                "description": "by_id",
+                "time_in_nanos": 691755,
+                "breakdown": {
+                  "reduce": 0,
+                  "build_aggregation_count": 1,
+                  "post_collection": 3538,
+                  "initialize_count": 1,
+                  "reduce_count": 0,
+                  "collect_count": 1,
+                  "post_collection_count": 1,
+                  "build_leaf_collector": 56697,
+                  "build_aggregation": 148475,
+                  "build_leaf_collector_count": 1,
+                  "initialize": 20746,
+                  "collect": 462299
+                },
+                "debug": {
+                  "segments_with_multi_valued_ords": 0,
+                  "collection_strategy": "remap using single bucket ords",
+                  "segments_with_single_valued_ords": 1,
+                  "total_buckets": 1,
+                  "built_buckets": 1,
+                  "result_strategy": "terms",
+                  "has_filter": false
+                },
+                "children": [
+                  {
+                    "type": "SumAggregator",
+                    "description": "total_quantity",
+                    "time_in_nanos": 560276,
+                    "breakdown": {
+                      "reduce": 0,
+                      "build_aggregation_count": 1,
+                      "post_collection": 1593,
+                      "initialize_count": 1,
+                      "reduce_count": 0,
+                      "collect_count": 1,
+                      "post_collection_count": 1,
+                      "build_leaf_collector": 36945,
+                      "build_aggregation": 63552,
+                      "build_leaf_collector_count": 1,
+                      "initialize": 1938,
+                      "collect": 456248
+                    },
+                    "debug": {
+                      "built_buckets": 1
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "fetch": {
+          "type": "fetch",
+          "description": "",
+          "time_in_nanos": 2424190,
+          "breakdown": {
+            "load_stored_fields": 59031,
+            "load_source": 12599,
+            "load_stored_fields_count": 1,
+            "next_reader_count": 1,
+            "load_source_count": 1,
+            "next_reader": 548128
+          },
+          "debug": {
+            "stored_fields": [
+              "_id",
+              "_routing",
+              "_source"
+            ]
+          },
+          "children": [
+            {
+              "type": "FetchFieldsPhase",
+              "description": "",
+              "time_in_nanos": 34248,
+              "breakdown": {
+                "process_count": 1,
+                "process": 17107,
+                "next_reader": 17141,
+                "next_reader_count": 1
+              }
+            },
+            {
+              "type": "FetchSourcePhase",
+              "description": "",
+              "time_in_nanos": 7703,
+              "breakdown": {
+                "process_count": 1,
+                "process": 7033,
+                "next_reader": 670,
+                "next_reader_count": 1
+              },
+              "debug": {
+                "fast_path": 1
+              }
+            },
+            {
+              "type": "StoredFieldsPhase",
+              "description": "",
+              "time_in_nanos": 5915,
+              "breakdown": {
+                "process_count": 1,
+                "process": 2013,
+                "next_reader": 3902,
+                "next_reader_count": 1
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "[kitLzTMMRpqSI4NX4bPAcg][restaurant_management_2][3]",
+        "node_id": "kitLzTMMRpqSI4NX4bPAcg",
+        "shard_id": 3,
+        "index": "restaurant_management_2",
+        "cluster": "(local)",
+        "searches": [
+          {
+            "query": [
+              {
+                "type": "MatchNoDocsQuery",
+                "description": """MatchNoDocsQuery("The "bool" query was rewritten to a "match_none" query.")""",
+                "time_in_nanos": 2022,
+                "breakdown": {
+                  "set_min_competitive_score_count": 0,
+                  "match_count": 0,
+                  "shallow_advance_count": 0,
+                  "set_min_competitive_score": 0,
+                  "next_doc": 0,
+                  "match": 0,
+                  "score_count": 0,
+                  "next_doc_count": 0,
+                  "compute_max_score_count": 0,
+                  "compute_max_score": 0,
+                  "advance": 0,
+                  "advance_count": 0,
+                  "score": 0,
+                  "count_weight_count": 0,
+                  "build_scorer_count": 0,
+                  "create_weight": 2022,
+                  "shallow_advance": 0,
+                  "count_weight": 0,
+                  "create_weight_count": 1,
+                  "build_scorer": 0
+                }
+              }
+            ],
+            "rewrite_time": 21003,
+            "collector": [
+              {
+                "name": "QueryPhaseCollector",
+                "reason": "search_query_phase",
+                "time_in_nanos": 8433,
+                "children": [
+                  {
+                    "name": "SimpleTopScoreDocCollector",
+                    "reason": "search_top_hits",
+                    "time_in_nanos": 4316
+                  },
+                  {
+                    "name": "AggregatorCollector: [by_food_item]",
+                    "reason": "aggregation",
+                    "time_in_nanos": 32505
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "aggregations": [
+          {
+            "type": "NestedAggregator",
+            "description": "by_food_item",
+            "time_in_nanos": 14822914,
+            "breakdown": {
+              "reduce": 0,
+              "build_aggregation_count": 1,
+              "post_collection": 15439,
+              "initialize_count": 1,
+              "reduce_count": 0,
+              "collect_count": 0,
+              "post_collection_count": 1,
+              "build_leaf_collector": 0,
+              "build_aggregation": 13058506,
+              "build_leaf_collector_count": 0,
+              "initialize": 1748969,
+              "collect": 0
+            },
+            "debug": {
+              "built_buckets": 1
+            },
+            "children": [
+              {
+                "type": "MapStringTermsAggregator",
+                "description": "by_id",
+                "time_in_nanos": 12097671,
+                "breakdown": {
+                  "reduce": 0,
+                  "build_aggregation_count": 1,
+                  "post_collection": 10551,
+                  "initialize_count": 1,
+                  "reduce_count": 0,
+                  "collect_count": 0,
+                  "post_collection_count": 1,
+                  "build_leaf_collector": 0,
+                  "build_aggregation": 10362779,
+                  "build_leaf_collector_count": 0,
+                  "initialize": 1724341,
+                  "collect": 0
+                },
+                "debug": {
+                  "collection_strategy": "from Field [order_items.food_item_id] of type [keyword]",
+                  "deferred_aggregators": [
+                    "total_quantity"
+                  ],
+                  "total_buckets": 0,
+                  "built_buckets": 1,
+                  "result_strategy": "terms"
+                },
+                "children": [
+                  {
+                    "type": "SumAggregator",
+                    "description": "total_quantity",
+                    "time_in_nanos": 17957,
+                    "breakdown": {
+                      "reduce": 0,
+                      "build_aggregation_count": 1,
+                      "post_collection": 4316,
+                      "initialize_count": 1,
+                      "reduce_count": 0,
+                      "collect_count": 0,
+                      "post_collection_count": 1,
+                      "build_leaf_collector": 0,
+                      "build_aggregation": 7413,
+                      "build_leaf_collector_count": 0,
+                      "initialize": 6228,
+                      "collect": 0
+                    },
+                    "debug": {
+                      "built_buckets": 0
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "[kkH7b3JmSgKrYT1y1Yf8WA][restaurant_management_2][1]",
+        "node_id": "kkH7b3JmSgKrYT1y1Yf8WA",
+        "shard_id": 1,
+        "index": "restaurant_management_2",
+        "cluster": "(local)",
+        "searches": [
+          {
+            "query": [
+              {
+                "type": "MatchNoDocsQuery",
+                "description": """MatchNoDocsQuery("The "bool" query was rewritten to a "match_none" query.")""",
+                "time_in_nanos": 7484,
+                "breakdown": {
+                  "set_min_competitive_score_count": 0,
+                  "match_count": 0,
+                  "shallow_advance_count": 0,
+                  "set_min_competitive_score": 0,
+                  "next_doc": 0,
+                  "match": 0,
+                  "next_doc_count": 0,
+                  "score_count": 0,
+                  "compute_max_score_count": 0,
+                  "compute_max_score": 0,
+                  "advance": 0,
+                  "advance_count": 0,
+                  "count_weight_count": 0,
+                  "score": 0,
+                  "build_scorer_count": 0,
+                  "create_weight": 7484,
+                  "shallow_advance": 0,
+                  "count_weight": 0,
+                  "create_weight_count": 1,
+                  "build_scorer": 0
+                }
+              }
+            ],
+            "rewrite_time": 25930,
+            "collector": [
+              {
+                "name": "QueryPhaseCollector",
+                "reason": "search_query_phase",
+                "time_in_nanos": 86286,
+                "children": [
+                  {
+                    "name": "SimpleTopScoreDocCollector",
+                    "reason": "search_top_hits",
+                    "time_in_nanos": 11350
+                  },
+                  {
+                    "name": "AggregatorCollector: [by_food_item]",
+                    "reason": "aggregation",
+                    "time_in_nanos": 28248
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "aggregations": [
+          {
+            "type": "NestedAggregator",
+            "description": "by_food_item",
+            "time_in_nanos": 8212388,
+            "breakdown": {
+              "reduce": 0,
+              "build_aggregation_count": 1,
+              "post_collection": 30260,
+              "reduce_count": 0,
+              "initialize_count": 1,
+              "collect_count": 0,
+              "post_collection_count": 1,
+              "build_leaf_collector": 0,
+              "build_aggregation": 6481031,
+              "build_leaf_collector_count": 0,
+              "initialize": 1701097,
+              "collect": 0
+            },
+            "debug": {
+              "built_buckets": 1
+            },
+            "children": [
+              {
+                "type": "MapStringTermsAggregator",
+                "description": "by_id",
+                "time_in_nanos": 7556601,
+                "breakdown": {
+                  "reduce": 0,
+                  "build_aggregation_count": 1,
+                  "post_collection": 16184,
+                  "reduce_count": 0,
+                  "initialize_count": 1,
+                  "collect_count": 0,
+                  "post_collection_count": 1,
+                  "build_leaf_collector": 0,
+                  "build_aggregation": 5890268,
+                  "build_leaf_collector_count": 0,
+                  "initialize": 1650149,
+                  "collect": 0
+                },
+                "debug": {
+                  "deferred_aggregators": [
+                    "total_quantity"
+                  ],
+                  "total_buckets": 0,
+                  "collection_strategy": "from Field [order_items.food_item_id] of type [keyword]",
+                  "built_buckets": 1,
+                  "result_strategy": "terms"
+                },
+                "children": [
+                  {
+                    "type": "SumAggregator",
+                    "description": "total_quantity",
+                    "time_in_nanos": 43964,
+                    "breakdown": {
+                      "reduce": 0,
+                      "build_aggregation_count": 1,
+                      "post_collection": 29732,
+                      "reduce_count": 0,
+                      "initialize_count": 1,
+                      "collect_count": 0,
+                      "post_collection_count": 1,
+                      "build_leaf_collector": 0,
+                      "build_aggregation": 5896,
+                      "build_leaf_collector_count": 0,
+                      "initialize": 8336,
+                      "collect": 0
+                    },
+                    "debug": {
+                      "built_buckets": 0
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

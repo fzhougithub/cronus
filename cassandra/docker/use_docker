@@ -1,0 +1,64 @@
+vi ~/.docker/config.json
+{
+  "auths": {},
+  "credsStore": ""
+}
+
+
+
+docker exec my-container ls /etc
+
+docker exec my-container sh -c "cd /etc && ls && echo 'done'"
+
+docker exec my-container bash -c "echo Hello && echo World && uptime"
+
+docker exec -it my-container bash
+
+docker exec -it my-container sh
+
+https://docs.docker.com/engine/reference/commandline/exec/
+
+docker inspect cass | grep -A 10 NetworkSettings
+docker inspect kind-registry | grep -A 10 NetworkSettings
+
+
+docker ps
+
+docker exec -it kind-registry cat /etc/docker/registry/config.yml
+
+docker network ls       # lists all networks
+docker network inspect bridge  # check containers in the bridge network
+
+
+Start the temporar container which contain more tools
+docker run -it --rm --network container:cass busybox sh
+/#
+then, you can test like
+	ping cass
+	dig kind-registry
+	curl http://kind-registry:5000/v2/
+
+
+docker run -it --rm --network bridge nicolaka/netshoot
+
+
+docker network inspect bridge
+
+# Per DNS lookup, you can create your own network, and then, it can use own hostname DNS
+
+docker network create my-net
+docker run --rm -it --network my-net --name cass cassandra
+docker run --rm -it --network my-net nicolaka/netshoot
+
+
+
+Or, install iptables util in cass container
+
+docker exec -it cass bash   # or sh if bash is missing
+
+# Then inside:
+apt update && apt install iputils-ping -y
+
+
+
+docker stop cass

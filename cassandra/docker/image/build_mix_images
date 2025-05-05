@@ -1,0 +1,13 @@
+# Stage 1: build helper with full JDK
+FROM openjdk:17 as jdk-tools
+RUN echo "Build stage to extract jps"
+
+# Stage 2: actual cassandra image
+FROM cassandra:latest
+
+# Copy only the jps binary and tools.jar (if needed)
+COPY --from=jdk-tools /usr/lib/jvm/java-17-openjdk-amd64/bin/jps /usr/local/bin/jps
+COPY --from=jdk-tools /usr/lib/jvm/java-17-openjdk-amd64/lib/tools.jar /usr/lib/jvm/java-17-openjdk-amd64/lib/tools.jar
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+

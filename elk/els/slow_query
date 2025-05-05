@@ -1,0 +1,127 @@
+GET _all/_settings?expand_wildcards=all&filter_path=*.settings.index.*.slowlog
+
+https://www.elastic.co/docs/reference/elasticsearch/index-settings/slow-log
+
+PUT /restaurant_management_2/_settings
+{
+  "index.search.slowlog.threshold.query.warn": "1s",
+  "index.search.slowlog.threshold.fetch.warn": "500ms",
+  "index.indexing.slowlog.threshold.index.warn": "200ms"
+}
+
+GET restaurant_management_2/_settings?filter_path=*.settings.index.*.slowlog
+
+{
+  "restaurant_management_2": {
+    "settings": {
+      "index": {
+        "search": {
+          "slowlog": {
+            "threshold": {
+              "fetch": {
+                "warn": "500ms"
+              },
+              "query": {
+                "warn": "1s"
+              }
+            }
+          }
+        },
+        "indexing": {
+          "slowlog": {
+            "threshold": {
+              "index": {
+                "warn": "200ms"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+index.search.slowlog.threshold.query.warn: 10s
+index.search.slowlog.threshold.query.info: 5s
+index.search.slowlog.threshold.query.debug: 2s
+index.search.slowlog.threshold.query.trace: 500ms
+
+index.search.slowlog.threshold.fetch.warn: 1s
+index.search.slowlog.threshold.fetch.info: 800ms
+index.search.slowlog.threshold.fetch.debug: 500ms
+index.search.slowlog.threshold.fetch.trace: 200ms
+
+index.search.slowlog.include.user: true
+
+PUT /my-index-000001/_settings
+{
+  "index.search.slowlog.threshold.query.warn": "10s",
+  "index.search.slowlog.threshold.query.info": "5s",
+  "index.search.slowlog.threshold.query.debug": "2s",
+  "index.search.slowlog.threshold.query.trace": "500ms",
+  "index.search.slowlog.threshold.fetch.warn": "1s",
+  "index.search.slowlog.threshold.fetch.info": "800ms",
+  "index.search.slowlog.threshold.fetch.debug": "500ms",
+  "index.search.slowlog.threshold.fetch.trace": "200ms",
+  "index.search.slowlog.include.user": true
+}
+
+PUT /my-index-000001/_settings
+{
+  "index.indexing.slowlog.threshold.index.warn": "10s",
+  "index.indexing.slowlog.threshold.index.info": "5s",
+  "index.indexing.slowlog.threshold.index.debug": "2s",
+  "index.indexing.slowlog.threshold.index.trace": "500ms",
+  "index.indexing.slowlog.source": "1000",
+  "index.indexing.slowlog.reformat": true,
+  "index.indexing.slowlog.include.user": true
+}
+
+Logging the _source field
+By default, Elasticsearch logs the first 1000 characters of the _source in the slow log. You can adjust how _source is logged using the index.indexing.slowlog.source setting. Set index.indexing.slowlog.source to false or 0 to skip logging the source entirely. Set index.indexing.slowlog.source to true to log the entire source regardless of size.
+
+The original _source is reformatted by default to make sure that it fits on a single log line. If preserving the original document format is important, then you can turn off reformatting by setting index.indexing.slowlog.reformat to false. This causes source to be logged with the original formatting intact, potentially spanning multiple log lines.
+
+Enable for search query
+PUT /*/_settings
+{
+  "index.search.slowlog.include.user": true,
+  "index.search.slowlog.threshold.fetch.warn": "30s",
+  "index.search.slowlog.threshold.query.warn": "30s"
+}
+
+Enable for indexing query
+PUT /*/_settings
+{
+  "index.indexing.slowlog.include.user": true,
+  "index.indexing.slowlog.threshold.index.warn": "30s"
+}
+
+Once you configure slow logs on a specific index in Elasticsearch, slow queries won't show up in the REST API — they are written to log files on disk.
+
+The logs go to the file system under the node’s log directory (default is logs/ under your Elasticsearch home).
+
+Look for these files:
+
+Search slowlog:
+
+logs/elasticsearch_index_search_slowlog.log
+
+Indexing slowlog:
+
+logs/elasticsearch_index_indexing_slowlog.log
+
+(p3) [root@rl01 demo]# ls -larth /var/tellme/log/els1
+total 7.0M
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 01:54 els_audit.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 01:54 els_index_search_slowlog.json
+-rwxrwxrwx. 1 elasticsearch elasticsearch    0 Apr 26 01:54 els_index_indexing_slowlog.json
+
+You can also redirect the slow query to console in log4j
+
+logger.index.search.slowlog.level = warn
+logger.index.search.slowlog.name = index.search.slowlog
+logger.index.search.slowlog.appenderRef.console.ref = console
+
+
+

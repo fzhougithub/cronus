@@ -1,0 +1,138 @@
+1. create working directory
+mkdir images
+cd images
+
+2. Create a docker file Dockerfile
+
+# Start from the official Cassandra image
+FROM cassandra:latest
+
+RUN dnf install -y java-17-openjdk-devel
+
+# Optional: set environment variables if needed
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+3. Build Docker Image
+docker build -t cassandra-with-jdk .
+
+4. Run container using your own image
+
+docker run --name cass4 --rm -it cassandra-with-jdk
+
+
+usually, you could not see the image file like your name directly, the image is layered 
+
+[root@rl01 image]# podman image tree localhost/cass-with-jps:latest
+Image ID: 12c22992787b
+Tags:     [localhost/cass-with-jps:latest]
+Size:     1.049GB
+Image Layers
+├── ID: 65c636ce09f2 Size: 80.41MB
+├── ID: 8121732c342a Size: 45.47MB
+├── ID: a5daa0a92411 Size: 140.5MB
+├── ID: 8507836e13d7 Size:  2.56kB
+├── ID: fc04ee32ef47 Size: 7.168kB
+├── ID: e232ffc8b46c Size: 337.9kB
+├── ID: 0f08325bffa2 Size:  34.8MB
+├── ID: 606144f93c8b Size: 2.366MB
+├── ID: 602fc0963fe6 Size:  83.4MB
+├── ID: 7daf6b001312 Size: 5.632kB Top Layer of: [docker.io/library/cassandra:latest]
+└── ID: 425d8d627112 Size: 661.8MB Top Layer of: [localhost/cass-with-jps:latest]
+
+Container images, including those built with **Docker**, **Podman**, and other container runtimes, use a **layered structure** to efficiently manage filesystem changes. This layering mechanism is a key aspect of how container images work. Here's an explanation:
+
+### **How Container Images Use Layered Structure**
+
+1. **Layered Filesystem**:
+
+   * **Container images** are made up of **layers**. Each layer represents a set of changes to the filesystem (e.g., installing packages, adding files, changing configurations).
+   * The layers are stacked on top of each other to form a complete filesystem for the container.
+
+2. **Immutability of Layers**:
+
+   * Each layer is immutable. Once a layer is created, it cannot be modified. If you make changes (such as installing a package), a new layer is added on top, and the previous layers remain unchanged.
+   * This makes container images very efficient because they can be reused across different images, reducing duplication.
+
+3. **Efficient Storage**:
+
+   * Since layers are shared, if multiple images use the same base image (e.g., `ubuntu` or `alpine`), they can share layers, saving storage space. This is similar to using **copy-on-write** technology.
+   * For example, if you have multiple images based on `ubuntu:latest`, all of them will share the same layers for the operating system. Only the layers containing your changes (e.g., adding specific applications or configurations) will differ.
+
+4. **Layer Creation**:
+
+   * When building an image, each instruction in a Dockerfile (or build file for other container runtimes) creates a new layer:
+
+     * **FROM**: Pulls the base image.
+     * **RUN**: Executes commands to modify the filesystem (like installing software).
+     * **COPY** / **ADD**: Copies files into the image.
+     * **CMD**: Sets the default command for the container.
+
+5. **Caching**:
+
+   * Layers are cached during the build process. If the same layer hasn’t changed (e.g., a `RUN` command that installs a package hasn’t been modified), Docker or Podman can reuse the cached layer to speed up future builds.
+   * This also means that layers from previous builds can be reused in subsequent ones, making builds faster and reducing redundant work.
+
+---
+
+### **Why Layered Structure?**
+
+* **Efficiency**:
+
+  * **Sharing**: Layers from different images can be shared. For example, a common operating system layer can be reused in many images.
+  * **Cache Optimization**: Unchanged layers can be cached and reused, speeding up build times.
+  * **Small Updates**: Only the layers that have changed need to be rebuilt, instead of rebuilding the entire image.
+
+* **Versioning**:
+
+  * Each layer represents a change, allowing you to see what was added, modified, or deleted at each step. This makes it easier to manage versions of images.
+
+* **Read-Only Layers**:
+
+  * Once a layer is created, it’s read-only, and any changes made during the container's runtime are stored in a **container layer** (a read-write layer) on top of the image layers. This allows for efficient runtime behavior.
+
+---
+
+### **Example of a Layered Container Image**:
+
+Consider the example where you build a Docker image with the following steps:
+
+```Dockerfile
+# Step 1: Use a base image (Ubuntu)
+FROM ubuntu:latest
+
+# Step 2: Install some software
+RUN apt-get update && apt-get install -y curl
+
+# Step 3: Add custom files
+COPY myapp /usr/local/myapp
+```
+
+* **Layer 1**: The `FROM ubuntu:latest` layer (which includes the entire Ubuntu filesystem).
+* **Layer 2**: The `RUN apt-get install` layer, which adds new files and modifies the filesystem to install `curl`.
+* **Layer 3**: The `COPY myapp` layer, which adds custom files from the build context into the container.
+
+When you run the image, the layers are mounted together to form a complete filesystem, with the layers stacked in the order they were created. The filesystem is read-only except for the writable layer added during container execution.
+
+---
+
+### **Popular Container Images and Layers**
+
+Most container images (e.g., from Docker Hub) use this layered structure. Some examples include:
+
+* **Ubuntu**: A minimal operating system image with layers for package management, libraries, etc.
+* **Alpine**: A smaller, security-focused Linux image that is often used as a base for other images.
+* **Node.js**, **Python**, **Nginx**, **PostgreSQL**, **Redis**, etc.: These official images are all built using layers. They start from a base image and add software, configuration, and other dependencies in separate layers.
+
+### **Can You See the Layers?**
+
+Yes, you can see the layers of a container image using commands like:
+
+* **Docker**: `docker history <image-name>`
+* **Podman**: `podman image tree <image-name>`
+
+These commands show you the history of each image layer and its size.
+
+---
+
+In summary, **Docker**, **Podman**, and other container runtimes rely heavily on a layered filesystem architecture to build and manage container images efficiently. Each layer adds or changes a part of the image, and these layers are cached, reusable, and immutable for efficiency.
+

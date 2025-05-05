@@ -1,0 +1,118 @@
+Yes, **you absolutely can run a custom Docker image of Cassandra on Kubernetes**. Here’s how it works and what to consider:
+
+---
+
+### ✅ 1. **Build the Custom Cassandra Docker Image**
+
+If you want to change configuration (e.g., `cassandra.yaml`), you can:
+
+* **Create a Dockerfile** like this:
+
+```Dockerfile
+FROM cassandra:latest
+
+# Copy your custom configuration file into the image
+COPY cassandra.yaml /etc/cassandra/cassandra.yaml
+```
+
+Then build the image:
+
+```bash
+docker build -t my-custom-cassandra .
+```
+
+---
+
+### ✅ 2. **Push It to a Container Registry**
+
+Kubernetes needs to pull the image from somewhere. Push it to Docker Hub, GitHub Container Registry, or a private one:
+
+```bash
+docker tag my-custom-cassandra yourdockerhubusername/my-custom-cassandra
+docker push yourdockerhubusername/my-custom-cassandra
+```
+
+Or use a local registry if running on Minikube or similar.
+
+---
+
+### ✅ 3. **Deploy Cassandra to Kubernetes**
+
+Use a Kubernetes **Deployment** or **StatefulSet**. Cassandra is stateful, so usually a **StatefulSet** is the right choice.
+
+Example simplified YAML using your custom image:
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cassandra
+spec:
+  serviceName: cassandra
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra
+    spec:
+      containers:
+      - name: cassandra
+        image: yourdockerhubusername/my-custom-cassandra
+        ports:
+        - containerPort: 9042
+        - containerPort: 7000
+        volumeMounts:
+        - name: cassandra-data
+          mountPath: /var/lib/cassandra
+  volumeClaimTemplates:
+  - metadata:
+      name: cassandra-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+```
+
+You also need a **headless Service** like this:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra
+spec:
+  clusterIP: None
+  selector:
+    app: cassandra
+  ports:
+  - port: 9042
+    name: cql
+  - port: 7000
+    name: intra-node
+```
+
+---
+
+### 🧠 Notes on Configuration
+
+* If you want to make configuration **dynamic**, it's often better to mount a config file via a **ConfigMap** instead of baking it into the image.
+* Cassandra nodes use **seeds** and IP discovery — this needs careful setup in Kubernetes networking.
+* The [Bitnami Cassandra Helm chart](https://bitnami.com/stack/cassandra/helm) is a popular production-ready solution that handles a lot of this complexity for you.
+
+---
+
+### ✅ Summary
+
+| Task                           | Can you do it?                |
+| ------------------------------ | ----------------------------- |
+| Build custom Docker image      | ✅ Yes                         |
+| Modify cassandra.yaml          | ✅ Yes (via COPY or ConfigMap) |
+| Run on Kubernetes              | ✅ Yes (use StatefulSet)       |
+| Use custom Docker image on K8s | ✅ Yes, via image field        |
+
+Let me know if you’d like a full working example or want to explore using Helm instead.
+

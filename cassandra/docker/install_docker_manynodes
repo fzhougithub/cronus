@@ -1,0 +1,92 @@
+1. Create network
+
+docker network create cass-net
+
+2. Run first cassandra
+
+docker run -d --name cass1 --network cass-net -e JVM_EXTRA_OPTS="-Xms512M -Xmx512M" -e CASSANDRA_SEEDS="cass1,cass2" cassandra:latest 
+
+
+3. Run second node point to first node seed
+
+docker run -d --name cass2 --network cass-net -e CASSANDRA_SEEDS="cass1,cass2" -e CASSANDRA_CLUSTER_NAME="Test Cluster" -e CASSANDRA_DC=datacenter1 -e CASSANDRA_RACK=rack1 -e JVM_EXTRA_OPTS="-Xms512M -Xmx512M" cassandra:latest
+
+4 Run third node
+
+docker run -d --name cass3 --network cass-net -e CASSANDRA_SEEDS="cass1,cass2" -e CASSANDRA_CLUSTER_NAME="Test Cluster" -e CASSANDRA_DC=datacenter1 -e CASSANDRA_RACK=rack1 -e JVM_EXTRA_OPTS="-Xms512M -Xmx512M" cassandra:latest
+
+5. Check cluster status
+
+docker exec -it cass1 nodetool status
+
+docker stop xxx
+
+systemctl stop docker
+systemctl stop docker.socket
+
+the volume
+
+docker inspect cass1
+
+or, when you start, using -v to mapping the docker directory to container directory. 
+
+docker run -d --name cass1 \
+  -v /var/tellme/cass/cass1-data:/var/lib/cassandra \
+  cassandra:latest
+
+
+
+Per the volumn
+
+The default volumn, if remove container, maybe lost
+
+But, if you create with named volume or bind mount will keep
+
+A named volume is managed by Docker itself. You don’t need to create the folder manually — Docker stores it in a special place (e.g., /var/lib/docker/volumes).
+
+docker run -d \
+  --name cass1 \
+  -v cass1-data:/var/lib/cassandra \
+  cassandra
+
+cass1-data is the named volume, docker auto create directory, and save it in /var/lib/docker/volumes/cass1-data/_data
+
+A bind mount maps a directory from your host machine directly into the container. You specify the full path.
+docker run -d \
+  --name cass2 \
+  -v /data/cass2:/var/lib/cassandra \
+  cassandra
+
+
+Only those two, will still be there if the container gone
+
+Another isse is the IP, to prevent the issue, must use the fix static IP. 
+
+-e CASSANDRA_BROADCAST_ADDRESS=<your_static_ip_or_hostname>
+-e CASSANDRA_LISTEN_ADDRESS=<your_static_ip_or_hostname>
+-e CASSANDRA_RPC_ADDRESS=0.0.0.0
+
+
+Then, the port
+
+docker run -d --name cass1 -p 9042:9042 cassandra
+
+Otherwies, the port of container on 172 network,can only be reached by the cqlsh on the docker node. 
+
+[root@Wentao ~]# docker inspect cass1 | grep -A 10 "NetworkSettings"
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "92d04430271f37161d5e4af4b07692fea4ca4b5f055b73b6cacc50325eebfa0e",
+            "SandboxKey": "/var/run/docker/netns/92d04430271f",
+            "Ports": {
+                "7000/tcp": null,
+                "7001/tcp": null,
+                "7199/tcp": null,
+                "9042/tcp": null,
+                "9160/tcp": null
+            },
+
+
+
+
+

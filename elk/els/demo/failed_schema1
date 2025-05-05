@@ -1,0 +1,183 @@
+POST /restaurant_management/_doc
+{
+  "tenant_id": "joe_pizza_123",
+  "type": "restaurant",
+  "name": "Joe’s Pizza",
+  "description": "Authentic Italian pizza in New York",
+  "created_at": "2025-04-30T10:00:00Z"
+}
+
+POST /restaurant_management/_doc
+{
+  "tenant_id": "sushi_haven_456",
+  "type": "restaurant",
+  "name": "Sushi Haven",
+  "description": "Fresh sushi and Japanese cuisine",
+  "created_at": "2025-04-30T10:00:00Z"
+}
+
+POST /restaurant_management/_doc
+{
+  "tenant_id": "joe_pizza_123",
+  "type": "menu",
+  "name": "Lunch Menu",
+  "description": "Pizzas and sides for lunch",
+  "restaurant_id": "joe_pizza_123",
+  "created_at": "2025-04-30T10:00:00Z"
+}
+
+POST /restaurant_management/_doc
+{
+  "tenant_id": "joe_pizza_123",
+  "type": "food_item",
+  "name": "Margherita Pizza",
+  "description": "Classic pizza with tomato, mozzarella, and basil",
+  "category": "pizza",
+  "price": 12.99,
+  "menu_id": "lunch_menu_joe_123",
+  "restaurant_id": "joe_pizza_123",
+  "customizations": [
+    { "name": "cheese", "value": "extra" },
+    { "name": "crust", "value": "gluten-free" }
+  ],
+  "created_at": "2025-04-30T10:00:00Z"
+}
+
+POST /restaurant_management/_doc
+{
+  "tenant_id": "joe_pizza_123",
+  "type": "buyer",
+  "name": "Alice Smith",
+  "restaurant_id": "joe_pizza_123",
+  "created_at": "2025-04-30T10:00:00Z"
+}
+
+POST /restaurant_management/_doc
+{
+  "tenant_id": "joe_pizza_123",
+  "type": "order",
+  "buyer_id": "alice_123",
+  "restaurant_id": "joe_pizza_123",
+  "order_items": [
+    {
+      "food_item_id": "margherita_pizza_123",
+      "quantity": 2,
+      "customizations": [
+        { "name": "cheese", "value": "extra" },
+        { "name": "topping", "value": "no onions" }
+      ]
+    }
+  ],
+  "pickup_time": "2025-05-01T12:30:00Z",
+  "order_status": "pending",
+  "created_at": "2025-04-30T11:00:00Z"
+}
+
+POST /_security/role/joe_pizza_role
+{
+  "indices": {
+    "restaurant_management": {
+      "privileges": ["read", "write"],
+      "query": "{\"term\": {\"tenant_id\": \"joe_pizza_123\"}}"
+    }
+  }
+}
+
+POST /_aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "restaurant_management",
+        "alias": "joe_pizza_data",
+        "filter": { "term": { "tenant_id": "joe_pizza_123" } }
+      }
+    }
+  ]
+}
+
+GET /joe_pizza_data/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        { "term": { "type": "food_item" } },
+        { "term": { "category": "pizza" } }
+      ],
+      "must": {
+        "match": { "name": "pizza" }
+      }
+    }
+  }
+}
+
+POST /joe_pizza_data/_doc
+{
+  "tenant_id": "joe_pizza_123",
+  "type": "order",
+  "buyer_id": "alice_123",
+  "restaurant_id": "joe_pizza_123",
+  "order_items": [
+    {
+      "food_item_id": "margherita_pizza_123",
+      "quantity": 1,
+      "customizations": [
+        { "name": "crust", "value": "gluten-free" }
+      ]
+    }
+  ],
+  "pickup_time": "2025-05-01T13:00:00Z",
+  "order_status": "pending",
+  "created_at": "2025-04-30T12:00:00Z"
+}
+
+GET /joe_pizza_data/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        { "term": { "type": "order" } },
+        { "term": { "order_status": "pending" } },
+        { "range": {
+            "pickup_time": {
+              "gte": "2025-05-01T00:00:00Z",
+              "lte": "2025-05-01T23:59:59Z"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+Failed, complain that the food_item_id is text field
+
+GET /joe_pizza_data/_mapping
+
+
+
+PUT /restaurant_management/_mapping
+{
+  "properties": {
+    "order_items": {
+      "type": "nested",
+      "properties": {
+        "food_item_id": {
+          "type": "keyword"
+          // If you also need full-text search, use a multi-field:
+          // "fields": {
+          //   "text": { "type": "text" },
+          //   "keyword": { "type": "keyword" }
+          // }
+        },
+        "quantity": { "type": "integer" }
+        // ... other properties of order_items
+      }
+    },
+    "type": { "type": "keyword" },
+    "created_at": { "type": "date" },
+    "tenant_id": { "type": "keyword" }
+    // ... other top-level properties
+  }
+}

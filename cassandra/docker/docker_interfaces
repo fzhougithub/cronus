@@ -1,0 +1,250 @@
+[root@Wentao ~]# ip route show
+default via 192.168.1.254 dev eth0 proto static
+172.17.0.0/16 dev br-8cfd15d7bff8 proto kernel scope link src 172.17.0.1 linkdown
+172.18.0.0/16 dev docker0 proto kernel scope link src 172.18.0.1
+172.19.0.0/16 dev br-ac59ba6e6724 proto kernel scope link src 172.19.0.1 linkdown
+172.20.0.0/16 dev br-33783aeaae7e proto kernel scope link src 172.20.0.1
+192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.80
+
+
+
+
+[root@Wentao ~]# ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 00:15:5d:9f:29:7c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.80/24 brd 192.168.1.255 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 2600:1702:a20:dae0:215:5dff:fe9f:297c/64 scope global dynamic mngtmpaddr noprefixroute
+       valid_lft 3482sec preferred_lft 3482sec
+    inet6 fe80::215:5dff:fe9f:297c/64 scope link
+       valid_lft forever preferred_lft forever
+3: br-8cfd15d7bff8: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default
+    link/ether 46:79:88:82:65:33 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global br-8cfd15d7bff8
+       valid_lft forever preferred_lft forever
+4: br-ac59ba6e6724: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default
+    link/ether 9a:13:cc:2a:cd:06 brd ff:ff:ff:ff:ff:ff
+    inet 172.19.0.1/16 brd 172.19.255.255 scope global br-ac59ba6e6724
+       valid_lft forever preferred_lft forever
+    inet6 fc00:f853:ccd:e793::1/64 scope global nodad
+       valid_lft forever preferred_lft forever
+5: br-33783aeaae7e: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
+    link/ether e6:70:d7:87:41:71 brd ff:ff:ff:ff:ff:ff
+    inet 172.20.0.1/16 brd 172.20.255.255 scope global br-33783aeaae7e
+       valid_lft forever preferred_lft forever
+    inet6 fe80::e470:d7ff:fe87:4171/64 scope link
+       valid_lft forever preferred_lft forever
+6: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
+    link/ether 32:4f:cc:7b:5c:e2 brd ff:ff:ff:ff:ff:ff
+    inet 172.18.0.1/16 brd 172.18.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::304f:ccff:fe7b:5ce2/64 scope link
+       valid_lft forever preferred_lft forever
+7: veth28f7212@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP group default
+    link/ether 1e:0b:55:2e:a7:bc brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::1c0b:55ff:fe2e:a7bc/64 scope link
+       valid_lft forever preferred_lft forever
+20: vethbee7232@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-33783aeaae7e state UP group default
+    link/ether 6a:32:93:ed:b9:3c brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::6832:93ff:feed:b93c/64 scope link
+       valid_lft forever preferred_lft forever
+21: vethc536b1e@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-33783aeaae7e state UP group default
+    link/ether 8a:7c:e9:c4:a1:8c brd ff:ff:ff:ff:ff:ff link-netnsid 2
+    inet6 fe80::887c:e9ff:fec4:a18c/64 scope link
+       valid_lft forever preferred_lft forever
+22: veth395e1b8@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-33783aeaae7e state UP group default
+    link/ether 1a:ec:ce:99:f0:6c brd ff:ff:ff:ff:ff:ff link-netnsid 3
+    inet6 fe80::18ec:ceff:fe99:f06c/64 scope link
+       valid_lft forever preferred_lft forever
+
+
+
+[root@rl01 docker]# ifconfig -a
+cni-podman0: flags=4099<UP,BROADCAST,MULTICAST>  mtu 1500
+        inet 10.88.0.1  netmask 255.255.0.0  broadcast 10.88.255.255
+        ether 06:86:43:be:88:a2  txqueuelen 1000  (Ethernet)
+        RX packets 6  bytes 416 (416.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 2  bytes 108 (108.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.168  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::215:5dff:fe38:100  prefixlen 64  scopeid 0x20<link>
+        inet6 2600:1702:a20:dae0::1e  prefixlen 128  scopeid 0x0<global>
+        inet6 2600:1702:a20:dae0:215:5dff:fe38:100  prefixlen 64  scopeid 0x0<global>
+        ether 00:15:5d:38:01:00  txqueuelen 1000  (Ethernet)
+        RX packets 10523767  bytes 4853963735 (4.5 GiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 5930718  bytes 7575490745 (7.0 GiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 25620479  bytes 37877984186 (35.2 GiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 25620479  bytes 37877984186 (35.2 GiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+ifconfig -a often misses:
+
+Virtual Ethernet pairs (veth*)
+
+Interfaces used by container networks
+
+Interfaces in different network namespaces
+
+It usually only shows the most basic and host-visible interfaces.
+
+Many Docker-created interfaces (like veth*) reside partially in separate network namespaces.
+
+These may still show up in ip addr (which can walk into more details), but not necessarily in ifconfig.
+
+
+[root@Wentao ~]# docker network ls
+NETWORK ID     NAME       DRIVER    SCOPE
+c9d70dd520dd   bridge     bridge    local
+33783aeaae7e   cass-net   bridge    local
+44006a8a5baf   host       host      local
+ac59ba6e6724   kind       bridge    local
+8cfd15d7bff8   my-net     bridge    local
+1788e58cce51   none       null      local
+
+[root@Wentao ~]# docker network inspect bridge
+[
+    {
+        "Name": "bridge",
+        "Id": "c9d70dd520ddd907f84da2041d2aa4eeb02216aa705eacc6c98aa97f95a0ccc8",
+        "Created": "2025-05-02T19:16:41.746354826-07:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv4": true,
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.18.0.0/16",
+                    "Gateway": "172.18.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "f3181072e47896b986cee4dbfb679fba96281024a55852d4eacc82a45cab1d79": {
+                "Name": "kind-registry",
+                "EndpointID": "8e4884b4f5e767f3130397353f2fafa5d85c43884c113873c48a9fd69f5a15be",
+                "MacAddress": "82:e3:2d:1d:9e:03",
+                "IPv4Address": "172.18.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]
+
+[root@Wentao ~]# ip link show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether 00:15:5d:9f:29:7c brd ff:ff:ff:ff:ff:ff
+3: br-8cfd15d7bff8: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default
+    link/ether 46:79:88:82:65:33 brd ff:ff:ff:ff:ff:ff
+4: br-ac59ba6e6724: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default
+    link/ether 9a:13:cc:2a:cd:06 brd ff:ff:ff:ff:ff:ff
+5: br-33783aeaae7e: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether e6:70:d7:87:41:71 brd ff:ff:ff:ff:ff:ff
+6: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether 32:4f:cc:7b:5c:e2 brd ff:ff:ff:ff:ff:ff
+7: veth28f7212@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default
+    link/ether 1e:0b:55:2e:a7:bc brd ff:ff:ff:ff:ff:ff link-netnsid 0
+20: vethbee7232@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-33783aeaae7e state UP mode DEFAULT group default
+    link/ether 6a:32:93:ed:b9:3c brd ff:ff:ff:ff:ff:ff link-netnsid 1
+21: vethc536b1e@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-33783aeaae7e state UP mode DEFAULT group default
+    link/ether 8a:7c:e9:c4:a1:8c brd ff:ff:ff:ff:ff:ff link-netnsid 2
+22: veth395e1b8@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-33783aeaae7e state UP mode DEFAULT group default
+    link/ether 1a:ec:ce:99:f0:6c brd ff:ff:ff:ff:ff:ff link-netnsid 3
+
+ip netns list
+
+ip netns list just show the named network namespace created by ip netns add <name>, return nothing is good. 
+
+[root@Wentao ~]# docker inspect -f '{{.State.Pid}}' cass1
+3497
+
+nsenter -t 3497 -n ip addr
+
+
+[root@Wentao ~]# docker inspect -f '{{.State.Pid}}' cass1
+3497
+[root@Wentao ~]# nsenter -t 3497 -n ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: eth0@if20: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
+    link/ether 9a:21:5d:14:32:ba brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 172.20.0.2/16 brd 172.20.255.255 scope global eth0
+       valid_lft forever preferred_lft forever
+
+This show from the container look outside, the network status. 
+
+Per nsenter
+       -t, --target PID
+           Specify a target process to get contexts from. The paths to the contexts specified by pid are:
+
+       -n, --net[=file]
+           Enter the network namespace. If no file is specified, enter the network namespace of the target process. If file is specified, enter the
+           network namespace specified by file.
+
+
+
+[root@Wentao ~]# ls -l /proc/3497/ns/net
+lrwxrwxrwx 1 systemd-coredump ssh_keys 0 May  2 19:33 /proc/3497/ns/net -> 'net:[4026532235]'
+
+The net:[4026532235], net is the namespace, the [4026532235] is the inode, any network interface namespace has one inode, you an see whether the different network interface are using same inode. 
+
+# Show container's PID
+docker inspect -f '{{.State.Pid}}' cass1
+[root@Wentao ~]# docker inspect cass1 | jq '.[0].State.Pid'
+3497
+
+
+# Show container's status
+docker inspect -f '{{.State.Status}}' cass1
+
+# Show container's IP address (bridge mode)
+docker inspect -f '{{.NetworkSettings.IPAddress}}' cass1
+
+# Show name (with leading '/')
+docker inspect -f '{{.Name}}' cass1
+
+# Show container image
+docker inspect -f '{{.Config.Image}}' cass1
+
+
+-f option is more simple and easy to control, but, it is just limited feature there. 

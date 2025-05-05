@@ -1,0 +1,63 @@
+systemctl start docker
+
+docker pull cassandra:latest
+
+Start to run the docker cassandra using default configuration
+docker run --name cass cassandra:latest
+
+Start to run using own configuration
+docker run --name cass \
+  -v /var/tellme/work/cronus/cassandra/docker/cassandra.yaml:/etc/cassandra/cassandra.yaml \
+  cassandra:latest
+
+The official Cassandra Docker image supports some configuration via environment variables (limited scope), such as:
+
+CASSANDRA_CLUSTER_NAME
+
+CASSANDRA_SEEDS
+
+CASSANDRA_ENDPOINT_SNITCH
+
+CASSANDRA_DC
+
+CASSANDRA_RACK
+
+CASSANDRA_NUM_TOKENS
+
+CASSANDRA_LISTEN_ADDRESS
+
+CASSANDRA_RPC_ADDRESS
+
+docker run --name cass \
+  -e CASSANDRA_CLUSTER_NAME="MyCluster" \
+  -e CASSANDRA_NUM_TOKENS=128 \
+  cassandra:latest
+
+https://hub.docker.com/_/cassandra  Is the list of variables we can use
+
+Or, build docker image file
+
+FROM cassandra:latest
+COPY cassandra.yaml /etc/cassandra/cassandra.yaml
+
+Then
+docker build -t my-cassandra .
+docker run --name cass my-cassandra
+
+
+4 You can even modify the config in pod
+docker exec -it cass bash
+cd /etc/cassandra
+cat cassandra.yaml
+
+
+docker exec -it cass cqlsh
+
+
+
+[root@rl01 cassandra]# podman ps -a | grep cass_cluster
+ced0dc632b67  docker.io/library/cassandra:latest  cassandra -f  2 minutes ago  Exited (137) 2 minutes ago  7000/tcp, 7001/tcp, 7199/tcp, 9042/tcp, 9160/tcp cass_cluster
+
+podman logs cass_cluster
+
+
