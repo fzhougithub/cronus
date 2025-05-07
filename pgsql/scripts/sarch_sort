@@ -1,0 +1,32 @@
+Final command
+
+for i in $(find . -newer 0000000300000000000000A0 -exec ls -lrt --time=ctime {} +|awk '{print $9}');do sshpass -p 'postgres' rsync -avz $i postgres@192.168.1.80:/var/tellme/pgsql/admin/sarch/. ;done
+
+
+
+
+To sort the output of your `find` command by file creation time (or modification time, since creation time isn't always available on Unix-like systems), you can use these approaches:
+
+## 1. Sort by Modification Time (newest first)
+
+find . -newer 0000000300000000000000A0 -exec ls -lt --time=ctime {} +
+
+## 2. Sort by Modification Time (oldest first)
+find . -newer 0000000300000000000000A0 -exec ls -ltr --time=ctime {} +
+
+## 3. Using `stat` for More Control (Linux)
+find . -newer 0000000300000000000000A0 -exec stat -c '%Y %n' {} + | sort -n | cut -d' ' -f2-
+
+## 4. For Creation Time (Birth Time) - If Supported
+find . -newer 0000000300000000000000A0 -exec stat -c '%W %n' {} + | sort -n | cut -d' ' -f2-
+
+Key points:
+- `-lt` sorts by time (newest first)
+- `-ltr` reverses the sort (oldest first)
+- `%Y` in stat shows modification time (seconds since epoch)
+- `%W` shows creation/birth time (if filesystem supports it)
+- The `-exec ... +` is more efficient than piping to `xargs`
+
+Note: On some systems (particularly BSD/macOS), you'll need to use:
+find . -newer 0000000300000000000000A0 -exec stat -f '%m %N' {} + | sort -n | cut -d' ' -f2-
+

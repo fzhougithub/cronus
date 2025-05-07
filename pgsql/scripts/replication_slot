@@ -1,0 +1,52 @@
+Recommendations for Your Setup
+
+Given your PostgreSQL 17.4 setup with a lagging physical standby, here’s how to use replication slots effectively:
+
+Check for Existing Slots: On the primary:
+
+SELECT * FROM pg_replication_slots;
+
+If no slot exists for your standby, create one (see below).
+If a slot exists but is inactive (active = 'f'), it may be accumulating WAL, investigate why the standby isn't connected.
+
+Create a Replication Slot (if not already in use): On the primary:
+fzhou=# SELECT pg_create_physical_replication_slot('slot_01');
+ pg_create_physical_replication_slot
+-------------------------------------
+ (slot_01,)
+(1 row)
+
+On the standby, update primary_slot_name in postgresql.conf:
+
+primary_slot_name = 'standby_slot'
+
+Restart or reload the standby:
+
+pg_ctl reload -D /path/to/standby/data
+
+Monitor Slot Usage: Regularly check slot lag and activity:
+
+SELECT slot_name, active, pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) AS lag_bytes
+FROM pg_replication_slots;
+Compare with pg_stat_wal_receiver on the standby to pinpoint bottlenecks.
+Tune WAL Retention:
+Increase wal_keep_size (e.g., to 1GB) as a fallback if slots aren’t enough:
+conf
+
+Copy
+wal_keep_size = 1024
+Ensure max_slot_wal_keep_size (PostgreSQL 13+) is set to limit WAL retention by slots (e.g., 10GB):
+conf
+
+Copy
+max_slot_wal_keep_size = 10240
+Address Lag Root Cause:
+As discussed previously, your lag may be due to single-threaded WAL replay or I/O bottlenecks. Since max_parallel_wal_restore wasn’t found in official docs, focus on:
+Checking I/O with iotop or iostat.
+Increasing wal_receiver_status_interval (e.g., to 1s) for faster feedback.
+Batching CSV loads to reduce WAL volume (e.g., combine multiple files into one COPY).
+Clean Up Unused Slots: If you rebuild the standby with pg_basebackup, drop any old slots:
+sql
+
+Copy
+SELECT pg_drop_replication_slot('slot_name') WHERE slot_name = 'old_slot';
