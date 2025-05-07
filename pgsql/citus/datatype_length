@@ -1,0 +1,85 @@
+# PostgreSQL Data Types with Maximum Lengths
+
+Here's a comprehensive table of PostgreSQL data types with their maximum lengths/storage capacities:
+
+## Numeric Types
+
+| Data Type | Description | Max Value/Size |
+|-----------|-------------|----------------|
+| `smallint` | 2-byte integer | -32,768 to +32,767 |
+| `integer` | 4-byte integer | -2,147,483,648 to +2,147,483,647 |
+| `bigint` | 8-byte integer | -9,223,372,036,854,775,808 to +9,223,372,036,854,775,807 |
+| `decimal`/`numeric` | Variable precision | Up to 131,072 digits before decimal point; up to 16,383 digits after |
+| `real` | 4-byte floating point | 6 decimal digits precision |
+| `double precision` | 8-byte floating point | 15 decimal digits precision |
+| `serial` | Auto-increment integer | Same as `integer` |
+| `bigserial` | Large auto-increment integer | Same as `bigint` |
+
+## Character Types
+
+| Data Type | Description | Max Length |
+|-----------|-------------|------------|
+| `character(n)`/`char(n)` | Fixed-length, blank padded | 1 to 1GB (but practical limit is 10MB) |
+| `character varying(n)`/`varchar(n)` | Variable-length with limit | 1 to 1GB (but practical limit is 10MB) |
+| `text` | Variable unlimited length | Unlimited (1GB in practice) |
+
+## Binary Data
+
+| Data Type | Description | Max Size |
+|-----------|-------------|----------|
+| `bytea` | Variable-length binary string | 1GB |
+
+## Date/Time Types
+
+| Data Type | Description | Range |
+|-----------|-------------|-------|
+| `timestamp` | Date and time (no timezone) | 4713 BC to 294276 AD |
+| `timestamptz` | Date and time with timezone | 4713 BC to 294276 AD |
+| `date` | Date only | 4713 BC to 5874897 AD |
+| `time` | Time only (no timezone) | 00:00:00 to 24:00:00 |
+| `timetz` | Time with timezone | 00:00:00+1559 to 24:00:00-1559 |
+| `interval` | Time interval | -178000000 years to 178000000 years |
+
+## Boolean Type
+
+| Data Type | Description | Values |
+|-----------|-------------|--------|
+| `boolean` | Logical boolean | true/false |
+
+## Geometric Types
+
+| Data Type | Description | Storage |
+|-----------|-------------|---------|
+| `point` | Geometric point | 16 bytes |
+| `line` | Infinite line | 32 bytes |
+| `lseg` | Line segment | 32 bytes |
+| `box` | Rectangular box | 32 bytes |
+| `path` | Open/closed path | 16+16n bytes |
+| `polygon` | Closed path | 40+16n bytes |
+| `circle` | Circle | 24 bytes |
+
+## Network Address Types
+
+| Data Type | Description | Max Size |
+|-----------|-------------|----------|
+| `cidr` | IPv4/IPv6 network address | 19 bytes for IPv6 |
+| `inet` | IPv4/IPv6 host address | 19 bytes for IPv6 |
+| `macaddr` | MAC address | 6 bytes |
+
+## JSON Types
+
+| Data Type | Description | Max Size |
+|-----------|-------------|----------|
+| `json` | Textual JSON data | 1GB |
+| `jsonb` | Binary JSON data | 1GB |
+
+## Special Types
+
+| Data Type | Description | Notes |
+|-----------|-------------|-------|
+| `uuid` | UUID | 16 bytes |
+| `xml` | XML data | 1GB |
+| `tsvector` | Text search vector | Varies |
+| `tsquery` | Text search query | Varies |
+
+Note: Many of these types can be extended with PostgreSQL's type system, and some have implementation-specific limits that may be lower than the theoretical maximums.
