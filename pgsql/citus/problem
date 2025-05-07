@@ -216,4 +216,253 @@ ORDER BY
 (25 rows)
 
 
+               column_name                | data_type
+------------------------------------------+-----------
+ agent_approval_status                    | text
+ auto_scoring                             | text
+ auto_summary                             | text
+ call_direction                           | text
+ call_recording_id                        | text
+ customer_number                          | text
+ customer_state                           | text
+ data_account_sid                         | text
+ data_customer_attributes_member_name     | text
+ data_event_description                   | text
+ data_event_type                          | text
+ data_resource_sid                        | text
+ data_resource_type                       | text
+ data_sid                                 | text
+ data_task_assignment_status              | text
+ data_task_attributes_account_sid         | text
+ data_task_attributes_call_sid            | text
+ data_task_attributes_called              | text
+ data_task_attributes_called_city         | text
+ data_task_attributes_called_country      | text
+ data_task_attributes_called_state        | text
+ data_task_attributes_caller              | text
+ data_task_attributes_caller_city         | text
+ data_task_attributes_caller_country      | text
+ data_task_attributes_caller_state        | text
+ data_task_attributes_direction           | text
+ data_task_attributes_from                | text
+ data_task_attributes_from_city           | text
+ data_task_attributes_from_country        | text
+ data_task_attributes_from_state          | text
+ data_task_attributes_name                | text
+ data_task_attributes_outbound_to         | text
+ data_task_attributes_to                  | text
+ data_task_attributes_to_city             | text
+ data_task_attributes_to_country          | text
+ data_task_attributes_to_state            | text
+ data_task_attributes_transfer_to_ivr_url | text
+ data_task_attributes_type                | text
+ data_task_channel_sid                    | text
+ data_task_queue_name                     | text
+ data_task_queue_sid                      | text
+ data_task_queue_target_expression        | text
+ data_task_sid                            | text
+ data_task_transfer_sid                   | text
+ data_transfer_initiating_reservation_sid | text
+ data_transfer_initiating_worker_sid      | text
+ data_transfer_mode                       | text
+ data_transfer_status                     | text
+ data_transfer_to                         | text
+ data_transfer_type                       | text
+ data_worker_activity_name                | text
+ data_worker_activity_sid                 | text
+ data_worker_attributes_account_id        | text
+ data_worker_attributes_client_id         | text
+ data_worker_attributes_contact_uri       | text
+ data_worker_attributes_delivery_center   | text
+ data_worker_attributes_email             | text
+ data_worker_attributes_full_name         | text
+ data_worker_attributes_fullname          | text
+ data_worker_attributes_image_url         | text
+ data_worker_geo                          | text
+ data_worker_name                         | text
+ data_worker_previous_activity_name       | text
+ data_worker_previous_activity_sid        | text
+ data_worker_session_id                   | text
+ data_worker_shift                        | text
+ data_worker_sid                          | text
+ data_workflow_name                       | text
+ data_workflow_sid                        | text
+ data_workspace_name                      | text
+ data_workspace_sid                       | text
+ day_of_week                              | text
+ interaction_type                         | text
+ metadata_account_id                      | text
+ metadata_brand_id                        | text
+ metadata_channel_unique_name             | text
+ metadata_client_id                       | text
+ metadata_conversation_uuid               | text
+ metadata_event_id                        | text
+ metadata_event_provider                  | text
+ metadata_event_type                      | text
+ metadata_interaction_start_time          | text
+ metadata_interaction_state               | text
+ metadata_interaction_uuid                | text
+ qa_email                                 | text
+ queue_name                               | text
+ xv_system_load_table_id_list             | text
+(87 rows)
 
+Partition key: RANGE (call_recording_date)
+Indexes:
+    "cluster_metadata2_pk" PRIMARY KEY, btree (call_recording_date, call_recording_id)
+    "cluster_metadata2_agent_tsvector_ix" gin (agent_tsvector)
+    "cluster_metadata2_call_direction_ix" btree (call_direction)
+    "cluster_metadata2_call_procedure_ix" gin (call_procedure)
+    "cluster_metadata2_call_recording_date_ix" btree (call_recording_date)
+    "cluster_metadata2_call_recording_duration_secs_ix" btree (call_recording_duration_secs)
+    "cluster_metadata2_call_recording_timestamp_ix" btree (call_recording_timestamp)
+    "cluster_metadata2_caller_tsvector_ix" gin (caller_tsvector)
+    "cluster_metadata2_compliance_ix" gin (compliance)
+    "cluster_metadata2_customer_number_ix" btree (customer_number)
+    "cluster_metadata2_customer_state_ix" btree (customer_state)
+    "cluster_metadata2_data_account_sid_idx" btree (data_account_sid)
+    "cluster_metadata2_data_customer_attributes_member_name_idx" btree (data_customer_attributes_member_name)
+    "cluster_metadata2_data_customer_attributes_membership_id_idx" btree (data_customer_attributes_membership_id)
+    "cluster_metadata2_data_event_description_idx" btree (data_event_description)
+    "cluster_metadata2_data_event_type_idx" btree (data_event_type)
+    "cluster_metadata2_data_resource_sid_idx" btree (data_resource_sid)
+    "cluster_metadata2_data_resource_type_idx" btree (data_resource_type)
+    "cluster_metadata2_data_sid_idx" btree (data_sid)
+    "cluster_metadata2_data_supervisor_name_idx" gin (data_supervisor_name)
+    "cluster_metadata2_data_task_age_idx" btree (data_task_age)
+    "cluster_metadata2_data_task_assignment_status_idx" btree (data_task_assignment_status)
+    "cluster_metadata2_data_task_attributes_account_sid_idx" btree (data_task_attributes_account_sid)
+    "cluster_metadata2_data_task_attributes_api_version_idx" btree (data_task_attributes_api_version)
+    "cluster_metadata2_data_task_attributes_call_sid_idx" btree (data_task_attributes_call_sid)
+    "cluster_metadata2_data_task_attributes_called_city_idx" btree (data_task_attributes_called_city)
+    "cluster_metadata2_data_task_attributes_called_country_idx" btree (data_task_attributes_called_country)
+    "cluster_metadata2_data_task_attributes_called_idx" btree (data_task_attributes_called)
+    "cluster_metadata2_data_task_attributes_called_state_idx" btree (data_task_attributes_called_state)
+    "cluster_metadata2_data_task_attributes_called_zip_idx" btree (data_task_attributes_called_zip)
+    "cluster_metadata2_data_task_attributes_caller_city_idx" btree (data_task_attributes_caller_city)
+    "cluster_metadata2_data_task_attributes_caller_country_idx" btree (data_task_attributes_caller_country)
+    "cluster_metadata2_data_task_attributes_caller_idx" btree (data_task_attributes_caller)
+    "cluster_metadata2_data_task_attributes_caller_state_idx" btree (data_task_attributes_caller_state)
+    "cluster_metadata2_data_task_attributes_caller_zip_idx" btree (data_task_attributes_caller_zip)
+    "cluster_metadata2_data_task_attributes_conference_idx" gin (data_task_attributes_conference)
+    "cluster_metadata2_data_task_attributes_direction_idx" btree (data_task_attributes_direction)
+    "cluster_metadata2_data_task_attributes_from_city_idx" btree (data_task_attributes_from_city)
+    "cluster_metadata2_data_task_attributes_from_country_idx" btree (data_task_attributes_from_country)
+    "cluster_metadata2_data_task_attributes_from_idx" btree (data_task_attributes_from)
+    "cluster_metadata2_data_task_attributes_from_state_idx" btree (data_task_attributes_from_state)
+    "cluster_metadata2_data_task_attributes_from_zip_idx" btree (data_task_attributes_from_zip)
+    "cluster_metadata2_data_task_attributes_ivr_context_idx" gin (data_task_attributes_ivr_context)
+    "cluster_metadata2_data_task_attributes_name_idx" btree (data_task_attributes_name)
+    "cluster_metadata2_data_task_attributes_outbound_to_idx" btree (data_task_attributes_outbound_to)
+    "cluster_metadata2_data_task_attributes_to_city_idx" btree (data_task_attributes_to_city)
+    "cluster_metadata2_data_task_attributes_to_country_idx" btree (data_task_attributes_to_country)
+    "cluster_metadata2_data_task_attributes_to_idx" btree (data_task_attributes_to)
+    "cluster_metadata2_data_task_attributes_to_state_idx" btree (data_task_attributes_to_state)
+    "cluster_metadata2_data_task_attributes_to_zip_idx" btree (data_task_attributes_to_zip)
+    "cluster_metadata2_data_task_attributes_transfer_to_ivr_url_idx" btree (data_task_attributes_transfer_to_ivr_url)
+    "cluster_metadata2_data_task_attributes_type_idx" btree (data_task_attributes_type)
+    "cluster_metadata2_data_task_attributes_zd_custom_tags_idx" gin (data_task_attributes_zd_custom_tags)
+    "cluster_metadata2_data_task_attributes_zd_ticket_id_idx" btree (data_task_attributes_zd_ticket_id)
+    "cluster_metadata2_data_task_channel_sid_idx" btree (data_task_channel_sid)
+    "cluster_metadata2_data_task_date_created_idx" btree (data_task_date_created)
+    "cluster_metadata2_data_task_priority_idx" btree (data_task_priority)
+    "cluster_metadata2_data_task_queue_entered_date_idx" btree (data_task_queue_entered_date)
+    "cluster_metadata2_data_task_queue_name_idx" btree (data_task_queue_name)
+    "cluster_metadata2_data_task_queue_sid_idx" btree (data_task_queue_sid)
+    "cluster_metadata2_data_task_queue_target_expression_idx" btree (data_task_queue_target_expression)
+    "cluster_metadata2_data_task_sid_idx" btree (data_task_sid)
+    "cluster_metadata2_data_task_transfer_sid_idx" btree (data_task_transfer_sid)
+    "cluster_metadata2_data_task_version_idx" btree (data_task_version)
+    "cluster_metadata2_data_team_name_idx" gin (data_team_name)
+    "cluster_metadata2_data_timestamp_idx" btree (data_timestamp)
+    "cluster_metadata2_data_timestamp_ms_idx" btree (data_timestamp_ms)
+    "cluster_metadata2_data_transfer_initiating_reservation_sid_idx" btree (data_transfer_initiating_reservation_sid)
+    "cluster_metadata2_data_transfer_initiating_worker_sid_idx" btree (data_transfer_initiating_worker_sid)
+    "cluster_metadata2_data_transfer_mode_idx" btree (data_transfer_mode)
+    "cluster_metadata2_data_transfer_started_time_idx" btree (data_transfer_started_time)
+    "cluster_metadata2_data_transfer_status_idx" btree (data_transfer_status)
+    "cluster_metadata2_data_transfer_to_idx" btree (data_transfer_to)
+    "cluster_metadata2_data_transfer_type_idx" btree (data_transfer_type)
+    "cluster_metadata2_data_worker_activity_name_idx" btree (data_worker_activity_name)
+    "cluster_metadata2_data_worker_activity_sid_idx" btree (data_worker_activity_sid)
+    "cluster_metadata2_data_worker_attributes_account_id_idx" btree (data_worker_attributes_account_id)
+    "cluster_metadata2_data_worker_attributes_client_id_idx" btree (data_worker_attributes_client_id)
+    "cluster_metadata2_data_worker_attributes_contact_uri_idx" btree (data_worker_attributes_contact_uri)
+    "cluster_metadata2_data_worker_attributes_delivery_center_idx" btree (data_worker_attributes_delivery_center)
+    "cluster_metadata2_data_worker_attributes_email_idx" btree (data_worker_attributes_email)
+    "cluster_metadata2_data_worker_attributes_full_name_idx" btree (data_worker_attributes_full_name)
+    "cluster_metadata2_data_worker_attributes_fullname_idx" btree (data_worker_attributes_fullname)
+    "cluster_metadata2_data_worker_attributes_image_url_idx" btree (data_worker_attributes_image_url)
+    "cluster_metadata2_data_worker_attributes_roles_idx" gin (data_worker_attributes_roles)
+    "cluster_metadata2_data_worker_attributes_routing_idx" gin (data_worker_attributes_routing)
+    "cluster_metadata2_data_worker_attributes_supervisors_idx" gin (data_worker_attributes_supervisors)
+    "cluster_metadata2_data_worker_geo_idx" btree (data_worker_geo)
+    "cluster_metadata2_data_worker_name_idx" btree (data_worker_name)
+    "cluster_metadata2_data_worker_previous_activity_name_idx" btree (data_worker_previous_activity_name)
+    "cluster_metadata2_data_worker_previous_activity_sid_idx" btree (data_worker_previous_activity_sid)
+    "cluster_metadata2_data_worker_session_id_idx" btree (data_worker_session_id)
+    "cluster_metadata2_data_worker_shift_idx" btree (data_worker_shift)
+    "cluster_metadata2_data_worker_sid_idx" btree (data_worker_sid)
+    "cluster_metadata2_data_worker_time_in_previous_activity_idx" btree (data_worker_time_in_previous_activity)
+    "cluster_metadata2_data_worker_time_in_previous_activity_ms_idx" btree (data_worker_time_in_previous_activity_ms)
+    "cluster_metadata2_data_worker_version_idx" btree (data_worker_version)
+    "cluster_metadata2_data_workflow_name_idx" btree (data_workflow_name)
+    "cluster_metadata2_data_workflow_sid_idx" btree (data_workflow_sid)
+    "cluster_metadata2_data_workspace_name_idx" btree (data_workspace_name)
+    "cluster_metadata2_data_workspace_sid_idx" btree (data_workspace_sid)
+    "cluster_metadata2_day_of_week_ix" btree (day_of_week)
+    "cluster_metadata2_escalation_ix" gin (escalation)
+    "cluster_metadata2_extract_entity_ix" gin (extract_entity)
+    "cluster_metadata2_hour_of_day_ix" btree (hour_of_day)
+    "cluster_metadata2_interaction_type_ix" btree (interaction_type)
+    "cluster_metadata2_metadata_account_id_idx" btree (metadata_account_id)
+    "cluster_metadata2_metadata_brand_id_idx" btree (metadata_brand_id)
+    "cluster_metadata2_metadata_call_start_time_idx" btree (metadata_call_start_time)
+    "cluster_metadata2_metadata_channel_unique_name_idx" btree (metadata_channel_unique_name)
+    "cluster_metadata2_metadata_client_id_idx" btree (metadata_client_id)
+    "cluster_metadata2_metadata_conversaion_uuid_idx" btree (metadata_conversation_uuid)
+    "cluster_metadata2_metadata_event_current_time_idx" btree (metadata_event_current_time)
+    "cluster_metadata2_metadata_event_id_idx" btree (metadata_event_id)
+    "cluster_metadata2_metadata_event_provider_idx" btree (metadata_event_provider)
+    "cluster_metadata2_metadata_event_type_idx" btree (metadata_event_type)
+    "cluster_metadata2_metadata_interaction_current_duration_idx" btree (metadata_interaction_current_duration)
+    "cluster_metadata2_metadata_interaction_sequence_id_idx" btree (metadata_interaction_sequence_id)
+    "cluster_metadata2_metadata_interaction_start_time_idx" btree (metadata_interaction_start_time)
+    "cluster_metadata2_metadata_interaction_state_idx" btree (metadata_interaction_state)
+    "cluster_metadata2_metadata_interaction_uuid_idx" btree (metadata_interaction_uuid)
+    "cluster_metadata2_profanity_ix" gin (profanity)
+    "cluster_metadata2_queue_name_ix" btree (queue_name)
+    "cluster_metadata2_rules_outcome_ix" gin (rules_outcome)
+    "cluster_metadata2_sentiment_ix" gin (sentiment)
+    "cluster_metadata2_sentiment_per_minute_ix" btree (sentiment_per_minute)
+    "cluster_metadata2_speaker_turns_ix" gin (speaker_turns)
+    "cluster_metadata2_time_of_day_ix" btree (time_of_day)
+    "cluster_metadata2_xv_system_created_timestamp_ix" btree (xv_system_created_timestamp)
+    "cluster_metadata2_xv_system_journal_ix" gin (xv_system_journal)
+    "cluster_metadata2_xv_system_load_table_id_list_ix" btree (xv_system_load_table_id_list)
+    "cluster_metadata2_xv_system_process_id_ix" btree (xv_system_process_id)
+    "cluster_metadata2_xv_system_seq_ix" btree (xv_system_seq)
+    "cluster_metadata2_xv_system_update_count_ix" btree (xv_system_update_count)
+    "cluster_metadata2_xv_system_updated_timestamp_ix" btree (xv_system_updated_timestamp)
+    "idx_metadata_client_id" btree (metadata_client_id)
+Disabled user triggers:
+    tr_biu_cluster_metadata2 BEFORE INSERT OR UPDATE ON cluster_metadata2 FOR EACH ROW EXECUTE FUNCTION fn_tr_biu_cluster_metadata2()
+Number of partitions: 18 (Use \d+ to list them.)
+
+
+Suggestion for the table itself
+
+CREATE TABLE cluster_metadata2 (
+    call_recording_id TEXT,              -- Primary key/sharding key
+    call_recording_date DATE,            -- Partition key
+    call_direction VARCHAR,              -- Native column for frequent queries
+    customer_number VARCHAR,             -- Native column
+    task_assignment_status VARCHAR,      -- Native column
+    metadata JSONB,                      -- Consolidated metadata (e.g., account_id, brand_id)
+    task_attributes JSONB,               -- Consolidated task attributes
+    worker_attributes JSONB,             -- Consolidated worker attributes
+    analytics JSONB,                     -- Consolidated analytics (e.g., sentiment, profanity)
+    journal JSONB,                       -- Consolidated journal data
+    -- Other native columns as needed
+    PRIMARY KEY (call_recording_date, call_recording_id)
+);
