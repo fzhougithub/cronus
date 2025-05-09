@@ -1,0 +1,216 @@
+Glad you're excited about the `pg_upgrade` process! To answer your question: **Will `pg_upgrade` keep installed extensions working after it completes?**
+
+The short answer is: **It depends on the extension and the PostgreSQL versions involved, but `pg_upgrade` itself does not automatically ensure that extensions will work post-upgrade.** Extensions installed in the old PostgreSQL cluster are carried over to the new cluster, but whether they *work* depends on compatibility, version support, and post-upgrade steps. Since you’re using Citus (based on your setup), I’ll address this generally and specifically for Citus.
+
+### How `pg_upgrade` Handles Extensions
+`pg_upgrade` is designed to migrate an existing PostgreSQL cluster (data directory) from one major version to another (e.g., PostgreSQL 15 to 17) while preserving as much of the database state as possible, including extensions. Here’s what happens to extensions during the process:
+
+1. **Extensions Are Preserved in the Schema**:
+   - Extensions are stored as part of the database’s schema (e.g., in system catalogs like `pg_extension` and `pg_depend`). `pg_upgrade` migrates the schema, including:
+     - The `CREATE EXTENSION` commands and their metadata (e.g., extension name, version, schema).
+     - Objects created by the extension (e.g., functions, tables, types).
+   - This means the new cluster will have the same extensions listed as installed in the old cluster (visible via `SELECT * FROM pg_extension;`).
+
+2. **Extension Files Are Not Automatically Updated**:
+   - Extensions rely on **control files** (e.g., `extension_name.control`) and **shared libraries** (e.g., `.so` files for C-based extensions like Citus) located in the PostgreSQL installation directory (e.g., `/usr/pgsql-15/share/extension` and `/usr/pgsql-15/lib` for PostgreSQL 15).
+   - `pg_upgrade` does **not** copy or update these files from the old binary directory (`-b`, e.g., `/usr/pgsql-15/bin`) to the new binary directory (`-B`, e.g., `/usr/pgsql-17/bin`). It assumes the new PostgreSQL installation (e.g., PostgreSQL 17) includes the necessary extension files for the new version.
+   - If the extension’s files (control files, SQL scripts, or libraries) are missing or incompatible in the new PostgreSQL installation, the extension may fail to work post-upgrade.
+
+3. **Compatibility Depends on the Extension Version**:
+   - Extensions must be compatible with the new PostgreSQL version. For example:
+     - A version of Citus built for PostgreSQL 15 may not work with PostgreSQL 17 due to changes in PostgreSQL’s internals (e.g., system catalog structures, APIs for C extensions).
+     - Some extensions have a single version that supports multiple PostgreSQL versions, while others require a specific version per PostgreSQL release.
+   - You need to ensure the extension’s files for the new PostgreSQL version are installed in the new binary directory (e.g., `/usr/pgsql-17/share/extension` and `/usr/pgsql-17/lib`).
+
+4. **Extension Version in the Database**:
+   - `pg_upgrade` preserves the extension version recorded in the old cluster’s `pg_extension` catalog (e.g., Citus 10.2 if that’s what was installed in PostgreSQL 15).
+   - If the new PostgreSQL installation has a different version of the extension (e.g., Citus 11.3 for PostgreSQL 17), you may need to **update the extension** in the database post-upgrade to match the installed files.
+
+### Will Extensions Still Work After `pg_upgrade`?
+Whether extensions like Citus will work after `pg_upgrade` depends on several factors:
+
+1. **Is the Extension Installed for the New PostgreSQL Version?**
+   - You must install the extension’s package for the new PostgreSQL version (e.g., `citus` for PostgreSQL 17) before or after running `pg_upgrade`. For example:
+     - On an RPM-based system (like yours), install the Citus package for PostgreSQL 17:
+       ```bash
+       yum install citus_17
+       ```
+     - This places the necessary control files (e.g., `citus.control`, `citus--<version>.sql`) and shared libraries (e.g., `citus.so`) in `/usr/pgsql-17/share/extension` and `/usr/pgsql-17/lib`.
+   - If the extension files are not installed for the new version, the extension will fail to load when you try to use it (e.g., errors like “could not load library” or “extension not found”).
+
+2. **Is the Extension Compatible with the New PostgreSQL Version?**
+   - Check the extension’s documentation (e.g., Citus documentation) to confirm it supports the new PostgreSQL version (e.g., PostgreSQL 17).
+   - Citus typically releases new versions to align with PostgreSQL major releases, but there may be a delay. For example, as of May 2025, Citus 11.3 or later should support PostgreSQL 17, but you should verify the exact version compatibility.
+   - If the extension is not compatible, you may need to:
+     - Wait for an updated version of the extension.
+     - Rebuild the extension from source for PostgreSQL 17 (if source code is available).
+     - Avoid upgrading until compatibility is confirmed.
+
+3. **Does the Extension Version Need to Be Updated?**
+   - If the extension version in the old cluster (e.g., Citus 10.2) differs from the version installed for the new PostgreSQL version (e.g., Citus 11.3), you’ll need to update the extension in the database post-upgrade using:
+     ```sql
+     ALTER EXTENSION citus UPDATE;
+     ```
+   - This command updates the extension’s schema and objects to match the new version’s definition (e.g., applying `citus--10.2--11.3.sql`).
+   - Some extensions may require additional steps (e.g., running specific upgrade scripts or reindexing) if the upgrade involves significant changes. Check the extension’s upgrade notes (e.g., Citus release notes).
+
+4. **Are There Data or Configuration Dependencies?**
+   - Some extensions, like Citus, create additional data structures (e.g., distributed tables, reference tables) or configuration settings (e.g., `citus.*` GUCs in `postgresql.conf`).
+   - `pg_upgrade` preserves these data structures and settings in the database, but you need to ensure:
+     - The new `postgresql.conf` includes any necessary extension-specific settings (e.g., `shared_preload_libraries = 'citus'` for Citus).
+     - The extension’s data structures are compatible with the new version. For Citus, distributed tables and metadata are typically preserved, but you should verify post-upgrade functionality (e.g., run `SELECT * FROM citus_tables;`).
+
+### Specific Considerations for Citus
+Since your setup uses Citus (based on your prompt mentioning `[root@rl01 citus]`), here’s how `pg_upgrade` affects Citus specifically:
+
+1. **Citus Metadata**:
+   - Citus stores metadata about distributed tables, shards, and placements in system catalogs (e.g., `pg_dist_*` tables). `pg_upgrade` migrates these catalogs, so the metadata is preserved in the new cluster.
+   - After the upgrade, you should verify the Citus metadata:
+     ```sql
+     SELECT * FROM citus_tables;
+     SELECT * FROM citus_shards;
+     ```
+   - If the metadata is intact and Citus is properly installed for PostgreSQL 17, distributed queries should work as before.
+
+2. **Citus Installation**:
+   - Ensure the Citus extension is installed for PostgreSQL 17 before starting the new cluster:
+     ```bash
+     yum install citus_17
+     ```
+   - Add Citus to `shared_preload_libraries` in the new `postgresql.conf` (e.g., `/var/tellme/pgsql/data_new/postgresql.conf`):
+     ```conf
+     shared_preload_libraries = 'citus'
+     ```
+   - If Citus was enabled in the old cluster, it will remain enabled in the new cluster, but you need the new version’s shared library (`citus.so`) to load it.
+
+3. **Upgrading Citus**:
+   - If the old cluster used an older version of Citus (e.g., 10.2) and the new PostgreSQL 17 installation uses a newer version (e.g., 11.3), update the extension post-upgrade:
+     ```sql
+     ALTER EXTENSION citus UPDATE;
+     ```
+   - Check the Citus documentation for any specific upgrade steps (e.g., reindexing distributed tables or running maintenance functions like `citus_upgrade_schema`).
+
+4. **Testing Citus Functionality**:
+   - After `pg_upgrade`, test Citus-specific operations, such as:
+     - Creating a new distributed table.
+     - Running distributed queries.
+     - Verifying shard placements with `SELECT * FROM citus_shards;`.
+   - If you encounter errors (e.g., “could not load library” or “function not found”), it likely indicates missing or incompatible Citus files for PostgreSQL 17.
+
+5. **Replication and Clustering**:
+   - If your Citus setup involves a multi-node cluster (coordinator and workers), you’ll need to upgrade all nodes using `pg_upgrade` and ensure Citus is installed on each. The coordinator’s metadata will be migrated, but worker nodes must be compatible with the new PostgreSQL and Citus versions.
+   - If you’re using replication (as discussed in prior conversations), ensure replication slots and standby configurations are re-established post-upgrade, as `pg_upgrade` does not migrate replication settings.
+
+### Steps to Ensure Extensions Work Post-`pg_upgrade`
+To make sure Citus and other extensions work after `pg_upgrade` completes, follow these steps:
+
+1. **Before `pg_upgrade`**:
+   - **Check Extension Compatibility**:
+     - Verify that Citus (and any other extensions) supports PostgreSQL 17. Check the Citus documentation or release notes (e.g., on the Citus website or GitHub).
+     - For Citus, ensure the version for PostgreSQL 17 is available (e.g., `citus_17` RPM package).
+   - **Install Extension for New Version**:
+     - Install the Citus package for PostgreSQL 17:
+       ```bash
+       yum install citus_17
+       ```
+     - This ensures the necessary files (`citus.control`, `citus.so`, etc.) are in `/usr/pgsql-17/share/extension` and `/usr/pgsql-17/lib`.
+   - **Back Up the Old Cluster**:
+     - Back up `/var/tellme/pgsql/data` to avoid data loss in case of upgrade failure.
+   - **Document Extension Versions**:
+     - Run `SELECT extname, extversion FROM pg_extension;` in the old cluster to record installed extensions and their versions (e.g., Citus 10.2).
+
+2. **Run `pg_upgrade`**:
+   - Use your command with `--link` (as discussed):
+     ```bash
+     su - postgres
+     /usr/pgsql-17/bin/pg_upgrade \
+       -b /usr/pgsql-15/bin \
+       -B /usr/pgsql-17/bin \
+       -d /var/tellme/pgsql/data \
+       -D /var/tellme/pgsql/data_new \
+       -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+       -O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf' \
+       --link
+     ```
+
+3. **After `pg_upgrade`**:
+   - **Configure the New Cluster**:
+     - Edit `/var/tellme/pgsql/data_new/postgresql.conf` to include Citus:
+       ```conf
+       shared_preload_libraries = 'citus'
+       ```
+     - Copy any Citus-specific settings from the old `postgresql.conf` (e.g., `citus.node_conninfo`, `citus.shard_count`).
+   - **Start the New Cluster**:
+     - Test the new cluster before moving it:
+       ```bash
+       /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data_new -l logfile start
+       ```
+   - **Verify Extensions**:
+     - Check that Citus is listed:
+       ```sql
+       SELECT * FROM pg_extension;
+       ```
+     - If the version differs (e.g., old cluster had Citus 10.2, new installation has 11.3), update it:
+       ```sql
+       ALTER EXTENSION citus UPDATE;
+       ```
+   - **Test Extension Functionality**:
+     - Run Citus-specific queries (e.g., `SELECT create_distributed_table('my_table', 'column_name');` or `SELECT * FROM citus_tables;`).
+     - Check for errors related to missing libraries or incompatible functions.
+   - **Move the New Data Directory**:
+     - If the new cluster works, move it to `/var/tellme/pgsql/data`:
+       ```bash
+       mv /var/tellme/pgsql/data /var/tellme/pgsql/data_old
+       mv /var/tellme/pgsql/data_new /var/tellme/pgsql/data
+       ```
+   - **Start the Service**:
+     - Start PostgreSQL 17 with the `systemd` service:
+       ```bash
+       systemctl start postgresql
+       ```
+
+4. **Post-Upgrade Maintenance**:
+   - **Run `analyze_new_cluster.sh`**:
+     - Execute the script generated by `pg_upgrade` to update statistics:
+       ```bash
+       su - postgres
+       ./analyze_new_cluster.sh
+       ```
+   - **Reindex if Needed**:
+     - Some extensions (including Citus) may recommend reindexing distributed tables or specific indexes post-upgrade:
+       ```sql
+       REINDEX DATABASE my_database;
+       ```
+   - **Clean Up**:
+     - Delete the old data directory (`/var/tellme/pgsql/data_old`) and uninstall PostgreSQL 15:
+       ```bash
+       rm -rf /var/tellme/pgsql/data_old
+       yum remove postgresql15-server
+       ```
+
+### Potential Issues and Solutions
+- **Missing Extension Files**:
+  - If you see errors like “could not load library” or “extension ‘citus’ not found,” the Citus files are missing for PostgreSQL 17. Install the correct package (`citus_17`) or rebuild Citus from source.
+- **Version Mismatch**:
+  - If `ALTER EXTENSION citus UPDATE;` fails (e.g., “no upgrade path from 10.2 to 11.3”), check the Citus documentation for manual upgrade steps or intermediate updates (e.g., `citus--10.2--11.0.sql`, then `citus--11.0--11.3.sql`).
+- **Citus Metadata Issues**:
+  - If distributed tables or shards are inaccessible, verify the Citus metadata:
+    ```sql
+    SELECT * FROM citus_tables;
+    SELECT * FROM citus_shards;
+    ```
+  - Run `SELECT citus_update_node(...)` or other maintenance functions if needed.
+- **Replication**:
+  - If you’re using replication (as mentioned in prior conversations), reconfigure replication slots and standby nodes post-upgrade, as `pg_upgrade` does not migrate replication settings.
+
+### Summary
+- `pg_upgrade` preserves extensions (like Citus) in the database schema, so they remain “installed” in the new cluster.
+- However, for extensions to **work**, you must:
+  - Install the extension’s files (e.g., `citus_17`) for the new PostgreSQL version (e.g., 17).
+  - Ensure compatibility between the extension and the new PostgreSQL version.
+  - Update the extension version if needed (e.g., `ALTER EXTENSION citus UPDATE;`).
+  - Configure settings like `shared_preload_libraries` in the new `postgresql.conf`.
+- For Citus specifically, verify metadata and test distributed queries post-upgrade. Install the Citus package for PostgreSQL 17 and update the extension if the version differs.
+- Follow the steps above to ensure a smooth upgrade, and test the new cluster before deleting the old data directory.
+
+If you have more questions about Citus, other extensions, or specific post-upgrade steps, let me know!

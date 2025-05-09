@@ -1,0 +1,139 @@
+The data is only deleted from the disk when all hard links to it are removed. As long as at least one hard link exists, the data remains intact.
+
+REMEMBER the BYTEDANCE SHAM!!!
+
+
+
+The `--link` (or `-k`) option in `pg_upgrade` is an optimization that allows `pg_upgrade` to create **hard links** instead of copying data files from the old PostgreSQL data directory to the new one during an in-place upgrade. This can significantly reduce the time and disk space required for the upgrade process. Let’s break down what this means, how it works, which files are affected, and why you might use it.
+
+### What Does the `--link` Option Mean?
+- **Default Behavior (Without `--link`)**:
+  - When you run `pg_upgrade` without the `--link` option, it **copies** the data files from the old data directory (`-d`) to the new data directory (`-D`). This creates a complete, independent copy of the data files in the new directory, which is then modified to match the new PostgreSQL version’s format.
+  - This copying process:
+    - Requires additional disk space (roughly equal to the size of the old data directory).
+    - Takes more time, especially for large databases, because it involves physically duplicating all data files.
+
+- **Behavior with `--link`**:
+  - When you specify `--link` (or `-k`), `pg_upgrade` creates **hard links** to the data files in the old data directory instead of copying them to the new data directory.
+  - A **hard link** is a reference to the same underlying file on disk, meaning the old and new data directories share the same physical data files initially. This avoids duplicating the files, saving disk space and speeding up the upgrade process.
+  - As `pg_upgrade` modifies the data files to make them compatible with the new PostgreSQL version, it may break the hard links for modified files (replacing them with new, independent copies), but unchanged files remain linked.
+
+### Which Files Use Hard Links?
+- **Files Affected by `--link`**:
+  - The `--link` option primarily applies to the **data files** in the PostgreSQL data directory, particularly those in the `base/` subdirectory (which stores the actual database table and index data) and other subdirectories like `pg_tblspc/` (for tablespaces).
+  - These files include the on-disk representations of tables, indexes, and other database objects stored in files like `base/<database_OID>/<relation_OID>`.
+  - Configuration files (e.g., `postgresql.conf`, `pg_hba.conf`) and some metadata files (e.g., `PG_VERSION`, `pg_control`) are typically **not** hard-linked because they are either small or need to be modified for the new version.
+
+- **How Hard Links Work**:
+  - A hard link is created using the filesystem’s linking mechanism (e.g., the `ln` command in Linux). Both the old data directory (`-d`) and the new data directory (`-D`) point to the same physical data on disk for the linked files.
+  - If `pg_upgrade` needs to modify a file (e.g., to update its format for the new PostgreSQL version), the hard link is broken for that file, and a new copy is created in the new data directory. Unmodified files remain linked, continuing to share the same disk space.
+
+### Why Use the `--link` Option?
+The `--link` option is used for the following reasons:
+
+1. **Saves Disk Space**:
+   - Without `--link`, `pg_upgrade` requires enough free disk space to hold a full copy of the old data directory (plus some overhead for temporary files). For large databases (e.g., hundreds of GB or TB), this can be a significant constraint.
+   - With `--link`, the new data directory initially uses almost no additional disk space because it shares the same physical files via hard links. Only the files that are modified during the upgrade consume additional space.
+
+2. **Speeds Up the Upgrade**:
+   - Copying large data files can take a long time, especially for large databases or slower disks. Creating hard links is much faster because it involves only updating filesystem metadata, not duplicating data.
+   - This reduces the overall time required for the `pg_upgrade` process, which is critical for minimizing downtime in production environments.
+
+3. **Efficient for Large Databases**:
+   - The `--link` option is particularly beneficial for large databases where copying data would be prohibitively slow or require substantial additional storage.
+   - For example, if your database is 500 GB, using `--link` avoids needing an extra 500 GB of free space during the upgrade.
+
+### Trade-offs and Considerations
+While the `--link` option is powerful, it comes with some caveats:
+
+1. **Shared Filesystem Requirement**:
+   - Hard links only work on the **same filesystem**. The old and new data directories (`-d` and `-D`) must reside on the same filesystem for `--link` to work. If they are on different filesystems (e.g., different disk partitions or mounts), `pg_upgrade` will fail with an error when using `--link`.
+   - In your case, since you’re using `/var/tellme/pgsql/data` (old) and `/var/tellme/pgsql/data_new` (new), ensure both directories are on the same filesystem (you can check with `df -h` or `stat`).
+
+2. **Risk of Modifying the Old Cluster**:
+   - Because hard-linked files are shared between the old and new data directories, any changes to the files in the new directory (e.g., during the upgrade or post-upgrade operations) could affect the old directory if the links are not broken.
+   - For example, if you start the new PostgreSQL instance and it modifies data files, those changes might reflect in the old data directory, rendering it unusable for rollback.
+   - **Mitigation**: After a successful upgrade, you should delete the old cluster (e.g., using the `delete_old_cluster.sh` script generated by `pg_upgrade`) to avoid accidental modifications. Alternatively, break the links manually by copying the files.
+
+3. **Not All Files Are Linked**:
+   - Some files (e.g., `pg_control`, WAL files, or configuration files) are not hard-linked because they are version-specific or modified during the upgrade. These files are copied or regenerated, so the disk space savings may not be 100%.
+   - However, the bulk of the data (table and index files) typically benefits from linking.
+
+4. **Filesystem Support**:
+   - The `--link` option requires a filesystem that supports hard links (e.g., ext4, XFS, or other common Linux filesystems). Most modern filesystems support hard links, but you should confirm this for your setup.
+   - You can test hard link support by creating a hard link manually (e.g., `ln file1 file2`) and checking if it works.
+
+5. **Backup Before Using**:
+   - Although `--link` is generally safe, it’s critical to back up the old data directory before running `pg_upgrade`. If the upgrade fails or the new cluster is corrupted, you’ll need the backup to restore the old cluster, as the hard-linked files may be modified.
+
+### Example in Your Context
+Based on your previous questions, you’re upgrading PostgreSQL (e.g., from 15 to 17) with a data directory at `/var/tellme/pgsql/data` and a new directory at `/var/tellme/pgsql/data_new`. Here’s how the `--link` option would fit into your `pg_upgrade` command:
+
+```bash
+su - postgres
+/usr/pgsql-17/bin/pg_upgrade \
+  -b /usr/pgsql-15/bin \
+  -B /usr/pgsql-17/bin \
+  -d /var/tellme/pgsql/data \
+  -D /var/tellme/pgsql/data_new \
+  -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+  -O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf' \
+  --link
+```
+
+- **What Happens**:
+  - `pg_upgrade` creates hard links in `/var/tellme/pgsql/data_new` to the data files in `/var/tellme/pgsql/data` instead of copying them.
+  - Files that remain unchanged (e.g., table data files not affected by version-specific format changes) continue to share the same disk space.
+  - Files modified during the upgrade (e.g., metadata or files updated for PostgreSQL 17 compatibility) are copied, breaking the hard link for those specific files.
+  - The upgrade completes faster and uses less disk space than a full copy.
+
+- **Post-Upgrade**:
+  - If the upgrade is successful, you plan to move the contents of `/var/tellme/pgsql/data_new` back to `/var/tellme/pgsql/data` (per your `systemd` service configuration). Be cautious:
+    - Before moving, delete or back up the old `/var/tellme/pgsql/data` to avoid confusion with hard-linked files.
+    - Use `mv /var/tellme/pgsql/data_new /var/tellme/pgsql/data` to relocate the new data directory.
+  - Run `analyze_new_cluster.sh` to update statistics, as recommended by `pg_upgrade`.
+  - Optionally, remove the old cluster’s files to free up space and avoid accidental use of the old data.
+
+### When to Use `--link`
+- **Use `--link` if**:
+  - Your database is large, and you have limited free disk space (e.g., not enough to duplicate the entire data directory).
+  - You want to minimize upgrade downtime, as linking is much faster than copying.
+  - The old and new data directories are on the same filesystem.
+  - You have a backup of the old data directory and are prepared to delete the old cluster after the upgrade.
+
+- **Avoid `--link` if**:
+  - The old and new data directories are on different filesystems (it won’t work).
+  - You want to keep the old cluster fully intact and independent after the upgrade (e.g., for rollback or testing).
+  - You’re unsure about filesystem support for hard links or the implications of shared files.
+
+### Practical Example
+Suppose your database in `/var/tellme/pgsql/data` is 100 GB:
+- **Without `--link`**:
+  - `pg_upgrade` copies all 100 GB to `/var/tellme/pgsql/data_new`, requiring at least 100 GB of free space.
+  - The copy operation might take 10–30 minutes (depending on disk speed).
+- **With `--link`**:
+  - `pg_upgrade` creates hard links, using negligible extra space initially (only modified files consume additional space).
+  - The linking process takes seconds, significantly reducing the upgrade time.
+  - After the upgrade, you might use a small amount of additional space (e.g., a few GB for modified files), but far less than 100 GB.
+
+### Additional Notes for Your Setup
+- **Citus Extension**: Since you’re using Citus, the data files (especially distributed tables) may be large. The `--link` option is particularly useful in this case to avoid duplicating these files, but ensure Citus is compatible with PostgreSQL 17 before upgrading.
+- **SELinux**: Your `systemd` file mentions SELinux. Hard links should work with SELinux, but ensure the new data directory (`/var/tellme/pgsql/data_new`) has the correct SELinux context:
+  ```bash
+  restorecon -r /var/tellme/pgsql/data_new
+  ```
+- **Verify Filesystem**: Before using `--link`, confirm that `/var/tellme/pgsql/data` and `/var/tellme/pgsql/data_new` are on the same filesystem:
+  ```bash
+  stat -f /var/tellme/pgsql/data
+  stat -f /var/tellme/pgsql/data_new
+  ```
+  The `Filesystem` field (or `ID`) should match.
+
+### Summary
+- The `--link` (or `-k`) option in `pg_upgrade` uses **hard links** instead of copying data files from the old data directory to the new one, saving disk space and speeding up the upgrade.
+- **Hard links** are created for data files (e.g., table and index files in `base/`), but modified files are copied, breaking the link for those files.
+- **Why use it**: It’s faster and uses less disk space, ideal for large databases or systems with limited storage.
+- **Caveats**: Requires the same filesystem, risks modifying the old cluster if not cleaned up, and needs a backup for safety.
+- In your case, `--link` is likely a good choice if `/var/tellme/pgsql/data` and `/var/tellme/pgsql/data_new` are on the same filesystem and you want to minimize upgrade time and space usage. Just ensure you back up the old data and clean up the old cluster after the upgrade.
+
+If you have more questions about `--link`, need help verifying your filesystem setup, or want assistance with the full `pg_upgrade` process, let me know!

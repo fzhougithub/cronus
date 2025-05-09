@@ -1,0 +1,114 @@
+Large table queries that can make other sessions slow and potentially trigger application retries typically involve operations that consume significant system resources (CPU, memory, I/O) or lock resources in a way that blocks other queries. Here are some common scenarios:
+
+---
+
+1. **Full Table Scans on Large Tables**
+   • What happens: If a query performs a full table scan on a very large table without proper indexing, it can consume a lot of I/O and CPU resources, slowing down other queries.
+
+   • Example: A query like `SELECT * FROM large_table WHERE some_column = 'value'` without an index on `some_column` will scan the entire table.
+
+   • Impact: Other sessions may experience delays or timeouts, leading to retries.
+
+
+---
+
+2. **Expensive Aggregations or Joins**
+   • What happens: Queries involving complex aggregations (e.g., `GROUP BY`, `DISTINCT`) or joins on large tables can consume a lot of memory and CPU.
+
+   • Example: A query like `SELECT AVG(large_column) FROM very_large_table GROUP BY another_column` or a join between two large tables.
+
+   • Impact: These queries can monopolize resources, causing other sessions to wait or retry.
+
+
+---
+
+3. **Lock Contention**
+   • What happens: Queries that acquire exclusive locks (e.g., `UPDATE`, `DELETE`, or `ALTER TABLE`) on large tables can block other sessions trying to access the same data.
+
+   • Example: A long-running `UPDATE` statement on a large table can lock rows or even the entire table, preventing other queries from proceeding.
+
+   • Impact: Other sessions may time out or retry, especially if they are waiting for locks to be released.
+
+
+---
+
+4. **Vacuum and Autovacuum Operations**
+   • What happens: PostgreSQL's `VACUUM` and `AUTOVACUUM` processes reclaim storage from dead tuples (rows that are no longer visible to any transaction). If these operations are running on a large table, they can consume significant resources.
+
+   • Example: A long-running `VACUUM` on a large table can slow down other queries.
+
+   • Impact: Other sessions may experience delays or retries, especially if the vacuum operation is aggressive.
+
+
+---
+
+5. **Index Scans on Large Tables with High Cardinality**
+   • What happens: If an index scan is performed on a column with high cardinality (many unique values) in a large table, it can still be slow if the index is not properly optimized or if the query is poorly written.
+
+   • Example: A query like `SELECT * FROM large_table WHERE indexed_column = 'value'` might still be slow if the index is fragmented or if the query is not selective enough.
+
+   • Impact: Other sessions may experience delays if the index scan consumes significant resources.
+
+
+---
+
+6. **Parallel Queries**
+   • What happens: Parallel queries can consume multiple CPU cores and memory, potentially starving other sessions of resources.
+
+   • Example: A query like `SELECT /*+ PARALLEL(large_table, 4) */ * FROM large_table WHERE some_condition` might use 4 CPU cores, leaving fewer resources for other queries.
+
+   • Impact: Other sessions may experience slowdowns or retries, especially if the system is under heavy load.
+
+
+---
+
+7. **Long-Running Transactions**
+   • What happens: Transactions that hold locks for a long time (e.g., due to uncommitted updates or long-running reads) can block other sessions.
+
+   • Example: A session that starts a transaction, performs a long-running operation, and then forgets to commit or roll back.
+
+   • Impact: Other sessions may time out or retry while waiting for the locks to be released.
+
+
+---
+
+8. **Excessive Sorting or Temporary Tables**
+   • What happens: Queries that require sorting or the use of temporary tables (e.g., `ORDER BY`, `DISTINCT`, or `GROUP BY` on large datasets) can consume a lot of memory and disk I/O.
+
+   • Example: A query like `SELECT DISTINCT large_column FROM very_large_table ORDER BY another_column` might spill to disk if the result set is too large.
+
+   • Impact: Other sessions may experience delays or retries due to resource contention.
+
+
+---
+
+9. **Unoptimized Queries**
+   • What happens: Poorly written queries (e.g., missing indexes, unnecessary joins, or Cartesian products) can perform poorly on large tables.
+
+   • Example: A query like `SELECT * FROM table1, table2` without a join condition will perform a Cartesian product, which is extremely slow on large tables.
+
+   • Impact: Other sessions may experience delays or retries due to resource contention.
+
+
+---
+
+10. **High Concurrency**
+   • What happens: If many sessions are querying the same large table simultaneously, the database may struggle to handle the load, leading to contention.
+
+   • Example: Multiple sessions running `SELECT * FROM large_table WHERE some_condition` at the same time.
+
+   • Impact: Sessions may experience delays or retries due to resource contention.
+
+
+---
+
+How to Mitigate These Issues:
+1. Indexing: Ensure that frequently queried columns are indexed.
+2. Query Optimization: Optimize queries to reduce their resource usage (e.g., avoid full table scans, use efficient joins).
+3. Partitioning: Partition large tables to reduce the amount of data scanned.
+4. Resource Limits: Set resource limits (e.g., `work_mem`, `maintenance_work_mem`) to prevent queries from consuming too many resources.
+5. Monitoring: Use tools like `pg_stat_activity` and `pg_locks` to monitor long-running queries and locks.
+6. Vacuum Tuning: Adjust `autovacuum` settings to ensure it runs efficiently without causing contention.
+7. Connection Pooling: Use a connection pooler (e.g., PgBouncer) to manage database connections and reduce contention.
+
+By addressing these issues, you can minimize the impact of large table queries on other sessions and reduce the likelihood of application retries.

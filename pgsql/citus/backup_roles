@@ -1,0 +1,5 @@
+pg_dumpall --globals-only --file=roles_backup.sql
+
+This will backup roles creation and the cron.job tables.
+
+

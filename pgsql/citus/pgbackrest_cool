@@ -1,0 +1,425 @@
+Given your context of managing a 100TB Citus cluster with PostgreSQL (likely version 17 post-upgrade, using a non-standard data directory `/var/tellme/pgsql/data`, RPM-based system, and a focus on backups for disaster recovery and auditing), I’ll provide a detailed, step-by-step guide on how to **install and use pgBackRest** for **incremental PostgreSQL backups**. This will cover installation, configuration, and usage for incremental backups, tailored to your Citus cluster with coordinator and worker nodes. I’ll ensure the instructions are concise, practical, and specific to your large-scale setup, addressing the need for efficient backups in a distributed environment.
+
+### What is pgBackRest?
+**pgBackRest** is an open-source backup and restore tool for PostgreSQL, designed for large databases. It supports:
+- **Full, differential, and incremental backups** to minimize storage and time.
+- **Parallel processing** for faster backups and restores.
+- **WAL archiving** for point-in-time recovery (PITR).
+- **Compression and encryption** for storage efficiency and security.
+- **Remote backup storage** (e.g., AWS S3, local filesystem) for off-site DR.
+
+For your 100TB Citus cluster, pgBackRest is ideal due to its incremental backup capabilities, which reduce storage and backup time compared to full backups, and its integration with PostgreSQL for reliable recovery.
+
+---
+
+### Step-by-Step Guide to Install and Use pgBackRest
+
+#### 1. Install pgBackRest
+Since you’re using an RPM-based system (likely CentOS, RHEL, or Rocky Linux, based on your setup), you can install pgBackRest from the PostgreSQL YUM repository.
+
+**Steps**:
+- **Add the PostgreSQL YUM Repository**:
+  - Install the repository RPM for your OS (e.g., Rocky Linux 8, assuming a recent version compatible with PostgreSQL 17):
+    ```bash
+    sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    ```
+  - Disable the default PostgreSQL module to avoid conflicts (if using a modular OS like RHEL 8):
+    ```bash
+    sudo dnf -qy module disable postgresql
+    ```
+- **Install pgBackRest**:
+  - Install the pgBackRest package:
+    ```bash
+    sudo yum install -y pgbackrest
+    ```
+  - Verify the installation:
+    ```bash
+    pgbackrest version
+    ```
+    Output should show the installed version (e.g., `pgBackRest 2.53` as of May 2025).
+
+- **Install on All Nodes**:
+  - Repeat the installation on the coordinator and all worker nodes, as each node will need pgBackRest for local backup operations.
+  - Ensure the same version of pgBackRest is installed across all nodes to avoid compatibility issues.
+
+#### 2. Configure pgBackRest
+pgBackRest requires configuration for each PostgreSQL instance (coordinator and workers) and a backup repository. For a Citus cluster, you’ll configure a **stanza** (a named configuration) for each node to manage backups independently.
+
+**Steps**:
+- **Create the pgBackRest Configuration File**:
+  - The default configuration file is `/etc/pgbackrest.conf`. Create or edit it:
+    ```bash
+    sudo mkdir -p /etc/pgbackrest
+    sudo touch /etc/pgbackrest.conf
+    sudo chmod 640 /etc/pgbackrest.conf
+    sudo chown postgres:postgres /etc/pgbackrest.conf
+    ```
+- **Configure the Repository**:
+  - Decide where to store backups:
+    - **Local Filesystem**: Suitable for testing or small clusters, but not ideal for DR.
+    - **Remote Storage (Recommended)**: Use AWS S3 or another cloud provider for off-site DR, critical for a 100TB cluster.
+  - Example configuration for **AWS S3** storage (modify for your setup):
+    ```ini
+    [global]
+    repo1-path=/pgbackrest
+    repo1-s3-bucket=my-backup-bucket
+    repo1-s3-key=<your-aws-access-key>
+    repo1-s3-key-secret=<your-aws-secret-key>
+    repo1-s3-region=us-east-1
+    repo1-type=s3
+    repo1-retention-full=4  # Keep 4 full backups
+    repo1-retention-archive=2555  # Keep 7 years of WAL for auditing
+    process-max=4  # Parallel processes for faster backups
+    compress-type=zst  # Zstandard compression for efficiency
+    log-level-console=info
+    log-level-file=debug
+
+    # Coordinator stanza
+    [coordinator]
+    pg1-path=/var/tellme/pgsql/data
+    pg1-port=5432
+    pg1-host=coordinator-host
+    pg1-user=postgres
+
+    # Worker 1 stanza
+    [worker1]
+    pg1-path=/var/tellme/pgsql/data
+    pg1-port=5432
+    pg1-host=worker1-host
+    pg1-user=postgres
+
+    # Worker 2 stanza (repeat for each worker)
+    [worker2]
+    pg1-path=/var/tellme/pgsql/data
+    pg1-port=5432
+    pg1-host=worker2-host
+    pg1-user=postgres
+    ```
+  - **Notes**:
+    - Replace `my-backup-bucket`, `<your-aws-access-key>`, `<your-aws-secret-key>`, and `us-east-1` with your S3 bucket details.
+    - Use `repo1-type=posix` for local filesystem storage (e.g., `repo1-path=/var/pgbackrest`).
+    - Add a stanza for each node (e.g., `coordinator`, `worker1`, `worker2`, etc.).
+    - `pg1-path=/var/tellme/pgsql/data` matches your non-standard data directory.
+    - `process-max=4` leverages multiple CPU cores for faster backups, adjust based on your hardware (e.g., 8 for high-core servers).
+    - `repo1-retention-full=4` keeps 4 full backups (e.g., 1 month if weekly); `repo1-retention-archive=2555` supports 7 years of PITR for auditing.
+
+- **Create the Backup Repository**:
+  - Initialize the repository for each stanza:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=coordinator stanza-create
+    sudo -u postgres pgbackrest --stanza=worker1 stanza-create
+    sudo -u postgres pgbackrest --stanza=worker2 stanza-create
+    ```
+  - This creates the repository structure in S3 (or local filesystem).
+
+- **Configure PostgreSQL for WAL Archiving**:
+  - Edit `/var/tellme/pgsql/data/postgresql.conf` on each node to enable WAL archiving:
+    ```conf
+    wal_level = replica
+    archive_mode = on
+    archive_command = 'pgbackrest --stanza=%s archive-push %p'
+    max_wal_senders = 10
+    wal_keep_size = 1024  # Keep 1GB of WAL for replication
+    ```
+  - Replace `%s` with the stanza name (e.g., `coordinator`, `worker1`).
+  - Restart PostgreSQL on each node:
+    ```bash
+    sudo systemctl restart postgresql
+    ```
+
+- **Set Up Permissions**:
+  - Ensure the `postgres` user has access to the data directory and pgBackRest configuration:
+    ```bash
+    sudo chown -R postgres:postgres /var/tellme/pgsql/data
+    sudo chmod -R 750 /var/tellme/pgsql/data
+    ```
+  - If using a local repository, create and set permissions:
+    ```bash
+    sudo mkdir -p /var/pgbackrest
+    sudo chown postgres:postgres /var/pgbackrest
+    sudo chmod 750 /var/pgbackrest
+    ```
+
+#### 3. Perform Initial Full Backup
+Before enabling incremental backups, you need at least one full backup for each node.
+
+**Steps**:
+- **Coordinator Backup**:
+  ```bash
+  sudo -u postgres pgbackrest --stanza=coordinator --type=full backup
+  ```
+- **Worker Backups**:
+  - For each worker (e.g., worker1, worker2):
+    ```bash
+    sudo -u postgres pgbackrest --stanza=worker1 --type=full backup
+    sudo -u postgres pgbackrest --stanza=worker2 --type=full backup
+    ```
+  - For a 100TB cluster, stagger full backups (e.g., one worker per day) to avoid overloading the cluster:
+    ```bash
+    # Example: Backup worker1 on Monday, worker2 on Tuesday
+    sudo -u postgres pgbackrest --stanza=worker1 --type=full backup
+    ```
+
+- **Notes**:
+  - `--type=full` creates a complete backup of the data directory.
+  - For a 100TB cluster, full backups are storage-intensive (e.g., ~50–70TB compressed). Use `--compress-type=zst` for efficient compression.
+  - Monitor backup progress in the pgBackRest log (e.g., `/var/log/pgbackrest/coordinator-backup.log`).
+
+#### 4. Configure Incremental Backups
+Incremental backups (also called **delta backups** in pgBackRest) back up only the changes since the last backup, significantly reducing storage and time for a 100TB cluster.
+
+**Steps**:
+- **Schedule Incremental Backups**:
+  - Run incremental backups daily:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=coordinator --type=incr backup
+    sudo -u postgres pgbackrest --stanza=worker1 --type=incr backup
+    ```
+  - **Type Options**:
+    - `--type=full`: Complete backup (weekly or monthly).
+    - `--type=diff`: Backs up changes since the last full backup (optional, less common).
+    - `--type=incr`: Backs up changes since the last full, differential, or incremental backup (daily).
+  - Example schedule:
+    - Weekly full backup (e.g., Sunday):
+      ```bash
+      sudo -u postgres pgbackrest --stanza=coordinator --type=full backup
+      ```
+    - Daily incremental backup (Monday–Saturday):
+      ```bash
+      sudo -u postgres pgbackrest --stanza=coordinator --type=incr backup
+      ```
+
+- **Automate with Cron**:
+  - Create a cron job to automate backups for each node. Example for the coordinator:
+    ```bash
+    sudo crontab -u postgres -e
+    ```
+    Add:
+    ```cron
+    # Daily incremental backup at 2 AM
+    0 2 * * * /usr/bin/pgbackrest --stanza=coordinator --type=incr backup
+    # Weekly full backup on Sunday at 3 AM
+    0 3 * * 0 /usr/bin/pgbackrest --stanza=coordinator --type=full backup
+    ```
+  - Repeat for each worker, staggering times to avoid overlap:
+    ```cron
+    # Worker1 incremental at 2:30 AM
+    30 2 * * * /usr/bin/pgbackrest --stanza=worker1 --type=incr backup
+    # Worker1 full on Monday at 3 AM
+    0 3 * * 1 /usr/bin/pgbackrest --stanza=worker1 --type=full backup
+    ```
+
+- **WAL Archiving**:
+  - Incremental backups rely on archived WAL for consistency. Ensure `archive_command` is working:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=coordinator archive-push check
+    ```
+  - Monitor WAL archiving:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=coordinator info
+    ```
+
+#### 5. Verify Backups
+- **Check Backup Status**:
+  - View backup details for each stanza:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=coordinator info
+    ```
+    Output shows full and incremental backups, their timestamps, and sizes.
+  - Example output:
+    ```
+    stanza: coordinator
+        status: ok
+        backup: 20250509-030000F
+            type: full
+            size: 50TB
+            timestamp: 2025-05-09 03:00:00
+        backup: 20250510-023000I
+            type: incr
+            size: 1TB
+            timestamp: 2025-05-10 02:30:00
+    ```
+
+- **Validate Backups**:
+  - Periodically test restore operations on a non-production server to ensure backups are usable (see restore steps below).
+
+#### 6. Restore from a Backup (For Recovery or Auditing)
+To recover a failed worker or audit historical data, restore a backup to a new data directory.
+
+**Steps**:
+- **Stop PostgreSQL** (if restoring to the original node):
+  ```bash
+  sudo systemctl stop postgresql
+  ```
+- **Restore a Backup**:
+  - Example: Restore the latest backup for worker1:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=worker1 restore --db-path=/var/tellme/pgsql/data
+    ```
+  - For **auditing** (e.g., data as of April 1, 2025), restore to a separate directory with PITR:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=worker1 --target-time="2025-04-01 12:00:00" restore --db-path=/var/tellme/pgsql/audit_data
+    ```
+  - Note: PITR requires continuous WAL archiving.
+
+- **Start PostgreSQL**:
+  - For operational recovery, start the restored worker:
+    ```bash
+    /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data start
+    ```
+  - For auditing, start a temporary instance:
+    ```bash
+    /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/audit_data start
+    ```
+  - Query shard tables for auditing (e.g., `my_table_12345`), as described in prior responses.
+
+- **Update Citus Metadata** (if recovering a worker):
+  - After restoring a worker, update Citus metadata to recognize the restored node:
+    ```sql
+    SELECT citus_update_node('failed-worker-host', 'restored-worker-host', 5432);
+    ```
+  - Run `citus_finish_pg_upgrade()` if post-upgrade:
+    ```sql
+    SELECT citus_finish_pg_upgrade();
+    ```
+
+#### 7. Additional Configuration for a 100TB Citus Cluster
+- **Parallel Processing**:
+  - Increase `process-max` in `/etc/pgbackrest.conf` for faster backups and restores (e.g., `process-max=8` for 8-core servers).
+  - Example:
+    ```ini
+    [global]
+    process-max=8
+    ```
+- **Compression**:
+  - Use Zstandard (`compress-type=zst`) for high compression ratios, reducing storage costs for 100TB:
+    ```ini
+    compress-type=zst
+    compress-level=3
+    ```
+- **Retention Policy**:
+  - Set retention to balance auditing needs (e.g., 7 years) and storage costs:
+    ```ini
+    repo1-retention-full=4  # 1 month of full backups
+    repo1-retention-archive=2555  # 7 years of WAL
+    ```
+- **Staggered Backups**:
+  - For 10 workers (assuming ~10TB per worker), schedule backups to avoid overloading the cluster:
+    - Example: Worker1 full on Monday, Worker2 on Tuesday, etc.
+    - Daily incremental backups at different times (e.g., 2:00 AM, 2:30 AM).
+- **Off-Site Storage**:
+  - Use AWS S3 for off-site DR, critical for a 100TB cluster:
+    ```ini
+    repo1-s3-bucket=my-backup-bucket
+    repo1-s3-region=us-east-1
+    ```
+  - Consider S3 Glacier for long-term audit backups to reduce costs.
+- **Monitoring**:
+  - Check backup logs (`/var/log/pgbackrest`) for errors.
+  - Use `pgbackrest info` to monitor backup sizes and retention.
+  - Set up alerts for failed backups (e.g., via cron job scripts).
+
+#### 8. Integration with Citus Cluster
+- **Coordinator Backup**:
+  - Back up the coordinator’s metadata (`pg_dist_*` tables) separately for quick recovery:
+    ```sql
+    COPY pg_dist_partition TO '/var/tmp/pg_dist_partition.data';
+    COPY pg_dist_shard TO '/var/tmp/pg_dist_shard.data';
+    COPY pg_dist_placement TO '/var/tmp/pg_dist_placement.data';
+    ```
+  - Include these files in the coordinator’s physical backup.
+
+- **Worker Backups**:
+  - Each worker’s backup captures its shards. With `replication_factor = 2`, you could recover missing shards from surviving replicas, but backups are faster and essential for auditing.
+  - Example: If worker1 fails, restore its backup instead of rebalancing 10TB of shards:
+    ```bash
+    pgbackrest --stanza=worker1 restore --db-path=/var/tellme/pgsql/data
+    ```
+
+- **Post-`pg_upgrade`**:
+  - After upgrading from PostgreSQL 15 to 17, update pgBackRest to use PostgreSQL 17 binaries:
+    ```ini
+    [coordinator]
+    pg1-path=/var/tellme/pgsql/data
+    pg1-port=5432
+    pg1-host=coordinator-host
+    pg1-user=postgres
+    pg1-bin=/usr/pgsql-17/bin  # Point to PostgreSQL 17
+    ```
+  - Reinitialize stanzas:
+    ```bash
+    sudo -u postgres pgbackrest --stanza=coordinator stanza-create
+    ```
+
+- **SELinux**:
+  - Restore SELinux contexts after restoring backups:
+    ```bash
+    sudo restorecon -r /var/tellme/pgsql/data
+    ```
+
+#### 9. Example Backup Workflow for Your Cluster
+Assuming a Citus cluster with 1 coordinator and 10 workers (~10TB per worker, 100TB total):
+- **Sunday**:
+  - Full backup of coordinator at 3:00 AM:
+    ```bash
+    pgbackrest --stanza=coordinator --type=full backup
+    ```
+  - Full backup of worker1 at 3:30 AM:
+    ```bash
+    pgbackrest --stanza=worker1 --type=full backup
+    ```
+- **Monday**:
+  - Incremental backup of coordinator at 2:00 AM:
+    ```bash
+    pgbackrest --stanza=coordinator --type=incr backup
+    ```
+  - Full backup of worker2 at 3:30 AM:
+    ```bash
+    pgbackrest --stanza=worker2 --type=full backup
+    ```
+  - Incremental backup of worker1 at 2:30 AM:
+    ```bash
+    pgbackrest --stanza=worker1 --type=incr backup
+    ```
+- **Daily**:
+  - Incremental backups for all nodes, staggered (e.g., coordinator at 2:00 AM, worker1 at 2:30 AM, worker2 at 3:00 AM).
+- **Retention**:
+  - Keep 4 full backups (1 month) and 7 years of WAL for auditing.
+- **Storage**:
+  - Use AWS S3 with compression (~50–70TB compressed).
+
+#### 10. Testing and Validation
+- **Test Restore**:
+  - Periodically restore a worker’s backup to a test server to verify usability:
+    ```bash
+    pgbackrest --stanza=worker1 restore --db-path=/var/tellme/pgsql/test_data
+    /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/test_data start
+    ```
+  - Query shard tables to confirm data integrity.
+- **Test PITR for Auditing**:
+  - Restore to a specific date for audit purposes:
+    ```bash
+    pgbackrest --stanza=worker1 --target-time="2025-04-01 12:00:00" restore --db-path=/var/tellme/pgsql/audit_data
+    ```
+
+---
+
+### Summary
+- **Installation**:
+  - Install pgBackRest via the PostgreSQL YUM repository (`yum install pgbackrest`) on all nodes.
+- **Configuration**:
+  - Set up `/etc/pgbackrest.conf` with stanzas for the coordinator and each worker, using AWS S3 for off-site storage.
+  - Configure PostgreSQL for WAL archiving (`archive_command`) and restart.
+- **Incremental Backups**:
+  - Perform an initial full backup per node (`--type=full`).
+  - Schedule daily incremental backups (`--type=incr`) and weekly full backups using cron.
+  - Stagger backups for a 100TB cluster to avoid performance impact.
+- **Usage**:
+  - Restore backups for recovery (`pgbackrest restore`) or auditing with PITR (`--target-time`).
+  - Update Citus metadata post-restore for operational recovery.
+- **Citus-Specific**:
+  - Back up coordinator metadata (`pg_dist_*` tables) separately.
+  - Use backups for auditing failed workers and rebalancing for operational recovery.
+  - Post-`pg_upgrade`, update pgBackRest to use PostgreSQL 17 binaries.
+
+For your 100TB Citus cluster, pgBackRest’s incremental backups, compression, and S3 integration make it ideal for efficient, scalable backups. If you need help with specific pgBackRest commands, AWS S3 setup, or automating backups for your 10-worker cluster, let me know your OS version, Citus version, or any other details, and I can refine the instructions further!

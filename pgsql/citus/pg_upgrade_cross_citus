@@ -1,0 +1,358 @@
+Upgrading a Citus cluster, which consists of a coordinator node and multiple worker nodes, involves upgrading both the PostgreSQL version and the Citus extension across all nodes. Since you’re interested in using `pg_upgrade` and have asked about upgrading across minor versions, I’ll provide a detailed guide on how to upgrade the entire Citus cluster, which node to upgrade first, and whether `pg_upgrade` can be used across any minor PostgreSQL versions. I’ll also incorporate relevant information from the Citus documentation and address your specific setup (e.g., PostgreSQL 15 to 17, Citus, non-standard data directory `/var/tellme/pgsql/data`).
+
+### Overview of Citus Cluster Upgrade
+A Citus cluster is a distributed database where:
+- The **coordinator node** manages metadata (e.g., `pg_dist_*` tables) and routes queries to worker nodes.
+- **Worker nodes** store data shards and execute distributed queries.
+- All nodes must run compatible versions of PostgreSQL and Citus to maintain cluster functionality.
+
+Upgrading a Citus cluster involves:
+1. Upgrading the **Citus extension** to a version compatible with the target PostgreSQL version.
+2. Upgrading the **PostgreSQL version** on each node using `pg_upgrade` (for major versions) or in-place binary replacement (for minor versions).
+3. Ensuring metadata and configurations are correctly migrated and synchronized.
+
+### Which Node to Upgrade First?
+**The coordinator node should be upgraded first**, followed by the worker nodes. Here’s why:
+- The coordinator node holds critical metadata (e.g., `pg_dist_partition`, `pg_dist_shard`, `pg_dist_placement`) that defines the cluster’s distributed tables and shard placements. Upgrading the coordinator first ensures that this metadata is correctly migrated and compatible with the new PostgreSQL and Citus versions.
+- Worker nodes rely on the coordinator’s metadata to function. Upgrading workers before the coordinator could lead to inconsistencies or errors, as the coordinator’s metadata might not yet be compatible with the new versions.
+- Citus documentation recommends upgrading the coordinator first and then the workers, either all at once (for minimal downtime) or one at a time (for zero-downtime upgrades in some cases).[](https://docs.citusdata.com/en/v7.2/admin_guide/upgrading_citus.html)[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+
+### Can `pg_upgrade` Be Used Across Any Minor Version?
+**No, `pg_upgrade` is primarily designed for upgrading between *major* PostgreSQL versions** (e.g., 15 to 17). For *minor* versions (e.g., 15.3 to 15.8), `pg_upgrade` is typically not needed because minor upgrades do not change the on-disk data format. Here’s a detailed explanation:
+
+#### Minor Version Upgrades (e.g., 15.3 to 15.8)
+- **Definition**: Minor PostgreSQL versions (e.g., 15.x to 15.y) are backward-compatible, meaning the data directory’s on-disk format remains unchanged.[](https://www.postgresql.org/docs/current/upgrading.html)
+- **Upgrade Process**:
+  - Stop the PostgreSQL server.
+  - Replace the old binaries (e.g., `/usr/pgsql-15/bin`) with the new minor version’s binaries (e.g., by installing the updated RPM package `postgresql15-server`).
+  - Restart the server.
+  - The data directory (e.g., `/var/tellme/pgsql/data`) remains unchanged, and no schema or metadata migration is required.
+- **Citus Considerations**:
+  - If upgrading Citus across minor versions (e.g., Citus 11.3 to 11.4), install the new Citus package (e.g., `citus_15` for PostgreSQL 15) and run:
+    ```sql
+    ALTER EXTENSION citus UPDATE;
+    ```
+  - Restart PostgreSQL after installing the new Citus package to ensure the updated shared library (e.g., `citus.so`) is loaded.[](https://docs.citusdata.com/en/v7.2/admin_guide/upgrading_citus.html)
+- **Why `pg_upgrade` Is Not Used**:
+  - Since the data format doesn’t change, there’s no need to migrate the data directory using `pg_upgrade`. Simply updating the binaries is sufficient.
+  - Using `pg_upgrade` for minor versions is unnecessary and could complicate the process (e.g., requiring a new data directory).
+
+#### Major Version Upgrades (e.g., 15 to 17)
+- **Definition**: Major PostgreSQL versions (e.g., 15 to 17) may change the on-disk data format, requiring a migration of the data directory.[](https://www.postgresql.org/docs/current/upgrading.html)
+- **Upgrade Process**:
+  - Use `pg_upgrade` to migrate the data directory from the old version (e.g., `/var/tellme/pgsql/data`) to a new one (e.g., `/var/tellme/pgsql/data_new`) compatible with the new version.
+  - This involves schema migration, data file linking or copying, and metadata updates.
+- **Citus Considerations**:
+  - Citus requires specific steps to ensure metadata is correctly migrated, such as updating dependencies and running `citus_finish_pg_upgrade()` for PostgreSQL 17 upgrades.[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+  - The Citus extension must be upgraded to a version compatible with the new PostgreSQL version (e.g., `citus_17` for PostgreSQL 17).
+- **Why `pg_upgrade` Is Used**:
+  - `pg_upgrade` handles changes in the data format, system catalogs, and other internals, ensuring the new cluster is compatible with the new PostgreSQL version.
+
+#### Can `pg_upgrade` Be Used Across Minor Versions?
+- Technically, you *could* use `pg_upgrade` to upgrade between minor versions (e.g., 15.3 to 15.8), as it supports upgrades between any versions from 9.2 onward, including snapshots and beta releases. However, it’s **not recommended** because:
+  - It’s overkill: Minor upgrades don’t require data directory migration, so `pg_upgrade` adds unnecessary complexity (e.g., creating a new data directory, running checks).
+  - It’s slower: `pg_upgrade` involves schema dumping, file linking/copying, and post-upgrade tasks, whereas a minor upgrade only requires a binary swap and restart.
+  - It increases risk: Using `pg_upgrade` introduces additional steps (e.g., managing old and new data directories) that could lead to errors if not handled correctly.
+- **Best Practice**:
+  - For minor PostgreSQL version upgrades, use the binary replacement method (install new RPM, restart server).
+  - Reserve `pg_upgrade` for major version upgrades (e.g., 15 to 17), as it’s designed for handling data format changes.
+
+### How to Upgrade the Entire Citus Cluster
+Below is a step-by-step guide to upgrade a Citus cluster from PostgreSQL 15 to 17 (major version) using `pg_upgrade`, with considerations for your setup (Citus, non-standard data directory `/var/tellme/pgsql/data`, RPM-based system). I’ll also include steps for minor version upgrades and multi-node clusters. The process assumes you’re upgrading both PostgreSQL and Citus versions.
+
+#### Assumptions
+- Old setup: PostgreSQL 15 with Citus (e.g., version 11.3) on a coordinator and multiple worker nodes.
+- New setup: PostgreSQL 17 with Citus (e.g., version 12.1 or later, compatible with PostgreSQL 17).
+- Data directory: `/var/tellme/pgsql/data` (old), `/var/tellme/pgsql/data_new` (new).
+- Binaries: `/usr/pgsql-15/bin` (old), `/usr/pgsql-17/bin` (new).
+- `systemd` service expects `PGDATA=/var/tellme/pgsql/data`.
+
+#### General Upgrade Strategy
+1. **Upgrade the Coordinator First**:
+   - Upgrade PostgreSQL and Citus on the coordinator node using `pg_upgrade`.
+   - Update Citus metadata and configurations.
+2. **Upgrade Worker Nodes**:
+   - Upgrade each worker node using `pg_upgrade`, either all at once (with downtime) or one at a time (for zero-downtime, if supported).
+   - Synchronize metadata with the coordinator.
+3. **Post-Upgrade Tasks**:
+   - Verify cluster functionality, update statistics, and clean up old data directories.
+
+### Detailed Steps for Major Version Upgrade (PostgreSQL 15 to 17)
+
+#### 1. Preparation (All Nodes)
+- **Review Compatibility**:
+  - Check the Citus changelog (e.g., on the Citus website or GitHub) for breaking changes or specific upgrade requirements between your current Citus version (e.g., 11.3) and the target version (e.g., 12.1).[](https://docs.citusdata.com/en/v7.2/admin_guide/upgrading_citus.html)[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+  - Confirm that Citus supports PostgreSQL 17. As of May 2025, Citus 12.1 or later should support PostgreSQL 17, but verify the exact version.[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+- **Back Up the Cluster**:
+  - Back up the data directory on each node (e.g., `/var/tellme/pgsql/data` on the coordinator and workers) to a safe location:
+    ```bash
+    cp -a /var/tellme/pgsql/data /var/tellme/pgsql/data_backup
+    ```
+  - Optionally, back up Citus metadata on the coordinator:
+    ```sql
+    COPY pg_dist_partition TO '/var/tmp/pg_dist_partition.data';
+    COPY pg_dist_shard TO '/var/tmp/pg_dist_shard.data';
+    COPY pg_dist_placement TO '/var/tmp/pg_dist_placement.data';
+    ```
+- **Install New PostgreSQL and Citus**:
+  - On all nodes, install PostgreSQL 17 and the Citus package for PostgreSQL 17:
+    ```bash
+    yum install postgresql17-server citus_17
+    ```
+  - This places binaries in `/usr/pgsql-17/bin` and Citus files in `/usr/pgsql-17/share/extension` and `/usr/pgsql-17/lib`.
+- **Initialize New Data Directory**:
+  - On each node, initialize an empty PostgreSQL 17 data directory:
+    ```bash
+    su - postgres
+    /usr/pgsql-17/bin/initdb -D /var/tellme/pgsql/data_new
+    ```
+  - Copy relevant configuration files from the old data directory:
+    ```bash
+    cp /var/tellme/pgsql/data/{postgresql.conf,pg_hba.conf,pg_ident.conf} /var/tellme/pgsql/data_new/
+    ```
+  - Edit `/var/tellme/pgsql/data_new/postgresql.conf` to include Citus:
+    ```conf
+    shared_preload_libraries = 'citus'
+    ```
+  - If Citus uses TLS (required for Citus 8.1 and later for new nodes), copy TLS certificates if managed by Citus:
+    ```bash
+    cp /var/tellme/pgsql/data/{postgresql.auto.conf,server.crt,server.key} /var/tellme/pgsql/data_new/
+    ```
+
+#### 2. Upgrade the Coordinator Node
+- **Stop the Old Server**:
+  - Stop PostgreSQL 15 on the coordinator:
+    ```bash
+    systemctl stop postgresql
+    ```
+- **Check Upgrade Compatibility**:
+  - Run `pg_upgrade` with the `--check` option to verify compatibility:
+    ```bash
+    su - postgres
+    /usr/pgsql-17/bin/pg_upgrade \
+      -b /usr/pgsql-15/bin \
+      -B /usr/pgsql-17/bin \
+      -d /var/tellme/pgsql/data \
+      -D /var/tellme/pgsql/data_new \
+      -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+      -O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf' \
+      --check
+    ```
+  - Ensure you see “Clusters are compatible.” Fix any errors if they occur.
+- **Perform the Upgrade**:
+  - Run `pg_upgrade` without `--check`:
+    ```bash
+    /usr/pgsql-17/bin/pg_upgrade \
+      -b /usr/pgsql-15/bin \
+      -B /usr/pgsql-17/bin \
+      -d /var/tellme/pgsql/data \
+      -D /var/tellme/pgsql/data_new \
+      -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+      -O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf' \
+      --link
+    ```
+  - The `--link` option saves space and time, as discussed previously.
+- **Start the New Server**:
+  - Start PostgreSQL 17 on the coordinator:
+    ```bash
+    /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data_new -l logfile start
+    ```
+- **Restore Citus Metadata**:
+  - **Do not run queries** until metadata is restored to avoid inconsistencies.
+  - For upgrades to PostgreSQL 17, run the following on the coordinator to update Citus metadata:
+    ```sql
+    INSERT INTO pg_depend
+    SELECT 'pg_class'::regclass::oid as classid,
+           p.logicalrelid::regclass::oid as objid,
+           0 as objsubid,
+           'pg_extension'::regclass::oid as refclassid,
+           (SELECT oid FROM pg_extension WHERE extname = 'citus') as refobjid,
+           0 as refobjsubid,
+           'n' as deptype
+    FROM pg_dist_partition p;
+    ```
+  - If upgrading Citus to 11.x or later, run:
+    ```sql
+    SELECT citus_finish_citus_upgrade();
+    ```
+    This synchronizes metadata across worker nodes and may take several minutes.[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)[](https://docs.citusdata.com/en/v11.0/admin_guide/upgrading_citus.html)
+  - Update the Citus extension if the version differs:
+    ```sql
+    ALTER EXTENSION citus UPDATE;
+    ```
+- **Test the Coordinator**:
+  - Verify Citus functionality:
+    ```sql
+    SELECT * FROM citus_tables;
+    SELECT * FROM citus_shards;
+    ```
+  - Stop the server after testing:
+    ```bash
+    /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data_new stop
+    ```
+
+#### 3. Upgrade Worker Nodes
+- **Option 1: Upgrade All Workers at Once (With Downtime)**:
+  - Stop PostgreSQL 15 on all worker nodes:
+    ```bash
+    systemctl stop postgresql
+    ```
+  - Repeat the `pg_upgrade` steps for each worker node (same as the coordinator):
+    - Check compatibility with `--check`.
+    - Run `pg_upgrade` with `--link`.
+    - Start the new server.
+    - Run `SELECT citus_finish_pg_upgrade();` on each worker node to finalize metadata synchronization.[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+  - Example for one worker:
+    ```bash
+    /usr/pgsql-17/bin/pg_upgrade \
+      -b /usr/pgsql-15/bin \
+      -B /usr/pgsql-17/bin \
+      -d /var/tellme/pgsql/data \
+      -D /var/tellme/pgsql/data_new \
+      -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+      -O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf' \
+      --link
+    ```
+    ```bash
+    /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data_new -l logfile start
+    psql -c 'SELECT citus_finish_pg_upgrade();'
+    /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data_new stop
+    ```
+- **Option 2: Upgrade Workers One at a Time (Zero-Downtime, If Supported)**:
+  - For some Citus versions (e.g., 5.x and later), you can upgrade workers one at a time to minimize downtime, as Citus supports mixed-version clusters temporarily.[](https://docs.citusdata.com/en/v5.2/admin_guide/upgrading_citus.html)
+  - Process:
+    - Upgrade one worker node using `pg_upgrade` (as above).
+    - Start the worker and run `SELECT citus_finish_pg_upgrade();`.
+    - Verify the worker is operational by checking shard placements:
+      ```sql
+      SELECT * FROM citus_shards;
+      ```
+    - Repeat for each worker node.
+  - **Caveat**: Mixed-version support depends on the Citus versions involved. Check the Citus documentation for your specific versions (e.g., 11.3 to 12.1). If not supported, upgrade all workers simultaneously.
+- **SSL Considerations**:
+  - Since Citus 8.1, new nodes require encrypted communication by default. Upgraded nodes preserve old SSL settings, so ensure consistency when adding new workers post-upgrade.[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+
+#### 4. Finalize the Cluster
+- **Move Data Directories**:
+  - On each node, move the new data directory to the original location to align with your `systemd` service:
+    ```bash
+    mv /var/tellme/pgsql/data /var/tellme/pgsql/data_old
+    mv /var/tellme/pgsql/data_new /var/tellme/pgsql/data
+    ```
+- **Start the Cluster**:
+  - Start PostgreSQL 17 on all nodes using the `systemd` service:
+    ```bash
+    systemctl start postgresql
+    ```
+- **Run Post-Upgrade Tasks**:
+  - On the coordinator, run the `analyze_new_cluster.sh` script generated by `pg_upgrade` to update statistics:
+    ```bash
+    su - postgres
+    ./analyze_new_cluster.sh
+    ```
+  - Optionally, reindex the database to refresh indexes:
+    ```sql
+    REINDEX DATABASE my_database;
+    ```
+- **Verify Cluster Functionality**:
+  - Test distributed queries, shard creation, and replication (if used):
+    ```sql
+    SELECT create_distributed_table('my_table', 'column_name');
+    SELECT * FROM citus_tables;
+    ```
+  - Check worker node connectivity:
+    ```sql
+    SELECT * FROM citus_get_active_worker_nodes();
+    ```
+- **Reconfigure Replication**:
+  - If using replication (as mentioned in prior conversations), recreate replication slots and standby configurations, as `pg_upgrade` does not migrate these.
+
+#### 5. Clean Up
+- **Remove Old Data Directories**:
+  - Once the cluster is verified, delete the old data directories:
+    ```bash
+    rm -rf /var/tellme/pgsql/data_old
+    ```
+- **Uninstall Old PostgreSQL**:
+  - Remove PostgreSQL 15:
+    ```bash
+    yum remove postgresql15-server
+    ```
+
+### Steps for Minor Version Upgrade (e.g., PostgreSQL 15.3 to 15.8)
+If you’re upgrading within the same major PostgreSQL version (e.g., 15.3 to 15.8) and possibly upgrading Citus (e.g., 11.3 to 11.4):
+
+1. **Upgrade Coordinator First**:
+   - Stop PostgreSQL:
+     ```bash
+     systemctl stop postgresql
+     ```
+   - Update PostgreSQL and Citus packages:
+     ```bash
+     yum update postgresql15-server citus_15
+     ```
+   - Start PostgreSQL:
+     ```bash
+     systemctl start postgresql
+     ```
+   - Update the Citus extension:
+     ```sql
+     ALTER EXTENSION citus UPDATE;
+     ```
+   - Verify Citus version:
+     ```sql
+     \dx
+     ```
+
+2. **Upgrade Worker Nodes**:
+   - Repeat the above steps on each worker node (all at once or one at a time, depending on downtime requirements).
+   - No `pg_upgrade` is needed, as the data directory remains unchanged.
+
+3. **Verify and Test**:
+   - Check cluster functionality as above (e.g., `SELECT * FROM citus_tables;`).
+   - Run `ANALYZE` to update statistics if recommended by the Citus changelog.[](https://learn.microsoft.com/en-us/azure/cosmos-db/postgresql/howto-upgrade)
+
+### Additional Considerations for Your Setup
+- **Non-Standard Data Directory**:
+  - Your `systemd` service uses `PGDATA=/var/tellme/pgsql/data`. The steps above account for this by moving the new data directory (`/var/tellme/pgsql/data_new`) to `/var/tellme/pgsql/data` post-upgrade.
+- **SELinux**:
+  - Restore SELinux contexts after moving data directories:
+    ```bash
+    restorecon -r /var/tellme/pgsql/data
+    ```
+- **Citus Metadata**:
+  - The `citus_finish_pg_upgrade()` function is critical for PostgreSQL 17 upgrades to ensure metadata consistency across nodes.[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+- **Downtime**:
+  - Upgrading all nodes simultaneously requires downtime (typically minutes, depending on database size and `pg_upgrade` speed with `--link`).
+  - Zero-downtime upgrades (upgrading workers one at a time) are possible for some Citus versions but require mixed-version compatibility. Check the Citus documentation for your versions.[](https://docs.citusdata.com/en/v5.2/admin_guide/upgrading_citus.html)
+- **TLS/SSL**:
+  - If your cluster uses TLS (required for Citus 8.1+ for new nodes), ensure certificate files are copied to the new data directory.[](https://docs.citusdata.com/en/stable/admin_guide/upgrading_citus.html)
+- **Replication**:
+  - Reconfigure replication post-upgrade, as slots and standby settings are not migrated by `pg_upgrade`.
+
+### Example Timeline for Major Upgrade
+- **Day 1: Preparation**:
+  - Back up all nodes.
+  - Install PostgreSQL 17 and Citus packages.
+  - Initialize new data directories.
+- **Day 2: Coordinator Upgrade**:
+  - Stop coordinator, run `pg_upgrade`, restore metadata, test.
+- **Day 3: Worker Upgrades**:
+  - Upgrade workers (all at once or one at a time), run `citus_finish_pg_upgrade()` on each.
+- **Day 4: Finalization**:
+  - Move data directories, start cluster, run `analyze_new_cluster.sh`, test, clean up.
+
+### Summary
+- **Which Node First**: Upgrade the **coordinator node first**, then the worker nodes, to ensure metadata consistency.
+- **Using `pg_upgrade` Across Minor Versions**:
+  - Not recommended for minor versions (e.g., 15.3 to 15.8), as binary replacement is simpler and faster.
+  - Use `pg_upgrade` for major versions (e.g., 15 to 17) to handle data format changes.
+- **Upgrade Process**:
+  - For major versions: Use `pg_upgrade` with `--link`, update Citus (`ALTER EXTENSION citus UPDATE;`), run `citus_finish_pg_upgrade()` for PostgreSQL 17, and test thoroughly.
+  - For minor versions: Update binaries and Citus package, run `ALTER EXTENSION citus UPDATE;`, no `pg_upgrade` needed.
+  - Upgrade coordinator first, then workers (all at once for simplicity or one at a time for zero-downtime, if supported).
+- **Your Setup**:
+  - Follow the steps above, ensuring `/var/tellme/pgsql/data` is updated, SELinux contexts are restored, and Citus metadata is synchronized.
+  - Verify Citus and replication functionality post-upgrade.
+
+If you have specific Citus or PostgreSQL versions, a multi-node setup, or need help with a particular step (e.g., zero-downtime upgrades, replication), let me know, and I can tailor the instructions further!

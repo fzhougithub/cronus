@@ -1,0 +1,11 @@
+CREATE TABLE cities (
+    name          varchar(100) PRIMARY KEY,   -- 名称
+    population    float8,                     -- 人口，单位为百万
+    elevation     int,                        -- 平均海拔，单位为米
+    province      varchar(100)                -- 省份
+);
+
+-- 省会表
+CREATE TABLE capitals () INHERITS (cities);
+
+

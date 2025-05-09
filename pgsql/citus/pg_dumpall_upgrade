@@ -1,0 +1,203 @@
+Your situation introduces a few specific challenges for using `pg_upgrade` due to your non-standard PostgreSQL setup:
+1. Your `postgresql.conf` is located in `/var/tellme/pgsql/data/postgresql.conf` (not in a version-specific directory like `/etc/postgresql/<version>/main`).
+2. Your data directory (`/var/tellme/pgsql/data`) is not version-specific, and you seem to want to reuse the same data directory for both the old and new PostgreSQL versions.
+3. The `systemd` service file specifies `PGDATA=/var/tellme/pgsql/data`, and you’re upgrading from one version (e.g., 15) to another (e.g., 17).
+
+Let’s address these points and clarify whether your proposed `pg_upgrade` command is correct, and if not, how to adjust it.
+
+---
+
+### Key Issues with Your Proposed `pg_upgrade` Command
+Your proposed command is:
+
+```bash
+/usr/lib/postgresql/15/bin/pg_upgrade \
+  -b /usr/pgsql-15/bin/ \
+  -B /usr/pgsql-17/bin/ \
+  -d /var/tellme/pgsql/data \
+  -D /var/tellme/pgsql/data \
+  -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+  -O '-c config_file=/var/tellme/pgsql/data/postgresql.conf'
+```
+
+Here are the issues with this command:
+
+1. **Same Data Directory for Old and New (`-d` and `-D`)**:
+   - You’ve specified the same directory (`/var/tellme/pgsql/data`) for both the old data directory (`-d`) and the new data directory (`-D`). This is **not supported** by `pg_upgrade`.
+   - `pg_upgrade` requires **distinct** old and new data directories because it upgrades the data files from the old version’s format to the new version’s format. Using the same directory would cause `pg_upgrade` to overwrite or corrupt the data, leading to failure or data loss.
+   - **Solution**: You need a separate data directory for the new PostgreSQL version (e.g., `/var/tellme/pgsql/data_new` for the new version).
+
+2. **Same `postgresql.conf` for Old and New (`-o` and `-O`)**:
+   - You’re pointing both the old and new configuration files to the same `postgresql.conf` (`/var/tellme/pgsql/data/postgresql.conf`). This is problematic because:
+     - The `postgresql.conf` for the old version (e.g., 15) may contain settings incompatible with the new version (e.g., 17).
+     - `pg_upgrade` uses the configuration files to start temporary instances of the old and new servers to validate and migrate the data. Using the same file could lead to conflicts or errors.
+   - **Solution**: Create a new `postgresql.conf` for the new version, either by copying the old one and adjusting it or by initializing a new data directory that includes a default `postgresql.conf`.
+
+3. **Binary Paths (`-b` and `-B`)**:
+   - Your command uses `/usr/pgsql-15/bin/` and `/usr/pgsql-17/bin/` for the old and new binaries, respectively. However, the `systemd` file references `/usr/pgsql-17/bin`, while your earlier command used `/usr/lib/postgresql/15/bin`. This suggests a potential inconsistency in the binary paths.
+   - **Solution**: Verify the correct paths for the PostgreSQL binaries. Based on the `systemd` file, it seems the binaries are in `/usr/pgsql-<version>/bin` (e.g., `/usr/pgsql-15/bin` for version 15, `/usr/pgsql-17/bin` for version 17). Ensure these directories exist and contain the correct binaries.
+
+4. **Running `pg_upgrade` from Old Version’s Binary**:
+   - You’re running `/usr/lib/postgresql/15/bin/pg_upgrade`, which implies you’re using the `pg_upgrade` binary from the old version (15). It’s generally recommended to use the **new version’s** `pg_upgrade` binary (e.g., `/usr/pgsql-17/bin/pg_upgrade`) because it’s designed to handle the upgrade to the new version.
+   - **Solution**: Use `/usr/pgsql-17/bin/pg_upgrade` for the upgrade from 15 to 17.
+
+5. **Reusing the Same Data Directory Post-Upgrade**:
+   - Your `systemd` service file points to `PGDATA=/var/tellme/pgsql/data`, and you may intend to keep using this directory after the upgrade. While you can move or copy the upgraded data back to `/var/tellme/pgsql/data` after running `pg_upgrade`, you cannot use it as the target directory (`-D`) during the `pg_upgrade` process.
+   - **Solution**: Use a temporary new data directory during the upgrade, then replace the contents of `/var/tellme/pgsql/data` with the upgraded data afterward.
+
+---
+
+### Correct Approach for Your Setup
+To perform the `pg_upgrade` with your non-standard setup, follow these steps:
+
+#### 1. **Prepare the Environment**
+- **Stop the Old PostgreSQL Service**:
+  ```bash
+  systemctl stop postgresql
+  ```
+  Ensure the PostgreSQL 15 instance is stopped to prevent any writes to `/var/tellme/pgsql/data`.
+
+- **Verify Binary Paths**:
+  Confirm the locations of the old and new binaries:
+  - Old: `/usr/pgsql-15/bin` (for PostgreSQL 15).
+  - New: `/usr/pgsql-17/bin` (for PostgreSQL 17).
+  Check that both directories exist and contain the expected binaries (e.g., `pg_ctl`, `postgres`).
+
+- **Install PostgreSQL 17**:
+  If not already installed, install PostgreSQL 17 without uninstalling PostgreSQL 15. For example:
+  ```bash
+  yum install postgresql17-server
+  ```
+  This ensures both sets of binaries are available.
+
+#### 2. **Create a New Data Directory for PostgreSQL 17**
+- Since you cannot use `/var/tellme/pgsql/data` as both the old and new data directory, create a new data directory for PostgreSQL 17 (e.g., `/var/tellme/pgsql/data_new`):
+  ```bash
+  mkdir -p /var/tellme/pgsql/data_new
+  chown postgres:postgres /var/tellme/pgsql/data_new
+  ```
+- Initialize the new data directory with PostgreSQL 17’s `initdb`:
+  ```bash
+  su - postgres
+  /usr/pgsql-17/bin/initdb -D /var/tellme/pgsql/data_new
+  ```
+  This creates a new `postgresql.conf` and other configuration files in `/var/tellme/pgsql/data_new`.
+
+#### 3. **Run `pg_upgrade`**
+- Use the `pg_upgrade` binary from PostgreSQL 17 and specify the correct paths for binaries, data directories, and configuration files.
+- Since your `postgresql.conf` is in `/var/tellme/pgsql/data/postgresql.conf` for the old version, use it for the old instance (`-o`). For the new instance (`-O`), use the `postgresql.conf` in the new data directory.
+
+Here’s the corrected `pg_upgrade` command:
+
+```bash
+su - postgres
+/usr/pgsql-17/bin/pg_upgrade \
+  -b /usr/pgsql-15/bin \
+  -B /usr/pgsql-17/bin \
+  -d /var/tellme/pgsql/data \
+  -D /var/tellme/pgsql/data_new \
+  -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+  -O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf'
+```
+
+- **Explanation**:
+  - `-b /usr/pgsql-15/bin`: Path to PostgreSQL 15 binaries.
+  - `-B /usr/pgsql-17/bin`: Path to PostgreSQL 17 binaries.
+  - `-d /var/tellme/pgsql/data`: Old data directory (PostgreSQL 15).
+  - `-D /var/tellme/pgsql/data_new`: New data directory (PostgreSQL 17).
+  - `-o '-c config_file=/var/tellme/pgsql/data/postgresql.conf'`: Configuration file for the old instance.
+  - `-O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf'`: Configuration file for the new instance.
+
+#### 4. **Post-Upgrade Steps**
+- **Verify the Upgrade**:
+  Start the new PostgreSQL 17 instance using the new data directory:
+  ```bash
+  /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data_new -l logfile start
+  ```
+  Test connectivity and ensure the database is functioning correctly.
+
+- **Move Upgraded Data to Original Directory**:
+  If you want to keep using `/var/tellme/pgsql/data` as the data directory (per your `systemd` service), replace the old data with the new data:
+  ```bash
+  # Stop the new instance if running
+  /usr/pgsql-17/bin/pg_ctl -D /var/tellme/pgsql/data_new stop
+
+  # Back up the old data directory
+  mv /var/tellme/pgsql/data /var/tellme/pgsql/data_old
+
+  # Move the new data to the original location
+  mv /var/tellme/pgsql/data_new /var/tellme/pgsql/data
+  ```
+
+- **Update `systemd` Service**:
+  Ensure the `systemd` service file points to the correct binary path for PostgreSQL 17. Your provided `systemd` file is already configured for PostgreSQL 17 (`/usr/pgsql-17/bin`), so it should work. Reload the `systemd` configuration:
+  ```bash
+  systemctl daemon-reload
+  ```
+
+- **Start the Service**:
+  Start PostgreSQL 17 using the `systemd` service:
+  ```bash
+  systemctl start postgresql
+  ```
+
+- **Run Post-Upgrade Scripts**:
+  `pg_upgrade` may generate a script (e.g., `analyze_new_cluster.sh`) to update statistics. Run it:
+  ```bash
+  su - postgres
+  ./analyze_new_cluster.sh
+  ```
+
+- **Clean Up**:
+  Once you’ve confirmed the upgrade is successful, you can:
+  - Remove the old data directory backup (`/var/tellme/pgsql/data_old`).
+  - Uninstall PostgreSQL 15:
+    ```bash
+    yum remove postgresql15-server
+    ```
+  - Delete the `delete_old_cluster.sh` script if provided by `pg_upgrade`.
+
+#### 5. **Update Configuration**
+- The new `postgresql.conf` in `/var/tellme/pgsql/data` (after moving from `data_new`) may need adjustments to match your old configuration (e.g., for `listen_addresses`, `port`, or other custom settings).
+- Compare the old `/var/tellme/pgsql/data_old/postgresql.conf` with the new `/var/tellme/pgsql/data/postgresql.conf` and apply necessary changes.
+
+---
+
+### Why Your Proposed Command Won’t Work
+To summarize why your command is problematic:
+- **Same `-d` and `-D`**: `pg_upgrade` cannot upgrade a data directory in-place; it needs a separate new data directory.
+- **Same `-o` and `-O`**: Using the same `postgresql.conf` for both versions risks configuration conflicts.
+- **Old `pg_upgrade` binary**: Running `pg_upgrade` from `/usr/lib/postgresql/15/bin` is less reliable than using the new version’s binary.
+
+---
+
+### Additional Considerations
+- **SELinux**: Your `systemd` file mentions SELinux. Ensure the new data directory (`/var/tellme/pgsql/data_new`) and the final `/var/tellme/pgsql/data` have the correct SELinux context:
+  ```bash
+  restorecon -r /var/tellme/pgsql
+  ```
+- **Permissions**: Ensure the `postgres` user owns all files in `/var/tellme/pgsql/data` and `/var/tellme/pgsql/data_new`.
+- **Backup**: Before running `pg_upgrade`, back up `/var/tellme/pgsql/data` to avoid data loss in case of failure.
+- **Citus Extension**: Your prompt mentions `[root@rl01 citus]`, suggesting you may be using the Citus extension. Verify that Citus is compatible with PostgreSQL 17 and installed in the new instance post-upgrade. You may need to reinstall or re-enable the extension:
+  ```sql
+  CREATE EXTENSION citus;
+  ```
+
+---
+
+### Final Corrected Command
+Here’s the command you should use (run as the `postgres` user):
+
+```bash
+/usr/pgsql-17/bin/pg_upgrade \
+  -b /usr/pgsql-15/bin \
+  -B /usr/pgsql-17/bin \
+  -d /var/tellme/pgsql/data \
+  -D /var/tellme/pgsql/data_new \
+  -o '-c config_file=/var/tellme/pgsql/data/postgresql.conf' \
+  -O '-c config_file=/var/tellme/pgsql/data_new/postgresql.conf'
+```
+
+After running this, follow the post-upgrade steps to move the data back to `/var/tellme/pgsql/data` and start the service.
+
+If you encounter specific errors or have additional details (e.g., PostgreSQL versions, Citus-specific concerns, or OS details), let me know, and I can refine the guidance further!
