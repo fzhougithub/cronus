@@ -53,3 +53,13 @@ Pgpool-II does not currently support SCRAM-SHA-256 in pool_passwd.
 Even if PostgreSQL itself is configured with SCRAM, Pgpool-II requires md5 for pool_passwd compatibility.
 
 
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# /usr/pgsql-17/bin/psql "host=127.0.0.1 port=9999 dbname=fzhou user=butterfly password=butterfly_1 application_name=group1"
+psql (17.4)
+Type "help" for help.
+
+fzhou=> SELECT inet_server_addr() AS server_ip, inet_server_port() AS server_port;
+  server_ip   | server_port
+--------------+-------------
+ 192.168.1.80 |        5432
+(1 row)

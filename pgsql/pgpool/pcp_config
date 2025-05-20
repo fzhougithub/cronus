@@ -1,0 +1,24 @@
+pg_md5 zijiwaner
+echo -n "zijiwaner" | openssl md5
+6f4e12897cba1a2c3dbcf3d4d4051a12
+
+get the encrypt password, remember it, it is the pcp password
+
+pcp.conf
+
+admin:6f4e12897cba1a2c3dbcf3d4d4051a12
+
+chown postgres:postgres /etc/pgpool-II/pcp.conf
+chmod 600 /etc/pgpool-II/pcp.conf
+
+Config the pgpool.conf
+
+pcp_port = 9898
+pcp_socket_dir = '/var/run/pgpool'
+
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# pcp_attach_node -h localhost -p 9898 -U admin -W -n 0
+Password:
+pcp_attach_node -- Command Successful
+
+

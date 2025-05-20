@@ -1,0 +1,44 @@
+# Connect via psql and force status change
+psql -h 127.0.0.1 -p 9999 -c "PGPOOL SET backend_down_0 to 'false'"
+
+pcp_attach_node -h localhost -p 9898 -U admin -W -n 0
+:zijiwaner
+
+
+psql -h 127.0.0.1 -p 9999 -U pfchart -d fzhou -c "show pool_nodes;"
+Password for user pfchart:
+ node_id |   hostname    | port | status | pg_status | lb_weight |  role   | pg_role | select_cnt | load_balance_node | replication_delay | replication_state
+ | replication_sync_state | last_status_change
+---------+---------------+------+--------+-----------+-----------+---------+---------+------------+-------------------+-------------------+------------------
+-+------------------------+---------------------
+ 0       | 192.168.1.168 | 5432 | up     | up        | 0.500000  | main    | main    | 0          | true              | 0                 |
+ |                        | 2025-05-20 18:10:39
+ 1       | 192.168.1.80  | 5432 | up     | up        | 0.500000  | replica | replica | 0          | false             | 0                 |
+ |                        | 2025-05-20 17:55:41
+(2 rows)
+
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# pcp_node_info -h 127.0.0.1 -p 9898 -U admin
+Password:
+192.168.1.168 5432 2 0.500000 up up main main 0 none none 2025-05-20 18:58:20
+192.168.1.80 5432 2 0.500000 up up replica replica 0 none none 2025-05-20 18:58:20
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# ls -larth /usr/bin/pcp*
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_watchdog_info
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_stop_pgpool
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_reload_config
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_recovery_node
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_promote_node
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_proc_info
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_proc_count
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_pool_status
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_node_info
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_node_count
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_health_check_stats
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_detach_node
+-rwxr-xr-x 1 root root 45K May 13 21:57 /usr/bin/pcp_attach_node
+
+ pcp_pool_status -h 127.0.0.1 -U admin
+ pcp_health_check_stats  -U admin -h 127.0.0.1 -W -n 0
+ ss -ltnp | grep 9898
+
