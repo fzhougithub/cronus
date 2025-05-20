@@ -1,0 +1,73 @@
+https://www.pgpool.net/docs/pgpool-II-4.4.2/en/html/index.html
+
+https://www.pgpool.net/docs/pgpool-II-4.4.2/en/html/install-rpm.html
+
+dnf install https://www.pgpool.net/yum/rpms/4.4/redhat/rhel-8-x86_64/pgpool-II-release-4.4-1.noarch.rpm
+
+dnf install pgpool-II-pg17
+
+dnf install epel-release
+
+Add this repo to download the libmemcached
+
+[ol9_baseos_latest]
+name=Oracle Linux 9 BaseOS Latest ($basearch)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/baseos/latest/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+[ol9_appstream]
+name=Oracle Linux 9 Application Stream Packages ($basearch)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/appstream/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+[ol9_u0_baseos_base]
+name=Oracle Linux 9 BaseOS GA ($basearch)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/0/baseos/base/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+[ol9_u1_baseos_base]
+name=Oracle Linux 9.1 BaseOS ($basearch)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/1/baseos/base/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+[ol9_addons]
+name=Oracle Linux 9 Addons ($basearch)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/addons/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+[ol9_codeready_builder]
+name=Oracle Linux 9 CodeReady Builder ($basearch) - (Unsupported)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/codeready/builder/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+[ol9_distro_builder]
+name=Oracle Linux 9 Distro Builder ($basearch) - (Unsupported)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/distro/builder/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+
+[ol9_MODRHCK]
+name=Latest RHCK with fixes from Oracle for Oracle Linux $releasever ($basearch)
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL9/MODRHCK/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+priority=20
+enabled=1
+
+
+
+
+

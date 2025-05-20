@@ -1,0 +1,39 @@
+echo "inGodwetrust" > /root/.pgpoolkey
+chmod 600 /root/.pgpoolkey
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# pg_enc -m -u pfchart
+db password:
+trying to read key from file /root/.pgpoolkey
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# cat pool_passwd
+pfchart:AESH8ArEaezykG0O5ntKjpmPg==
+
+All of above does not work, finally, the 
+
+allow_clear_text_frontend_auth only works when enable_pool_hba is not enabled
+
+https://www.pgpool.net/docs/pgpool-II-4.0.3/en/html/runtime-config-connection.html#GUC-POOL-PASSWD
+
+Remember, the password_encryption should be changed to md5
+Then, regenerate the password like
+alter role pfchart password 'pfchart1'
+
+Then, config using md5
+
+Then, use clear text to bring the password in. 
+
+Then, could test the enable authentication of pgpool
+
+
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# /usr/pgsql-17/bin/psql "host=127.0.0.1 port=9999 dbname=fzhou user=butterfly password=butterfly_1 application_name=group1" -c "show pool_nodes"
+ node_id |   hostname    | port | status | pg_status | lb_weight |  role   | pg_role | select_cnt | load_balance_node | replication_delay | replication_state
+ | replication_sync_state | last_status_change
+---------+---------------+------+--------+-----------+-----------+---------+---------+------------+-------------------+-------------------+------------------
+-+------------------------+---------------------
+ 0       | 192.168.1.168 | 5432 | down   | unknown   | -nan      | standby | unknown | 0          | false             | 0                 |
+ |                        | 2025-05-20 16:04:42
+ 1       | 192.168.1.80  | 5432 | up     | unknown   | -nan      | standby | unknown | 0          | true              | 0                 |
+ |                        | 2025-05-20 16:04:42
+(2 rows)
+

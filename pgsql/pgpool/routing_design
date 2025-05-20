@@ -1,0 +1,55 @@
+Mapping Example:
+pharmacy_store_id 1–100 → Connect to pharmacy_db_1 → Redirect to 192.168.33.12:5432
+pharmacy_store_id 101–200 → Connect to pharmacy_db_2 → Redirect to 192.168.33.13:5432
+
+/etc/pgpool-II/pgpool.conf
+
+# Backend Nodes
+backend_hostname0 = '192.168.1.168'
+backend_port0 = 5432
+backend_weight0 = 0  # Ignored due to load_balance_mode = off
+backend_data_directory0 = '/var/tellme/pgsql/data'
+
+backend_hostname1 = '192.168.1.80'
+backend_port1 = 5432
+backend_weight1 = 0
+backend_data_directory1 = '/var/tellme/pgsql/data'
+
+# Disable Load Balancing
+load_balance_mode = off
+
+# Disable Replication Mode
+master_slave_mode = off
+
+# Custom Parameter-Based Routing
+include 'store_mappings.conf'
+
+# Authentication
+enable_pool_hba = on
+
+# Number of child processes to handle connections
+num_init_children = 32
+
+# Maximum number of connections per child process
+max_pool = 4
+
+# Timeout for client connections (in seconds)
+client_idle_limit = 0
+
+
+# In /etc/pgpool-II/pgpool.conf
+log_destination = 'stderr'
+logging_collector = on
+log_directory = '/var/tellme/log/pgpool_log'
+log_filename = 'pgpool-%Y-%m-%d_%H%M%S.log'
+log_min_messages = debug1
+
+
+systemctl start pgpool
+
+
+Pgpool-II does not currently support SCRAM-SHA-256 in pool_passwd.
+
+Even if PostgreSQL itself is configured with SCRAM, Pgpool-II requires md5 for pool_passwd compatibility.
+
+
