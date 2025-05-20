@@ -1,0 +1,200 @@
+To address your question about providing a table listing and comparing all PostgreSQL lock types and their compatibility, I’ll provide a comprehensive yet concise explanation tailored to your context of managing a Citus cluster with PostgreSQL 17. This will include a detailed table of PostgreSQL lock types, their purposes, and a compatibility matrix showing which lock types conflict with each other. The response will build on our prior discussion about **AccessShare** and **AccessExclusive** locks, ensuring clarity for your Citus environment where locking impacts both coordinator and worker nodes.
+
+---
+
+### PostgreSQL Lock Types
+PostgreSQL uses **table-level locks** to manage concurrent access to database objects (primarily tables) during transactions. These locks are part of PostgreSQL’s **Multi-Version Concurrency Control (MVCC)** system, which ensures consistency while allowing high concurrency. The lock types are defined in the PostgreSQL documentation (e.g., PostgreSQL 17’s “Table 13.2. Lock Conflict Table”) and are acquired automatically by various SQL commands.
+
+There are **eight table-level lock types** in PostgreSQL, ordered from weakest to strongest:
+
+1. **AccessShare**:
+   - Acquired by read-only operations (e.g., `SELECT` without `FOR UPDATE`/`FOR SHARE`).
+   - Purpose: Prevents table structure changes (e.g., `DROP TABLE`, `ALTER TABLE`) during reads.
+   - Weakest lock, conflicts only with **AccessExclusive**.
+
+2. **RowShare**:
+   - Acquired by `SELECT ... FOR UPDATE` or `SELECT ... FOR NO KEY UPDATE`.
+   - Purpose: Locks rows for updates, preventing concurrent modifications to those rows.
+   - Conflicts with **Exclusive**, **AccessExclusive**, and **RowExclusive** locks.
+
+3. **RowExclusive**:
+   - Acquired by DML write operations (`INSERT`, `UPDATE`, `DELETE`).
+   - Purpose: Allows table modifications while preventing conflicting writes or DDL.
+   - Conflicts with **Share**, **ShareRowExclusive**, **Exclusive**, and **AccessExclusive**.
+
+4. **ShareUpdateExclusive**:
+   - Acquired by operations like `VACUUM` (not `FULL`), `ANALYZE`, `CREATE INDEX CONCURRENTLY`.
+   - Purpose: Allows maintenance operations that don’t modify data but need exclusive control over certain changes.
+   - Conflicts with itself, **Share**, **ShareRowExclusive**, **Exclusive**, and **AccessExclusive**.
+
+5. **Share**:
+   - Acquired by `CREATE INDEX` (non-concurrent) or `SELECT ... FOR SHARE`.
+   - Purpose: Prevents modifications while allowing reads or shared operations.
+   - Conflicts with **RowExclusive**, **ShareUpdateExclusive**, **ShareRowExclusive**, **Exclusive**, and **AccessExclusive**.
+
+6. **ShareRowExclusive**:
+   - Acquired by operations needing both share and exclusive row access (rare, e.g., certain DDL with row-level locking).
+   - Purpose: Prevents most concurrent modifications except reads.
+   - Conflicts with **RowExclusive**, **ShareUpdateExclusive**, **Share**, **Exclusive**, and **AccessExclusive**.
+
+7. **Exclusive**:
+   - Acquired by operations like `REFRESH MATERIALIZED VIEW` without `CONCURRENTLY`.
+   - Purpose: Prevents most concurrent operations except basic reads (`AccessShare`).
+   - Conflicts with all locks except **AccessShare**.
+
+8. **AccessExclusive**:
+   - Acquired by DDL operations like `DROP TABLE`, `TRUNCATE`, `ALTER TABLE`, `REINDEX`, `VACUUM FULL`.
+   - Purpose: Grants exclusive access, blocking all other operations.
+   - Strongest lock, conflicts with all other locks.
+
+---
+
+### Table of PostgreSQL Lock Types
+Below is a table listing all PostgreSQL table-level lock types, their purposes, and common SQL commands that acquire them:
+
+| **Lock Type**            | **Purpose**                                                                 | **Common SQL Commands**                                                                 |
+|--------------------------|-----------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| **AccessShare**          | Allows reads, prevents table structure changes.                             | `SELECT` (without `FOR UPDATE`/`FOR SHARE`)                                            |
+| **RowShare**             | Locks rows for updates, prevents concurrent row modifications.              | `SELECT ... FOR UPDATE`, `SELECT ... FOR NO KEY UPDATE`                                |
+| **RowExclusive**         | Allows table modifications, prevents conflicting writes or DDL.             | `INSERT`, `UPDATE`, `DELETE`                                                           |
+| **ShareUpdateExclusive** | Allows maintenance operations, prevents conflicting maintenance or writes.  | `VACUUM` (not `FULL`), `ANALYZE`, `CREATE INDEX CONCURRENTLY`, `ALTER TABLE VALIDATE`  |
+| **Share**                | Prevents modifications, allows reads or shared operations.                  | `CREATE INDEX` (non-concurrent), `SELECT ... FOR SHARE`                                |
+| **ShareRowExclusive**    | Prevents most modifications except reads, used for specific DDL.            | Rare, certain DDL with row-level locking                                              |
+| **Exclusive**            | Prevents most operations except basic reads.                                | `REFRESH MATERIALIZED VIEW` (non-concurrent)                                           |
+| **AccessExclusive**      | Grants exclusive access, blocks all other operations.                       | `DROP TABLE`, `TRUNCATE`, `ALTER TABLE`, `REINDEX`, `VACUUM FULL`, `LOCK TABLE ... IN ACCESS EXCLUSIVE MODE` |
+
+---
+
+### Lock Compatibility Matrix
+The compatibility matrix shows which lock types conflict with each other. A **conflict** means that if one transaction holds a lock (row), another transaction requesting a conflicting lock (column) must wait until the first transaction releases its lock (i.e., commits or rolls back).
+
+- **✓**: Locks are compatible (no conflict; both can be held concurrently).
+- **✗**: Locks conflict (the requesting lock must wait).
+
+| **Held Lock** ↓ / **Requested Lock** → | **AccessShare** | **RowShare** | **RowExclusive** | **ShareUpdateExclusive** | **Share** | **ShareRowExclusive** | **Exclusive** | **AccessExclusive** |
+|---------------------------------------|-----------------|--------------|------------------|--------------------------|-----------|-----------------------|---------------|---------------------|
+| **AccessShare**                       | ✓               | ✓            | ✓                | ✓                        | ✓         | ✓                     | ✓             | ✗                   |
+| **RowShare**                          | ✓               | ✓            | ✓                | ✓                        | ✓         | ✓                     | ✗             | ✗                   |
+| **RowExclusive**                      | ✓               | ✓            | ✓                | ✗                        | ✗         | ✗                     | ✗             | ✗                   |
+| **ShareUpdateExclusive**              | ✓               | ✓            | ✗                | ✗                        | ✗         | ✗                     | ✗             | ✗                   |
+| **Share**                             | ✓               | ✓            | ✗                | ✗                        | ✓         | ✗                     | ✗             | ✗                   |
+| **ShareRowExclusive**                 | ✓               | ✓            | ✗                | ✗                        | ✗         | ✗                     | ✗             | ✗                   |
+| **Exclusive**                         | ✓               | ✗            | ✗                | ✗                        | ✗         | ✗                     | ✗             | ✗                   |
+| **AccessExclusive**                   | ✗               | ✗            | ✗                | ✗                        | ✗         | ✗                     | ✗             | ✗                   |
+
+**Notes**:
+- **AccessShare** is the least restrictive, conflicting only with **AccessExclusive**.
+- **AccessExclusive** is the most restrictive, conflicting with all other locks.
+- **RowExclusive** (used by DML writes like `UPDATE`) is compatible with **AccessShare** and **RowShare**, allowing reads and row-locking queries to proceed concurrently.
+- The matrix is symmetric for most locks, but the “held” vs. “requested” distinction matters for lock acquisition order in concurrent transactions.
+
+---
+
+### Citus-Specific Considerations
+In your Citus cluster (100TB, PostgreSQL 17, `replication_factor = 2`, non-standard data directory `/var/tellme/pgsql/data`), locking behavior extends across the coordinator and worker nodes:
+
+- **Coordinator Locks**:
+  - DDL operations (e.g., `ALTER TABLE`, `create_distributed_table`) on distributed tables acquire locks on the coordinator’s metadata tables (e.g., `pg_dist_partition`) and may require **AccessExclusive locks** on the distributed table.
+  - Read queries (`SELECT`) on distributed tables may acquire **AccessShare locks** on metadata tables, potentially blocking DDL operations.
+
+- **Worker Locks**:
+  - Queries on distributed tables are executed on worker nodes, where each shard (e.g., `my_table_12345`) is treated as a table.
+  - A `SELECT` on a distributed table acquires **AccessShare locks** on the relevant shard tables across workers.
+  - A DDL operation (e.g., `ALTER TABLE my_table`) propagated to workers requires **AccessExclusive locks** on all shard tables, which will block if any shard is being read.
+
+- **Impact of Scale**:
+  - With a 100TB cluster and multiple workers, long-running read queries on shards can delay DDL operations across the entire cluster, as Citus propagates DDL commands to all affected shards.
+  - DML writes (`INSERT`, `UPDATE`, `DELETE`) on shards acquire **RowExclusive locks**, which don’t conflict with **AccessShare locks** from reads, ensuring high concurrency for typical workloads.
+
+- **Auditing and Backups**:
+  - Your prior questions about backups (pgBackRest, Barman) and auditing suggest you may run read-heavy queries on restored backups for auditing. These queries acquire **AccessShare locks** on the restored instance, which won’t affect the production cluster but could delay DDL operations if run on live workers.
+  - Example: Auditing a worker’s shard table (`my_table_12345`) on a restored backup:
+    ```bash
+    pgbackrest --stanza=worker1 --target-time="2025-04-01 12:00:00" restore --db-path=/var/tellme/pgsql/audit_data
+    psql -d postgres -c "SELECT * FROM my_table_12345;"
+    ```
+    - This acquires **AccessShare** on the restored instance, avoiding conflicts with the live cluster.
+
+---
+
+### Practical Implications and Recommendations
+- **Read vs. DDL Conflicts**:
+  - **AccessShare locks** from read queries (`SELECT`) block **AccessExclusive locks** from DDL operations (e.g., `ALTER TABLE`, `DROP TABLE`). This can delay schema changes in your Citus cluster, especially if long-running queries are active on multiple workers.
+  - **Mitigation**:
+    - Schedule DDL operations during maintenance windows with low read activity.
+    - Use `lock_timeout` to fail fast if locks cannot be acquired:
+      ```sql
+      SET lock_timeout = '10s';
+      ALTER TABLE my_table ADD COLUMN new_col INTEGER;
+      ```
+    - Terminate conflicting queries cautiously:
+      ```sql
+      SELECT pg_terminate_backend(pg_stat_activity.pid)
+      FROM pg_stat_activity
+      WHERE datname = 'your_database' AND state = 'active' AND pid != pg_backend_pid();
+      ```
+
+- **Read vs. DML Writes**:
+  - **AccessShare locks** from reads do **not** block **RowExclusive locks** from DML writes (`INSERT`, `UPDATE`, `DELETE`), ensuring high concurrency for typical Citus workloads.
+  - Example: Concurrent `SELECT` and `UPDATE` on a distributed table:
+    ```sql
+    SELECT * FROM my_table;  -- AccessShare on shards
+    UPDATE my_table SET value = 42 WHERE id = 1;  -- RowExclusive on shards
+    ```
+    - No conflict, thanks to MVCC.
+
+- **Monitoring Locks**:
+  - Check for lock conflicts on any node:
+    ```sql
+    SELECT * FROM pg_locks WHERE relation = 'my_table'::regclass;
+    SELECT pid, query, wait_event_type, wait_event
+    FROM pg_stat_activity
+    WHERE wait_event_type = 'Lock';
+    ```
+  - In Citus, use:
+    ```sql
+    SELECT * FROM citus_lock_waits;
+    ```
+  - Example: Identify a read query blocking an `ALTER TABLE`:
+    ```sql
+    SELECT pid, query
+    FROM pg_stat_activity
+    WHERE wait_event = 'relation' AND relation = 'my_table'::regclass;
+    ```
+
+- **Citus-Specific Locking**:
+  - DDL operations on distributed tables (e.g., `ALTER TABLE`, `create_distributed_table`) require **AccessExclusive locks** on the coordinator’s metadata and worker shards, making them sensitive to read activity.
+  - Shard rebalancing (`rebalance_table_shards`) may acquire **AccessExclusive locks** on shards during data movement, so run during low-traffic periods.
+  - Use `citus_lock_waits` to diagnose distributed lock conflicts:
+    ```sql
+    SELECT * FROM citus_lock_waits WHERE waiting_node_name = 'worker1-host';
+    ```
+
+- **Auditing and Maintenance**:
+  - Run auditing queries on restored backups to avoid **AccessShare locks** on the production cluster:
+    ```bash
+    barman recover worker1 latest /var/tellme/pgsql/audit_data --target-time "2025-04-01 12:00:00"
+    psql -d postgres -c "SELECT * FROM my_table_12345;"
+    ```
+  - For maintenance operations like `VACUUM` or `CREATE INDEX CONCURRENTLY` (which use **ShareUpdateExclusive**), ensure they don’t conflict with DML writes or other maintenance tasks:
+    ```sql
+    VACUUM ANALYZE my_table;
+    ```
+
+---
+
+### Summary
+- **PostgreSQL Lock Types**: Eight table-level locks (**AccessShare**, **RowShare**, **RowExclusive**, **ShareUpdateExclusive**, **Share**, **ShareRowExclusive**, **Exclusive**, **AccessExclusive**) control concurrent access, ranging from read-only to exclusive operations.
+- **Compatibility**:
+  - **AccessShare** (reads) conflicts only with **AccessExclusive** (DDL).
+  - **RowExclusive** (DML writes) is compatible with **AccessShare** and **RowShare**, ensuring read-write concurrency.
+  - **AccessExclusive** conflicts with all locks, blocking all operations.
+  - The compatibility matrix above details all conflicts.
+- **Citus Context**:
+  - Read queries on distributed tables acquire **AccessShare locks** on shards, blocking DDL operations (**AccessExclusive**) across workers.
+  - DML writes (**RowExclusive**) coexist with reads, supporting high concurrency.
+  - Monitor locks with `pg_locks`, `pg_stat_activity`, and `citus_lock_waits`.
+- **Your Setup**:
+  - For your 100TB Citus cluster, schedule DDL operations to avoid read conflicts, run auditing queries on restored backups, and monitor locks to prevent delays in distributed operations.
+
+If you encounter specific lock conflicts (e.g., a blocked `ALTER TABLE` or rebalancing issue) or need help with lock monitoring scripts for your Citus cluster, share the query, table, or operation details, and I can provide targeted solutions!:

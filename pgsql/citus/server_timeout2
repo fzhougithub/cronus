@@ -1,0 +1,163 @@
+### Key Points
+- Research suggests PostgreSQL has several server-side timeout parameters to manage query and connection durations.
+- These parameters help prevent resource hogging and ensure system stability, especially in high-load environments.
+- The evidence leans toward key parameters like `statement_timeout`, `lock_timeout`, and `idle_session_timeout` being crucial for performance.
+
+#### Overview
+PostgreSQL server-side timeout parameters control how long various operations can run before being terminated, helping manage performance and prevent resource issues in databases.
+
+#### Common Parameters
+- **Statement Timeout**: Limits how long a query can run, defaulting to no limit (0ms).
+- **Lock Timeout**: Sets a wait time for acquiring locks, also defaulting to no limit (0ms).
+- **Idle Session Timeout**: Closes idle connections after a set time, defaulting to no limit (0ms).
+
+#### Relevance to Your Setup
+For your 100TB Citus cluster, these timeouts can mitigate lock conflicts and connection spikes, ensuring smooth operation during high concurrency.
+
+---
+
+### Survey Note: Detailed Analysis of PostgreSQL Server-Side Timeout Parameters
+
+PostgreSQL, a robust open-source database management system, provides several server-side timeout parameters to manage the duration of various operations, ensuring system stability and performance, particularly in high-load environments like your 100TB Citus cluster running PostgreSQL 17. These parameters are configured in the `postgresql.conf` file (located at `/var/tellme/pgsql/data/postgresql.conf` in your setup) or set dynamically via `SET` commands, and they play a critical role in preventing resource hogging, managing lock conflicts, and handling connection spikes. Below, we detail the key timeout parameters, their purposes, default values, scopes, and relevance to your scenario, where `SELECT` queries are blocked by `ALTER TABLE` due to lock conflicts, with an application retrying every 100ms and a connection spike from ~200 to >1000.
+
+#### Key Timeout Parameters and Their Functions
+
+PostgreSQL offers a suite of timeout parameters, each addressing specific aspects of database operation. The following table lists the primary parameters, their descriptions, default values, and scopes, based on the latest documentation as of May 9, 2025:
+
+| **Parameter**                | **Description**                                                                 | **Default Value** | **Scope**                     |
+|------------------------------|--------------------------------------------------------------------------------|--------------------|-------------------------------|
+| `statement_timeout`          | Maximum time a query (e.g., `SELECT`, `UPDATE`) can run before being canceled.  | `0` (disabled)     | Session, Transaction, Global  |
+| `lock_timeout`               | Maximum time a query can wait for a lock before failing.                       | `0` (disabled)     | Session, Transaction, Global  |
+| `idle_in_transaction_session_timeout` | Maximum time a session can remain idle in a transaction before being terminated. | `0` (disabled)     | Session, Transaction, Global  |
+| `idle_session_timeout`       | Maximum time a session can remain idle (outside a transaction) before being terminated. | `0` (disabled)     | Session, Transaction, Global  |
+| `deadlock_timeout`           | Time to wait before checking for deadlocks.                                    | `1s` (1000ms)      | Global                        |
+| `tcp_keepalives_idle`        | Time between TCP keepalive probes for idle connections.                        | OS-dependent       | Session, Global               |
+| `tcp_keepalives_interval`    | Time between retries of TCP keepalive probes.                                  | OS-dependent       | Session, Global               |
+| `tcp_keepalives_count`       | Number of TCP keepalive probes before declaring a connection dead.             | OS-dependent       | Session, Global               |
+| `wal_receiver_timeout`       | Maximum time a WAL receiver (for streaming replication) can wait before terminating. | `60s` (60000ms)   | Global                        |
+| `wal_sender_timeout`         | Maximum time a WAL sender (for streaming replication) can wait before terminating. | `60s` (60000ms)   | Global                        |
+| `authentication_timeout`     | Duration after which a client connection attempt is terminated if authentication is not completed. | `60s` (60000ms)   | Global                        |
+
+These parameters are crucial for managing database performance, preventing resource exhaustion, and ensuring stability, especially in distributed environments like Citus, where lock conflicts and connection spikes can amplify issues.
+
+#### Detailed Explanation of Each Parameter
+
+1. **statement_timeout**:
+   - This parameter limits the execution time of any query, measured from when the command arrives at the server until completion. If exceeded, the query is canceled with an error like "canceling statement due to statement timeout." It applies to each statement separately in simple-query protocol and can be set per session or globally. For example, setting it to 500ms in your `postgresql.conf` helps terminate blocked `SELECT` queries quickly, reducing lock queue size during conflicts with `ALTER TABLE`. This is particularly relevant in your scenario, where the application retries every 100ms, potentially creating a retry storm. You can configure it as:
+     ```conf
+     statement_timeout = 500
+     ```
+     Or per session:
+     ```sql
+     SET statement_timeout = '500ms';
+     ```
+   - Relevance: In your Citus cluster, this parameter ensures that queries blocked by lock conflicts (e.g., **AccessShare** vs. **AccessExclusive**) fail quickly, aligning with your application’s retry logic and preventing zombie queries.
+
+2. **lock_timeout**:
+   - This controls how long a query waits to acquire a lock before failing with an error like "canceling statement due to lock timeout." It’s useful for preventing queries from waiting indefinitely in lock queues, especially during DDL operations like `ALTER TABLE`. Setting it to 200ms, for instance, ensures that `SELECT` queries blocked by `ALTER TABLE` fail quickly, reducing the lock queue size and allowing retries to proceed. This is critical in your scenario with >1000 connections, where lock queues can grow rapidly. Configuration example:
+     ```conf
+     lock_timeout = 200
+     ```
+     Or per session:
+     ```sql
+     SET lock_timeout = '200ms';
+     ```
+   - Relevance: In Citus, this applies to both coordinator metadata locks and worker shard locks, helping manage distributed lock conflicts.
+
+3. **idle_in_transaction_session_timeout**:
+   - This terminates sessions idle within an open transaction after the specified time, preventing long-running transactions from holding locks indefinitely. For example, setting it to 5 minutes ensures that stalled `ALTER TABLE` transactions are terminated, freeing up **AccessExclusive locks**. This is less relevant for your 2-second `ALTER TABLE` scenario but crucial for longer operations. Configuration:
+     ```conf
+     idle_in_transaction_session_timeout = '5min'
+     ```
+   - Relevance: Helps free locks in Citus, ensuring distributed queries aren’t blocked by stalled transactions on the coordinator or workers.
+
+4. **idle_session_timeout**:
+   - This closes idle sessions (outside transactions) after a set time, freeing up connection slots. During a connection spike from 200 to >1000, setting this to 10 minutes ensures unused connections are terminated, reducing pressure on `max_connections`. Configuration:
+     ```conf
+     idle_session_timeout = '10min'
+     ```
+   - Relevance: Critical for your scenario, as idle connections can consume resources during spikes, impacting query performance in Citus.
+
+5. **deadlock_timeout**:
+   - This determines how long the system waits before checking for deadlocks, with a default of 1 second. While deadlocks are less common in your `SELECT` vs. `ALTER TABLE` scenario, this parameter ensures quick detection in distributed Citus environments where multiple nodes may be involved. Configuration:
+     ```conf
+     deadlock_timeout = 1000
+     ```
+   - Relevance: Ensures deadlock resolution is timely, indirectly affecting lock conflict resolution.
+
+6. **tcp_keepalives_idle, tcp_keepalives_interval, tcp_keepalives_count**:
+   - These manage TCP keepalive behavior for idle connections, ensuring broken connections are detected and closed. For example, setting `tcp_keepalives_idle = 60` sends keepalive probes after 60 seconds, `tcp_keepalives_interval = 10` sets the interval between probes, and `tcp_keepalives_count = 5` defines retries before declaring the connection dead. These are OS-dependent by default but crucial during connection spikes to free resources. Configuration:
+     ```conf
+     tcp_keepalives_idle = 60
+     tcp_keepalives_interval = 10
+     tcp_keepalives_count = 5
+     ```
+   - Relevance: Helps mitigate the impact of zombie connections during your >1000 connection spike, ensuring stability in Citus.
+
+7. **wal_receiver_timeout, wal_sender_timeout**:
+   - These control replication timeouts, with defaults of 60 seconds. They ensure WAL receivers and senders don’t stall, relevant for your Citus cluster with `replication_factor = 2`. Configuration:
+     ```conf
+     wal_receiver_timeout = 60000
+     wal_sender_timeout = 60000
+     ```
+   - Relevance: Ensures replication stability, indirectly affecting lock availability during high load.
+
+8. **authentication_timeout**:
+   - This sets the time for client authentication, defaulting to 60 seconds. During connection spikes, it ensures slow authentications are terminated, freeing resources. Configuration:
+     ```conf
+     authentication_timeout = 60
+     ```
+   - Relevance: Helps manage connection spikes by closing unauthenticated connections quickly.
+
+#### Application to Your Scenario
+In your scenario, where `SELECT` queries are blocked by `ALTER TABLE` due to lock conflicts, and the application retries every 100ms with a connection spike to >1000, these parameters are vital:
+- **statement_timeout** and **lock_timeout** reduce zombie queries and lock queue size, aligning with the 100ms retry logic.
+- **idle_session_timeout** and TCP keepalives manage connection spikes, ensuring `max_connections` isn’t exceeded.
+- **idle_in_transaction_session_timeout** prevents stalled transactions from holding locks, freeing resources for distributed queries in Citus.
+- Monitoring tools like `pg_stat_activity` can help track active queries and connections:
+  ```sql
+  SELECT pid, query, state, age(now(), query_start)
+  FROM pg_stat_activity
+  WHERE state = 'active';
+  ```
+- In Citus, use `citus_lock_waits` to monitor distributed lock conflicts:
+  ```sql
+  SELECT * FROM citus_lock_waits WHERE waiting_query LIKE 'SELECT * FROM orders%';
+  ```
+
+#### Recommended Configuration for Your Citus Cluster
+For your 100TB Citus cluster, consider the following configuration in `/var/tellme/pgsql/data/postgresql.conf`:
+```conf
+statement_timeout = 500
+lock_timeout = 200
+idle_in_transaction_session_timeout = '5min'
+idle_session_timeout = '10min'
+tcp_keepalives_idle = 60
+tcp_keepalives_interval = 10
+tcp_keepalives_count = 5
+wal_receiver_timeout = 60000
+wal_sender_timeout = 60000
+authentication_timeout = 60
+```
+- Apply changes:
+  ```bash
+  sudo systemctl reload postgresql
+  ```
+- Monitor and adjust based on workload, ensuring stability during lock conflicts and connection spikes.
+
+#### Conclusion
+PostgreSQL’s server-side timeout parameters are essential for managing database performance in high-concurrency environments like your Citus cluster. By setting appropriate values, you can mitigate lock conflicts, manage connection spikes, and ensure resource availability, aligning with your application’s retry logic and maintaining system stability.
+
+---
+
+### Key Citations
+- [PostgreSQL Documentation Client Connection Defaults](https://www.postgresql.org/docs/current/runtime-config-client.html)
+- [Postgres Timeout Explained](https://www.bytebase.com/blog/postgres-timeout/)
+- [PostgreSQL Documentation statement_timeout parameter](https://postgresqlco.nf/doc/en/param/statement_timeout/)
+- [Configuring Statement Timeout in PostgreSQL for Optimal Performance Management](https://dev.to/shiviyer/configuring-statement-timeout-in-postgresql-for-optimal-performance-management-1p9l)
+- [PostgreSQL Configuration Chronicles Optimizing Timeout Settings for Performance Excellence](https://demirhuseyinn-94.medium.com/postgresql-configuration-chronicles-optimizing-timeout-settings-for-performance-excellence-b5ef1efd12be)
+- [Is there a timeout for idle PostgreSQL connections](https://stackoverflow.com/questions/13236160/is-there-a-timeout-for-idle-postgresql-connections)
+- [Timeout parameters Postgres Professional](https://postgrespro.com/list/thread-id/2410088)
+- [PostgreSQL connection timeout](https://stackoverflow.com/questions/22296601/postgresql-connection-timeout)
+- [Setting Query Timeouts in PostgreSQL](https://www.navicat.com/en/company/aboutus/blog/2237-setting-query-timeouts-in-postgresql.html)
+- [Is it possible to limit timeout on Postgres server Database Administrators](https://dba.stackexchange.com/questions/164419/is-it-possible-to-limit-timeout-on-postgres-server)

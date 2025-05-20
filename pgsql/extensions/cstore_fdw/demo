@@ -1,0 +1,427 @@
+CREATE TABLE events_columnar (
+  device_id bigint,
+  event_id bigserial,
+  event_time timestamptz default now(),
+  data jsonb not null
+)
+USING columnar;
+
+
+INSERT INTO events_columnar (device_id, data)
+SELECT d, '{"hello":"columnar"}' FROM generate_series(1,10000000) d;
+
+
+CREATE TABLE events_row AS SELECT * FROM events_columnar;
+
+\d+
+
+ x247ci_butterfly | events_columnar                              | table             | postgres  | permanent   | columnar      | 25 MB      |
+ x247ci_butterfly | events_columnar_event_id_seq                 | sequence          | postgres  | permanent   |               | 8192 bytes |
+ x247ci_butterfly | events_row                                   | table             | postgres  | permanent   | heap          | 806 MB     |`
+
+
+Case 2:
+
+fzhou=# CREATE USER testuser WITH PASSWORD 'testpass';
+CREATE ROLE
+fzhou=# CREATE DATABASE testdb;
+CREATE DATABASE
+fzhou=# GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;
+GRANT
+GRANT CREATE ON SCHEMA public TO testuser;
+
+\c testdb
+create extension citus_columnar
+
+psql -U testuser -d testdb
+
+CREATE TABLE sales_col (
+    order_id SERIAL,
+    customer_id INTEGER,
+    product_id INTEGER,
+    sale_date DATE,
+    quantity INTEGER,
+    price NUMERIC
+) using columnar;
+
+CREATE TABLE sales_row (
+    order_id SERIAL,
+    customer_id INTEGER,
+    product_id INTEGER,
+    sale_date DATE,
+    quantity INTEGER,
+    price NUMERIC
+); 
+
+
+INSERT INTO sales_row (customer_id, product_id, sale_date, quantity, price)
+SELECT
+    (random() * 100000)::INTEGER AS customer_id,
+    (random() * 1000)::INTEGER AS product_id,
+    ('2023-01-01'::DATE + (random() * 730)::INTEGER) AS sale_date,
+    (random() * 10 + 1)::INTEGER AS quantity,
+    (random() * 100)::NUMERIC AS price
+FROM generate_series(1, 10000000);
+
+Time: 43742.048 ms (00:43.742)
+
+INSERT INTO sales_col SELECT * FROM sales_row;
+Time: 42020.855 ms (00:42.021)
+
+Query Test
+Case 1:
+
+EXPLAIN ANALYZE
+SELECT SUM(price)
+FROM sales_row
+WHERE product_id = 500 AND sale_date BETWEEN '2024-01-01' AND '2024-12-31';
+
+testdb=> EXPLAIN ANALYZE
+SELECT SUM(price)
+FROM sales_row
+WHERE product_id = 500 AND sale_date BETWEEN '2024-01-01' AND '2024-12-31';
+                                                                 QUERY PLAN
+---------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=156500.87..156500.88 rows=1 width=32) (actual time=633.835..690.571 rows=1 loops=1)
+   ->  Gather  (cost=156500.64..156500.85 rows=2 width=32) (actual time=633.364..690.488 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=155500.64..155500.65 rows=1 width=32) (actual time=581.726..581.729 rows=1 loops=3)
+               ->  Parallel Seq Scan on sales_row  (cost=0.00..155495.44 rows=2080 width=12) (actual time=18.052..577.152 rows=1709 loops=3)
+                     Filter: ((sale_date >= '2024-01-01'::date) AND (sale_date <= '2024-12-31'::date) AND (product_id = 500))
+                     Rows Removed by Filter: 3331625
+ Planning Time: 0.539 ms
+ JIT:
+   Functions: 17
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+   Timing: Generation 2.889 ms (Deform 1.156 ms), Inlining 0.000 ms, Optimization 1.838 ms, Emission 51.242 ms, Total 55.969 ms
+ Execution Time: 692.094 ms
+(14 rows)
+
+EXPLAIN ANALYZE
+SELECT SUM(price)
+FROM sales_col
+WHERE product_id = 500 AND sale_date BETWEEN '2024-01-01' AND '2024-12-31';
+
+                                                               QUERY PLAN
+----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=172.25..172.26 rows=1 width=32) (actual time=2049.997..2049.998 rows=1 loops=1)
+   ->  Custom Scan (ColumnarScan) on sales_col  (cost=0.00..171.62 rows=250 width=32) (actual time=7.445..2047.747 rows=5126 loops=1)
+         Filter: ((sale_date >= '2024-01-01'::date) AND (sale_date <= '2024-12-31'::date) AND (product_id = 500))
+         Rows Removed by Filter: 9994874
+         Columnar Projected Columns: product_id, sale_date, price
+         Columnar Chunk Group Filters: ((sale_date >= '2024-01-01'::date) AND (sale_date <= '2024-12-31'::date) AND (product_id = 500))
+         Columnar Chunk Groups Removed by Filter: 0
+ Planning Time: 1.159 ms
+ Execution Time: 2050.077 ms
+(9 rows)
+
+Time: 2060.515 ms (00:02.061)
+
+
+Interesting, very bad
+
+Case 2: Filter Large Scale Data
+
+
+
+CREATE TABLE calls_row (
+    call_id SERIAL,
+    caller_id INTEGER,
+    region VARCHAR(50),
+    duration INTEGER,
+    start_time TIMESTAMP,
+    end_time TIMESTAMP
+);
+
+CREATE table calls_col (
+    call_id INTEGER,
+    caller_id INTEGER,
+    region VARCHAR(50),
+    duration INTEGER,
+    start_time TIMESTAMP,
+    end_time TIMESTAMP
+) using columnar;
+
+INSERT INTO calls_row (caller_id, region, duration, start_time, end_time)
+SELECT
+    (random() * 1000000)::INTEGER AS caller_id,
+    (ARRAY['North', 'South', 'East', 'West'])[(random() * 4 + 1)::INTEGER] AS region,
+    (random() * 3600)::INTEGER AS duration,
+    ('2023-01-01'::TIMESTAMP + (random() * 730 * 24 * 60 * 60)::INTEGER * INTERVAL '1 second') AS start_time,
+    ('2023-01-01'::TIMESTAMP + (random() * 730 * 24 * 60 * 60)::INTEGER * INTERVAL '1 second' + (random() * 3600)::INTEGER * INTERVAL '1 second') AS end_time
+FROM generate_series(1, 10000000);
+
+
+INSERT INTO calls_col SELECT * FROM calls_row;
+
+EXPLAIN ANALYZE
+SELECT COUNT(*)
+FROM calls_row
+WHERE duration > 600 AND region = 'North';
+
+EXPLAIN ANALYZE
+SELECT COUNT(*)
+FROM calls_col
+WHERE duration > 600 AND region = 'North';
+
+Expected Output:
+Row-based: ~10 seconds, scanning ~2 GB.
+Columnar: ~1 second, scanning ~200 MB (compressed).
+
+
+
+
+
+
+
+Case 3: Complex Analytical Queries with Joins
+
+CREATE TABLE transactions_row (
+    transaction_id SERIAL,
+    customer_id INTEGER,
+    amount NUMERIC,
+    transaction_date DATE
+);
+CREATE TABLE customers_row (
+    customer_id INTEGER,
+    segment VARCHAR(50)
+);
+
+CREATE TABLE transactions_col (
+    transaction_id INTEGER,
+    customer_id INTEGER,
+    amount NUMERIC,
+    transaction_date DATE
+) using columnar;
+CREATE TABLE customers_col (
+    customer_id INTEGER,
+    segment VARCHAR(50)
+) using columnar;
+
+
+INSERT INTO transactions_row (customer_id, amount, transaction_date)
+SELECT
+    (random() * 1000000)::INTEGER AS customer_id,
+    (random() * 1000)::NUMERIC AS amount,
+    ('2023-01-01'::DATE + (random() * 730)::INTEGER) AS transaction_date
+FROM generate_series(1, 10000000);
+
+INSERT INTO customers_row (customer_id, segment)
+SELECT
+    generate_series(1, 1000000) AS customer_id,
+    (ARRAY['Premium', 'Standard', 'Basic'])[(random() * 3 + 1)::INTEGER] AS segment;
+
+INSERT INTO transactions_col SELECT * FROM transactions_row;
+INSERT INTO customers_col SELECT * FROM customers_row;
+
+EXPLAIN ANALYZE
+SELECT c.segment, AVG(t.amount)
+FROM transactions_row t
+JOIN customers_row c ON t.customer_id = c.customer_id
+WHERE t.transaction_date BETWEEN '2023-01-01' AND '2023-12-31'
+GROUP BY c.segment;
+
+                                                                              QUERY PLAN
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------
+ Finalize GroupAggregate  (cost=193921.18..193921.97 rows=3 width=39) (actual time=4627.494..4703.068 rows=4 loops=1)
+   Group Key: c.segment
+   ->  Gather Merge  (cost=193921.18..193921.88 rows=6 width=39) (actual time=4627.430..4702.993 rows=12 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Sort  (cost=192921.16..192921.17 rows=3 width=39) (actual time=4572.188..4572.694 rows=4 loops=3)
+               Sort Key: c.segment
+               Sort Method: quicksort  Memory: 25kB
+               Worker 0:  Sort Method: quicksort  Memory: 25kB
+               Worker 1:  Sort Method: quicksort  Memory: 25kB
+               ->  Partial HashAggregate  (cost=192921.10..192921.14 rows=3 width=39) (actual time=4572.056..4572.565 rows=4 loops=3)
+                     Group Key: c.segment
+                     Batches: 1  Memory Usage: 24kB
+                     Worker 0:  Batches: 1  Memory Usage: 24kB
+                     Worker 1:  Batches: 1  Memory Usage: 24kB
+                     ->  Parallel Hash Join  (cost=16643.00..182561.21 rows=2071977 width=18) (actual time=1857.650..3489.832 rows=1664441 loops=3)
+                           Hash Cond: (t.customer_id = c.customer_id)
+                           ->  Parallel Seq Scan on transactions_row t  (cost=0.00..127244.06 rows=2071977 width=15) (actual time=0.054..819.581 rows=1664442
+ loops=3)
+                                 Filter: ((transaction_date >= '2023-01-01'::date) AND (transaction_date <= '2023-12-31'::date))
+                                 Rows Removed by Filter: 1668892
+                           ->  Parallel Hash  (cost=9399.67..9399.67 rows=416667 width=11) (actual time=255.904..255.905 rows=333333 loops=3)
+                                 Buckets: 524288  Batches: 4  Memory Usage: 15552kB
+                                 ->  Parallel Seq Scan on customers_row c  (cost=0.00..9399.67 rows=416667 width=11) (actual time=18.502..90.715 rows=333333
+loops=3)
+ Planning Time: 0.736 ms
+ JIT:
+   Functions: 51
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+   Timing: Generation 4.611 ms (Deform 1.702 ms), Inlining 0.000 ms, Optimization 2.321 ms, Emission 53.478 ms, Total 60.409 ms
+ Execution Time: 4705.603 ms
+(29 rows)
+
+
+EXPLAIN ANALYZE
+SELECT c.segment, AVG(t.amount)
+FROM transactions_col t
+JOIN customers_col c ON t.customer_id = c.customer_id
+WHERE t.transaction_date BETWEEN '2023-01-01' AND '2023-12-31'
+GROUP BY c.segment;
+
+Expected Output:
+Row-based: ~10 seconds, scanning ~1.5 GB.
+Columnar: ~1 second, scanning ~300 MB (compressed).
+
+testdb=> EXPLAIN ANALYZE
+SELECT c.segment, AVG(t.amount)
+FROM transactions_col t
+JOIN customers_col c ON t.customer_id = c.customer_id
+WHERE t.transaction_date BETWEEN '2023-01-01' AND '2023-12-31'
+GROUP BY c.segment;
+                                                                             QUERY PLAN
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------
+ HashAggregate  (cost=5171882.10..5171884.60 rows=200 width=150) (actual time=11437.464..11437.471 rows=4 loops=1)
+   Group Key: c.segment
+   Batches: 1  Memory Usage: 40kB
+   ->  Merge Join  (cost=169132.10..3921882.10 rows=250000000 width=150) (actual time=6495.251..9789.867 rows=4993324 loops=1)
+         Merge Cond: (t.customer_id = c.customer_id)
+         ->  Sort  (cost=4126.46..4251.46 rows=50000 width=36) (actual time=5940.695..6901.365 rows=4993325 loops=1)
+               Sort Key: t.customer_id
+               Sort Method: external merge  Disk: 128904kB
+               ->  Custom Scan (ColumnarScan) on transactions_col t  (cost=0.00..224.05 rows=50000 width=36) (actual time=214.194..2264.714 rows=4993325 loop
+s=1)
+                     Filter: ((transaction_date >= '2023-01-01'::date) AND (transaction_date <= '2023-12-31'::date))
+                     Rows Removed by Filter: 5006675
+                     Columnar Projected Columns: customer_id, amount, transaction_date
+                     Columnar Chunk Group Filters: ((transaction_date >= '2023-01-01'::date) AND (transaction_date <= '2023-12-31'::date))
+                     Columnar Chunk Groups Removed by Filter: 0
+         ->  Materialize  (cost=165005.64..170005.64 rows=1000000 width=122) (actual time=554.444..1250.223 rows=5000130 loops=1)
+               ->  Sort  (cost=165005.64..167505.64 rows=1000000 width=122) (actual time=554.436..745.629 rows=1000000 loops=1)
+                     Sort Key: c.customer_id
+                     Sort Method: external merge  Disk: 21560kB
+                     ->  Custom Scan (ColumnarScan) on customers_col c  (cost=0.00..405.29 rows=1000000 width=122) (actual time=0.876..201.887 rows=1000000 l
+oops=1)
+                           Columnar Projected Columns: customer_id, segment
+ Planning Time: 1.846 ms
+ JIT:
+   Functions: 14
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+   Timing: Generation 1.481 ms (Deform 0.509 ms), Inlining 64.900 ms, Optimization 90.108 ms, Emission 53.147 ms, Total 209.635 ms
+ Execution Time: 11466.810 ms
+(26 rows)
+
+Time: 11470.168 ms (00:11.470)
+
+
+
+
+Since the merge join in columnar table, and no perallism, the result is pretty bad, let's turn off merge join
+SET enable_mergejoin = OFF;
+
+Pretty bad
+
+testdb=> SET enable_mergejoin = OFF;
+SET
+Time: 31.864 ms
+testdb=> EXPLAIN ANALYZE
+SELECT c.segment, AVG(t.amount)
+FROM transactions_col t
+JOIN customers_col c ON t.customer_id = c.customer_id
+WHERE t.transaction_date BETWEEN '2023-01-01' AND '2023-12-31'
+GROUP BY c.segment;
+                                                                             QUERY PLAN
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------
+ HashAggregate  (cost=10003754.35..10003756.85 rows=200 width=150) (actual time=225672.707..225672.722 rows=4 loops=1)
+   Group Key: c.segment
+   Batches: 1  Memory Usage: 40kB
+   ->  Hash Join  (cost=849.05..8753754.35 rows=250000000 width=150) (actual time=220651.469..223846.054 rows=4993324 loops=1)
+         Hash Cond: (c.customer_id = t.customer_id)
+         ->  Custom Scan (ColumnarScan) on customers_col c  (cost=0.00..405.29 rows=1000000 width=122) (actual time=1835.981..2017.033 rows=1000000 loops=1)
+               Columnar Projected Columns: customer_id, segment
+         ->  Hash  (cost=224.05..224.05 rows=50000 width=36) (actual time=218804.757..218804.758 rows=4993325 loops=1)
+               Buckets: 524288 (originally 65536)  Batches: 32 (originally 1)  Memory Usage: 12380kB
+               ->  Custom Scan (ColumnarScan) on transactions_col t  (cost=0.00..224.05 rows=50000 width=36) (actual time=3314.083..103950.279 rows=4993325 l
+oops=1)
+                     Filter: ((transaction_date >= '2023-01-01'::date) AND (transaction_date <= '2023-12-31'::date))
+                     Rows Removed by Filter: 5006675
+                     Columnar Projected Columns: customer_id, amount, transaction_date
+                     Columnar Chunk Group Filters: ((transaction_date >= '2023-01-01'::date) AND (transaction_date <= '2023-12-31'::date))
+                     Columnar Chunk Groups Removed by Filter: 0
+ Planning Time: 50.254 ms
+ JIT:
+   Functions: 13
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+   Timing: Generation 53.265 ms (Deform 4.797 ms), Inlining 81.886 ms, Optimization 119.092 ms, Emission 1616.965 ms, Total 1871.208 ms
+ Execution Time: 225729.708 ms
+(21 rows)
+
+
+
+
+
+
+
+
+
+
+
+testdb=> SET work_mem = '512MB';
+SET enable_mergejoin = OFF;
+EXPLAIN ANALYZE
+SELECT c.segment, AVG(t.amount)
+FROM transactions_col t
+JOIN customers_col c ON t.customer_id = c.customer_id
+WHERE t.transaction_date BETWEEN '2023-01-01' AND '2023-12-31'
+GROUP BY c.segment;
+RESET work_mem;
+SET
+Time: 14.360 ms
+SET
+Time: 0.817 ms
+
+                                                                           QUERY PLAN
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+---
+ HashAggregate  (cost=10003754.35..10003756.85 rows=200 width=150) (actual time=7046.920..7046.928 rows=4 loops=1)
+   Group Key: c.segment
+   Batches: 1  Memory Usage: 40kB
+   ->  Hash Join  (cost=849.05..8753754.35 rows=250000000 width=150) (actual time=3615.397..5595.458 rows=4993324 loops=1)
+         Hash Cond: (c.customer_id = t.customer_id)
+         ->  Custom Scan (ColumnarScan) on customers_col c  (cost=0.00..405.29 rows=1000000 width=122) (actual time=119.533..306.288 rows=1000000 loops=1)
+               Columnar Projected Columns: customer_id, segment
+         ->  Hash  (cost=224.05..224.05 rows=50000 width=36) (actual time=3495.720..3495.721 rows=4993325 loops=1)
+               Buckets: 8388608 (originally 65536)  Batches: 1 (originally 1)  Memory Usage: 301347kB
+               ->  Custom Scan (ColumnarScan) on transactions_col t  (cost=0.00..224.05 rows=50000 width=36) (actual time=8.228..2120.778 rows=4993325 loops=
+1)
+                     Filter: ((transaction_date >= '2023-01-01'::date) AND (transaction_date <= '2023-12-31'::date))
+                     Rows Removed by Filter: 5006675
+                     Columnar Projected Columns: customer_id, amount, transaction_date
+                     Columnar Chunk Group Filters: ((transaction_date >= '2023-01-01'::date) AND (transaction_date <= '2023-12-31'::date))
+                     Columnar Chunk Groups Removed by Filter: 0
+ Planning Time: 12.033 ms
+ JIT:
+   Functions: 13
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+   Timing: Generation 0.829 ms (Deform 0.171 ms), Inlining 38.356 ms, Optimization 45.393 ms, Emission 34.545 ms, Total 119.123 ms
+ Execution Time: 7069.436 ms
+(21 rows)
+
+Time: 7090.472 ms (00:07.090)
+
+Then, you can create MV
+
+CREATE TABLE transactions_filtered AS
+SELECT customer_id, amount, transaction_date
+FROM transactions_col
+WHERE transaction_date BETWEEN '2023-01-01' AND '2023-12-31';
+EXPLAIN ANALYZE
+SELECT c.segment, AVG(t.amount)
+FROM transactions_filtered t
+JOIN customers_col c ON t.customer_id = c.customer_id
+GROUP BY c.segment;
+
+

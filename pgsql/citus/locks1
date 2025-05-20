@@ -1,0 +1,60 @@
+SELECT pid, query, wait_event_type, wait_event, relation::regclass
+FROM pg_stat_activity
+JOIN pg_locks ON pg_stat_activity.pid = pg_locks.pid
+WHERE wait_event_type = 'Lock' AND relation = 'orders'::regclass;
+
+SELECT * FROM citus_lock_waits WHERE waiting_node_name IN ('coordinator-host', 'worker1-host');
+
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'your_database' AND state = 'active' AND query LIKE 'SELECT * FROM orders%'
+AND pid != pg_backend_pid();
+
+SELECT waiting_node_name, waiting_query, blocking_query
+FROM citus_lock_waits
+WHERE waiting_query LIKE 'SELECT * FROM orders%';
+
+import psycopg2
+import threading
+import queue
+from time import time
+
+def run_query():
+    def execute_query(conn, cursor, result_queue):
+        try:
+            cursor.execute("SELECT * FROM orders WHERE customer_id = 123 AND order_date >= '2025-01-01'")
+            result_queue.put(cursor.fetchall())
+        except psycopg2.Error as e:
+            result_queue.put(e)
+
+    for attempt in range(3):  # Retry up to 3 times
+        conn = None
+        cursor = None
+        try:
+            conn = psycopg2.connect("dbname=your_db host=coordinator-host")
+            cursor = conn.cursor()
+            result_queue = queue.Queue()
+            # Run query in a separate thread with 100ms timeout
+            query_thread = threading.Thread(target=execute_query, args=(conn, cursor, result_queue))
+            query_thread.daemon = True
+            query_thread.start()
+            query_thread.join(timeout=0.1)  # Wait 100ms for response
+            if query_thread.is_alive():
+                # No response within 100ms, abandon and retry
+                print(f"Attempt {attempt + 1}: No response after 100ms, retrying...")
+                continue
+            # Get result from queue
+            result = result_queue.get()
+            if isinstance(result, psycopg2.Error):
+                print(f"Attempt {attempt + 1}: Query failed: {result}")
+                continue
+            return result  # Success
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+    raise Exception("Query failed after retries")
+
+# Above is the code that using thread, and client side timeout mechanism
+

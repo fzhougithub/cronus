@@ -1,0 +1,236 @@
+sudo tee /etc/yum.repos.d/mariadb.repo <<EOF
+[mariadb]
+name = MariaDB
+baseurl = http://yum.mariadb.org/10.11/rocky9-amd64
+module_hotfixes=1
+gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+gpgcheck=1
+EOF
+
+yum list | grep Maria | grep -vi debug | grep -v src| awk '{print $1}' | paste -sd' ' -
+
+Cut paste above packages, in dnf install command
+
+https://mariadb.com/kb/en/what-is-mariadb-galera-cluster/
+
+here are the new stuff, the Galera cluster. 
+
+sudo systemctl list-unit-files | grep -i mariadb
+
+mariadb-columnstore.service                enabled         disabled
+mariadb.service                            disabled        disabled
+mariadb@.service                           disabled        disabled
+mariadb-extra.socket                       static          -
+mariadb-extra@.socket                      static          -
+mariadb.socket                             static          -
+mariadb@.socket                            static          -
+
+Those @ are template file, can support multiple instances. 
+
+[root@rl01 system]# systemctl cat mariadb.service|grep -v '#'|sed '/^$/d'
+[Unit]
+Description=MariaDB 10.11.11 database server
+Documentation=man:mariadbd(8)
+Documentation=https://mariadb.com/kb/en/library/systemd/
+After=network.target
+[Install]
+WantedBy=multi-user.target
+[Service]
+Type=notify
+PrivateNetwork=false
+User=mysql
+Group=mysql
+AmbientCapabilities=CAP_IPC_LOCK CAP_DAC_OVERRIDE CAP_AUDIT_WRITE
+PrivateDevices=false
+ProtectSystem=full
+ProtectHome=true
+PermissionsStartOnly=true
+ExecStartPre=/bin/sh -c "systemctl unset-environment _WSREP_START_POSITION"
+ExecStartPre=/bin/sh -c "[ ! -e /usr/bin/galera_recovery ] && VAR= || \
+ VAR=`/usr/bin/galera_recovery`; [ $? -eq 0 ] \
+ && systemctl set-environment _WSREP_START_POSITION=$VAR || exit 1"
+ExecStart=/usr/sbin/mariadbd $MYSQLD_OPTS $_WSREP_NEW_CLUSTER $_WSREP_START_POSITION
+ExecStartPost=/bin/sh -c "systemctl unset-environment _WSREP_START_POSITION"
+KillSignal=SIGTERM
+SendSIGKILL=no
+Restart=on-abort
+RestartSec=5s
+UMask=007
+PrivateTmp=false
+TimeoutStartSec=900
+TimeoutStopSec=900
+TasksMax=99%
+LimitNOFILE=32768
+[Service]
+
+
+Then, the /etc/my.cnf, usually direct to /etc/my.cnf.d directory, and the config files are readed in alphabetical order, ascii sorted order
+
+auth_gssapi.cnf
+client.cnf
+columnstore.cnf
+connect.cnf
+cracklib_password_check.cnf
+enable_encryption.preset
+hashicorp_key_management.cnf
+mysql-clients.cnf
+oqgraph.cnf
+provider_bzip2.cnf
+provider_lz4.cnf
+provider_lzma.cnf
+provider_snappy.cnf
+rocksdb.cnf
+s3.cnf
+server.cnf
+spider.cnf
+
+
+We don't need so many mariadb features, so, we will close the subcofigurations, and just use one my.cnf file
+
+[root@rl01 etc]# cat my.cnf
+#
+# This group is read both by the client and the server
+# use it for options that affect everything
+#
+[client-server]
+
+#
+# include *.cnf from the config directory
+#
+#!includedir /etc/my.cnf.d
+
+[client]
+port            = 3306
+socket          = /var/tellme/maria/mysql.sock
+
+[mysql]
+prompt          = '\u@\h [\d]> '
+default_character_set = utf8mb4
+
+[mysqld]
+user            = mysql
+pid-file        = /var/run/mysqld/mysqld.pid
+socket          = /var/tellme/maria/mysql.sock
+port            = 3306
+basedir         = /usr
+datadir         = /var/tellme/maria/data
+tmpdir          = /var/tellme/maria/tmp
+lc_messages_dir = /usr/share/mysql
+lc_messages     = en_US
+
+# Character sets and collation
+character-set-server  = utf8mb4
+collation-server      = utf8mb4_general_ci
+skip-character-set-client-handshake
+
+# File and table limits
+open-files-limit      = 65535
+table_open_cache      = 8000
+table_definition_cache = 4000
+max_connections       = 1000
+back_log              = 512
+
+# InnoDB settings
+default_storage_engine = InnoDB
+innodb_file_per_table  = 1
+innodb_buffer_pool_size = 2G
+innodb_buffer_pool_instances = 2
+innodb_log_file_size  = 1G
+innodb_log_buffer_size = 128M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method   = O_DIRECT
+innodb_thread_concurrency = 0
+innodb_io_capacity    = 2000
+innodb_io_capacity_max = 4000
+innodb_lru_scan_depth = 1024
+innodb_read_io_threads = 8
+innodb_write_io_threads = 8
+innodb_purge_threads = 4
+innodb_page_cleaners = 4
+
+# Redo & Undo tuning
+innodb_undo_log_truncate = 1
+innodb_max_undo_log_size = 4G
+innodb_undo_tablespaces = 2
+
+# Temp tables
+tmp_table_size        = 256M
+max_heap_table_size   = 256M
+max_tmp_tables        = 64
+
+# Query cache (for MariaDB only if needed)
+query_cache_type = 0
+query_cache_size = 0
+
+# Sort and join buffer
+sort_buffer_size      = 8M
+join_buffer_size      = 32M
+read_rnd_buffer_size  = 8M
+read_buffer_size      = 8M
+
+# Threading
+thread_cache_size     = 200
+thread_handling       = one-thread-per-connection
+
+# Logging
+log_error             = /var/tellme/maria/mysqld.err
+log_warnings          = 2
+slow_query_log        = 1
+slow_query_log_file   = /var/tellme/maria/slow.log
+long_query_time       = 1
+log_queries_not_using_indexes = 1
+expire_logs_days      = 7
+max_binlog_size       = 1G
+log_bin               = /var/tellme/maria/admin/arch/mariadb-bin
+binlog_format         = ROW
+binlog_row_image      = MINIMAL
+sync_binlog           = 1
+
+# General logs (for debugging; turn off in prod)
+general_log           = 0
+general_log_file      = /var/tellme/maria/general.log
+
+# Security
+local_infile          = 1
+secure_file_priv      = /var/lib/mysql-files
+
+# Performance Schema
+performance_schema     = ON
+performance-schema-consumer-events-statements-history = ON
+performance-schema-consumer-events-waits-current = ON
+performance-schema-consumer-events-waits-history = ON
+
+# Caching SHA2 passwords (if needed)
+default_authentication_plugin = mysql_native_password
+
+# Connection limits
+max_connect_errors     = 100000
+wait_timeout           = 600
+interactive_timeout    = 7200
+
+# SQL mode
+sql_mode = STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_AUTO_CREATE_USER
+
+[mysqldump]
+quick
+quote-names
+max_allowed_packet    = 512M
+
+[mysqlhotcopy]
+interactive-timeout
+
+
+
+
+Now, let's initialize database
+
+ 1125  mkdir -p /var/tellme/maria/data
+ 1126  mkdir -p /var/tellme/maria/admin/arch
+ 1127  mkdir -p /var/tellme/maria/tmp
+ 1128  chown -R mysql.mysql /var/tellme/maria
+chmod -R 750 /var/tellme/maria
+
+
+/usr/bin/mysql_install_db -u mysql
+
+

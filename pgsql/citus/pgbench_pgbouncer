@@ -1,0 +1,184 @@
+pgbench -c 20 -j 20 -h pghost -U postgres -S -T 100
+
+https://www.percona.com/blog/connection-queuing-in-pgbouncer-is-it-a-magical-remedy/
+quering connection using pgbouncer
+
+https://www.percona.com/blog/human-factors-behind-incidents-why-settings-like-idle_session_timeout-can-be-a-bad-idea/
+Human Factors Behind Incidents: Why Settings Like “idle_session_timeout” Can Be a Bad Idea
+
+https://minervadb.xyz/troubleshooting-out-of-memory-oom-errors-in-postgresql/
+Memory Leak
+
+### Key Points
+- Research suggests several factors can cause sudden connection spikes to PostgreSQL, potentially leading to OOM crashes.
+- It seems likely that application retry logic, lock contention, and connection pooling issues are common causes.
+- The evidence leans toward high `max_connections`, insufficient memory, and external factors like DoS attacks contributing to OOM.
+
+#### Application Behavior and Retry Logic
+Your application’s retry logic, retrying queries every 100ms if no response is received, can lead to a rapid increase in connections. If many queries are blocked (e.g., by an `ALTER TABLE` operation), each retry opens a new connection, quickly spiking the count from ~200 to >1000, overwhelming memory.
+
+#### Lock Contention and Resource Exhaustion
+Lock conflicts, like a `SELECT` query waiting for an `ALTER TABLE` to release locks, can cause queries to time out and retry, increasing connections. This, combined with high resource usage, can exhaust memory, triggering the OOM killer.
+
+#### Configuration and System Limits
+If `max_connections` is set too high relative to available memory, or if memory settings like `work_mem` are excessive, a connection spike can push the system into OOM, crashing PostgreSQL.
+
+#### External Factors
+External factors, such as a Denial of Service (DoS) attack or misconfigured monitoring tools, can flood the database with connections, leading to memory exhaustion.
+
+---
+
+### Survey Note: Detailed Analysis of Causes for Sudden Connection Spikes Leading to OOM in PostgreSQL
+
+PostgreSQL, a robust open-source database management system, can experience sudden increases in connections that lead to Out of Memory (OOM) errors, ultimately crashing the instance, especially in high-load environments like your 100TB Citus cluster running PostgreSQL 17. This analysis, based on community discussions, documentation, and best practices as of May 9, 2025, explores the potential causes, their mechanisms, and relevance to your scenario, where an application retries queries every 100ms, experiences a connection spike from ~200 to >1000, and faces lock conflicts (e.g., `SELECT` blocked by `ALTER TABLE`).
+
+#### Common Causes of Sudden Connection Spikes
+
+Several factors can contribute to a sudden increase in PostgreSQL connections, each with the potential to lead to OOM errors. Below, we detail these causes, their impact, and how they align with your setup (non-standard data directory `/var/tellme/pgsql/data`, `replication_factor = 2`, distributed table `orders`).
+
+##### 1. Application Behavior and Retry Logic
+- **Description**: Your application’s retry logic, retrying queries after 100ms if no response is received, can significantly increase connections. If queries are blocked (e.g., by lock conflicts), each retry opens a new connection, leading to a "retry storm." This is particularly problematic in your scenario, where the connection count spikes from ~200 to >1000.
+- **Mechanism**: Each retry involves opening a new connection via `psycopg2.connect` or similar, consuming memory for connection metadata and query execution. With >1000 connections, memory usage can exceed system limits, triggering the OOM killer.
+- **Evidence**: Community discussions highlight that aggressive retry logic, especially with short delays like 100ms, can lead to connection exhaustion ([Sudden Increase in Row Exclusive Locks and Connection Exhaustion in PostgreSQL](https://stackoverflow.com/questions/75317535/sudden-increase-in-row-exclusive-locks-and-connection-exhaustion-in-postgresql)). This aligns with your application’s behavior, where retries without response amplify the issue.
+- **Citus Impact**: In Citus, distributed queries involve multiple connections (one per shard), so retries can overwhelm both coordinator and worker nodes, exacerbating memory pressure.
+
+##### 2. Lock Contention and Resource Exhaustion
+- **Description**: Lock conflicts, such as a `SELECT` query waiting for an `ALTER TABLE` to release an **AccessExclusive lock**, can cause queries to time out and retry, increasing connections. Long-running transactions or queries holding locks can further exacerbate this, leading to memory exhaustion.
+- **Mechanism**: Blocked queries consume memory while waiting in the lock queue. If many queries retry, they open new connections, and the cumulative memory usage (connection metadata, temporary buffers) can exceed available RAM, triggering OOM. Your scenario, with `ALTER TABLE` blocking `SELECT` queries, fits this pattern, especially with retries every 100ms.
+- **Evidence**: Research suggests that high lock contention, often from DDL operations, can lead to connection spikes and OOM, particularly in high-concurrency environments ([High CPU Usage in Postgres: How to Detect It, and How to Fix It](https://www.cockroachlabs.com/blog/high-cpu-usage-postgres/)). This is relevant for your Citus cluster, where distributed locks on shards amplify the issue.
+- **Citus Impact**: In Citus, lock conflicts span coordinator metadata (`pg_dist_*` tables) and worker shards, increasing the likelihood of memory pressure during spikes.
+
+##### 3. Connection Pooling Issues
+- **Description**: If using a connection pooler like PgBouncer, misconfiguration can lead to too many connections being opened. For example, setting `max_client_conn` too high or not managing idle connections can cause spikes.
+- **Mechanism**: A pooler might allow more connections than PostgreSQL’s `max_connections`, leading to memory exhaustion. Idle connections still consume memory, and during spikes, the pooler might struggle, opening new connections rapidly.
+- **Evidence**: Discussions highlight that connection queuing in PgBouncer can mitigate issues, but improper configuration can lead to OOM ([Connection Queuing in pgBouncer: Is It a Magical Remedy?](https://www.percona.com/blog/connection-queuing-in-pgbouncer-is-it-a-magical-remedy/)). This is relevant if your application relies on pooling but isn’t tuned for your load.
+- **Citus Impact**: In Citus, pooling at the coordinator level is critical, as distributed queries involve multiple connections. Misconfigured pooling can amplify memory pressure across nodes.
+
+##### 4. External Factors
+- **Description**: External factors like Denial of Service (DoS) attacks, misconfigured monitoring tools, or backup scripts can flood the database with connections, leading to spikes.
+- **Mechanism**: A DoS attack might open thousands of connections simultaneously, consuming memory rapidly. Monitoring tools checking too frequently or backup scripts opening multiple connections can have similar effects, pushing the system into OOM.
+- **Evidence**: Research indicates that unexpected connection explosions, often from external tools, can lead to OOM, especially in production environments ([Human Factors Behind Incidents: Why Settings Like "idle_session_timeout" Can Be a Bad Idea](https://www.percona.com/blog/human-factors-behind-incidents-why-settings-like-idle_session_timeout-can-be-a-bad-idea/)). This is a potential cause in your scenario, especially during spikes.
+- **Citus Impact**: External factors affect the coordinator primarily, but distributed queries can propagate the issue to workers, increasing memory usage cluster-wide.
+
+##### 5. Configuration and System Limits
+- **Description**: If `max_connections` is set too high relative to available memory, or if memory settings like `work_mem` are excessive, a connection spike can lead to OOM. Insufficient RAM and swap space can exacerbate this.
+- **Mechanism**: Each connection consumes memory for session state, query execution, and temporary buffers. High `work_mem` per connection, combined with many connections, can exhaust memory, triggering the OOM killer. Your scenario, with >1000 connections, fits this, especially if `max_connections` is set to 1500 or higher.
+- **Evidence**: Studies show that setting `max_connections` too high, especially with large `work_mem`, can lead to OOM errors despite free memory, due to per-connection memory allocation ([Postgres Gets Out of Memory Errors Despite Having Plenty of Free Memory](https://stackoverflow.com/questions/29485644/postgres-gets-out-of-memory-errors-despite-having-plenty-of-free-memory)). This is relevant for your 100TB cluster, where memory pressure is high.
+- **Citus Impact**: In Citus, distributed queries may require higher `work_mem` for sorting or joining shards, increasing per-connection memory usage and amplifying OOM risk.
+
+##### 6. Memory Leaks and Unoptimized Queries
+- **Description**: Memory leaks from bugs in PostgreSQL or extensions, or unoptimized queries returning large result sets, can contribute to OOM. Connection leaks (unclosed connections) can also build up memory usage.
+- **Mechanism**: Unoptimized queries, especially with high `work_mem`, can consume excessive memory per connection. Connection leaks, where connections aren’t closed, accumulate memory, leading to OOM during spikes.
+- **Evidence**: Research highlights that unoptimized queries, large result sets, and connection leaks are core reasons for OOM errors in PostgreSQL ([Out-of-Memory (OOM) Errors in PostgreSQL: Troubleshooting](https://minervadb.xyz/troubleshooting-out-of-memory-oom-errors-in-postgresql/)). This aligns with your scenario, where retries and spikes could exacerbate memory usage.
+- **Citus Impact**: In Citus, distributed queries on large shards (e.g., 10TB per worker) can consume significant memory, especially with retries, increasing OOM risk.
+
+#### Detailed Impact on Your Scenario
+
+In your specific case, the combination of application retry logic (100ms no-response retry), lock contention (e.g., `SELECT` blocked by `ALTER TABLE`), and a connection spike from ~200 to >1000 likely triggers the following sequence:
+- **Initial Lock Conflict**: `SELECT` queries are blocked by `ALTER TABLE`’s **AccessExclusive lock**, causing timeouts or no responses within 100ms.
+- **Retry Storm**: The application retries every 100ms, opening new connections, rapidly increasing the count to >1000.
+- **Memory Pressure**: Each connection consumes memory (e.g., session state, query buffers), and with high `work_mem` for distributed queries, memory usage spikes.
+- **OOM Trigger**: The system runs out of memory, and the OOM killer terminates PostgreSQL, crashing the instance.
+
+#### Recommended Mitigations
+
+To prevent sudden connection spikes and OOM errors in your Citus cluster, consider the following:
+1. **Optimize Application Retry Logic**:
+   - Increase the retry delay to 500ms or use exponential backoff (e.g., 100ms, 200ms, 400ms) to reduce connection churn:
+     ```python
+     import time
+     time.sleep(min(0.1 * (2 ** attempt), 2.0))
+     ```
+   - Limit the number of retries (e.g., 3–5) to prevent excessive connections.
+
+2. **Set Server-Side Timeouts**:
+   - Configure PostgreSQL to terminate blocked queries quickly:
+     - `statement_timeout = 500ms`: Cancels queries that run too long.
+     - `lock_timeout = 200ms`: Fails queries waiting for locks.
+   - Example in `postgresql.conf`:
+     ```conf
+     statement_timeout = 500
+     lock_timeout = 200
+     ```
+
+3. **Use Connection Pooling**:
+   - Deploy PgBouncer to limit connections:
+     ```ini
+     [pgbouncer]
+     max_client_conn = 1000
+     default_pool_size = 50
+     reserve_pool_size = 10
+     ```
+   - Connect via PgBouncer to cap connections at the application level.
+
+4. **Tune PostgreSQL Configuration**:
+   - Set `max_connections` appropriately (e.g., 500–1000) based on memory:
+     ```conf
+     max_connections = 500
+     ```
+   - Adjust memory parameters:
+     - `shared_buffers = 12GB`
+     - `work_mem = 4MB`
+     - `maintenance_work_mem = 512MB`
+
+5. **Monitor and Manage Locks**:
+   - Use `pg_stat_activity` to monitor active queries:
+     ```sql
+     SELECT pid, query, state, wait_event_type, wait_event
+     FROM pg_stat_activity
+     WHERE state = 'active' OR wait_event_type = 'Lock';
+     ```
+   - In Citus, use `citus_lock_waits`:
+     ```sql
+     SELECT waiting_node_name, waiting_query, blocking_query
+     FROM citus_lock_waits;
+     ```
+
+6. **Schedule DDL Operations**:
+   - Run `ALTER TABLE` during low-traffic periods to minimize lock conflicts:
+     ```sql
+     BEGIN;
+     SET LOCAL lock_timeout = '5s';
+     ALTER TABLE orders ADD COLUMN status VARCHAR(20);
+     COMMIT;
+     ```
+
+7. **Monitor System Resources**:
+   - Use `top`, `htop`, or `iostat` to monitor CPU, memory, and disk usage:
+     ```bash
+     top -u postgres
+     iostat -x 1
+     ```
+   - Check for memory leaks or unusual resource consumption.
+
+8. **Prevent External Factors**:
+   - Secure against DoS attacks with firewall rules (e.g., limit connections per IP).
+   - Configure monitoring tools to check less frequently (e.g., every 5 minutes instead of every second).
+
+#### Table: Summary of Causes and Mitigations
+
+| **Cause**                     | **Description**                                                                 | **Mitigation**                                                                 |
+|-------------------------------|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| Application Retry Logic        | Retries every 100ms, opening new connections, leading to spikes.                | Increase retry delay, use exponential backoff, limit retries.                  |
+| Lock Contention                | Blocked queries retry, increasing connections, consuming memory.                | Set `statement_timeout`, `lock_timeout`, schedule DDL during low traffic.      |
+| Connection Pooling Issues      | Misconfigured pooler allows too many connections.                              | Deploy PgBouncer, tune `max_client_conn`, `default_pool_size`.                 |
+| External Factors (DoS, Tools)  | Floods database with connections, consuming memory.                            | Secure against DoS, configure monitoring tools for less frequent checks.       |
+| Configuration Issues           | High `max_connections`, excessive `work_mem` lead to OOM.                      | Tune `max_connections`, `shared_buffers`, `work_mem` based on memory.          |
+| Memory Leaks/Unoptimized Queries | Unclosed connections, large result sets consume memory.                        | Monitor for leaks, optimize queries, use connection pooling.                   |
+
+#### Conclusion
+
+Sudden connection spikes in PostgreSQL, leading to OOM and crashes, can stem from application retry logic, lock contention, connection pooling issues, external factors, configuration errors, and memory leaks. For your Citus cluster, focus on optimizing retry logic, setting server-side timeouts, using connection pooling, and monitoring resources to prevent OOM errors, ensuring stability during high-load scenarios.
+
+---
+
+### Key Citations
+- [Sudden Increase in Row Exclusive Locks and Connection Exhaustion in PostgreSQL](https://stackoverflow.com/questions/75317535/sudden-increase-in-row-exclusive-locks-and-connection-exhaustion-in-postgresql)
+- [Human Factors Behind Incidents: Why Settings Like "idle_session_timeout" Can Be a Bad Idea](https://www.percona.com/blog/human-factors-behind-incidents-why-settings-like-idle_session_timeout-can-be-a-bad-idea/)
+- [High CPU Usage in Postgres: How to Detect It, and How to Fix It](https://www.cockroachlabs.com/blog/high-cpu-usage-postgres/)
+- [Out-of-Memory (OOM) Errors in PostgreSQL: Troubleshooting](https://minervadb.xyz/troubleshooting-out-of-memory-oom-errors-in-postgresql/)
+- [Connection Queuing in pgBouncer: Is It a Magical Remedy?](https://www.percona.com/blog/connection-queuing-in-pgbouncer-is-it-a-magical-remedy/)
+- [Postgres Gets Out of Memory Errors Despite Having Plenty of Free Memory](https://stackoverflow.com/questions/29485644/postgres-gets-out-of-memory-errors-despite-having-plenty-of-free-memory)
+- [Increasing Postgresql 9.5 max_connections to at Least 300](https://dba.stackexchange.com/questions/140454/increasing-postgresql-9-5-max-connections-to-at-least-300)
+- [Analyzing the Limits of Connection Scalability in Postgres](https://techcommunity.microsoft.com/blog/adforpostgresql/analyzing-the-limits-of-connection-scalability-in-postgres/1757266)
+

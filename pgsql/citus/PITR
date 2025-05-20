@@ -1,0 +1,106 @@
+# PostgreSQL Point-in-Time Recovery (PITR) Official Methods
+
+PostgreSQL provides several official methods for performing point-in-time recovery (PITR). Here are the primary approaches:
+
+## 1. Continuous Archiving and Recovery (Standard PITR)
+
+**Requirements**:
+- WAL archiving enabled (`wal_level = replica` or higher)
+- `archive_mode = on`
+- Properly configured `archive_command`
+
+**Steps**:
+
+1. **Take a base backup**:
+   ```bash
+   pg_basebackup -D /path/to/backup -Ft -z -Xs -P
+   ```
+
+2. **Ensure WAL archives are available** in your archive location
+
+3. **Create recovery configuration**:
+   - Create `recovery.conf` (PostgreSQL 12+) or add to `postgresql.conf` (PostgreSQL 12+):
+     ```
+     restore_command = 'cp /path/to/wal/archive/%f %p'
+     recovery_target_time = 'YYYY-MM-DD HH:MM:SS'
+     recovery_target_action = 'promote'
+     ```
+
+4. **Start recovery**:
+   - Place backup in data directory
+   - Start PostgreSQL - it will automatically enter recovery mode
+
+## 2. Using pgBackRest (Official Recommended Tool)
+
+1. **Configure pgBackRest**:
+   ```ini
+   [global]
+   repo1-path=/var/lib/pgbackrest
+   repo1-retention-full=2
+   
+   [mydb]
+   pg1-path=/var/lib/postgresql/12/main
+   ```
+
+2. **Take backup**:
+   ```bash
+   pgbackrest --stanza=mydb --type=full backup
+   ```
+
+3. **Perform PITR**:
+   ```bash
+   pgbackrest --stanza=mydb --type=time --target="YYYY-MM-DD HH:MM:SS" restore
+   ```
+
+## 3. Using Barman (Another Popular Option)
+
+1. **Configure Barman**:
+   ```ini
+   [mydb]
+   description = "My PostgreSQL Database"
+   conninfo = host=localhost user=barman dbname=postgres
+   backup_method = postgres
+   ```
+
+2. **Perform recovery**:
+   ```bash
+   barman recover --target-time "YYYY-MM-DD HH:MM:SS" mydb /path/to/recovery/location
+   ```
+
+## 4. Using PostgreSQL's Timeline Feature
+
+For more complex recovery scenarios with multiple timelines:
+
+1. **Identify available timelines** in WAL archive
+
+2. **Specify timeline in recovery**:
+   ```
+   recovery_target_timeline = '2'
+   ```
+
+## Key Configuration Parameters
+
+For all methods, these PostgreSQL parameters are important:
+
+```
+wal_level = replica
+archive_mode = on
+archive_command = 'test ! -f /path/to/wal/archive/%f && cp %p /path/to/wal/archive/%f'
+max_wal_senders = 3
+```
+
+## Verification
+
+After recovery:
+1. Check logs for recovery completion
+2. Verify data consistency
+3. Consider taking a new base backup
+
+## Official Documentation Reference
+
+For complete details, refer to:
+- [PostgreSQL PITR Documentation](https://www.postgresql.org/docs/current/continuous-archiving.html)
+- [pgBackRest Documentation](https://pgbackrest.org/)
+- [Barman Documentation](https://www.pgbarman.org/)
+
+The best method depends on your specific requirements for RPO (Recovery Point Objective) and RTO (Recovery Time Objective).

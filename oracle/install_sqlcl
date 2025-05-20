@@ -1,0 +1,8 @@
+1. download
+https://www.oracle.com/database/sqldeveloper/technologies/sqlcl/download/
+
+2. unzip to /opt/sqlcl
+
+3. setup path
+
+4. sql / as sysdba

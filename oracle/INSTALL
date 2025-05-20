@@ -18,7 +18,185 @@ Suppose this config will generate the listener.ora file.
 /opt/oracle/product/23ai/dbhomeFree/
 How to generate the tns file
 
+https://docs.oracle.com/en/database/oracle/oracle-database/23/xeinl/installing-oracle-database-free.html
+
+The Oracle Database Preinstallation RPM automatically creates the Oracle installation owner and groups. It also sets up other kernel configuration settings as required for Oracle Database installations. If you plan to use job-role separation, then create the extended set of database users and groups depending on your requirements.
+
+[fzhou@DESKTOP-Q7EP4O1 Downloads]$ yum list installed|grep oracle
+oracle-database-free-23ai.x86_64               1.0-1                            @@commandline
+oracle-database-preinstall-23ai.x86_64         1.0-2.el9                        @ol9_appstream
+oracle-epel-release-el9.x86_64                 1.0-1.el9                        @ol9_baseos_latest
+oraclelinux-release.x86_64                     9:9.5-1.0.5.el9                  @ol9_baseos_latest
+oraclelinux-release-el9.x86_64                 1.0-18.el9                       @ol9_baseos_latest
+
+Review the RPM log files to determine the system configuration changes. For example, review /var/log/oracle-database-preinstall-23ai/results/orakernel.log.
+
+[fzhou@DESKTOP-Q7EP4O1 Downloads]$ cat /var/log/oracle-database-free-23ai/results/oraInstall.log
+[INFO] Starting the installation process of the Oracle Database...
+03/11/25-09:52:42 AM
+[INFO] Verifying the final status of the user after all the prechecks run:
+uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba),54323(oper),54324(backupdba),54325(dgdba),54326(kmdba),54330(racdba)
+[INFO] Registering Oracle home to the Oracle inventory...
+[INFO] Oracle home registered to the Oracle inventory.
+[INFO] Executing post installation scripts...
+[INFO] Setting up inventory as it has not been setup on this machine.
+[INFO] Configuring ADR directories...
+[INFO] ADR directories configured.
+[INFO] Post installation scripts executed successfully.
+[INFO] Oracle home installed successfully and ready to be configured.
+
+[fzhou@DESKTOP-Q7EP4O1 Downloads]$ ls -larth /var/log/oracle-database-free-23ai/results/oraInstall.log
+-rw-r--r-- 1 root root 733 Mar 11 09:56 /var/log/oracle-database-free-23ai/results/oraInstall.log
+
+2. Creating and Configuring an Oracle Database
+
+Oracle 23ai still use /etc/init.d directory to start the instance. 
+
+/etc/init.d/oracle-free-23ai configure
+
+Enter password
+
+The oracle initialization start, using dbca
+
+[fzhou@DESKTOP-Q7EP4O1 Downloads]$ ps -ef|grep 37964
+root       37964   37735  0 02:04 pts/5    00:00:00 /bin/bash /etc/init.d/oracle-free-23ai configure
+root       38036   37964  0 02:04 pts/5    00:00:00 /bin/su -s /bin/bash oracle -c /opt/oracle/product/23ai/dbhomeFree/bin/dbca -silent -createDatabase -templateName FREE_Database.dbc -characterSet AL32UTF8 -createAsContainerDatabase true -numberOfPDBs 1 -pdbName FREEPDB1 -sid FREE -J-Doracle.assistants.dbca.validate.DBCredentials=false -ignorePrereqs -J-Doracle.assistants.skipAvailableSharedMemoryCheck=true -skipDatapatch true -customScripts /opt/oracle/product/23ai/dbhomeFree/assistants/dbca/postdb_creation.sql  -initParams sga_target=591M,pga_aggregate_target=197M -gdbName FREE
+
+Then, the 38036 start java dbca installation with parallel processes
+
+[root@DESKTOP-Q7EP4O1 ~]# ps -ef|grep 38037
+oracle     38037   38036  1 02:04 ?        00:00:34 /opt/oracle/product/23ai/dbhomeFree/jdk/bin/java -Doracle.installer.not_bootstrap=true -DCV_HOME=/opt/oracle/product/23ai/dbhomeFree -DORACLE_HOME=/opt/oracle/product/23ai/dbhomeFree -XX:-OmitStackTraceInFastThrow -XX:CompileCommand=quiet -XX:CompileCommand=exclude,javax/swing/text/GlyphView,getBreakSpot -Djava.security.egd=file:/dev/urandom -DSET_LAF= -Djdk.module.illegalAccess=deny -Dsun.java2d.font.DisableAlgorithmicStyles=true -Dice.pilots.html4.ignoreNonGenericFonts=true -DDISPLAY= -DJDBC_PROTOCOL=thin -mx512m -Doracle.assistants.dbca.validate.DBCredentials=false -Doracle.assistants.skipAvailableSharedMemoryCheck=true -classpath /opt/oracle/product/23ai/dbhomeFree/assistants/dbca/jlib/dbca.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/jlib/dbcaext.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/jlib/assistantsCommon.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/jlib/rconfig.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/jlib/asstcommonext.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/srvm.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/srvmhas.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/srvmasm.jar:/opt/oracle/product/23ai/dbhomeFree/OPatch/jlib/oracle.opatch.classpath.jar:/opt/oracle/product/23ai/dbhomeFree/oui/jlib/OraInstaller.jar:/opt/oracle/product/23ai/dbhomeFree/oui/jlib/OraPrereq.jar:/opt/oracle/product/23ai/dbhomeFree/inventory/prereqs/oui/OraPrereqChecks.jar:/opt/oracle/product/23ai/dbhomeFree/oui/jlib/OraPrereqChecks.jar:/opt/oracle/product/23ai/dbhomeFree/oui/jlib/OraCheckPoint.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/cvu.jar:/opt/oracle/product/23ai/dbhomeFree/install/jlib/installcommons_1.0.0b.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/jewt4.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/olaf2.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/ewt3.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/ewtcompat-3_3_15.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/share.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/help4.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/help-share.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/ohj.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/oracle_ice.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/kodiak.jar:/opt/oracle/product/23ai/dbhomeFree/lib/xmlparserv2.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/orai18n.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/ldapjclnt.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/netcfg.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/ojmisc.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/oraclepki.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/opm.jar:/opt/oracle/product/23ai/dbhomeFree/jdbc/lib/ojdbc8.jar:/opt/oracle/product/23ai/dbhomeFree/dv/jlib/dvca.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/gns.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/commons-compress.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/jackson-annotations.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/jackson-core.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/jackson-databind.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_es.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_de.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_fr.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_it.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_ja.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_ko.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_pt_BR.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_zh_CN.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/dbca/doc/dbcahelp_zh_TW.jar:/opt/oracle/product/23ai/dbhomeFree/assistants/netca/jlib/netca.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/slf4j-api.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/sshd-common.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/sshd-sftp.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/slf4j-jdk14.jar:/opt/oracle/product/23ai/dbhomeFree/jlib/sshd-core.jar:/opt/oracle/product/23ai/dbhomeFree/install/jlib/pilot_1.0.0b.jar oracle.assistants.dbca.driver.DBConfigurator -silent -createDatabase -templateName FREE_Database.dbc -characterSet AL32UTF8 -createAsContainerDatabase true -numberOfPDBs 1 -pdbName FREEPDB1 -sid FREE -J-Doracle.assistants.dbca.validate.DBCredentials=false -ignorePrereqs -J-Doracle.assistants.skipAvailableSharedMemoryCheck=true -skipDatapatch true -customScripts /opt/oracle/product/23ai/dbhomeFree/assistants/dbca/postdb_creation.sql -initParams sga_target=591M,pga_aggregate_target=197M -gdbName FREE
+oracle     38535   38037  0 02:04 ?        00:00:00 /opt/oracle/product/23ai/dbhomeFree/bin/sqlplus -S -N
+oracle     38700   38037  0 02:05 ?        00:00:02 rman oracle/product/23ai/dbhomeFree/bin/rman
+oracle     40432   38037  0 02:40 ?        00:00:00 /opt/oracle/product/23ai/dbhomeFree/bin/sqlplus -S -N
+oracle     40442   38037  0 02:41 ?        00:00:00 /opt/oracle/product/23ai/dbhomeFree/perl/bin/perl /opt/oracle/product/23ai/dbhomeFree/rdbms/admin/catcon.pl -n 1 -l /opt/oracle/cfgtoollogs/dbca/FREE -v -G -b utlfixdirs -u SYS -U SYS /opt/oracle/product/23ai/dbhomeFree/rdbms/admin/utlfixdirs.sql
+
+The initialization process hanging for long time, according to grok
+ 1018  free -h
+ 1019  fallocate -l 2G /swapfile
+ 1023  chmod 600 /swapfile
+ 1024  mkswap /swapfile
+ 1025  swapon /swapfile
+
+After that, the swap file got used, and the process restart to move on from 39% to 43%
+
+Using this command to check the errors in dbca
+
+ find /opt/oracle/cfgtoollogs/dbca/FREE -type f -name "*.log" -exec grep -i "error\|ora-" {} \;
+
+Finally complated
+
+Then, if the shared memory and semphores got issue, using below command to cleanup them
+
+ipcs -m | grep oracle | awk '{print $2}' | xargs -I {} ipcrm -m {}
+ipcs -s | grep oracle | awk '{print $2}' | xargs -I {} ipcrm -s {}
+
+sqlplus / as sysdba
+
+sqlplus /nolog
 
 
+connect / as sysdba
+startup /nomount
+alter database mount
+alter database open
+
+
+ALTER PLUGGABLE DATABASE FREEPDB1 OPEN;
+
+
+SQL> SELECT instance_name, status FROM v$instance;
+
+INSTANCE_NAME  STATUS
+---------------- ------------
+FREE           OPEN
+
+SQL> SELECT name, open_mode FROM v$pdbs;
+
+NAME
+--------------------------------------------------------------------------------
+OPEN_MODE
+----------
+PDB$SEED
+READ ONLY
+
+FREEPDB1
+READ WRITE
+
+SQL> SHOW PARAMETER compatible;
+
+NAME                         TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+compatible                   string      23.6.0
+noncdb_compatible                    boolean  FALSE
+
+
+
+$ORACLE_HOME/bin/rman target /
+RMAN> BACKUP DATABASE PLUS ARCHIVELOG;
+
+
+
+ALTER SYSTEM SET sga_target=1024M SCOPE=SPFILE;
+ALTER SYSTEM SET pga_aggregate_target=512M SCOPE=SPFILE;
+
+ALTER PLUGGABLE DATABASE FREEPDB1 OPEN;
+
+SQL> show con_name;
+
+CON_NAME
+------------------------------
+CDB$ROOT
+
+SQL> SELECT SYS_CONTEXT('USERENV', 'CON_NAME') AS container_name,
+     2      SYS_CONTEXT('USERENV', 'CON_ID') AS container_id
+FROM DUAL;  3
+
+CONTAINER_NAME
+--------------------------------------------------------------------------------
+CONTAINER_ID
+--------------------------------------------------------------------------------
+CDB$ROOT
+1
+
+SQL> SELECT CON_ID, NAME, OPEN_MODE
+FROM V$CONTAINERS  2
+WHERE CON_ID =   3  SYS_CONTEXT('USERENV', 'CON_ID');
+
+    CON_ID
+----------
+NAME
+--------------------------------------------------------------------------------
+OPEN_MODE
+----------
+     1
+CDB$ROOT
+READ WRITE
+
+SQL> SELECT NAME, OPEN_MODE, CON_ID
+FROM V$PDBS;  2
+
+NAME
+--------------------------------------------------------------------------------
+OPEN_MODE      CON_ID
+---------- ----------
+PDB$SEED
+READ ONLY         2
+
+FREEPDB1
+READ WRITE        3
+
+SQL> show pdbs;
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+     2 PDB$SEED                   READ ONLY  NO
+     3 FREEPDB1                   READ WRITE NO
+
+
+ALTER SESSION SET CONTAINER = CDB$ROOT;
+
+
+ alter database archivelog;
 
 

@@ -1,0 +1,255 @@
+https://explain.depesz.com/
+
+https://explain.depesz.com/s/t4fi
+
+
+SELECT pg_get_viewdef('stock.stockhistory_monthly', true) AS view_definition;
+
+
+  explain (analyze,buffers) 
+  SELECT DISTINCT ON (symbol, (date_trunc('month'::text, day::timestamp with time zone))) symbol,                                     
+     date_trunc('month'::text, day::timestamp with time zone) AS month_start,                                                         
+     first_value(o) OVER (PARTITION BY symbol, (date_trunc('month'::text, day::timestamp with time zone)) ORDER BY day) AS open_price,
+     max(h) OVER (PARTITION BY symbol, (date_trunc('month'::text, day::timestamp with time zone))) AS high_price,                     
+     min(l) OVER (PARTITION BY symbol, (date_trunc('month'::text, day::timestamp with time zone))) AS low_price,                      
+     last_value(c) OVER (PARTITION BY symbol, (date_trunc('month'::text, day::timestamp with time zone)) ORDER BY day) AS close_price,
+     sum(amount) OVER (PARTITION BY symbol, (date_trunc('month'::text, day::timestamp with time zone))) AS amount_sum,                
+     sum(v) OVER (PARTITION BY symbol, (date_trunc('month'::text, day::timestamp with time zone))) AS volume_sum,                     
+     sum(last) OVER (PARTITION BY symbol, (date_trunc('month'::text, day::timestamp with time zone))) AS last_sum                     
+    FROM stockhistory                                                                                                                 
+   ORDER BY symbol, (date_trunc('month'::text, day::timestamp with time zone)), day;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+In addition to the `pg_stat_activity` view, PostgreSQL provides several other system views and tools that can be used to monitor and analyze the status of running queries. Here are some of the key options:
+
+---
+
+1. **`pg_stat_statements`**
+   • Purpose: Tracks query execution statistics, including execution time, number of calls, and resource usage.
+
+   • How to Use:
+
+     ◦ Enable the extension:
+
+       ```sql
+       CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+       ```
+     ◦ Query the `pg_stat_statements` view to see query statistics:
+
+       ```sql
+       SELECT query, calls, total_exec_time, mean_exec_time, rows
+       FROM pg_stat_statements
+       ORDER BY total_exec_time DESC
+       LIMIT 10;
+       ```
+   • Use Case: Identify slow or frequently executed queries.
+
+
+---
+
+2. **`pg_locks`**
+   • Purpose: Shows the locks held by active queries and sessions.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_locks;
+     ```
+   • Use Case: Diagnose locking issues or contention between queries.
+
+
+---
+
+3. **`pg_stat_database`**
+   • Purpose: Provides statistics about database-level activity, such as the number of active connections and transactions.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_database;
+     ```
+   • Use Case: Monitor overall database activity and performance.
+
+
+---
+
+4. **`pg_stat_user_tables` and `pg_stat_user_indexes`**
+   • Purpose: Tracks statistics for user tables and indexes, including the number of scans, rows fetched, and updates.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_user_tables;
+     SELECT * FROM pg_stat_user_indexes;
+     ```
+   • Use Case: Identify which tables or indexes are being heavily accessed or may need optimization.
+
+
+---
+
+5. **`pg_stat_bgwriter`**
+   • Purpose: Monitors the background writer process, which is responsible for writing dirty buffers to disk.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_bgwriter;
+     ```
+   • Use Case: Monitor disk I/O and write activity.
+
+
+---
+
+6. **`pg_stat_replication`**
+   • Purpose: Tracks the status of replication processes (if replication is enabled).
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_replication;
+     ```
+   • Use Case: Monitor replication lag and the status of standby servers.
+
+
+---
+
+7. **`pg_stat_progress_*` Views**
+   • Purpose: Provides real-time progress information for long-running operations like `VACUUM`, `ANALYZE`, and `CREATE INDEX`.
+
+   • How to Use:
+
+     For example, to monitor a `VACUUM` operation:
+     ```sql
+     SELECT * FROM pg_stat_progress_vacuum;
+     ```
+   • Use Case: Track the progress of long-running maintenance tasks.
+
+
+---
+
+8. **`pg_stat_subscription`**
+   • Purpose: Tracks the status of logical replication subscriptions.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_subscription;
+     ```
+   • Use Case: Monitor the health and progress of logical replication.
+
+
+---
+
+9. **`pg_stat_archiver`**
+   • Purpose: Monitors the activity of the archiver process, which is responsible for archiving WAL (Write-Ahead Log) files.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_archiver;
+     ```
+   • Use Case: Monitor WAL archiving and ensure it is functioning correctly.
+
+
+---
+
+10. **`pg_stat_kcache` (Extension)**
+   • Purpose: Tracks kernel-level cache usage and disk I/O statistics.
+
+   • How to Use:
+
+     ◦ Install the extension:
+
+       ```sql
+       CREATE EXTENSION IF NOT EXISTS pg_stat_kcache;
+       ```
+     ◦ Query the view:
+
+       ```sql
+       SELECT * FROM pg_stat_kcache();
+       ```
+   • Use Case: Analyze disk I/O performance at a lower level.
+
+
+---
+
+11. **`pg_stat_user_functions`**
+   • Purpose: Tracks statistics for user-defined functions.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_user_functions;
+     ```
+   • Use Case: Monitor the performance of custom functions.
+
+
+---
+
+12. **`pg_stat_xact_all_tables` and `pg_stat_xact_sys_tables`**
+   • Purpose: Tracks transaction-level statistics for all tables or system tables.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_xact_all_tables;
+     ```
+   • Use Case: Analyze short-lived transactions and their impact on tables.
+
+
+---
+
+13. **`pg_stat_reset()`**
+   • Purpose: Resets all statistics counters to zero.
+
+   • How to Use:
+
+     ```sql
+     SELECT pg_stat_reset();
+     ```
+   • Use Case: Clear old statistics to start fresh monitoring.
+
+
+---
+
+14. **`pg_stat_get_activity()` (Function)**
+   • Purpose: Returns detailed information about active sessions and queries, similar to `pg_stat_activity`.
+
+   • How to Use:
+
+     ```sql
+     SELECT * FROM pg_stat_get_activity(NULL);
+     ```
+   • Use Case: Programmatically access session and query information.
+
+
+---
+
+15. **`pg_stat_get_backend_*()` Functions**
+   • Purpose: Provides detailed information about specific backend processes.
+
+   • Examples:
+
+     ◦ `pg_stat_get_backend_pid(pid)` - Get the PID of a backend process.
+
+     ◦ `pg_stat_get_backend_activity(pid)` - Get the current query of a backend process.
+
+   • Use Case: Programmatically inspect specific backend processes.
+
+
+---
+
+Summary
+While `pg_stat_activity` is the most commonly used view for monitoring running queries, PostgreSQL provides a rich set of system views and extensions to monitor various aspects of database performance and activity. Depending on your needs, you can use these tools to gain deeper insights into query execution, locking, replication, and more.

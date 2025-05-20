@@ -1,0 +1,77 @@
+All of the install after postgresql 14, are merged into citus package, don't need to install cstore_fdw seperately
+
+
+Correct Approach
+
+1. Download the git repo
+cd /var/tellme/work
+
+git clone https://github.com/citusdata/cstore_fdw.git
+
+cd /var/tellme/work/cstore_fdw
+
+vi Makefile
+
+
+
+
+
+Below is the faild rpmbuild try, which finally could not fix all of the issues that related to the version bigger than postgresql 14+
+
+Below method does not work, just for memory
+==================================================================================================
+
+
+dnf install -y rpm-build rpmdevtools rpmdev-setuptree
+
+cd /var/tellme/work
+
+git clone https://github.com/citusdata/cstore_fdw.git
+
+vi ~/rpmbuild/SPEC/cstore_fdw.spec
+
+Name:           cstore_fdw
+Version:        1.7.0
+Release:        1%{?dist}
+Summary:        Columnar store foreign data wrapper for PostgreSQL
+
+License:        Apache-2.0
+URL:            https://github.com/citusdata/cstore_fdw
+Source0:        https://github.com/citusdata/cstore_fdw/archive/refs/tags/v%{version}.tar.gz
+
+BuildRequires:  gcc, make, cmake
+BuildRequires:  postgresql-devel
+BuildRequires:  libcurl-devel
+
+%description
+cstore_fdw is a columnar store extension for PostgreSQL.
+
+%prep
+%autosetup -n %{name}-%{version}
+sed -i 's/9\.3 9\.4 9\.5 9\.6 10 11 12/9.3 9.4 9.5 9.6 10 11 12 13 14 15 16 17/' Makefile
+sed -i 's|access/tuptoaster.h|access/heaptoast.h|' cstore_fdw.c
+
+%build
+make
+
+%install
+make install DESTDIR=%{buildroot}
+
+%files
+/usr/pgsql*/lib/*.so
+/usr/pgsql*/share/extension/*
+
+%changelog
+* Fri May 16 2025 Your Name <you@example.com> - 1.7.0-1
+- Initial RPM build
+
+====================================
+cd ~/rpmbuild/SOURCES
+ curl -LO https://github.com/citusdata/cstore_fdw/archive/refs/tags/v1.7.0.tar.gz
+
+yum install cmake libcurl-devel
+dnf install -y protobuf-c-compiler protobuf-c-devel
+
+cd ~/rpmbuild/SPECS
+rpmbuild -ba cstore_fdw.spec
+

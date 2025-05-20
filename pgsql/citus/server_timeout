@@ -1,0 +1,336 @@
+PostgreSQL provides several **server-side timeout parameters** that control how long various operations or conditions can persist before the server takes action, such as terminating a query, closing a connection, or canceling a transaction. These parameters are critical for managing performance, resource usage, and lock conflicts in your 100TB Citus cluster running PostgreSQL 17, especially in the context of your described scenario where a `SELECT` query is blocked by an `ALTER TABLE` (due to an **AccessShare** vs. **AccessExclusive** lock conflict), with an application retrying queries after 100ms and a connection spike from ~200 to >1000.
+
+Below, I’ll list and explain the relevant PostgreSQL server-side timeout parameters, their purposes, default values, and how they apply to your Citus cluster. I’ll also address their impact on the locking and retry scenario, providing recommendations tailored to your setup (non-standard data directory `/var/tellme/pgsql/data`, `replication_factor = 2`, distributed table `orders`).
+
+---
+
+### PostgreSQL Server-Side Timeout Parameters
+These parameters are configured in the PostgreSQL configuration file (`/var/tellme/pgsql/data/postgresql.conf`) or set dynamically via `SET` commands. They are applied server-wide unless overridden at the session or transaction level.
+
+| **Parameter**                | **Description**                                                                 | **Default Value** | **Scope**                     | **Relevant Scenario Impact**                                                                 |
+|------------------------------|--------------------------------------------------------------------------------|--------------------|-------------------------------|---------------------------------------------------------------------------------------------|
+| **`statement_timeout`**      | Maximum time a query (e.g., `SELECT`, `UPDATE`) can run before being canceled.  | `0` (disabled)     | Session, Transaction, Global  | Terminates blocked `SELECT` queries waiting for locks (e.g., blocked by `ALTER TABLE`).      |
+| **`idle_in_transaction_session_timeout`** | Maximum time a session can remain idle in a transaction before being terminated. | `0` (disabled)     | Session, Transaction, Global  | Prevents long-running transactions holding locks, reducing lock queue growth.                |
+| **`idle_session_timeout`**   | Maximum time a session can remain idle (outside a transaction) before being terminated. | `0` (disabled)     | Session, Transaction, Global  | Closes idle connections, freeing resources during a connection spike (>1000).                |
+| **`lock_timeout`**           | Maximum time a query can wait for a lock before failing.                       | `0` (disabled)     | Session, Transaction, Global  | Fails `SELECT` queries waiting for **AccessShare locks** faster, reducing lock queue size.   |
+| **`deadlock_timeout`**       | Time to wait before checking for deadlocks (affects deadlock detection speed). | `1s` (1000ms)      | Global                        | Influences how quickly deadlocks are resolved, indirectly affecting lock conflicts.          |
+| **`tcp_keepalives_idle`**    | Time between TCP keepalive probes for idle connections.                        | OS-dependent       | Session, Global               | Prevents dropped connections during long-running queries or spikes, maintaining stability.   |
+| **`tcp_keepalives_interval`** | Time between retries of TCP keepalive probes.                                  | OS-dependent       | Session, Global               | Ensures timely detection of broken connections, freeing resources.                           |
+| **`tcp_keepalives_count`**   | Number of TCP keepalive probes before declaring a connection dead.             | OS-dependent       | Session, Global               | Helps terminate zombie connections, reducing connection pile-up during spikes.               |
+| **`wal_receiver_timeout`**   | Maximum time a WAL receiver (for streaming replication) can wait before terminating. | `60s` (60000ms)   | Global                        | Relevant for Citus worker replication, ensures timely failover if replication lags.          |
+| **`wal_sender_timeout`**     | Maximum time a WAL sender (for streaming replication) can wait before terminating. | `60s` (60000ms)   | Global                        | Ensures coordinator/worker replication stability, indirectly affects lock availability.      |
+
+---
+
+### Detailed Explanation and Scenario Relevance
+Let’s dive into each parameter, its role in your Citus cluster, and how it impacts the scenario where a `SELECT` query is blocked by an `ALTER TABLE`, with retries every 100ms (no-response timeout) and a connection spike to >1000.
+
+#### 1. `statement_timeout`
+- **Description**: Limits the execution time of any query (e.g., `SELECT`, `INSERT`, `ALTER TABLE`). If the query exceeds this time, it’s canceled with:
+  ```text
+  ERROR: canceling statement due to statement timeout
+  ```
+- **Default**: `0` (disabled, no timeout).
+- **Set**: In `postgresql.conf` or per session:
+  ```sql
+  SET statement_timeout = '500ms';
+  ```
+- **Scenario Impact**:
+  - **Blocked `SELECT` Queries**: In your scenario, the `SELECT * FROM orders WHERE customer_id = 123` is blocked by the `ALTER TABLE`’s **AccessExclusive lock** (2-second duration). If `statement_timeout = 500ms`, the `SELECT` fails after 500ms, before the application’s 100ms retry timeout.
+  - **Retry Storm**: The application retries every 100ms if no response is received, but with `statement_timeout = 500ms`, the database terminates blocked queries after 500ms, reducing zombie queries (queries abandoned by the application but still running).
+  - **Citus**: The timeout applies to shard queries on workers and metadata queries on the coordinator. A blocked `SELECT` on a shard (e.g., `orders_12345`) fails after 500ms, freeing lock queue slots but triggering application retries.
+- **Recommendation**:
+  - Set `statement_timeout = 500ms` to terminate blocked queries quickly, aligning with the application’s aggressive 100ms retry:
+    ```conf
+    # /var/tellme/pgsql/data/postgresql.conf
+    statement_timeout = 500
+    ```
+  - This reduces the number of zombie queries, but retries still generate new queries every 100ms, so combine with connection pooling (see below).
+
+#### 2. `idle_in_transaction_session_timeout`
+- **Description**: Terminates sessions that remain idle within an open transaction (e.g., `BEGIN; ...` without `COMMIT`). Prevents long-running transactions from holding locks.
+- **Default**: `0` (disabled).
+- **Set**:
+  ```sql
+  SET idle_in_transaction_session_timeout = '5min';
+  ```
+- **Scenario Impact**:
+  - **Lock Holding**: If a transaction holds an **AccessExclusive lock** (e.g., `BEGIN; ALTER TABLE orders ...` but delays committing), it blocks `SELECT` queries longer, worsening the lock queue.
+  - **Citus**: In Citus, a stalled transaction on the coordinator (e.g., modifying `pg_dist_partition`) or a worker (shard lock) can block distributed queries across the cluster.
+  - **Connection Spike**: Idle transactions consume connections, exacerbating the >1000 connection spike.
+- **Recommendation**:
+  - Set to `5min` to terminate stalled transactions, freeing locks and connections:
+    ```conf
+    idle_in_transaction_session_timeout = '5min'
+    ```
+  - Monitor idle transactions:
+    ```sql
+    SELECT pid, query, state, age(now(), query_start)
+    FROM pg_stat_activity
+    WHERE state = 'idle in transaction';
+    ```
+
+#### 3. `idle_session_timeout`
+- **Description**: Terminates idle sessions (outside transactions) after a specified time, freeing connections.
+- **Default**: `0` (disabled).
+- **Set**:
+  ```sql
+  SET idle_session_timeout = '10min';
+  ```
+- **Scenario Impact**:
+  - **Connection Spike**: With >1000 connections, idle sessions consume slots, potentially hitting `max_connections` (e.g., 1500). Terminating idle sessions frees resources.
+  - **Citus**: Idle connections on the coordinator or workers reduce available slots for query routing or shard execution.
+- **Recommendation**:
+  - Set to `10min` to clean up idle connections during spikes:
+    ```conf
+    idle_session_timeout = '10min'
+    ```
+  - Use with PgBouncer to manage idle connections externally.
+
+#### 4. `lock_timeout`
+- **Description**: Limits how long a query can wait for a lock (e.g., **AccessShare** for `SELECT`). If exceeded, the query fails with:
+  ```text
+  ERROR: canceling statement due to lock timeout
+  ```
+- **Default**: `0` (disabled).
+- **Set**:
+  ```sql
+  SET lock_timeout = '200ms';
+  ```
+- **Scenario Impact**:
+  - **Blocked `SELECT` Queries**: The `SELECT` query waits for an **AccessShare lock**, blocked by the `ALTER TABLE`’s **AccessExclusive lock**. With `lock_timeout = 200ms`, the query fails after 200ms, faster than `statement_timeout`.
+  - **Retry Storm**: The application retries every 100ms, but `lock_timeout = 200ms` ensures blocked queries fail quickly, reducing lock queue size. However, retries still generate new queries.
+  - **Citus**: Applies to locks on coordinator metadata (`pg_dist_*`) and worker shards. A low `lock_timeout` prevents long lock queues on shards but increases retry frequency.
+- **Recommendation**:
+  - Set `lock_timeout = 200ms` to fail blocked queries quickly, aligning with the 100ms retry:
+    ```conf
+    lock_timeout = 200
+    ```
+  - Combine with `statement_timeout` for comprehensive timeout control.
+
+#### 5. `deadlock_timeout`
+- **Description**: Time to wait before checking for deadlocks. A lower value speeds up deadlock detection but increases overhead.
+- **Default**: `1s` (1000ms).
+- **Set**: Only in `postgresql.conf`:
+  ```conf
+  deadlock_timeout = 1000
+  ```
+- **Scenario Impact**:
+  - **Deadlocks**: Unlikely in your scenario (simple `SELECT` vs. `ALTER TABLE`), but if multiple DDL or DML queries create a deadlock, this determines detection speed.
+  - **Citus**: Deadlocks can occur across shards if concurrent DDL or rebalancing operations conflict with queries.
+- **Recommendation**:
+  - Keep default (`1s`), as deadlocks are rare in your read-heavy scenario:
+    ```conf
+    deadlock_timeout = 1000
+    ```
+  - Monitor deadlocks:
+    ```sql
+    SELECT * FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND wait_event = 'relation';
+    ```
+
+#### 6. `tcp_keepalives_idle`, `tcp_keepalives_interval`, `tcp_keepalives_count`
+- **Description**:
+  - `tcp_keepalives_idle`: Time before sending TCP keepalive probes for idle connections.
+  - `tcp_keepalives_interval`: Time between keepalive retries.
+  - `tcp_keepalives_count`: Number of retries before declaring the connection dead.
+- **Default**: OS-dependent (e.g., Linux: `7200s`, `75s`, `9`).
+- **Set**:
+  ```conf
+  tcp_keepalives_idle = 60
+  tcp_keepalives_interval = 10
+  tcp_keepalives_count = 5
+  ```
+- **Scenario Impact**:
+  - **Connection Spike**: During >1000 connections, broken or idle connections consume slots. Keepalives detect and close them, freeing resources.
+  - **Zombie Queries**: Abandoned queries (from 100ms retries) may leave dangling connections, which keepalives help terminate.
+  - **Citus**: Ensures coordinator-worker connections remain stable during high load.
+- **Recommendation**:
+  - Set aggressive keepalives to clean up broken connections:
+    ```conf
+    tcp_keepalives_idle = 60
+    tcp_keepalives_interval = 10
+    tcp_keepalives_count = 5
+    ```
+  - Monitor connection state:
+    ```sql
+    SELECT count(*) FROM pg_stat_activity WHERE state = 'idle';
+    ```
+
+#### 7. `wal_receiver_timeout`, `wal_sender_timeout`
+- **Description**:
+  - `wal_receiver_timeout`: Time a WAL receiver (replica) waits for WAL data before terminating.
+  - `wal_sender_timeout`: Time a WAL sender (primary) waits for replica acknowledgment.
+- **Default**: `60s` (60000ms).
+- **Set**:
+  ```conf
+  wal_receiver_timeout = 60000
+  wal_sender_timeout = 60000
+  ```
+- **Scenario Impact**:
+  - **Citus Replication**: With `replication_factor = 2`, workers replicate shards. Timeouts ensure replication doesn’t stall during high load or lock conflicts.
+  - **Connection Spike**: High connection counts may slow replication, but these timeouts are less relevant to the `SELECT` vs. `ALTER TABLE` conflict.
+- **Recommendation**:
+  - Keep defaults, as replication is secondary to your scenario:
+    ```conf
+    wal_receiver_timeout = 60000
+    wal_sender_timeout = 60000
+    ```
+
+---
+
+### Impact on the Locking and Retry Scenario
+In your scenario:
+- **Lock Conflict**: `SELECT` queries (`AccessShare`) are blocked by `ALTER TABLE` (`AccessExclusive`, ~2 seconds).
+- **Retry Logic**: The application retries every 100ms if no response, spawning new queries and creating zombie queries.
+- **Connection Spike**: >1000 connections amplify the lock queue and risk `max_connections` limits.
+
+**How Timeout Parameters Help**:
+- **`statement_timeout = 500ms`**:
+  - Terminates blocked `SELECT` queries after 500ms, reducing zombie queries but triggering retries sooner (since the application retries at 100ms).
+  - Example: A `SELECT` blocked at T=0ms fails at T=500ms, but the application has already retried at T=100ms and T=200ms, adding new queries.
+- **`lock_timeout = 200ms`**:
+  - Fails `SELECT` queries waiting for **AccessShare locks** after 200ms, faster than `statement_timeout`, clearing the lock queue but increasing retry frequency.
+  - Example: At T=200ms, the `SELECT` fails, and the application retries at T=100ms, T=200ms, T=300ms, generating more queries.
+- **`idle_in_transaction_session_timeout = 5min`**:
+  - If the `ALTER TABLE` is in a long transaction, this terminates it after 5 minutes, releasing **AccessExclusive locks**, but this is too slow for the 2-second scenario.
+- **`idle_session_timeout = 10min`**:
+  - Frees idle connections during the spike, reducing pressure on `max_connections`.
+- **`tcp_keepalives_*`**:
+  - Closes broken connections, mitigating the impact of zombie queries and connection churn.
+- **Citus Context**:
+  - Timeouts apply to coordinator metadata queries and worker shard queries. A low `lock_timeout` on workers reduces shard lock queues, but rapid retries overwhelm the coordinator.
+  - Monitor with:
+    ```sql
+    SELECT * FROM citus_lock_waits WHERE waiting_query LIKE 'SELECT * FROM orders%';
+    ```
+
+**Challenges**:
+- The **100ms no-response retry** is too aggressive, generating thousands of queries per second with >1000 connections, even with timeouts.
+- Zombie queries (abandoned after 100ms but running until `statement_timeout` or `lock_timeout`) consume resources.
+- The connection spike risks `max_connections`, especially with new connections per retry.
+
+---
+
+### Recommended Configuration and Mitigations
+To optimize timeout parameters and mitigate the retry storm in your Citus cluster:
+
+1. **Set Timeout Parameters**:
+   - **In `postgresql.conf`**:
+     ```conf
+     # /var/tellme/pgsql/data/postgresql.conf
+     statement_timeout = 500
+     lock_timeout = 200
+     idle_in_transaction_session_timeout = '5min'
+     idle_session_timeout = '10min'
+     tcp_keepalives_idle = 60
+     tcp_keepalives_interval = 10
+     tcp_keepalives_count = 5
+     ```
+   - **Apply**:
+     ```bash
+     sudo systemctl reload postgresql
+     ```
+   - **Per Session (for Testing)**:
+     ```sql
+     SET statement_timeout = '500ms';
+     SET lock_timeout = '200ms';
+     ```
+
+2. **Modify Application Retry Logic**:
+   - Increase the no-response timeout to 500ms or use exponential backoff (100ms, 200ms, 400ms) to reduce retries:
+     ```python
+     query_thread.join(timeout=0.5)  # 500ms timeout
+     sleep(min(0.1 * (2 ** attempt), 2.0))  # Exponential backoff
+     ```
+   - Example (updated `psycopg` async code):
+     ```python
+     import psycopg
+     import asyncio
+     import async_timeout
+
+     async def run_query():
+         for attempt in range(3):
+             conn = None
+             try:
+                 conn = await psycopg.AsyncConnection.connect("dbname=your_db host=coordinator-host")
+                 async with async_timeout.timeout(0.5):  # 500ms timeout
+                     async with conn.cursor() as cursor:
+                         await cursor.execute("SELECT * FROM orders WHERE customer_id = 123 AND order_date >= '2025-01-01'")
+                         return await cursor.fetchall()
+             except (psycopg.Error, asyncio.TimeoutError) as e:
+                 print(f"Attempt {attempt + 1}: Failed or no response: {e}")
+                 await asyncio.sleep(min(0.1 * (2 ** attempt), 2.0))
+             finally:
+                 if conn:
+                     await conn.close()
+         raise Exception("Query failed after retries")
+
+     asyncio.run(run_query())
+     ```
+
+3. **Use Connection Pooling**:
+   - Deploy **PgBouncer** to cap connections at 200–300:
+     ```ini
+     [pgbouncer]
+     max_client_conn = 1000
+     default_pool_size = 50
+     reserve_pool_size = 10
+     ```
+   - Connect via PgBouncer:
+     ```python
+     conn = psycopg2.connect("dbname=your_db host=pgbouncer-host port=6432")
+     ```
+
+4. **Tune `max_connections`**:
+   - Increase to handle spikes, but balance with memory:
+     ```conf
+     max_connections = 1500
+     ```
+   - Monitor:
+     ```sql
+     SELECT count(*) FROM pg_stat_activity WHERE state = 'active';
+     ```
+
+5. **Schedule DDL Operations**:
+   - Run `ALTER TABLE` during low-traffic periods:
+     ```sql
+     BEGIN;
+     SET LOCAL lock_timeout = '5s';
+     ALTER TABLE orders ADD COLUMN status VARCHAR(20);
+     COMMIT;
+     ```
+
+6. **Monitor and Terminate Zombie Queries**:
+   - Terminate queries stuck longer than expected:
+     ```sql
+     SELECT pg_terminate_backend(pid)
+     FROM pg_stat_activity
+     WHERE datname = 'your_db' AND state = 'active' AND query LIKE 'SELECT * FROM orders%'
+     AND age(now(), query_start) > '500ms';
+     ```
+
+7. **Auditing on Backups**:
+   - Run auditing queries on restored backups to avoid production lock conflicts:
+     ```bash
+     pgbackrest --stanza=worker1 --target-time="2025-04-01 12:00:00" restore --db-path=/var/tellme/pgsql/audit_data
+     ```
+
+---
+
+### Summary
+- **PostgreSQL Server-Side Timeout Parameters**:
+  - **`statement_timeout`**: Cancels queries after a set time (e.g., 500ms).
+  - **`lock_timeout`**: Fails lock waits (e.g., 200ms).
+  - **`idle_in_transaction_session_timeout`**: Terminates idle transactions.
+  - **`idle_session_timeout`**: Closes idle connections.
+  - **`deadlock_timeout`**, **`tcp_keepalives_*`**, **`wal_receiver_timeout`**, **`wal_sender_timeout`**: Handle deadlocks, connections, and replication.
+- **Scenario Impact**:
+  - `statement_timeout` and `lock_timeout` reduce zombie queries but don’t prevent the 100ms retry storm.
+  - `idle_session_timeout` and `tcp_keepalives_*` mitigate connection spikes.
+  - Citus amplifies lock queue issues due to shard and metadata locks.
+- **Recommendations**:
+  - Set `statement_timeout = 500ms`, `lock_timeout = 200ms`, `idle_in_transaction_session_timeout = 5min`, `idle_session_timeout = 10min`.
+  - Use exponential backoff in the application and PgBouncer for connection pooling.
+  - Schedule DDL to avoid conflicts, monitor with `citus_lock_waits`.
+
+If you need help applying these settings, tuning PgBouncer, or modifying the application code further (e.g., with `psycopg`), share your current `postgresql.conf` settings, `max_connections`, or application framework details, and I can provide precise guidance!
