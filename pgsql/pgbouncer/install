@@ -1,0 +1,64 @@
+sudo dnf groupinstall "Development Tools" -y
+sudo dnf install -y \
+    libevent-devel \
+    openssl-devel \
+    pam-devel \
+    zlib-devel \
+    systemd-devel \
+    postgresql-devel \
+    readline-devel
+
+
+tar -xzf pgbouncer-1.24.1.tar.gz
+cd pgbouncer-1.24.1
+./configure --prefix=/usr/local/pgbouncer
+
+make -j$(nproc)
+
+[root@DESKTOP-Q7EP4O1 pgbouncer-1.24.1]# sudo make install
+     INSTALL  pgbouncer /usr/local/pgbouncer/bin
+     INSTALL  README.md /usr/local/pgbouncer/share/doc/pgbouncer
+     INSTALL  NEWS.md /usr/local/pgbouncer/share/doc/pgbouncer
+     INSTALL  etc/pgbouncer-minimal.ini /usr/local/pgbouncer/share/doc/pgbouncer
+     INSTALL  etc/pgbouncer.ini /usr/local/pgbouncer/share/doc/pgbouncer
+     INSTALL  etc/pgbouncer.service /usr/local/pgbouncer/share/doc/pgbouncer
+     INSTALL  etc/pgbouncer.socket /usr/local/pgbouncer/share/doc/pgbouncer
+     INSTALL  etc/userlist.txt /usr/local/pgbouncer/share/doc/pgbouncer
+     INSTALL  doc/pgbouncer.1 /usr/local/pgbouncer/share/man/man1
+     INSTALL  doc/pgbouncer.5 /usr/local/pgbouncer/share/man/man5
+
+echo 'export PATH=/usr/local/pgbouncer/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+
+sudo mkdir -p /etc/pgbouncer
+sudo cp etc/pgbouncer.ini /etc/pgbouncer/pgbouncer.ini
+sudo touch /etc/pgbouncer/userlist.txt
+
+Now you can config the pgbouncer
+
+sudo chown root:root /etc/pgbouncer/*
+sudo chmod 600 /etc/pgbouncer/*
+
+
+vi /etc/systemd/system/pgbouncer.service
+[Unit]
+Description=PgBouncer Connection Pooler
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/pgbouncer/bin/pgbouncer /etc/pgbouncer/pgbouncer.ini
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+
+sudo systemctl enable --now pgbouncer
+
+ss -ltnp | grep 6432
+systemctl status pgbouncer
+

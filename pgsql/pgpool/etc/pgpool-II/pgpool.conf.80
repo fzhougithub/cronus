@@ -1,0 +1,58 @@
+# Backend Nodes
+backend_clustering_mode = 'raw'
+
+backend_hostname0 = '192.168.1.168'
+backend_port0 = 5432
+backend_weight0 = 1  # Ignored due to load_balance_mode = off
+backend_data_directory0 = '/var/tellme/pgsql/data'
+backend_flag0 = 'DISALLOW_TO_FAILOVER'
+
+backend_hostname1 = '192.168.1.80'
+backend_port1 = 5432
+backend_weight1 = 1
+backend_data_directory1 = '/var/tellme/pgsql/data'
+backend_flag1 = 'DISALLOW_TO_FAILOVER'
+
+backend_role0 = 'primary'
+backend_role1 = 'primary'
+
+# Disable Load Balancing
+load_balance_mode = off
+
+# Disable Replication Mode
+master_slave_mode = off
+
+# Custom Parameter-Based Routing
+#include 'store_mappings.conf'
+application_redirect_preference_list = 'group1:0,group2:1'
+
+# Authentication allow_clear_text_frontend_auth only work when turn off this 
+enable_pool_hba = off
+
+# Number of child processes to handle connections
+num_init_children = 32
+
+# Maximum number of connections per child process
+max_pool = 4
+
+# Timeout for client connections (in seconds)
+client_idle_limit = 0
+
+health_check_period = 10
+health_check_timeout = 20
+health_check_user = 'pfchart'            # Must exist on both backends
+health_check_password = 'pfchart1'       # Correct password
+health_check_database = 'fzhou'          # Existing database
+
+# In /etc/pgpool-II/pgpool.conf
+log_destination = 'stderr'
+logging_collector = on
+log_directory = '/var/tellme/log/pgpool_log'
+log_filename = 'pgpool.log'
+#log_filename = 'pgpool-%Y-%m-%d_%H%M%S.log'
+#log_min_messages = debug1
+log_min_messages = info
+
+# if allow the clear text password to the backend DB
+allow_clear_text_frontend_auth = true
+

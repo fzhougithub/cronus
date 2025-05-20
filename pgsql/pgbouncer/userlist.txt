@@ -1,0 +1,6 @@
+"alpha_user" "md5<hashed_password>"
+"beta_user" "md5<hashed_password>"
+"gamma_user" "md5<hashed_password>"
+"svc_user" "md5<hashed_password>"
+"pgbouncer_admin" "md5<hashed_password>"
+

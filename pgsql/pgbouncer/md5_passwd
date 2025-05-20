@@ -1,0 +1,1 @@
+echo -n 'alpha_usersecret1' | md5sum

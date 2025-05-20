@@ -1,0 +1,3 @@
+jdbc:postgresql://pgbouncer_host:6432/tenant_beta
+
+psql -h pgbouncer_host -p 6432 -U alpha_user -d tenant_alpha
