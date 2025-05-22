@@ -1,0 +1,6 @@
+/usr/pgsql-17/bin/psql "host=127.0.0.1 port=9999 dbname=fzhou user=pfchart password=pfchart1 application_name=group2"
+psql (17.4)
+Type "help" for help.
+
+
+

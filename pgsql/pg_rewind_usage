@@ -1,0 +1,46 @@
+# stop instance on failed primary
+systemctl stop postgresql
+
+# make sure there is repl user
+
+CREATE ROLE repl WITH REPLICATION PASSWORD 'repl1' LOGIN;
+GRANT EXECUTE ON FUNCTION pg_read_binary_file(text) TO repl;
+GRANT EXECUTE ON FUNCTION pg_ls_dir(text, boolean, boolean) TO repl;
+GRANT pg_monitor TO repl;
+But finally all of above does not work for pg_rewind
+
+You have to setup password for postgresql and use it 
+
+
+[root@rl01 mariadb]# grep archive /var/tellme/pgsql/data/postgresql.conf
+archive_mode = always           # enables archiving; off, on, or always
+#archive_library = ''           # library to use to archive a WAL file
+                                # (empty string indicates archive_command should
+archive_command = 'test ! -f /var/tellme/pgsql/admin/arch/%f && cp %p /var/tellme/pgsql/admin/arch/%f'          # command to use to archive a WAL file
+                                # placeholders: %p = path of file to archive
+                                # e.g. 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
+#archive_timeout = 0            # force a WAL file switch after this
+restore_command = 'cp /var/tellme/pgsql/admin/sarch/%f %p'              # command to use to restore an archived WAL file
+                                # e.g. 'cp /mnt/server/archivedir/%f %p'
+#archive_cleanup_command = ''   # command to execute at every restartpoint
+#max_standby_archive_delay = 30s        # max delay before canceling queries
+                                        # when reading WAL from archive;
+# Make sure the repl can connect to the new primary before rewind
+
+you have to modify .pgpass under postgres user
+
+cat ~/.pgpass
+
+192.168.1.80:5432:*:repl:repl1
+192.168.1.80:5432:*:postgres:postgres1
+# the pg_rewind will not auto start streaming replcation, so, you need to manually restart it after pg_rewind
+
+# You need to run pg_rewind twice time, first time sync data, second time, using -R to bring config for standby
+pg_rewind --target-pgdata=/var/tellme/pgsql/data --source-server="host=192.168.1.80 port=5432 user=repl dbname=postgres"
+
+pg_rewind --target-pgdata=/var/tellme/pgsql/data --source-server="host=192.168.1.80 port=5432 user=repl dbname=postgres" -R
+
+#Also, the primary connection string, suppose should be added into the new standby config, the pg_rewind will never update the config files
+
+
+
