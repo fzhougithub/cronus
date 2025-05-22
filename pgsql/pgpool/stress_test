@@ -1,0 +1,50 @@
+#!/bin/bash
+# Stress test pgpool-II query routing with application_name=oltp and analytic
+set -e
+
+PGPOOL_HOST="127.0.0.1"
+PGPOOL_PORT="9999"
+DB_USER="pfchart"
+DB_NAME="fzhou"
+DB_PASS="pfchart1"
+PGPOOL_LOG="/var/tellme/log/pgpool.log"
+
+# Create password file
+echo "$PGPOOL_HOST:$PGPOOL_PORT:$DB_NAME:$DB_USER:$DB_PASS" > /tmp/pgpass
+chmod 600 /tmp/pgpass
+
+# Create test table
+psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER password=$DB_PASS application_name=oltp" -c "CREATE TABLE stock_test (id SERIAL PRIMARY KEY, symbol VARCHAR(10), price NUMERIC, timestamp TIMESTAMP);"
+
+# Create SQL scripts
+cat <<EOF > /tmp/oltp_test.sql
+SET application_name = 'oltp';
+INSERT INTO stock_test (symbol, price, timestamp) VALUES ('AAPL', RANDOM() * 1000, NOW());
+EOF
+
+cat <<EOF > /tmp/analytic_test.sql
+SET application_name = 'analytic';
+SELECT count(1) FROM stockhistory;
+EOF
+
+# Run stress tests
+echo "Running OLTP stress test..."
+PGAPPNAME=oltp pgbench -h $PGPOOL_HOST -p $PGPOOL_PORT -U $DB_USER -d $DB_NAME -f /tmp/oltp_test.sql -c 10 -j 2 -t 1000 --client-passfile=/tmp/pgpass &
+
+echo "Running Analytic stress test..."
+PGAPPNAME=analytic pgbench -h $PGPOOL_HOST -p $PGPOOL_PORT -U $DB_USER -d $DB_NAME -f /tmp/analytic_test.sql -c 20 -j 4 -t 2000 --client-passfile=/tmp/pgpass &
+
+wait
+
+# Check logs
+echo "Checking pgpool-II logs for query routing..."
+tail -n 50 $PGPOOL_LOG | grep "NOTICE: DB node id"
+
+# Verify node status
+psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=postgres password=<postgres_password>" -c "SHOW pool_nodes;"
+
+# Clean up
+psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER password=$DB_PASS application_name=oltp" -c "DROP TABLE stock_test;"
+rm /tmp/oltp_test.sql /tmp/analytic_test.sql /tmp/pgpass
+
+echo "Stress test completed."

@@ -1,0 +1,5 @@
+curl https://dl.enterprisedb.com/default/release/get/14/rpm | sudo bash
+
+dnf --showduplicates list repmgr10
+
+

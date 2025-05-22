@@ -1,0 +1,8 @@
+pg_basebackup -h 192.168.1.168 -Ft -D /var/tellme/pgsql/data --wal-method=stream -c fast -C --slot=slot_02 -P -R -U postgres
+using tar format, why the target are all of the tarfile?
+
+Shoule be -Fp instead of -Ft
+
+pg_basebackup -h 192.168.1.168 -Fp -D /var/tellme/pgsql/data --wal-method=stream -c fast -P -R -U postgres
+
+

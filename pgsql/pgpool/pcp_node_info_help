@@ -1,0 +1,12 @@
+[root@DESKTOP-Q7EP4O1 pgpool-II]# pcp_node_info -U admin -W
+Password:
+192.168.1.80 5432 3 0.500000 down down standby unknown 0 none none 2025-05-21 17:47:16
+192.168.1.168 5433 3 0.500000 down down standby unknown 0 none none 2025-05-21 17:42:16
+
+Obviously, the server should be 81 not 80
+
+[root@DESKTOP-Q7EP4O1 pgpool-II]# pcp_node_info -U admin -W
+Password:
+192.168.1.81 5432 1 0.500000 waiting up main main 0 none none 2025-05-22 18:11:57
+192.168.1.168 5433 1 0.500000 waiting down replica replica 0 none none 2025-05-22 18:11:57
+
