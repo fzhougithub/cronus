@@ -36,8 +36,12 @@ cat ~/.pgpass
 # the pg_rewind will not auto start streaming replcation, so, you need to manually restart it after pg_rewind
 
 # You need to run pg_rewind twice time, first time sync data, second time, using -R to bring config for standby
+<<<<<<< HEAD
 pg_rewind --target-pgdata=/var/tellme/pgsql/data -P -R --source-server="host=192.168.1.168 port=5432 user=postgres dbname=postgres"
 #pg_rewind --target-pgdata=/var/tellme/pgsql/data --source-server="host=192.168.1.80 port=5432 user=repl dbname=postgres"
+=======
+pg_rewind --target-pgdata=/var/tellme/pgsql/data --source-server="host=192.168.1.80 port=5432 user=repl dbname=postgres"
+>>>>>>> 7c29507 (Add certain files)
 
 pg_rewind --target-pgdata=/var/tellme/pgsql/data --source-server="host=192.168.1.80 port=5432 user=repl dbname=postgres" -R
 

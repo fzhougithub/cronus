@@ -1,0 +1,3 @@
+psql -d postgres -c "\x" -c "select * from pg_stat_statements order by mean_exec_time desc"|sed 's/--//g' > pg_stat_statemetns.bak
+
+
