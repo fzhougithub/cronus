@@ -1,0 +1,19 @@
+[root@DESKTOP-Q7EP4O1 test]# pgbench "host=127.0.0.1 port=9999 user=pfchart dbname=fzhou password=pfchart1 application_name=analytic" -f /var/tmp/test_read.sql -c 1 -t 5 -n
+pgbench (17.4)
+NOTICE:  DB node id: 1 statement: SELECT count(1) FROM stockhistory_yearly;
+NOTICE:  DB node id: 1 statement: SELECT count(1) FROM stockhistory_yearly;
+NOTICE:  DB node id: 1 statement: SELECT count(1) FROM stockhistory_yearly;
+NOTICE:  DB node id: 1 statement: SELECT count(1) FROM stockhistory_yearly;
+NOTICE:  DB node id: 1 statement: SELECT count(1) FROM stockhistory_yearly;
+transaction type: /var/tmp/test_read.sql
+scaling factor: 1
+query mode: simple
+number of clients: 1
+number of threads: 1
+maximum number of tries: 1
+number of transactions per client: 5
+number of transactions actually processed: 5/5
+number of failed transactions: 0 (0.000%)
+latency average = 107.460 ms
+initial connection time = 106.596 ms
+tps = 9.305806 (without initial connection time)

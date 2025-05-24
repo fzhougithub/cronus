@@ -1,0 +1,2 @@
+echo "SELECT count(1) FROM stockhistory_yearly;" > /var/tmp/test_read.sql
+PGAPPNAME=analytic PGPASSWORD=pfchart1 pgbench -h 127.0.0.1 -p 9999 -U pfchart -d fzhou -f /var/tmp/test_read.sql -c 1 -t 5 -n

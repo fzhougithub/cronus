@@ -1,0 +1,45 @@
+#!/bin/bash
+# Stress test pgpool-II for oltp (node 1) and analytic (node 0) with 1:10 ratio
+set -e
+
+PGPOOL_HOST="127.0.0.1"
+PGPOOL_PORT="9999"
+DB_USER="pfchart"
+DB_NAME="fzhou"
+DB_PASS="pfchart1"
+PGPOOL_LOG="/var/tellme/log/pgpool.log"
+
+# Create test table
+psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER password=$DB_PASS application_name=oltp" -c "DROP TABLE IF EXISTS stock_test; CREATE TABLE stock_test (id SERIAL PRIMARY KEY, symbol VARCHAR(10), price NUMERIC, timestamp TIMESTAMP);"
+
+# Create SQL scripts
+echo "SET application_name = 'oltp'; INSERT INTO stock_test (symbol, price, timestamp) VALUES ('AAPL', RANDOM() * 1000, NOW());" > /var/tmp/oltp_test.sql
+cat <<EOF > /var/tmp/analytic_test.sql
+SET application_name = 'analytic';
+SELECT count(1) FROM (
+  SELECT CASE (RANDOM() * 2)::INTEGER
+    WHEN 0 THEN (SELECT count(1) FROM stockhistory)
+    WHEN 1 THEN (SELECT count(1) FROM stockhistory_weekly)
+    WHEN 2 THEN (SELECT count(1) FROM stockhistory_monthly)
+  END
+) AS random_query;
+EOF
+
+# Run stress tests
+echo "Running OLTP test..."
+PGPASSWORD=$DB_PASS pgbench -h $PGPOOL_HOST -p $PGPOOL_PORT -U $DB_USER -d $DB_NAME -f /var/tmp/oltp_test.sql -c 1 -t 500 -n &
+
+echo "Running Analytic test..."
+PGPASSWORD=$DB_PASS pgbench -h $PGPOOL_HOST -p $PGPOOL_PORT -U $DB_USER -d $DB_NAME -f /var/tmp/analytic_test.sql -c 10 -t 500 -n &
+
+wait
+
+# Check logs
+echo "Checking query routing..."
+tail -n 50 $PGPOOL_LOG | grep "NOTICE: DB node id"
+
+# Count queries
+echo "OLTP (INSERT) count:"
+tail -n 5000 $PGPOOL_LOG | grep "NOTICE: DB node id" | grep "INSERT" | wc -l
+echo "Analytic (SELECT) count:"
+tail -n 5000 $PGPOOL_LOG | grep "NOTICE: DB node id" | grep "SELECT" |

@@ -1,0 +1,14 @@
+NOTICE:  DB node id: 0 statement: SELECT count(1) FROM stockhistory;
+transaction type: /var/tmp/test_read.sql
+scaling factor: 1
+query mode: simple
+number of clients: 10
+number of threads: 1
+maximum number of tries: 1
+number of transactions per client: 10
+number of transactions actually processed: 100/100
+number of failed transactions: 0 (0.000%)
+latency average = 21119.498 ms
+initial connection time = 142.727 ms
+tps = 0.473496 (without initial connection time)
+[root@DESKTOP-Q7EP4O1 pgpool]# PGPASSWORD=pfchart1 pgbench -h 127.0.0.1 -p 9999 -U pfchart -d fzhou -f /var/tmp/test_read.sql -c 10 -t 10 -n

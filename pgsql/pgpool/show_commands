@@ -1,0 +1,12 @@
+PGPOOL SHOW -- show the value of a configuration parameter
+PGPOOL SET -- change a configuration parameter
+PGPOOL SET CACHE -- delete query cache
+PGPOOL RESET -- restore the value of a configuration parameter to the default value
+SHOW POOL STATUS --  sends back the list of configuration parameters with their name, value, and description
+SHOW POOL NODES --  sends back a list of all configured nodes
+SHOW POOL_PROCESSES --  sends back a list of all Pgpool-II processes waiting for connections and dealing with a connection
+SHOW POOL_POOLS --  sends back a list of pools handled by Pgpool-II.
+SHOW POOL_VERSION --  displays a string containing the Pgpool-II release number.
+SHOW POOL_CACHE --  displays cache storage statistics
+SHOW POOL_HEALTH_CHECK_STATS --  show health check statistics data
+SHOW POOL_BACKEND_STATS --  show backend SQL command statistics

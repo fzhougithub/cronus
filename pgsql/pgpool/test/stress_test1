@@ -14,7 +14,7 @@ psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER password
 
 # Create SQL scripts
 echo "SET application_name = 'oltp'; INSERT INTO stock_test (symbol, price, timestamp) VALUES ('AAPL', RANDOM() * 1000, NOW());" > /var/tmp/oltp_test.sql
-echo "SET application_name = 'analytic'; SELECT count(1) FROM stock_test;" > /var/tmp/analytic_test.sql
+echo "SET application_name = 'analytic'; SELECT count(1) FROM stockhistory;" > /var/tmp/analytic_test.sql
 
 # Run stress tests
 echo "Running OLTP test..."
