@@ -1,3 +1,12 @@
+1. Get all of the running statements stat
+
 psql -d postgres -c "\x" -c "select * from pg_stat_statements order by mean_exec_time desc"|sed 's/--//g' > pg_stat_statemetns.bak
+
+2. Get specific table statistics;
+
+psql -d postgres -c "x" -c "analyze stock.stockhistor;select * from pg_stats where schemaname='stock' and tablename='stockhistory';" > pg_stats.bak
+
+
+
 
 
