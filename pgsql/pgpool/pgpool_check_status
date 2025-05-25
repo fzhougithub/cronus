@@ -1,49 +1,118 @@
 #!/bin/bash
+# The PG_NODES sequense should be exactly match the hostnameN definition in your pgpool.conf
 
+# === Constants ===
 PGPOOL_PORT=9999
 PGPOOL_USER=postgres
 PGPOOL_DB=fzhou
 PGPOOL_HOST=localhost
+PGPOOL_CONF="/etc/pgpool-II/pgpool.conf"
+PG_NODES=("192.168.1.81" "192.168.1.168")
+PG_USER="postgres"
+TIMEOUT=5
+DATE=$(date +"%Y%m%d-%H:%M:%S")
 
-# Check for defunct pgpool processes
-DEFUNCT_COUNT=$(ps -ef | grep '[p]gpool' | grep -c '<defunct>')
+PCP_PORT=9898
+PCP_USER=admin
+PCP_PASSWD_FILE=/etc/pgpool-II/pcp.conf
 
-if [ "$DEFUNCT_COUNT" -gt 0 ]; then
-    echo "Found $DEFUNCT_COUNT defunct pgpool processes. Restarting pgpool2..."
-    systemctl restart pgpool2
-    sleep 5
-else
-    # Check for wait-for-connection processes
-    WAIT_COUNT=$(ps -ef | grep '[p]gpool' | grep -c 'wait for connection request')
-    if [ "$WAIT_COUNT" -gt 0 ]; then
-        echo "Pgpool is in wait state with $WAIT_COUNT. Running test query..."
+CONFIG_UPDATED=0
 
-        # Run the SHOW pool_nodes command and capture output
-        OUTPUT=$(psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$PGPOOL_DB user=$PGPOOL_USER" -c "show pool_nodes" 2>&1)
-        STATUS=$?
+# === Function to PG_NODES=("192.168.1.168" "192.168.1.81")
 
-        if [ $STATUS -ne 0 ]; then
-            echo "Critical, Primary Down"
-            echo "psql error:"
-            echo "$OUTPUT"
-        else
-            echo "Pgpool is responsive."
-
-            # Check if any standby node has inconsistent status (status=down but pg_status=up)
-            BAD_STANDBY=$(echo "$OUTPUT" | awk -F '|' '$7 ~ /standby/ && $4 ~ /down/ && $5 ~ /up/ { print }')
-            NORMAL_DOWN=$(echo "$OUTPUT" | awk -F '|' '$7 ~ /standby/ && $4 ~ /down/ && $5 ~ /down/ { print }')
-
-            if [ -n "$BAD_STANDBY" ]; then
-                echo "Standby in inconsistent state (status=down but pg_status=up). Restarting pgpool2..."
-                echo "$BAD_STANDBY"
-                systemctl restart pgpool2
-            elif [ -n "$NORMAL_DOWN" ]; then
-                echo "Warn: standby down"
-                echo "$NORMAL_DOWN"
-            fi
+get_primary_node() {
+    for i in "${!PG_NODES[@]}"; do
+	NODE="${PG_NODES[$i]}"
+        RESULT=$(psql -h "$NODE" -U "$PG_USER" -t -c "select pg_is_in_recovery()" 2>/dev/null | tr -d '[:space:]')
+        if [ "$RESULT" == "f" ]; then
+            echo "$i"
+            return 0
         fi
+    done
+
+    echo "No primary node found" >&2
+    return 1
+}
+
+# === Function to update app_name_redirect_preference_list ===
+update_app_name_redirect_config() {
+    PRIMARY_NODE_ID="$1"
+    if [ "$PRIMARY_NODE_ID" == "0" ]; then
+        NEW_LINE="app_name_redirect_preference_list = 'oltp:0,analytic:1'"
     else
-        echo "Pgpool is not in wait state and no defunct process found."
+        NEW_LINE="app_name_redirect_preference_list = 'oltp:1,analytic:0'"
     fi
+
+    is_right=$(grep -c "$NEW_LINE" "$PGPOOL_CONF")
+    if [ $is_right -ne 1 ]; then
+        echo "Updating pgpool.conf to set: $NEW_LINE"
+        sed -i "s/^app_name_redirect_preference_list *= *.*/$NEW_LINE/" "$PGPOOL_CONF"
+	systemctl restart pgpool2
+        CONFIG_UPDATED=1
+    else
+        #echo "pgpool.conf already has correct app_name_redirect_preference_list"
+	if [ $(ps -ef|grep [p]gpool|grep -c health ) -eq 0 ];then
+
+		systemctl start pgpool2
+	fi
+	sleep 5
+        CONFIG_UPDATED=0
+    fi
+}
+
+# === Step 1: Update config from PCP node info ===
+PRIMARY_NODE_ID=$(get_primary_node)
+#echo "primary node is : $PRIMARY_NODE_ID"
+
+if [[ "$PRIMARY_NODE_ID" =~ ^[0-9]+$ ]]; then
+    update_app_name_redirect_config "$PRIMARY_NODE_ID"
+else
+    echo "$DATE Could not determine primary node via PCP. Stopping pgpool2 immediately."
+    systemctl stop pgpool2
+    exit 1
+fi
+
+# === Step 2: Query Pgpool using SQL ===
+OUTPUT=$(timeout $TIMEOUT psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$PGPOOL_DB user=$PGPOOL_USER" -c "show pool_nodes" 2>&1)
+STATUS=$?
+
+if [ $STATUS -eq 124 ]; then
+    echo "$DATE psql timed out during pool_nodes query. Restarting pgpool2..."
+    systemctl restart pgpool2
+    exit 1
+elif [ $STATUS -ne 0 ]; then
+    echo "$DATE Error querying pool_nodes:"
+    echo "$DATE $OUTPUT"
+    exit 1
+fi
+
+# === Step 3: Check for defunct processes ===
+DEFUNCT_COUNT=$(ps -ef | grep '[p]gpool' | grep -c '<defunct>')
+if [ "$DEFUNCT_COUNT" -gt 0 ]; then
+    echo "$DATE Found $DEFUNCT_COUNT defunct pgpool processes. Restarting pgpool2..."
+    systemctl restart pgpool2
+    exit 0
+fi
+
+# === Step 4: Check Pgpool wait status ===
+WAIT_COUNT=$(ps -ef | grep '[p]gpool' | grep -c 'wait for connection request')
+if [ "$WAIT_COUNT" -gt 0 ]; then
+    #echo "$DATEℹ️ Pgpool is in wait state. Checking for standby status..."
+
+    BAD_STANDBY=$(echo "$OUTPUT" | awk -F '|' '$7 ~ /standby/ && $4 ~ /down/ && $5 ~ /up/ { print }')
+    NORMAL_DOWN=$(echo "$OUTPUT" | awk -F '|' '$7 ~ /standby/ && $4 ~ /down/ && $5 ~ /down/ { print }')
+
+    if [ -n "$BAD_STANDBY" ] || [ "$CONFIG_UPDATED" -eq 1 ]; then
+        echo "$DATE Restarting pgpool2 due to bad standby or updated config"
+        systemctl restart pgpool2
+    elif [ -n "$NORMAL_DOWN" ]; then
+        echo "$DATE Warning: standby is down"
+        echo "$NORMAL_DOWN"
+    else
+        echo "$DATE OK Primary Node id: $PRIMARY_NODE_ID"
+    fi
+else
+    echo "$DATE Starting pgpool2..."
+    systemctl start pgpool2
 fi
 

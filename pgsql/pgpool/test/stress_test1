@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stress test pgpool-II query routing for oltp and analytic
+# Stress test pgpool-II query routing using psql instead of pgbench
 set -e
 
 PGPOOL_HOST="127.0.0.1"
@@ -10,25 +10,47 @@ DB_PASS="pfchart1"
 PGPOOL_LOG="/var/tellme/log/pgpool.log"
 
 # Create test table
-psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER password=$DB_PASS application_name=oltp" -c "DROP TABLE IF EXISTS stock_test; CREATE TABLE stock_test (id SERIAL PRIMARY KEY, symbol VARCHAR(10), price NUMERIC, timestamp TIMESTAMP);"
+psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER password=$DB_PASS application_name=oltp" -c "
+DROP TABLE IF EXISTS stock_test;
+CREATE TABLE stock_test (
+  id SERIAL PRIMARY KEY,
+  symbol VARCHAR(10),
+  price NUMERIC,
+  timestamp TIMESTAMP
+);"
 
 # Create SQL scripts
-echo "SET application_name = 'oltp'; INSERT INTO stock_test (symbol, price, timestamp) VALUES ('AAPL', RANDOM() * 1000, NOW());" > /var/tmp/oltp_test.sql
-echo "SET application_name = 'analytic'; SELECT count(1) FROM stockhistory;" > /var/tmp/analytic_test.sql
+OLTP_SQL="SET application_name = 'oltp'; INSERT INTO stock_test (symbol, price, timestamp) VALUES ('AAPL', RANDOM() * 1000, NOW());"
+ANALYTIC_SQL="SET application_name = 'analytic'; SELECT count(1) FROM stockhistory;"
 
-# Run stress tests
+# Run OLTP test with 5 simulated clients, 500 transactions each
 echo "Running OLTP test..."
-PGPASSWORD=$DB_PASS pgbench -h $PGPOOL_HOST -p $PGPOOL_PORT -U $DB_USER -d $DB_NAME -f /var/tmp/oltp_test.sql -c 5 -t 500 -n
+for i in {1..5}; do
+  (
+    for j in {1..500}; do
+      PGPASSWORD=$DB_PASS psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER application_name=oltp" -c "$OLTP_SQL" >/dev/null 2>&1
+    done
+  ) &
+done
+wait
 
+# Run Analytic test with 10 simulated clients, 1000 queries each
 echo "Running Analytic test..."
-PGPASSWORD=$DB_PASS pgbench -h $PGPOOL_HOST -p $PGPOOL_PORT -U $DB_USER -d $DB_NAME -f /var/tmp/analytic_test.sql -c 10 -t 1000 -n
+for i in {1..10}; do
+  (
+    for j in {1..1000}; do
+      PGPASSWORD=$DB_PASS psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER application_name=analytic" -c "$ANALYTIC_SQL" >/dev/null 2>&1
+    done
+  ) &
+done
+wait
 
 # Check logs
 echo "Checking query routing..."
-tail -n 20 $PGPOOL_LOG | grep "NOTICE: DB node id"
+tail -n 20 "$PGPOOL_LOG" | grep "NOTICE: DB node id"
 
 # Clean up
 psql "host=$PGPOOL_HOST port=$PGPOOL_PORT dbname=$DB_NAME user=$DB_USER password=$DB_PASS application_name=oltp" -c "DROP TABLE stock_test;"
-rm /var/tmp/oltp_test.sql /var/tmp/analytic_test.sql
 
 echo "Test completed."
+

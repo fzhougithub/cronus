@@ -1,5 +1,2 @@
-curl https://dl.enterprisedb.com/default/release/get/14/rpm | sudo bash
-
-dnf --showduplicates list repmgr10
-
-
+dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-$(rpm -E %{rhel})-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+dnf install -y repmgr_17.x86_64

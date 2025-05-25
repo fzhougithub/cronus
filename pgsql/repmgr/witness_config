@@ -1,0 +1,12 @@
+vi /etc/repmgr/17/repmgr.conf
+
+node_id=3
+node_name=witness
+conninfo='host=192.168.1.168 user=repmgr dbname=repmgr connect_timeout=2'
+use_replication_slots=no
+failover=automatic
+monitor_interval_secs=5
+promote_command='echo "This is a witness node, no promote"'
+follow_command='echo "This is a witness node, no follow"'
+
+
