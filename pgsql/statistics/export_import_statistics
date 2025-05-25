@@ -1,0 +1,70 @@
+1. Export basic statistics
+
+-- Export basic statistics
+COPY (
+    SELECT * 
+    FROM pg_stats 
+    WHERE schemaname = 'public' AND tablename = 'your_table'
+) TO '/tmp/stats_export.csv' WITH CSV HEADER;
+
+-- Export extended statistics
+COPY (
+    SELECT 
+        stxname AS statistic_name,
+        stxnamespace::regnamespace AS schema_name,
+        stxowner::regrole AS owner,
+        stxkeys AS column_ids,
+        stxkind AS statistic_types
+    FROM 
+        pg_statistic_ext
+    WHERE 
+        stxrelid = (SELECT oid FROM pg_class WHERE relname = 'your_table')
+) TO '/tmp/extended_stats_export.csv' WITH CSV HEADER;
+
+
+2. Import
+Only way to import the statistic is alter table to assign the value from production
+You have to run analyze on dev vm to create the statistics. 
+
+import csv
+import psycopg2
+
+# Connect to the development database
+conn = psycopg2.connect(
+    dbname="dev_db",
+    user="dev_user",
+    password="dev_password",
+    host="dev_host",
+    port="5432"
+)
+cur = conn.cursor()
+
+# Read the exported extended statistics CSV
+with open('/tmp/extended_stats_export.csv', 'r') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        statistic_name = row['statistic_name']
+        schema_name = row['schema_name']
+        table_name = row['table_name']
+        column_ids = row['column_ids'].split()  # Assuming column IDs are space-separated
+        statistic_types = row['statistic_types']
+
+        # Map column IDs to column names (you need to query pg_attribute for this)
+        # For simplicity, assume you have a function `get_column_names` that does this
+        column_names = get_column_names(schema_name, table_name, column_ids)
+
+        # Create the extended statistics
+        query = f"""
+        CREATE STATISTICS {schema_name}.{statistic_name} ({statistic_types}) 
+        ON {', '.join(column_names)} 
+        FROM {schema_name}.{table_name};
+        """
+        cur.execute(query)
+
+# Commit and close
+conn.commit()
+cur.close()
+conn.close()
+
+
+

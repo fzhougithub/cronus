@@ -1,0 +1,15 @@
+Run below command on standby node you want to promote
+
+su - postgres -c "repmgr standby switchover --siblings-follow --force-rewind"
+
+On new standby
+
+su - postgres -c "repmgr -f /etc/repmgr/17/repmgr.conf node rejoin -h 192.168.1.168 -U repmgr -d repmgr --force-rewind"
+
+But, always has issue. 
+
+su - postgres -c "repmgr -f /etc/repmgr/17/repmgr.conf node rejoin -h 192.168.1.168 -U repmgr -d repmgr --force-rewind --force"
+
+Always fail, we have to install witness node on pgpool node
+
+

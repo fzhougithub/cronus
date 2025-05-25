@@ -1,0 +1,93 @@
+This demo show exactly the pgpool redirect, the check pg_stat_statements limitation, and the relevant info we can get 
+The node 0 is primary, you can also see the app analytic will be redirected to the standby, 
+
+psql "host=localhost port=9999 dbname=fzhou user=postgres application_name=analytic"
+
+\x
+
+fzhou=# \e
+NOTICE:  DB node id: 0 statement: SELECT
+    d.datname AS database_name,
+    s.query,
+    s.calls,
+    s.total_exec_time,
+    s.max_exec_time,
+    s.rows,
+    s.shared_blks_hit,
+    s.shared_blks_read
+FROM pg_stat_statements s
+JOIN pg_database d ON s.dbid = d.oi
+-[ RECORD 1 ]----+-----------------------------------------
+database_name    | fzhou
+query            | analyze stock.stockhistory
+calls            | 1
+total_exec_time  | 24364.952253
+max_exec_time    | 24364.952253
+rows             | 0
+shared_blks_hit  | 747880
+shared_blks_read | 0
+-[ RECORD 2 ]----+-----------------------------------------
+database_name    | fzhou
+query            | select count($1) from stock.stockhistory
+calls            | 1
+total_exec_time  | 3146.6339479999997
+max_exec_time    | 3146.6339479999997
+rows             | 1
+shared_blks_hit  | 169599
+shared_blks_read | 0
+-[ RECORD 3 ]----+-----------------------------------------
+database_name    | fzhou
+query            | ANALYZE stock.stockhistory
+calls            | 1
+total_exec_time  | 34009.043296
+max_exec_time    | 34009.043296
+rows             | 0
+shared_blks_hit  | 569054
+shared_blks_read | 18950
+
+fzhou=# show pool_nodes;
+-[ RECORD 1 ]----------+--------------------
+node_id                | 0
+hostname               | 192.168.1.81
+port                   | 5432
+status                 | up
+pg_status              | up
+lb_weight              | 0.500000
+role                   | primary
+pg_role                | primary
+select_cnt             | 3
+load_balance_node      | false
+replication_delay      | 0
+replication_state      |
+replication_sync_state |
+last_status_change     | 2025-05-25 02:50:00
+-[ RECORD 2 ]----------+--------------------
+node_id                | 1
+hostname               | 192.168.1.168
+port                   | 5432
+status                 | up
+pg_status              | up
+lb_weight              | 0.500000
+role                   | standby
+pg_role                | standby
+select_cnt             | 4
+load_balance_node      | true
+replication_delay      | 0
+replication_state      |
+replication_sync_state |
+last_status_change     | 2025-05-25 02:50:00
+
+fzhou=# show application_name
+fzhou-# ;
+NOTICE:  DB node id: 1 statement: show application_name
+;
+-[ RECORD 1 ]----+---------
+application_name | analytic
+
+fzhou=# select count(1) from stock.stockhistory;
+NOTICE:  DB node id: 1 statement: select count(1) from stock.stockhistory;
+-[ RECORD 1 ]---
+count | 13816698
+
+
+You can see the different type of query go to different nodes
