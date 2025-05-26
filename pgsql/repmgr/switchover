@@ -1,3 +1,40 @@
+You have to follow the instruction, to add the systemd command into the configured service command part
+
+1. Dry run to see whether the whole process is OK
+
+[postgres@rl02 ~]$ repmgr standby switchover --siblings-follow --dry-run
+NOTICE: checking switchover on node "rl02" (ID: 2) in --dry-run mode
+INFO: SSH connection to host "192.168.1.168" succeeded
+INFO: able to execute "repmgr" on remote host "192.168.1.168"
+WARNING: option "--sibling-nodes" specified, but no sibling nodes exist
+INFO: 1 walsenders required, 10 available
+INFO: demotion candidate is able to make replication connection to promotion candidate
+INFO: 0 pending archive files
+INFO: replication lag on this standby is 0 seconds
+NOTICE: attempting to pause repmgrd on 2 nodes
+INFO: would pause repmgrd on node "rl01" (ID: 1)
+INFO: would pause repmgrd on node "rl02" (ID: 2)
+NOTICE: local node "rl02" (ID: 2) would be promoted to primary; current primary "rl01" (ID: 1) would be demoted to standby
+INFO: following shutdown command would be run on node "rl01":
+  "systemctl stop postgresql"
+INFO: parameter "shutdown_check_timeout" is set to 60 seconds
+INFO: prerequisites for executing STANDBY SWITCHOVER are met
+
+2. repmgrd must be shutdown on all of the nodes before switchover
+
+3. Remember to add --force-rewind -R option
+
+4. repmgr standby switchover --siblings-follow --force-rewind
+
+Better, but still, in the middle, new standby could not start, then, manually start, but this time, the slot handling is better, 
+repmgr standby register --force
+still need to run above
+
+
+
+
+
+
 Run below command on standby node you want to promote
 
 su - postgres -c "repmgr standby switchover --siblings-follow --force-rewind"
