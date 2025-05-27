@@ -1,0 +1,15 @@
+Starting "SYS"."SYS_EXPORT_TABLE_02":  
+W-1 Startup on instance 1 took 1 seconds
+W-1 Processing object type TABLE_EXPORT/TABLE/TABLE_DATA
+W-1 Processing object type TABLE_EXPORT/TABLE/TABLE
+W-1      Completed 3 TABLE objects in 42 seconds
+W-1 . . exported "SYS"."WRP$$2_$$_REPORTS_DETAILS"            79.3 KB      13 rows in 1 seconds using direct_path
+W-1 . . exported "SYS"."WRP$$2_$$_REPORTS"                    39.5 KB      13 rows in 0 seconds using direct_path
+W-1 . . exported "SYS"."WRP$$2_$$_REPORTS_TIME_BANDS"         15.3 KB      13 rows in 0 seconds using direct_path
+W-1      Completed 3 TABLE_EXPORT/TABLE/TABLE_DATA objects in 1 seconds
+W-1 Master table "SYS"."SYS_EXPORT_TABLE_02" successfully loaded/unloaded
+Generating checksums for dump file set
+******************************************************************************
+Dump file set for SYS.SYS_EXPORT_TABLE_02 is:
+  /var/tellme/obackup/awrdat_5_23__sm.dmp
+Job "SYS"."SYS_EXPORT_TABLE_02" successfully completed at Tue May 27 07:56:01 2025 elapsed 0 00:01:29

@@ -1,0 +1,76 @@
+export DIAG_ADR_ENABLED=OFF
+
+Here are some examples of using RMAN with different options based on your requirements:
+
+### 1. Connect to the target database without a recovery catalog
+
+rman target / nocatalog
+
+This command connects RMAN to the target database using OS authentication (assuming you're logged in as the Oracle owner) and does not use a recovery catalog.
+
+### 2. Connect to the target database with a recovery catalog
+
+rman target sys/password@target_db catalog rman/rmanpass@rcat_db
+
+Replace `sys/password@target_db` with your target database credentials and `rman/rmanpass@rcat_db` with your recovery catalog credentials.
+
+### 3. Execute commands from a script file
+
+rman target / cmdfile=/u01/scripts/full_backup.rman log=/u01/logs/backup.log
+
+This runs the RMAN script located at `/u01/scripts/full_backup.rman` and logs the output to `/u01/logs/backup.log`.
+
+### 4. Perform a full database backup with logging
+
+rman target / log=/u01/logs/backup_$(date +%Y%m%d).log <<EOF
+BACKUP DATABASE PLUS ARCHIVELOG;
+DELETE OBSOLETE;
+EOF
+
+This performs a full database backup along with archivelogs and deletes obsolete backups. The log file is named with the current date.
+
+### 5. Use variables in an RMAN script
+
+rman target / using "BACKUP_DIR='/u01/backups'" <<EOF
+VARIABLE backup_location VARCHAR2(100);
+EXEC :backup_location := '${BACKUP_DIR}';
+BACKUP DATABASE FORMAT '${backup_location}/%U';
+EOF
+
+This passes a shell variable `BACKUP_DIR` into the RMAN script and uses it to define the backup location.
+
+### 6. Check syntax of an RMAN script without execution
+
+rman checksyntax cmdfile=/u01/scripts/restore_script.rman
+
+This checks the syntax of the RMAN script without actually executing it.
+
+### 7. Connect to an auxiliary database for duplication
+
+rman target sys/pass@prod auxiliary sys/pass@aux_db <<EOF
+DUPLICATE TARGET DATABASE TO aux_db FROM ACTIVE DATABASE;
+EOF
+
+This duplicates the production database to an auxiliary database using the active database (no need to shut it down).
+
+### 8. Debug an RMAN session
+
+rman target / debug trace=/u01/logs/rman_debug.log
+
+This enables debugging mode and writes debug information to the specified trace file.
+
+### 9. Use a recovery catalog script
+
+rman target / catalog rman/rmanpass@rcat script "daily_backup"
+
+This executes a pre-stored catalog script named `daily_backup`.
+
+### 10. Set a timeout for RMAN operations
+
+rman target / timeout=3600 <<EOF
+BACKUP INCREMENTAL LEVEL 0 DATABASE;
+EOF
+
+This sets a timeout of 3600 seconds (1 hour) for the RMAN operations in the script.
+
+Remember to replace placeholders like `password`, `target_db`, and paths with your actual database credentials and system paths. These examples cover common use cases for RMAN options.

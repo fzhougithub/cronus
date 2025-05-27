@@ -1,0 +1,71 @@
+SQL Monitor is a feature in Oracle Database that provides real-time monitoring and detailed diagnostics for long-running and resource-intensive SQL statements. It helps database administrators (DBAs) and developers identify performance bottlenecks, optimize SQL execution, and ensure efficient resource utilization.
+
+Key Features of SQL Monitor:
+Real-Time Monitoring:
+
+Tracks the execution of SQL statements in real-time.
+
+Provides detailed information about the progress and performance of long-running queries.
+Detailed Diagnostics:
+
+Captures metrics such as elapsed time, CPU usage, I/O operations, and memory consumption.
+
+Identifies stages of execution (e.g., parsing, execution, fetching) and their respective durations.
+Visualization:
+
+Offers graphical representations of SQL execution plans and performance metrics.
+
+Helps in understanding the flow of execution and identifying bottlenecks.
+Alerts and Notifications:
+
+Can be configured to send alerts when SQL statements exceed predefined thresholds for resource usage or execution time.
+Integration with AWR (Automatic Workload Repository):
+
+SQL Monitor data is often stored in AWR for historical analysis and comparison over time.
+Access via Enterprise Manager (EM):
+
+SQL Monitor data can be accessed and analyzed through Oracle Enterprise Manager (EM) Cloud Control or Database Express (DB Express).
+Focus on Long-Running Queries:
+
+Primarily targets SQL statements that run for an extended period or consume significant resources.
+
+How SQL Monitor Works:
+When a SQL statement meets certain criteria (e.g., long execution time, high resource consumption), Oracle automatically starts monitoring it.
+
+The monitoring data is collected and stored in memory and, optionally, in AWR for later analysis.
+
+DBAs can query the V$SQL_MONITOR and related views to access the monitoring data.
+
+Common Use Cases:
+Performance Tuning: Identify and optimize slow-running SQL statements.
+
+Troubleshooting: Diagnose issues such as excessive I/O, CPU usage, or locking.
+
+Capacity Planning: Understand resource consumption patterns for SQL workloads.
+
+Auditing: Track the execution of critical SQL statements for compliance or security purposes.
+
+Key Views for SQL Monitor Data:
+V$SQL_MONITOR: Displays real-time monitoring data for SQL statements.
+
+V$SQL_MONITOR_STATNAME: Provides descriptions of the statistics collected by SQL Monitor.
+
+DBA_HIST_SQL_MONITOR: Stores historical SQL monitoring data in AWR.
+
+Example Query to Access SQL Monitor Data:
+SELECT sql_id, sql_exec_id, status, elapsed_time/1e6 "Elapsed (s)", cpu_time/1e6 "CPU (s)", io_time/1e6 "I/O (s)"
+FROM v$sql_monitor
+WHERE status = 'EXECUTING'
+ORDER BY elapsed_time DESC;
+
+This query retrieves information about currently executing SQL statements, including their elapsed time, CPU usage, and I/O operations.
+
+Enabling SQL Monitor:
+SQL Monitor is enabled by default in Oracle Database. However, you can control its behavior using initialization parameters such as:
+SQL_MONITOR: Enables or disables SQL monitoring (default is TRUE).
+
+SQL_MONITOR_BINDS: Controls whether bind variable values are captured (default is FALSE).
+
+SQL Monitor is a powerful tool for diagnosing and optimizing SQL performance in Oracle Database.
+
+

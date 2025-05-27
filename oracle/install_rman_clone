@@ -1,0 +1,361 @@
+https://oracle-base.com/articles/11g/duplicate-database-using-rman-11gr2
+
+This is the part that show could not trust AI again
+1. tnsnames.ora should be setup on both side
+2. The listenner config should be full style
+
+[oracle@rl01 admin]$ cat listener.ora
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = FREE)
+      (ORACLE_HOME = /u01/app/oracle/product/23ai/dbhomeFree)
+      (SID_NAME = FREE)
+    )
+  )
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.168)(PORT = 1521))
+    )
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+
+ADR_BASE_LISTENER = /u01/app/oracle
+
+This is the key point!!!
+
+Also both side should setup password file with same password, orapwd
+
+[oracle@DESKTOP-Q7EP4O1 dbs]$ rman TARGET sys/ AUXILIARY sys/@free_rl01
+
+Recovery Manager: Release 23.0.0.0.0 - Production on Tue May 27 05:47:14 2025
+Version 23.7.0.25.01
+
+Copyright (c) 1982, 2025, Oracle and/or its affiliates.  All rights reserved.
+
+target database Password:
+connected to target database: FREE (DBID=1473542665)
+auxiliary database Password:
+connected to auxiliary database: FREE (not mounted)
+
+
+
+RMAN> RUN {
+  # AllocaRUte persistent chNannels
+  ALLOCATE AUXILIARY CHANNEL ch1 DEVICE TYPE DISK;
+  ALLO CATE AUXILIARY CHANNEL ch2 DEVICE TYPE DISK;
+
+{  # Set new file locations
+  SET NEWNAME FOR DATABASE TO '/u01/o
+radata/FREE/%b';
+
+  # Main duplication command -2>   using PFILE instead of SPFILE
+   DUPLICATE DATABASE TO FREE
+  FROM ACTIVE DATABA#SE
+  PFILE='/opt/oracle/product/ 23ai/dbhomeFree/dbs/initFREE.ora'
+  NOFILENAMECHAlECK;
+}locate persistent channels
+3>   ALLOCATE AUXILIARY CHANNEL ch1 DEVICE TYPE DISK;
+4>   ALLOCATE AUXILIARY CHANNEL ch2 DEVICE TYPE DISK;
+5>
+6>   # Set new file locations
+7>   SET NEWNAME FOR DATABASE TO '/u01/oradata/FREE/%b';
+8>
+9>   # Main duplication command - using PFILE instead of SPFILE
+10>   DUPLICATE DATABASE TO FREE
+11>   FROM ACTIVE DATABASE
+12>   PFILE='/opt/oracle/product/23ai/dbhomeFree/dbs/initFREE.ora'
+13>   NOFILENAMECHECK;
+14>
+}
+allocated channel: ch1
+channel ch1: SID=17 device type=DISK
+
+allocated channel: ch2
+channel ch2: SID=162 device type=DISK
+
+executing command: SET NEWNAME
+
+Starting Duplicate Db at 27-MAY-25
+current log archived
+
+contents of Memory Script:
+{
+   sql clone "create spfile from memory";
+}
+executing Memory Script
+
+sql statement: create spfile from memory
+
+contents of Memory Script:
+{
+   shutdown clone immediate;
+   startup clone nomount;
+}
+executing Memory Script
+
+Oracle instance shut down
+
+connected to auxiliary database (not started)
+Oracle instance started
+
+Total System Global Area     617795088 bytes
+
+Fixed Size                     5426704 bytes
+Variable Size                335544320 bytes
+Database Buffers             272629760 bytes
+Redo Buffers                   4194304 bytes
+duplicating Online logs to Oracle Managed File (OMF) location
+
+contents of Memory Script:
+{
+   sql clone "alter system set  db_name =
+ ''FREE'' comment=
+ ''Modified by RMAN duplicate'' scope=spfile";
+   sql clone "alter system set  db_unique_name =
+ ''FREE'' comment=
+ ''Modified by RMAN duplicate'' scope=spfile";
+   shutdown clone immediate;
+   startup clone force nomount
+   backup as copy current controlfile auxiliary format  '/u01/oradata/FREE/control01.ctl';
+   restore clone primary controlfile to  '/u01/oradata/FREE/control02.ctl' from
+ '/u01/oradata/FREE/control01.ctl';
+   alter clone database mount;
+}
+executing Memory Script
+
+sql statement: alter system set  db_name =  ''FREE'' comment= ''Modified by RMAN duplicate'' scope=spfile
+
+sql statement: alter system set  db_unique_name =  ''FREE'' comment= ''Modified by RMAN duplicate'' scope=spfile
+
+Oracle instance shut down
+
+Oracle instance started
+
+Total System Global Area     617795088 bytes
+
+Fixed Size                     5426704 bytes
+Variable Size                335544320 bytes
+Database Buffers             272629760 bytes
+Redo Buffers                   4194304 bytes
+allocated channel: ch1
+channel ch1: SID=30 device type=DISK
+allocated channel: ch2
+channel ch2: SID=189 device type=DISK
+
+Starting backup at 27-MAY-25
+restarting auxiliary database without server parameter file
+Oracle instance started
+
+Total System Global Area     617795088 bytes
+
+Fixed Size                     5426704 bytes
+Variable Size                335544320 bytes
+Database Buffers             272629760 bytes
+Redo Buffers                   4194304 bytes
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of Duplicate Db command at 05/27/2025 05:53:57
+RMAN-05501: aborting duplication of target database
+RMAN-03015: error occurred in stored script Memory Script
+RMAN-06034: at least 1 channel must be allocated to execute this command
+
+
+
+
+RUN {
+  ALLOCATE AUXILIARY CHANNEL ch1 DEVICE TYPE DISK;
+  
+  DUPLICATE DATABASE TO FREE
+  FROM ACTIVE DATABASE
+  SPFILE
+  NOFILENAMECHECK;
+}
+
+
+
+
+
+
+1. Already installed software
+2. Want to clone database from existing one
+
+PreRequest
+
+1. Prepare the file structure. 
+We just create basic file structure, will let rmam to create the other required locations
+
+mkdir -p /u01/app/
+cd /u01/app
+ln /opt/oracle oracle
+chown -R oracle.oinstall /u01/app
+
+as oracle user
+cd /u01
+mkdir oradata
+mkdir fra
+
+2. su - oracle
+
+vi .bash_profile
+. ~/.oe
+
+vi .oe
+export ORACLE_HOME=/u01/app/oracle/product/23ai/dbhomeFree
+export ORACLE_BASE=/opt/oracle/admin
+export PATH=$ORACLE_HOME/bin:$PATH
+export ORACLE_SID=orcl
+
+3. Prepare password file
+as oracle user
+orapwd file=$ORACLE_HOME/dbs/orapwORCL password=1Dj...! entries=10
+
+4. Make a small initORCL.ora config file
+[oracle@rl01 dbs]$ cat initORCL.ora
+db_name=ORCL
+memory_target=2G
+control_files='/u01/oradata/ORCL/control01.ctl'
+db_recovery_file_dest='/u01/oradata/fra'
+db_recovery_file_dest_size=2G
+
+5. Modify the tns file to make sure the source and target are reachable
+$ORACLE_HOME/network/admin/tnsnames.ora
+
+UNTIL NOW< we just realized that we have network issue, only way is push the data from source to the target, so, we have to do the work on the source DB side
+
+change to the wls distro
+
+===============================Solution 2, push from source
+
+1.On the target, config and start listener
+vi $ORACLE_HOME/network/listener.ora
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = ORCL)
+      (ORACLE_HOME = /opt/oracle/product/23ai/dbhomeFree)
+      (SID_NAME = ORCL)
+    )
+  )
+
+lisnctl start
+
+
+2.On source server
+
+vi $ORACLE_HOME/network/admin/tnsnames.ora
+Add the part for target, call ORCL
+
+3. Try to connect rman
+
+[oracle@DESKTOP-Q7EP4O1 admin]$ rman TARGET / AUXILIARY sys/@192.168.1.168:1521/ORCL
+
+Recovery Manager: Release 23.0.0.0.0 - Production on Tue May 27 02:53:12 2025
+Version 23.7.0.25.01
+
+Copyright (c) 1982, 2025, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: FREE (DBID=1473542665)
+auxiliary database Password:
+connected to auxiliary database (not started)
+
+
+Here is the best trick! Even without start the instance, the rman still work!
+
+Finally we hit the oracle Free limitation, we have to change
+
+RUN {
+  # Allocate channels for parallel operations
+  ALLOCATE AUXILIARY CHANNEL ch1 DEVICE TYPE DISK;
+  ALLOCATE AUXILIARY CHANNEL ch2 DEVICE TYPE DISK;
+  
+  # Set new file locations
+  SET NEWNAME FOR DATABASE TO '/u01/oradata/FREE/%b';
+  
+  # Main duplication command
+  DUPLICATE DATABASE TO FREE  # Must use FREE as target name
+  FROM ACTIVE DATABASE
+  SPFILE
+    SET db_name='FREE'        # Must match SID
+    SET db_unique_name='FREE'
+    SET control_files='/u01/oradata/FREE/control01.ctl'
+    SET db_create_file_dest='/u01/oradata/FREE'
+    SET db_recovery_file_dest='/u01/fra'
+  NOFILENAMECHECK;
+}
+
+
+
+RUN {
+  ALLOCATE AUXILIARY CHANNEL ch1 DEVICE TYPE DISK;
+  ALLOCATE AUXILIARY CHANNEL ch2 DEVICE TYPE DISK;
+  
+  SET NEWNAME FOR DATABASE TO '/u01/oradata/ORCL/%b'; 
+  
+  DUPLICATE DATABASE TO ORCL
+  FROM ACTIVE DATABASE
+  SPFILE
+    SET control_files='/u01/oradata/ORCL/control01.ctl'
+    SET db_create_file_dest='/u01/oradata/ORCL'
+  NOFILENAMECHECK;
+}
+
+The below code does not work, just because the set newname only allow the datafile number, not the directly file fullpath
+RUN {
+  ALLOCATE AUXILIARY CHANNEL ch1 DEVICE TYPE DISK;
+  ALLOCATE AUXILIARY CHANNEL ch2 DEVICE TYPE DISK;
+
+  DUPLICATE DATABASE TO ORCL
+  FROM ACTIVE DATABASE
+  SPFILE
+    SET db_name='ORCL'
+    SET db_unique_name='ORCL'
+    SET control_files='/u01/oradata/ORCL/control01.ctl'
+    SET db_recovery_file_dest='/u01/fra'
+    SET db_create_file_dest='/u01/oradata/ORCL'
+    SET log_archive_dest_1='LOCATION=/u01/fra/arch'
+  USING COMPRESSED BACKUPSET
+  SECTION SIZE 2G
+  NOFILENAMECHECK
+  LOGFILE
+    GROUP 2 ('/u01/oradata/ORCL/redo02.log') SIZE 200M,
+    GROUP 3 ('/u01/oradata/ORCL/redo03.log') SIZE 200M,
+    GROUP 4 ('/u01/oradata/ORCL/redo04.log') SIZE 300M
+  PLUGGABLE DATABASE FREEPDB1
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/system01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/system01.dbf'
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/sysaux01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/sysaux01.dbf'
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/undotbs01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/undotbs01.dbf'
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/users01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/users01.dbf';
+}
+
+RUN {
+  ALLOCATE AUXILIARY CHANNEL ch1 DEVICE TYPE DISK;
+  ALLOCATE AUXILIARY CHANNEL ch2 DEVICE TYPE DISK;
+
+  DUPLICATE DATABASE TO ORCL
+  FROM ACTIVE DATABASE
+  SPFILE
+    SET db_name='ORCL'
+    SET db_unique_name='ORCL'
+    SET control_files='/u01/oradata/ORCL/control01.ctl'
+    SET db_recovery_file_dest='/u01/fra'
+    SET db_create_file_dest='/u01/oradata/ORCL'
+    SET log_archive_dest_1='LOCATION=/u01/fra/arch'
+  USING COMPRESSED BACKUPSET
+  SECTION SIZE 2G
+  NOFILENAMECHECK
+  LOGFILE
+    GROUP 2 ('/u01/oradata/ORCL/redo02.log') SIZE 200M,
+    GROUP 3 ('/u01/oradata/ORCL/redo03.log') SIZE 200M,
+    GROUP 4 ('/u01/oradata/ORCL/redo04.log') SIZE 300M
+  PLUGGABLE DATABASE FREEPDB1
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/system01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/system01.dbf'
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/sysaux01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/sysaux01.dbf'
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/undotbs01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/undotbs01.dbf'
+    SET NEWNAME FOR DATAFILE '/opt/oracle/oradata/FREE/FREEPDB1/users01.dbf' TO '/u01/oradata/ORCL/ORCLPDB1/users01.dbf';
+}

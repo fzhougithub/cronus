@@ -1,0 +1,430 @@
+1 Two type of baseline
+
+Automatic Workload Repository (AWR) Baselines: These are snapshots of performance statistics (CPU, I/O, wait events, top SQL, etc.) collected over a specific period. They provide a historical view of your production system's behavior during a "normal" or "peak" workload.
+
+SQL Plan Baselines (SPM): These are a set of accepted execution plans for specific SQL statements. They ensure that once a good plan is found for a SQL statement, the optimizer will continue to use that plan, preventing plan regressions due to changes in statistics, initialization parameters, or schema modifications.
+
+2. AWR baseline
+
+AWR is the gold standard for Oracle performance analysis.
+
+Identify Representative Workload Periods:
+
+Normal Workload: Capture a baseline during periods of typical production activity.
+Peak Workload: Capture a baseline during periods of high resource utilization (e.g., end-of-month processing, daily batch jobs).
+Problematic Workload (if applicable): If you're trying to diagnose a specific performance issue, capture a baseline during the time the problem occurs.
+Generate AWR Snapshots:
+
+AWR automatically takes snapshots at regular intervals (default is 60 minutes). You can also manually create snapshots:
+
+SQL
+
+EXEC DBMS_WORKLOAD_REPOSITORY.CREATE_SNAPSHOT;
+To capture specific periods, you'll need the SNAP_ID from DBA_HIST_SNAPSHOT.
+SQL> desc  DBA_HIST_SNAPSHOT;
+ Name                                                                                                              Null?    Type
+ ----------------------------------------------------------------------------------------------------------------- -------- ----------------------------------------------------------------------------
+ SNAP_ID                                                                                                           NOT NULL NUMBER
+ DBID                                                                                                              NOT NULL NUMBER
+ INSTANCE_NUMBER                                                                                                   NOT NULL NUMBER
+ STARTUP_TIME                                                                                                      NOT NULL TIMESTAMP(3)
+ BEGIN_INTERVAL_TIME                                                                                               NOT NULL TIMESTAMP(3)
+ END_INTERVAL_TIME                                                                                                 NOT NULL TIMESTAMP(3)
+ FLUSH_ELAPSED                                                                                                              INTERVAL DAY(5) TO SECOND(1)
+ SNAP_LEVEL                                                                                                                 NUMBER
+ ERROR_COUNT                                                                                                                NUMBER
+ SNAP_FLAG                                                                                                                  NUMBER
+ SNAP_TIMEZONE                                                                                                              INTERVAL DAY(0) TO SECOND(0)
+ BEGIN_INTERVAL_TIME_TZ                                                                                                     TIMESTAMP(3) WITH TIME ZONE
+ END_INTERVAL_TIME_TZ                                                                                                       TIMESTAMP(3) WITH TIME ZONE
+ STATUS                                                                                                                     NUMBER
+ CON_ID                                          
+
+From above table, get the snap_id
+SQL> select dbid from v$database;
+1473542665
+From above, get the dbid
+SELECT instance_number FROM v$instance
+1
+Get the instance number
+
+
+
+Create AWR Baselines:
+Once you have a range of snapshots, you can create a named AWR baseline. This preserves the performance data for that period, preventing it from being purged by the AWR retention policy.
+
+SQL
+
+BEGIN
+  DBMS_WORKLOAD_REPOSITORY.CREATE_BASELINE (
+    start_snap_id   => 18,
+    end_snap_id     => 23
+    baseline_name   => 'test_workload_202505',
+    dbid            => (SELECT dbid FROM v$database),
+    instance_number => (SELECT instance_number FROM v$instance),
+    expiration      => SYSDATE + 365 -- Keep for 1 year
+  );
+END;
+/
+
+SQL> BEGIN
+  DBMS_WORKLOAD_REPOSITORY  2  .CREATE_BASELINE (
+    start_sna  3  p_id => 18,
+    end_snap_id   =>  4   23,
+    baseline_name => 'test_  5  workload_202505',
+    expiration  6      => 365  -- in days, NOT a date
+  );
+END;
+/
+  7    8    9
+PL/SQL procedure successfully completed.
+
+Then you can use the existing script to dump the baseline to the dump_dir
+
+@$ORACLE_HOME/rdbms/admin/awrextr.sql
+
+
+SQL> @$ORACLE_HOME/rdbms/admin/awrextr.sql
+~~~~~~~~~~~~~
+AWR EXTRACT
+~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~  This script will extract the AWR data for a range of snapshots  ~
+~  into a dump file.  The script will prompt users for the         ~
+~  following information:                                          ~
+~     (1) database id                                              ~
+~     (2) snapshot range to extract                                ~
+~     (3) name of directory object                                 ~
+~     (4) name of dump file                                        ~
+~     (5) export sql monitor data or not                           ~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Databases in this Workload Repository schema
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* 1473542665 FREE         DESKTOP-Q7EP
+                          4O1
+
+
+The default database id is the local one: '1473542665'.  To use this
+database id, press <return> to continue, otherwise enter an alternative.
+
+Enter value for dbid: 1473542665
+Using 1473542665 for Database ID
+
+
+Specify the number of days of snapshots to choose from
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Entering the number of days (n) will result in the most recent
+(n) days of snapshots being listed.  Pressing <return> without
+specifying a number lists all completed snapshots.
+
+
+Enter value for num_days: 10
+Listing the last 10 days of Completed Snapshots
+FREE                 1 19 May 2025 02:58
+                     2 19 May 2025 04:00
+                     3 19 May 2025 04:58
+                     4 19 May 2025 05:58
+                     5 26 May 2025 13:49
+                     6 26 May 2025 14:58
+                     7 26 May 2025 15:58
+                     8 26 May 2025 16:58
+                     9 26 May 2025 17:58
+                    10 26 May 2025 18:58
+                    11 26 May 2025 19:58
+                    12 26 May 2025 20:58
+                    13 26 May 2025 21:58
+                    14 26 May 2025 22:58
+                    15 26 May 2025 23:58
+                    16 27 May 2025 00:58
+                    17 27 May 2025 01:58
+                    18 27 May 2025 02:58
+                    19 27 May 2025 03:58
+                    20 27 May 2025 04:58
+                    21 27 May 2025 05:58
+                    22 27 May 2025 06:58
+                    23 27 May 2025 07:29
+
+
+Specify the Begin and End Snapshot Ids
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enter value for begin_snap: 5
+Begin Snapshot Id specified: 5
+
+Enter value for end_snap: 23
+End   Snapshot Id specified: 23
+
+
+Specify the Directory Name
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+DATA_PUMP_DIR                  /opt/oracle/admin/FREE/dpdump/
+DBMS_OPTIM_ADMINDIR            /opt/oracle/product/23ai/dbhomeFree/rdbms/admin
+DBMS_OPTIM_LOGDIR              /opt/oracle/product/23ai/dbhomeFree/cfgtoollogs
+DPUMP_DIR                      /var/tellme/obackup
+JAVA$JOX$CUJS$DIRECTORY$       /opt/oracle/product/23ai/dbhomeFree/javavm/admin/
+OPATCH_INST_DIR                /opt/oracle/product/23ai/dbhomeFree/OPatch
+OPATCH_LOG_DIR                 /opt/oracle/product/23ai/dbhomeFree/rdbms/log
+OPATCH_SCRIPT_DIR              /opt/oracle/product/23ai/dbhomeFree/QOpatch
+ORACLE_BASE                    /opt/oracle
+ORACLE_HOME                    /opt/oracle/product/23ai/dbhomeFree
+SDO_DIR_ADMIN                  /opt/oracle/product/23ai/dbhomeFree/md/admin
+XMLDIR                         /opt/oracle/product/23ai/dbhomeFree/rdbms/xml
+XSDDIR                         /opt/oracle/product/23ai/dbhomeFree/rdbms/xml/sch
+                               ema
+
+
+Choose a Directory Name from the above list (case-sensitive).
+
+Enter value for directory_name: DPUMP_DIR
+Using the dump directory: DPUMP_DIR
+
+Specify the Name of the Extract Dump File
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The prefix for the default dump file name is awrdat_5_23.
+To use this name, press <return> to continue, otherwise enter
+an alternative.
+
+Enter value for file_name:
+Using the dump file prefix: awrdat_5_23
+
+Specify whether to export sql monitor data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If not to export sql monitor data,
+enter NO or press <return> to continue,
+otherwise enter YES to export sql monitor data
+
+Enter value for include_sqlmon: YES
+|
+| ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|  The AWR extract dump file will be located
+|  in the following directory/file:
+|   /var/tellme/obackup
+|   awrdat_5_23.dmp
+| ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|
+|  *** AWR Extract Started ...
+|
+|  This operation will take a few moments. The
+|  progress of the AWR extract operation can be
+|  monitored in the following directory/file:
+|   /var/tellme/obackup
+|   awrdat_5_23.log
+|
+
+End of AWR Extract
+
+Then, you need to move the generated data file to dev server. 
+
+/var/tellme/obackup/awrdat_5_23.dmp
+/var/tellme/obackup/awrdat_5_23__sm.dmp
+
+
+Then, load the AWR data into the dev directory
+
+@$ORACLE_HOME/rdbms/admin/awrload.sql
+
+SQL> @$ORACLE_HOME/rdbms/admin/awrload.sql
+~~~~~~~~~~
+AWR LOAD
+~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~  This script will load the AWR data from a dump file. The   ~
+~  script will prompt users for the following information:    ~
+~     (1) name of directory object                            ~
+~     (2) name of dump file                                   ~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Specify the Directory Name
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Directory Name                 Directory Path
+------------------------------ -------------------------------------------------
+DATA_PUMP_DIR                  /opt/oracle/admin/FREE/dpdump/
+DBMS_OPTIM_ADMINDIR            /opt/oracle/product/23ai/dbhomeFree/rdbms/admin
+DBMS_OPTIM_LOGDIR              /opt/oracle/product/23ai/dbhomeFree/cfgtoollogs
+DPUMP_DIR                      /var/tellme/obackup
+JAVA$JOX$CUJS$DIRECTORY$       /opt/oracle/product/23ai/dbhomeFree/javavm/admin/
+OPATCH_INST_DIR                /opt/oracle/product/23ai/dbhomeFree/OPatch
+OPATCH_LOG_DIR                 /opt/oracle/product/23ai/dbhomeFree/rdbms/log
+OPATCH_SCRIPT_DIR              /opt/oracle/product/23ai/dbhomeFree/QOpatch
+ORACLE_BASE                    /opt/oracle
+ORACLE_HOME                    /opt/oracle/product/23ai/dbhomeFree
+SDO_DIR_ADMIN                  /opt/oracle/product/23ai/dbhomeFree/md/admin
+XMLDIR                         /opt/oracle/product/23ai/dbhomeFree/rdbms/xml
+XSDDIR                         /opt/oracle/product/23ai/dbhomeFree/rdbms/xml/sch
+                               ema
+
+
+Choose a Directory Name from the list above (case-sensitive).
+
+Enter value for directory_name: DPUMP_DIR
+
+Using the dump directory: DPUMP_DIR
+
+Specify the Name of the Dump File to Load
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Please specify the prefix of the dump file (.dmp) to load:
+
+Enter value for file_name: awrdat_5_23
+
+Loading from the file name: awrdat_5_23.dmp
+
+
+|
+| ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|  Loading the AWR data from the following
+|  directory/file:
+|   /var/tellme/obackup
+|   awrdat_5_23.dmp
+| ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|
+|  *** AWR Load Started ...
+|
+|  This operation will take a few moments. The
+|  progress of the AWR load operation can be
+|  monitored in the following directory/file:
+|   /var/tellme/obackup
+|   awrdat_5_23.log
+|
+*
+ERROR at line 1:
+ORA-13571: AWR import or export operation failed:  dbid 1473542665 is enabled for flushing, choose a different DBID.
+ORA-06512: at "SYS.DBMS_SWRF_INTERNAL", line 6245
+ORA-06512: at "SYS.DBMS_SWRF_INTERNAL", line 6295
+ORA-06512: at "SYS.DBMS_WORKLOAD_REPOSITORY", line 942
+ORA-06512: at line 4
+Help: https://docs.oracle.com/error-help/db/ora-13571/
+
+
+
+End of AWR Load
+
+Coul not be loaded into same database. 
+
+
+
+
+
+
+Export AWR Data (for moving to another database):
+To move AWR data to a development environment, you need to export it. This uses the DBMS_SWRF_INTERNAL package.
+
+Prerequisites:
+EXECUTE privileges on DBMS_SWRF_INTERNAL.
+A database directory object (e.g., CREATE DIRECTORY DUMP_DIR AS '/var/tellme/obackup';).
+Export Procedure:
+
+
+SQL
+
+BEGIN
+  DBMS_SWRF_INTERNAL.AWR_EXTRACT (
+    dmpfile => 'awr_prod_baseline_202405.dmp',
+    dmp_dir => 'DUMP_DIR',
+    bid     => &beginning_snapshot_id, -- Starting SNAP_ID of your baseline
+    eid     => &ending_snapshot_id     -- Ending SNAP_ID of your baseline
+  );
+END;
+/
+
+
+BEGIN
+  DBMS_SWRF_INTERNAL.AWR_EXTRACT (
+    dmpfile => 'awr_prod_baseline_202505.dmp',
+    dmp_dir => 'DUMP_DIR',
+    bid     => &beginning_snapshot_id, -- Starting SNAP_ID of your baseline
+    eid     => &ending_snapshot_id     -- Ending SNAP_ID of your baseline
+  );
+END;
+/
+
+
+This creates a Data Pump dump file containing the AWR data.
+
+
+
+Both methods—using the `DBMS_SWRF_INTERNAL.AWR_EXTRACT` procedure and the `awrextr.sql` script—are designed to export AWR data, including baselines, from one Oracle database to another. The primary difference lies in their usage and flexibility.
+
+### 🔍 Method Comparison
+
+| Feature                  | `DBMS_SWRF_INTERNAL.AWR_EXTRACT`            | `awrextr.sql` Script                                      |                                                                                                         |
+| ------------------------ | ------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Interface**            | PL/SQL procedure                            | Interactive SQL script                                    |                                                                                                         |
+| **Automation**           | Suitable for scripting and automation       | Requires manual input                                     |                                                                                                         |
+| **User Prompts**         | None                                        | Prompts for DBID, snapshot range, directory, and filename |                                                                                                         |
+| **Flexibility**          | High—parameters can be set programmatically | Limited to interactive use                                |                                                                                                         |
+| **Underlying Mechanism** | Direct call to internal package             | Calls `DBMS_SWRF_INTERNAL.AWR_EXTRACT` internally         |                                                                                                         |
+| **Use Case**             | Ideal for automated, repeatable tasks       | Suitable for ad-hoc, manual exports                       | ([Oracle Documentation][1], [Oracle Support][2], [Yuan Yao, An Oracle ACE's Blog][3], [imaginaryit][4]) |
+
+### ✅ When to Use Each Method
+
+* **Use `DBMS_SWRF_INTERNAL.AWR_EXTRACT`**: When you need to automate the export process, integrate it into scripts, or schedule regular exports without manual intervention.
+
+* **Use `awrextr.sql`**: When performing a one-time export or when you prefer a guided, interactive approach without writing custom scripts.
+
+### 📋 Example: Using `DBMS_SWRF_INTERNAL.AWR_EXTRACT`
+
+```sql
+BEGIN
+  DBMS_SWRF_INTERNAL.AWR_EXTRACT (
+    dmpfile => 'awr_prod_baseline_202405.dmp',
+    dmp_dir => 'DUMP_DIR',
+    bid     => 18,  -- Beginning snapshot ID
+    eid     => 23   -- Ending snapshot ID
+  );
+END;
+/
+```
+
+
+
+Ensure that the directory object `DUMP_DIR` exists and points to a valid filesystem path accessible by the Oracle database.
+
+### 📋 Example: Using `awrextr.sql`
+
+```sql
+SQL> @?/rdbms/admin/awrextr.sql
+```
+
+
+
+This script will prompt you for necessary information, such as the database ID, snapshot range, directory object, and dump file name.([DBA Paradise][5])
+
+### 🔄 Importing the Exported AWR Data
+
+Regardless of the export method used, importing the AWR data into another database involves the following steps:
+
+1. **Transfer the Dump File**: Move the `.dmp` file to the target database server.
+
+2. **Use `awrload.sql` to Import**: Run the `awrload.sql` script to import the data into a staging schema.([mbjconsulting.com][6])
+
+   ```sql
+   SQL> @?/rdbms/admin/awrload.sql
+   ```
+
+
+
+3. **Move Data to AWR Repository**: Use the `DBMS_SWRF_INTERNAL.MOVE_TO_AWR` procedure to transfer the data from the staging schema to the AWR repository.([Scribd][7])
+
+   ```sql
+   BEGIN
+     DBMS_SWRF_INTERNAL.MOVE_TO_AWR(schname => 'STAGING_SCHEMA_NAME');
+   END;
+   /
+   ```
+
+
+
+Replace `'STAGING_SCHEMA_NAME'` with the actual name of the staging schema used during the import.
+
+By following these steps, you can effectively transfer AWR baselines and snapshots between Oracle databases, choosing the method that best fits your operational needs.
+
+[1]: https://docs.oracle.com/en/database/oracle/oracle-database/18/tdppt/using-automatic-workload-repository-warehouse.html?utm_source=chatgpt.com "10 Using Automatic Workload Repository Warehouse for Generating ..."
+[2]: https://support.oracle.com/knowledge/Oracle%20Database%20Products/2972836_1.html?utm_source=chatgpt.com "Exporting Historic SQL Monitor Reports in AWR Extract / Dump"
+[3]: https://byte-way.com/2024/07/26/transporting-awr-data-using-oracle-built-in-scripts-awrextr-sql-and-awrload-sql/?utm_source=chatgpt.com "Transporting AWR Data Using Oracle' Built-in scripts: awrextr.sql ..."
+[4]: https://imaginaryit.wordpress.com/2025/01/24/oracle-awr-extract-and-load-step-by-step-guide/?utm_source=chatgpt.com "Oracle AWR Extract and Load: Step-by-Step Guide - imaginaryit"
+[5]: https://dbaparadise.com/2018/09/how-to-export-the-awr-repository/?utm_source=chatgpt.com "How To Export The AWR Repository - DBA Paradise"
+[6]: https://www.mbjconsulting.com/oracle_links/New_Features_Oracle_10G.html?utm_source=chatgpt.com "Oracle 10g New Features - MBJConsulting"
+[7]: https://www.scribd.com/document/159507449/AWR-Reports?utm_source=chatgpt.com "AWR Reports | PDF | Oracle Database | Sql - Scribd"
+

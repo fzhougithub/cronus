@@ -1,8 +1,16 @@
+Step 1: Install Software
 
-sudo dnf -y install oracle-database-preinstall-21c
-Download rpm https://www.oracle.com/database/technologies/xe-downloads.html
-Looks like oracle does support the rocky 9, maybe can directly install it. 
- dnf install oracle-database-preinstall-23ai.x86_64
+Refer to the installation guide
+https://docs.oracle.com/en/database/oracle/oracle-database/23/xeinl/installing-oracle-database-free.html#GUID-46EA860A-AAC4-453F-8EEE-42CC55A4FAD5__RPM-LINUX-X64
+
+https://yum.oracle.com/repo/OracleLinux/OL9/appstream/x86_64/
+Download the oracle-database-preinstall-23ai-1.0-2.el9.x86_64.rpm
+
+scp /mnt/c/Users/Admin/Downloads/oracle-database-preinstall-23ai-1.0-2.el9.x86_64.rpm 192.168.1.168:/var/tmp/.
+
+yum install oracle-database-preinstall-23ai-1.0-2.el9.x86_64.rpm
+Also, download and transfer the major rpm package to the vm
+yum install oracle-database-free-23ai-1.0-1.el9.x86_64.rpm
 
 https://www.oracle.com/database/free/get-started/
 
@@ -48,7 +56,13 @@ uid=54321(oracle) gid=54321(oinstall) groups=54321(oinstall),54322(dba),54323(op
 [fzhou@DESKTOP-Q7EP4O1 Downloads]$ ls -larth /var/log/oracle-database-free-23ai/results/oraInstall.log
 -rw-r--r-- 1 root root 733 Mar 11 09:56 /var/log/oracle-database-free-23ai/results/oraInstall.log
 
-2. Creating and Configuring an Oracle Database
+
+
+
+
+
+
+Step 2. Creating and Configuring an Oracle Database
 
 Oracle 23ai still use /etc/init.d directory to start the instance. 
 

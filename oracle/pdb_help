@@ -1,0 +1,18 @@
+select * from dba_pdbs;
+alter session set container=FREEPDB1;
+show con_name;
+
+
+select username,profile from dba_users
+
+ALTER PROFILE DEFAULT LIMIT  PASSWORD_VERIFY_FUNCTION ora12c_verify_function;
+select * from dba_profiles where profile='DEFAULT' AND RESOURCE_NAME='PASSWORD_VERIFY_FUNCTION'
+
+SQL>  SELECT a.username,a.password_versions FROM dba_users a WHERE a.username='SYSTEM';
+SYSTEM                                                                                                                           11G 12C
+ALTER USER system PASSWORD EXPIRE
+alter user system identified by "Dafanshenzhang!123";
+
+ALTER USER system ACCOUNT UNLOCK;
+
+ALTER USER system IDENTIFIED BY 

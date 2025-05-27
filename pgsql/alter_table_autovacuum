@@ -1,0 +1,11 @@
+ alter table stockhistory_default set(autovacuum_vacuum_scale_factor = 0.005);
+
+SELECT reloptions
+FROM pg_class
+WHERE relname = 'stockhistory_default';
+
+fzhou=# vacuum full stockhistory_default;
+NOTICE:  DB node id: 0 statement: vacuum full stockhistory_default;
+VACUUM
+
+

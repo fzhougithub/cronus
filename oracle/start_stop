@@ -1,0 +1,32 @@
+1. You can create service file
+
+[oracle@DESKTOP-Q7EP4O1 init.d]$ systemctl cat oracle
+# /usr/lib/systemd/system/oracle.service
+[Unit]
+Description=Oracle Database Service
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User=oracle
+Group=oinstall
+# Set the Oracle home directory
+Environment=ORACLE_HOME=/opt/oracle/product/23ai/dbhomeFree
+# Set the Oracle SID (replace <ORACLE_SID> with your actual SID, e.g., orcl)
+Environment=ORACLE_SID=orcl
+# Start the database using dbstart
+ExecStart=/bin/bash -c "${ORACLE_HOME}/bin/dbstart ${ORACLE_HOME}"
+# Stop the database using dbshut
+ExecStop=/bin/bash -c "${ORACLE_HOME}/bin/dbshut ${ORACLE_HOME}"
+# Ensure the service does not restart automatically
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+
+2. systemctl daemon-reload
+
+3. systemctl start oracle
+
+4. 
+

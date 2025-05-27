@@ -1,0 +1,34 @@
+Here’s a table explaining the parameters defined in your initFREE.ora file:
+
+​​Parameter​​	​​Description​​
+FREE.__data_transfer_cache_size	Internal parameter for Oracle's data transfer cache size. Typically not user-configurable.
+FREE.__datamemory_area_size	Internal parameter for Oracle's data memory area size. Typically not user-configurable.
+FREE.__db_cache_size	The size of the database buffer cache, which stores data blocks read from datafiles. This is a critical parameter for performance.
+FREE.__inmemory_ext_roarea	Internal parameter for Oracle's In-Memory extension read-only area. Typically not user-configurable.
+FREE.__inmemory_ext_rwarea	Internal parameter for Oracle's In-Memory extension read-write area. Typically not user-configurable.
+FREE.__java_pool_size	The size of the Java pool, which is used for Java execution and storage. If you are not using Java in the database, this can be set to 0.
+FREE.__large_pool_size	The size of the large pool, which is used for shared server processes, parallel execution, and RMAN backups.
+FREE.__oracle_base	The Oracle Base directory, which is the root directory for Oracle software and database files. This is set from the environment variable ORACLE_BASE.
+FREE.__pga_aggregate_target	The target size for the PGA (Program Global Area) aggregate, which is used for sorting, hashing, and other operations in memory.
+FREE.__sga_target	The target size for the SGA (System Global Area), which includes shared memory structures like the database buffer cache, shared pool, and redo log buffer.
+FREE.__shared_io_pool_size	The size of the shared I/O pool, which is used for shared storage services like Oracle ASM (Automatic Storage Management).
+FREE.__shared_pool_size	The size of the shared pool, which stores SQL statements, execution plans, and other shared data structures.
+FREE.__streams_pool_size	The size of the Streams pool, which is used for Oracle Streams (a feature for data replication and messaging). If not using Streams, this can be set to 0.
+FREE.__unified_pga_pool_size	The size of the unified PGA pool, which is used for unified memory management in Oracle.
+FREE._instance_recovery_bloom_filter_size	Internal parameter for Oracle's instance recovery bloom filter size. Typically not user-configurable.
+*.compatible	Specifies the compatibility level of the database. This ensures backward compatibility with earlier versions of Oracle. In this case, it is set to 23.6.0.
+*.control_files	Specifies the location of the control files, which are critical for database recovery and management.
+*.db_block_size	The size of a database block, which is the smallest unit of data storage in the database. In this case, it is set to 8192 bytes (8 KB).
+*.db_name	The name of the database instance. In this case, it is set to FREE.
+*.diagnostic_dest	Specifies the directory for diagnostic data, such as alert logs and trace files. In this case, it is set to /opt/oracle.
+*.dispatchers	Configures the Oracle Net listeners (dispatchers) for shared server connections. The format is (PROTOCOL=TCP) (SERVICE=FREEXDB), where FREEXDB is the service name.
+*.enable_pluggable_database	Enables or disables pluggable databases (PDBs). In this case, it is set to true, meaning PDBs are enabled.
+*.local_listener	Specifies the local listener for the database. In this case, it is set to LISTENER_FREE, which should be defined in the tnsnames.ora file.
+*.nls_language	Specifies the default language for the database. In this case, it is set to AMERICAN.
+*.nls_territory	Specifies the default territory (region) for the database. In this case, it is set to AMERICA.
+*.open_cursors	Specifies the maximum number of cursors (SQL statements) that a session can have open simultaneously. In this case, it is set to 300.
+*.pga_aggregate_target	Specifies the target size for the PGA aggregate memory. In this case, it is set to 197m (197 MB).
+*.processes	Specifies the maximum number of processes that can connect to the database simultaneously. In this case, it is set to 200.
+*.remote_login_passwordfile	Specifies whether a password file is used for remote authentication. The value EXCLUSIVE means only one database can use the password file.
+*.sga_target	Specifies the total size of the SGA (System Global Area). In this case, it is set to 591m (591 MB).
+*.undo_tablespace	Specifies the undo tablespace to be used for managing undo data (used for transactions and read consistency). In this case, it is set to UNDOTBS1.

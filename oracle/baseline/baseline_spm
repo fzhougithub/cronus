@@ -1,0 +1,338 @@
+https://docs.oracle.com/en/database/oracle/oracle-database/19/tgsql/managing-sql-plan-baselines.html
+
+There are SPM and SPB concept, sql plan management and sqlplan baseline
+---
+
+Overview of SQL Plan Management (SPM)
+
+**SQL Plan Management (SPM)** is a proactive mechanism that ensures the Oracle optimizer uses only verified and accepted execution plans, known as **SQL Plan Baselines**. This approach helps maintain consistent SQL performance, especially during database changes like upgrades, schema modifications, or statistics updates.([Oracle Cloud Infrastructure][2])
+
+---
+
+
+1. **Configure SPM Parameters**
+
+Set the following initialization parameters to control SPM behavior:([Oracle Documentation][1])
+
+SQL> show parameter optimizer_capture_sql_plan_baselines;
+
+optimizer_capture_sql_plan_baselines boolean     FALSE
+SQL> show parameter optimizer_use_sql_plan_baselines;
+
+optimizer_use_sql_plan_baselines     boolean     TRUE
+
+
+ALTER SYSTEM SET optimizer_capture_sql_plan_baselines = TRUE;
+ALTER SYSTEM SET optimizer_use_sql_plan_baselines = TRUE;
+
+ `optimizer_capture_sql_plan_baselines`: When set to `TRUE`, the database automatically captures SQL plan baselines for repeatable SQL statements.
+ `optimizer_use_sql_plan_baselines`: When set to `TRUE`, the optimizer uses available SQL plan baselines during execution.
+
+*Note: Automatic plan capture is disabled by default. Enabling it allows the database to automatically create plan baselines for repeatable SQL statements.*
+
+---
+
+2. **Capture SQL Plan Baselines**
+
+You can capture SQL plan baselines either automatically or manually:
+
+Automatic Capture: With `optimizer_capture_sql_plan_baselines` set to `TRUE`, the database automatically captures plans for repeatable SQL statements.
+
+Manual Capture: Use the `DBMS_SPM` package to load plans from various sources:
+Before do it, you have to get the sql_id
+
+a. SELECT sql_id, sql_text
+FROM v$sql
+WHERE sql_text LIKE '%YOUR_SQL_TEXT%';
+
+b. SELECT sql_id, sql_text
+FROM v$sql
+WHERE sql_id IN (
+    SELECT sql_id
+    FROM v$active_session_history
+    WHERE sample_time > SYSDATE - 1/24 -- Last hour
+    AND sql_text LIKE '%YOUR_SQL_TEXT%'
+);
+
+c. SELECT sql_id, sql_text
+FROM dba_hist_sqltext
+WHERE sql_text LIKE '%YOUR_SQL_TEXT%';
+
+
+
+4. SELECT s.sid, s.serial#, q.sql_id, q.sql_text
+FROM v$session s
+JOIN v$sql q ON s.sql_id = q.sql_id
+WHERE s.sid = YOUR_SESSION_ID; -- Replace with the actual session ID
+
+5. SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY_CURSOR('sql_id', NULL, 'ALLSTATS LAST'));
+
+6. SET AUTOTRACE ON;
+SELECT * FROM employees; -- Replace with your query
+
+Once you got your sql_id you can capture plan
+
+A, From curser cache
+
+    DECLARE
+      l_plans_loaded PLS_INTEGER;
+    BEGIN
+      l_plans_loaded := DBMS_SPM.load_plans_from_cursor_cache(sql_id => 'your_sql_id');
+    END;
+    /
+
+B. From SQL Tuning Set (STS):
+
+    DECLARE
+      l_plans_loaded PLS_INTEGER;
+    BEGIN
+      l_plans_loaded := DBMS_SPM.load_plans_from_sqlset(sqlset_name => 'your_sqlset_name');
+    END;
+    /
+
+C. From AWR: Use `DBMS_SPM.load_plans_from_awr` to load plans from the Automatic Workload Repository.
+
+---
+
+3. **Verify Captured Baselines**
+
+After capturing, verify the SQL plan baselines:
+
+select * from DBA_SQL_PLAN_BASELINE
+
+SELECT sql_handle, plan_name, enabled, accepted, fixed
+FROM dba_sql_plan_baselines
+WHERE sql_text LIKE '%your_sql_text%';
+
+This query displays the status of each plan, indicating whether it's enabled, accepted, or fixed.
+
+---
+
+4. **Evolve SQL Plan Baselines**
+
+Evolving a plan involves verifying its performance before accepting it into the baseline:
+
+SET LONG 10000
+SET SERVEROUTPUT ON
+DECLARE
+  l_report CLOB;
+BEGIN
+  l_report := DBMS_SPM.evolve_sql_plan_baseline(
+    sql_handle => 'your_sql_handle',
+    plan_name  => NULL,
+    time_limit => 60,
+    verify     => 'YES');
+  DBMS_OUTPUT.put_line(l_report);
+END;
+/
+
+This process tests unaccepted plans and, if they perform well, accepts them into the baseline.
+
+---
+
+5. **Fix a Specific Plan**
+
+To force the optimizer to use a specific plan:
+
+DECLARE
+  l_plans_altered PLS_INTEGER;
+BEGIN
+  l_plans_altered := DBMS_SPM.alter_sql_plan_baseline(
+    sql_handle      => 'your_sql_handle',
+    plan_name       => 'your_plan_name',
+    attribute_name  => 'fixed',
+    attribute_value => 'YES');
+  DBMS_OUTPUT.put_line('Plans Altered: ' || l_plans_altered);
+END;
+/
+
+Fixing a plan ensures the optimizer consistently uses it, overriding other available plans.
+
+---
+
+6. **Export and Import Baselines**
+
+To transfer baselines between databases:
+
+Export Baselines:
+
+  EXEC DBMS_SPM.create_stgtab_baseline(table_name => 'spm_stage');
+  EXEC DBMS_SPM.pack_stgtab_baseline(
+    table_name      => 'spm_stage',
+    sql_handle      => NULL);
+
+You can pack all baseline into staging table by
+
+DECLARE
+  l_plans_packed  PLS_INTEGER;
+BEGIN
+  l_plans_packed := DBMS_SPM.PACK_STGTAB_BASELINE (
+    table_name => 'SPM_STGTAB_PROD_202405',
+    table_owner => 'SYSTEM'
+    -- sql_handle => 'SQL_xxxxxxxxxxxxxxxx' -- Optional: pack specific baselines
+  );
+  DBMS_OUTPUT.PUT_LINE('Plans packed: ' || l_plans_packed);
+END;
+/
+
+Export the baseline with datapump
+
+expdp system/password@prod_db \
+TABLES=SYSTEM.SPM_STGTAB_PROD_202405 \
+DIRECTORY=DUMP_DIR \
+DUMPFILE=spm_prod_baseline_202405.dmp \
+LOGFILE=spm_prod_export.log
+
+
+
+Import Baselines:
+
+
+From AWR
+
+CREATE DIRECTORY DUMP_DIR_DEV AS '/var/tellme/obackup/dev';
+
+BEGIN
+  DBMS_SWRF_INTERNAL.AWR_LOAD (
+    schema  => 'SYS', -- Data is loaded into SYS schema
+    dmpfile => 'awr_prod_baseline_202405.dmp',
+    dmp_dir => 'DUMP_DIR_DEV'
+  );
+END;
+/
+
+Move AWR Data to AWR Schema: This step is crucial if the AWR_LOAD command loaded into a non-SYS schema or if it needs to be properly integrated.
+
+BEGIN
+  DBMS_SWRF_INTERNAL.MOVE_TO_AWR (
+    schema => 'SYS' -- Or the schema you loaded into if not SYS directly
+  );
+END;
+/
+
+After importing, you should be able to generate AWR reports for the imported period in your development environment.
+
+
+
+DECLARE
+  l_plans_loaded  PLS_INTEGER;
+BEGIN
+  l_plans_loaded := DBMS_SPM.LOAD_PLANS_FROM_AWR (
+    begin_snap     => &beginning_snapshot_id,
+    end_snap       => &ending_snapshot_id,
+    parsing_schema => 'YOUR_APP_SCHEMA', -- Optional filter
+    plan_filter    => 'PROD_BASELINE_FILTER' -- Optional filter
+  );
+  DBMS_OUTPUT.PUT_LINE('Plans loaded: ' || l_plans_loaded);
+END;
+/
+
+From Cursor Cache
+
+DECLARE
+  l_plans_loaded  PLS_INTEGER;
+BEGIN
+  l_plans_loaded := DBMS_SPM.LOAD_PLANS_FROM_CURSOR_CACHE (
+    attribute_name => 'SQL_ID',
+    attribute_value => '&sql_id'
+  );
+  DBMS_OUTPUT.PUT_LINE('Plans loaded: ' || l_plans_loaded);
+END;
+/
+
+
+Or Using production dump
+BEGIN
+  DBMS_SPM.CREATE_STGTAB_BASELINE (
+    table_name => 'SPM_STGTAB_PROD_202405',
+    table_owner => 'SYSTEM'
+  );
+END;
+/
+
+Import staging data with data pump
+
+impdp system/password@dev_db \
+TABLES=SYSTEM.SPM_STGTAB_PROD_202405 \
+DIRECTORY=DUMP_DIR_DEV \
+DUMPFILE=spm_prod_baseline_202405.dmp \
+LOGFILE=spm_dev_import.log
+
+
+Unpack Baselines from Staging Table: This takes the plans from the staging table and loads them into the SQL Management Base (SMB) in the dev database.
+
+DECLARE
+  l_plans_unpacked  PLS_INTEGER;
+BEGIN
+  l_plans_unpacked := DBMS_SPM.UNPACK_STGTAB_BASELINE (
+    table_name => 'SPM_STGTAB_PROD_202405',
+    table_owner => 'SYSTEM',
+    replace     => TRUE -- Set to TRUE to overwrite existing plans for the same SQL_HANDLE
+  );
+  DBMS_OUTPUT.PUT_LINE('Plans unpacked: ' || l_plans_unpacked);
+END;
+/
+
+Verify SQL Plan Baselines: You can query DBA_SQL_PLAN_BASELINES in the development environment to see the imported plans.
+
+SELECT sql_handle, plan_name, enabled, accepted, fixed, origin, creator
+FROM dba_sql_plan_baselines
+WHERE origin = 'STGTAB'; -- Or check based on creation date
+
+Also, ensure OPTIMIZER_USE_SQL_PLAN_BASELINES is set to TRUE in your dev environment for these baselines to be used.
+
+ALTER SYSTEM SET OPTIMIZER_USE_SQL_PLAN_BASELINES = TRUE SCOPE=BOTH;
+
+
+  EXEC DBMS_SPM.unpack_stgtab_baseline(
+    table_name      => 'spm_stage',
+    sql_handle      => NULL);
+
+This process allows you to move plan baselines from one environment to another, such as from production to development.
+
+---
+
+7. **Drop Unwanted Baselines**
+
+To remove specific baselines:
+
+EXEC DBMS_SPM.drop_sql_plan_baseline(
+  sql_handle => 'your_sql_handle',
+  plan_name  => 'your_plan_name');
+
+This helps in managing and cleaning up outdated or unnecessary baselines.
+
+---
+
+Important Considerations and Best Practices:
+
+Database Version: Ideally, your development environment should be on the same (or very similar) Oracle Database version as production to ensure plan stability and accurate performance comparisons.
+
+Database Character Set: Ensure character sets are compatible to avoid data corruption or unexpected behavior.
+
+Statistics: While SQL Plan Baselines help stabilize plans, having representative statistics in dev is still important for the optimizer to choose appropriate plans, especially for new SQL or when evolving plans. You might consider exporting and importing production statistics for key tables.
+
+Data Volume: A dev environment often has less data than production. This can significantly impact execution plans. When testing, try to simulate production data volumes or use appropriate techniques (e.g., creating a subset of production data, using DBMS_STATS.GATHER_TABLE_STATS with a smaller sample size but representative distribution).
+
+Hardware and Configuration: The underlying hardware and configuration of your dev environment will likely be different from production. Be mindful that even with baselines, performance characteristics might not be identical.
+Security: Be cautious when exporting production data. Ensure proper security measures are in place during transfer and in the dev environment.
+Regular Baselines: It's good practice to establish regular AWR baselines in production (e.g., weekly or monthly) to track performance trends and facilitate troubleshooting.
+Automatic Baseline Management: Oracle provides features for automatic SQL Plan Baseline capture and evolution. Understand and leverage these for ongoing performance management.
+Oracle Enterprise Manager (OEM) Cloud Control: OEM provides a GUI for managing AWR baselines and SQL Plan Baselines, making the process more intuitive.
+
+
+Additional Resources
+
+For more detailed information, refer to the official Oracle documentation on [Managing SQL Plan Baselines](https://docs.oracle.com/en/database/oracle/oracle-database/19/tgsql/managing-sql-plan-baselines.html).([Oracle Documentation][1])
+
+By following this procedure, you can effectively manage SQL execution plans, ensuring consistent and optimal performance across your Oracle databases.
+
+[1]: https://docs.oracle.com/en/database/oracle/oracle-database/19/tgsql/managing-sql-plan-baselines.html?utm_source=chatgpt.com "29 Managing SQL Plan Baselines - Oracle Help Center"
+[2]: https://docs.public.content.oci.oraclecloud.com/en-us/iaas/database-management/doc/use-spm-manage-sql-execution-plans.html?utm_source=chatgpt.com "Use SPM to Manage SQL Execution Plans"
+[3]: https://docs.oracle.com/en/database/oracle/oracle-database/23/tdppt/managing-sql-plan-baselines.html?utm_source=chatgpt.com "Managing SQL Plan Baselines - Oracle Help Center"
+[4]: https://blogs.oracle.com/optimizer/post/what-you-need-to-know-about-sql-plan-management-and-auto-capture?utm_source=chatgpt.com "What you need to know about SQL Plan Management and Auto ..."
+[5]: https://oracle-base.com/articles/11g/sql-plan-management-11gr1?utm_source=chatgpt.com "SQL Plan Management in Oracle Database 11g Release 1"
+[6]: https://forums.oracle.com/ords/apexds/post/why-sql-plan-baseline-is-not-even-considered-for-a-statemen-0258?utm_source=chatgpt.com "Why SQL plan baseline is not even considered for a statement?"
+[7]: https://docs.oracle.com/en/database/oracle/oracle-database/19/tgsql/overview-of-sql-plan-management.html?utm_source=chatgpt.com "28 Overview of SQL Plan Management - Oracle Help Center"
+[8]: https://stackoverflow.com/questions/41858149/how-to-force-accept-a-sql-plan-baseline?utm_source=chatgpt.com "How to force accept a SQL Plan Baseline? - Stack Overflow"
+

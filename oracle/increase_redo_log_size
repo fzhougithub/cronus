@@ -1,0 +1,93 @@
+To increase the size of an Oracle redo log file, you need to follow these steps:
+
+Steps to Increase the Size of an Oracle Redo Log File
+1. Check the Current Redo Log Files:
+
+Query the vlog and vlogfile views to see the current redo log files and their sizes.
+
+  1* SELECT group#, bytes/1024/1024 AS size_mb, status, archived, first_change#, first_time FROM v$log
+SQL> /
+
+    GROUP#    SIZE_MB STATUS           ARC FIRST_CHANGE# FIRST_TIM
+---------- ---------- ---------------- --- ------------- ---------
+         1        200 INACTIVE         YES       2055739 19-MAY-25
+         2        200 CURRENT          NO        3081183 19-MAY-25
+         3        200 UNUSED           YES             0
+
+   
+Query the v$logfile view to see the physical location of the redo log files.
+
+      SELECT group#, member FROM v$logfile;
+column member format A40
+  1* select group#,member from v$logfile
+SQL> /
+
+    GROUP# MEMBER
+---------- ----------------------------------------
+         3 /opt/oracle/oradata/FREE/redo03.log
+         2 /opt/oracle/oradata/FREE/redo02.log
+         1 /opt/oracle/oradata/FREE/redo01.log
+   
+Create a New Redo Log File Group (Optional):
+
+SQL> alter database add logfile group 4 ('/u01/oradata/FREE/redo04.log') size 300M;
+
+Database altered.
+
+   
+Switch Log Files:
+
+      ALTER SYSTEM SWITCH LOGFILE;
+  
+Check the file status
+  1* select group#,bytes/1024/1024,status from v$log
+SQL> /
+
+    GROUP# BYTES/1024/1024 STATUS
+---------- --------------- ----------------
+         1             200 INACTIVE
+         2             200 ACTIVE
+         3             200 CURRENT
+         4             300 UNUSED
+
+ 
+Drop the Old Redo Log File Group (Optional):
+
+      ALTER DATABASE DROP LOGFILE GROUP 1;
+   
+   Example:
+      ALTER DATABASE DROP LOGFILE GROUP 1;
+   
+Verify the Changes:
+
+Check the redo log file groups again to confirm the changes.
+
+SQL> SELECT group#, bytes/1024/1024 AS size_mb, status, archived, first_change#, first_time FROM v$log;
+         2        200 INACTIVE         YES       3081183 19-MAY-25
+         3        200 ACTIVE           YES       3114028 26-MAY-25
+         4        300 CURRENT          NO        3115078 26-MAY-25`
+   
+Backup the Control File (Optional but Recommended):
+
+In Oracle 11G and later, the trace etc are saved in ADR(Automatic Diagnostics Repository)
+
+  1* select name,value from v$diag_info where name like '%Trace%'
+SQL> /
+Diag Trace
+/opt/oracle/diag/rdbms/free/FREE/trace
+
+Default Trace File
+/opt/oracle/diag/rdbms/free/FREE/trace/FREE_ora_32564.trc
+
+
+After making changes to the redo log files, back up the control file to ensure you have a recovery point.
+
+      ALTER DATABASE BACKUP CONTROLFILE TO TRACE;
+   
+
+Do not delete or modify redo log files manually. Always use Oracle commands to manage them.
+
+Ensure that the new redo log file size is appropriate for your database workload. Larger redo logs can reduce the frequency of log switches but may increase recovery time in case of failure.
+
+If you are using a multiplexed redo log (multiple copies of the same log group), ensure all members of the group are updated or replaced consistently.
+

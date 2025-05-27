@@ -1,0 +1,401 @@
+1. Create directory object in oracle 
+
+-- Connect as sysdba
+sqlplus / as sysdba
+
+-- Create directory (replace path with your actual directory)
+CREATE OR REPLACE DIRECTORY dpump_dir AS '/u01/hot';
+GRANT READ, WRITE ON DIRECTORY dpump_dir TO system;
+
+
+test the dpump_dir
+
+DECLARE
+  f UTL_FILE.FILE_TYPE;
+BEGIN
+  f := UTL_FILE.FOPEN('DPUMP_DIR', 'test_file.txt', 'w');
+  UTL_FILE.PUT_LINE(f, 'This is a test file.');
+  UTL_FILE.FCLOSE(f);
+END;
+/
+ERROR at line 1:
+ORA-29283: invalid file operation: path traverses a symlink [29433]
+ORA-06512: at "SYS.UTL_FILE", line 557
+ORA-06512: at "SYS.UTL_FILE", line 45
+ORA-06512: at "SYS.UTL_FILE", line 497
+ORA-06512: at line 4
+Help: https://docs.oracle.com/error-help/db/ora-29283/
+
+So, the link directory does not work
+
+DROP DIRECTORY DPUMP_DIR;
+CREATE DIRECTORY DPUMP_DIR AS '/var/tellme/obackup';
+
+test, sucessful
+
+GRANT READ, WRITE ON DIRECTORY DPUMP_DIR TO C##demo_user;
+
+
+2. Create domo user and schema 
+
+CREATE USER C##demo_user IDENTIFIED BY demo123
+DEFAULT TABLESPACE users
+TEMPORARY TABLESPACE temp
+QUOTA UNLIMITED ON users;
+
+
+GRANT CONNECT, RESOURCE TO demo_user;
+
+-- Connect as demo user
+CONNECT C##demo_user/demo123
+
+-- Create tables
+CREATE TABLE employees (
+    emp_id NUMBER PRIMARY KEY,
+    emp_name VARCHAR2(100),
+    salary NUMBER,
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    dept_id NUMBER PRIMARY KEY,
+    dept_name VARCHAR2(100),
+    location VARCHAR2(100)
+);
+
+-- Insert sample data
+INSERT INTO employees VALUES (1, 'John Smith', 50000, TO_DATE('15-JAN-2020', 'DD-MON-YYYY'));
+INSERT INTO employees VALUES (2, 'Sarah Johnson', 65000, TO_DATE('22-MAR-2019', 'DD-MON-YYYY'));
+INSERT INTO employees VALUES (3, 'Mike Brown', 72000, TO_DATE('05-JUL-2018', 'DD-MON-YYYY'));
+
+INSERT INTO departments VALUES (10, 'IT', 'New York');
+INSERT INTO departments VALUES (20, 'HR', 'Chicago');
+INSERT INTO departments VALUES (30, 'Finance', 'Boston');
+
+COMMIT;
+
+3. Export using expdp
+
+# Basic schema export
+expdp C##demo_user/demo123 DIRECTORY=dpump_dir DUMPFILE=expdp_demo.dmp LOGFILE=expdp_demo.log SCHEMAS=C##demo_user
+
+[oracle@DESKTOP-Q7EP4O1 hot]$ expdp C##demo_user/demo123 DIRECTORY=dpump_dir DUMPFILE=expdp_demo.dmp LOGFILE=expdp_demo.log SCHEMAS=C##demo_user
+
+Export: Release 23.0.0.0.0 - Production on Tue May 27 06:28:36 2025
+Version 23.7.0.25.01
+
+Copyright (c) 1982, 2025, Oracle and/or its affiliates.  All rights reserved.
+
+Connected to: Oracle Database 23ai Free Release 23.0.0.0.0 - Develop, Learn, and Run for Free
+
+Warning: Oracle Data Pump operations are not typically needed when connected to the root or seed of a container database.
+
+Starting "C##DEMO_USER"."SYS_EXPORT_SCHEMA_01":  C##demo_user/******** DIRECTORY=dpump_dir DUMPFILE=expdp_demo.dmp LOGFILE=expdp_demo.log SCHEMAS=C##demo_user
+Processing object type SCHEMA_EXPORT/TABLE/TABLE_DATA
+Processing object type SCHEMA_EXPORT/TABLE/INDEX/STATISTICS/INDEX_STATISTICS
+Processing object type SCHEMA_EXPORT/TABLE/STATISTICS/TABLE_STATISTICS
+Processing object type SCHEMA_EXPORT/PRE_SCHEMA/PROCACT_SCHEMA/LOGREP
+Processing object type SCHEMA_EXPORT/TABLE/TABLE
+Processing object type SCHEMA_EXPORT/TABLE/COMMENT
+Processing object type SCHEMA_EXPORT/TABLE/INDEX/INDEX
+Processing object type SCHEMA_EXPORT/TABLE/CONSTRAINT/CONSTRAINT
+. . exported "C##DEMO_USER"."DEPARTMENTS"                    6 KB       3 rows
+. . exported "C##DEMO_USER"."EMPLOYEES"                    6.5 KB       3 rows
+Master table "C##DEMO_USER"."SYS_EXPORT_SCHEMA_01" successfully loaded/unloaded
+******************************************************************************
+Dump file set for C##DEMO_USER.SYS_EXPORT_SCHEMA_01 is:
+  /var/tellme/obackup/expdp_demo.dmp
+Job "C##DEMO_USER"."SYS_EXPORT_SCHEMA_01" successfully completed at Tue May 27 06:30:31 2025 elapsed 0 00:01:49
+
+
+SELECT * FROM DBA_PROFILES WHERE RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION';
+
+SELECT PROFILE FROM DBA_USERS WHERE USERNAME = 'SYSTEM';
+ALTER PROFILE default LIMIT PASSWORD_VERIFY_FUNCTION NULL;
+
+SELECT * FROM DBA_PROFILES WHERE RESOURCE_NAME = 'PASSWORD_REUSE_MAX' OR RESOURCE_NAME = 'PASSWORD_REUSE_TIME';
+
+ALTER USER system IDENTIFIED BY 'NewPassword123!';
+
+
+# Alternative with more options
+expdp system/ DIRECTORY=dpump_dir DUMPFILE=expdp_demo_full.dmp LOGFILE=expdp_demo_full.log 
+  SCHEMAS=C##demo_user 
+  INCLUDE=TABLE:"IN ('EMPLOYEES','DEPARTMENTS')"
+  COMPRESSION=ALL
+
+Enter password Da.....!...
+
+
+expdp your_db_user/your_password@your_tns_alias \
+TABLESPACES=your_tablespace_name \
+DIRECTORY=dp_backup \
+DUMPFILE=your_tablespace.dmp \
+LOGFILE=your_tablespace_exp.log
+
+expdp your_db_user/your_password@your_tns_alias \
+TABLES=your_schema.table1,your_schema.table2 \
+DIRECTORY=dp_backup \
+DUMPFILE=your_tables.dmp \
+LOGFILE=your_tables_exp.log
+
+
+expdp system/password@your_tns_alias \
+FULL=Y \
+DIRECTORY=dp_backup \
+DUMPFILE=full_db.dmp \
+LOGFILE=full_db_exp.log
+
+
+Useful expdp Options:
+
+COMPRESSION=ALL (or METADATA_ONLY, DATA_ONLY, NONE): Compresses dump files. ALL is default since 12c.
+EXCLUDE: Exclude specific object types (e.g., EXCLUDE=TABLE: "IN ('EX_TABLE1', 'EX_TABLE2')", EXCLUDE=INDEX).
+INCLUDE: Include specific object types.
+QUERY: Filter rows during export (e.g., QUERY=your_schema.your_table:"WHERE status='ACTIVE'").
+PARALLEL: Use multiple concurrent streams for faster export (requires job_queue_processes parameter to be set).
+VERSION: Export data compatible with a specific database version.
+CONTENT={ALL | DATA_ONLY | METADATA_ONLY}: Specifies what to export. Default is ALL.
+ESTIMATE_ONLY: Just estimate the export size without actually exporting.
+
+==========================impdp===================================
+
+impdp your_db_user/your_password@your_tns_alias \
+SCHEMAS=your_source_schema_name \
+DIRECTORY=dp_backup \
+DUMPFILE=your_schema_name.dmp \
+LOGFILE=your_schema_name_imp.log \
+REMAP_SCHEMA=your_source_schema_name:your_target_schema_name \
+REMAP_TABLESPACE=source_tbs:target_tbs
+
+impdp your_db_user/your_password@your_tns_alias \
+TABLES=your_schema.table1 \
+DIRECTORY=dp_backup \
+DUMPFILE=your_tables.dmp \
+LOGFILE=your_tables_imp.log
+
+impdp system/password@your_tns_alias \
+FULL=Y \
+DIRECTORY=dp_backup \
+DUMPFILE=full_db.dmp \
+LOGFILE=full_db_imp.log
+
+Sure, let's explore how to use Oracle Data Pump.
+
+Oracle Data Pump is a high-speed utility for moving data and metadata (schema objects) between Oracle databases. It's the successor to the original EXP and IMP utilities and is significantly faster and more flexible. It's used for:
+
+Exporting Data: Extracting data and/or metadata from an Oracle database to a set of operating system files (called a dump file set).
+Importing Data: Loading data and/or metadata from a dump file set into an Oracle database.
+Transformations: Applying transformations (e.g., remapping schemas, tablespaces, or even data types) during import.
+Data Pump consists of two main command-line utilities:
+
+expdp (Data Pump Export): For exporting data.
+impdp (Data Pump Import): For importing data.
+Both utilities rely on a directory object within the database to specify the location of the dump files on the server's file system.
+
+Let's break down the common use cases and syntax.
+
+Key Concepts in Data Pump
+Dump File Set: The output files created by expdp (and read by impdp) that contain the exported data and metadata.
+Log File: A text file generated by Data Pump that records the details of the export or import operation, including any errors or warnings.
+Directory Object: A database object that maps a logical name to a physical directory path on the database server's file system. Data Pump must use directory objects; it cannot directly access OS paths.
+Master Table: A temporary table created by Data Pump within the database to track the progress and status of the export/import job.
+Job Name: A unique name assigned to a Data Pump operation, allowing you to monitor, stop, or restart the job.
+Prerequisites for Using Data Pump
+CREATE ANY DIRECTORY Privilege: The user performing the Data Pump operation (e.g., SYSTEM, SYS, or a dedicated DBA user) must have the CREATE ANY DIRECTORY system privilege to create directory objects.
+READ and WRITE Privileges on the Directory Object: The user must have READ and WRITE privileges on the specific directory object being used for the Data Pump operation.
+OS Permissions: The Oracle database user (typically oracle on Linux/Unix) must have read/write permissions to the underlying operating system directory that the directory object points to.
+Sufficient Disk Space: Ensure enough disk space on the server for the dump files and log files.
+Step-by-Step Usage
+Step 1: Create a Database Directory Object
+This step must be done inside SQL*Plus or SQL Developer, as a user with CREATE ANY DIRECTORY privilege (like SYSTEM or SYSDBA).
+
+SQL
+
+-- Connect to SQL*Plus as a privileged user (e.g., system/password)
+SQL> CREATE DIRECTORY dp_backup AS '/u01/app/oracle/dp_dumps';
+
+-- Grant read/write privileges to the user who will perform the export/import
+SQL> GRANT READ, WRITE ON DIRECTORY dp_backup TO your_db_user;
+
+-- Verify the directory object (optional)
+SQL> SELECT * FROM ALL_DIRECTORIES WHERE DIRECTORY_NAME = 'DP_BACKUP';
+dp_backup: This is the logical name of the directory object in the database.
+/u01/app/oracle/dp_dumps: This is the actual physical path on the database server's file system. Ensure this directory exists and the oracle OS user has read/write permissions to it.
+Step 2: Exporting Data (expdp)
+You run expdp from the operating system command line (not inside SQL*Plus).
+
+Common Export Modes:
+
+Schema Export (Most Common): Exports all objects (tables, indexes, procedures, etc.) and data for one or more specified schemas.
+
+Bash
+
+expdp your_db_user/your_password@your_tns_alias \
+SCHEMAS=your_schema_name \
+DIRECTORY=dp_backup \
+DUMPFILE=your_schema_name.dmp \
+LOGFILE=your_schema_name_exp.log
+your_db_user/your_password@your_tns_alias: Your database credentials and connection string.
+SCHEMAS: Specifies the schema(s) to export. You can list multiple schemas separated by commas.
+
+DIRECTORY: The logical database directory object name created in Step 1.
+DUMPFILE: The name of the dump file to create. You can specify a pattern like my_schema_%U.dmp for multiple files.
+LOGFILE: The name of the log file for the operation.
+Table Export: Exports specific tables from one or more schemas.
+
+Bash
+
+expdp your_db_user/your_password@your_tns_alias \
+TABLES=your_schema.table1,your_schema.table2 \
+DIRECTORY=dp_backup \
+DUMPFILE=your_tables.dmp \
+LOGFILE=your_tables_exp.log
+Full Database Export: Exports the entire database (all schemas, data, control file, etc.). Requires SYSDBA or DATAPUMP_EXP_FULL_DATABASE privilege.
+
+Bash
+
+expdp system/password@your_tns_alias \
+FULL=Y \
+DIRECTORY=dp_backup \
+DUMPFILE=full_db.dmp \
+LOGFILE=full_db_exp.log
+Tablespace Export: Exports all objects and data within specified tablespaces.
+
+Bash
+
+expdp your_db_user/your_password@your_tns_alias \
+TABLESPACES=your_tablespace_name \
+DIRECTORY=dp_backup \
+DUMPFILE=your_tablespace.dmp \
+LOGFILE=your_tablespace_exp.log
+Useful expdp Options:
+
+COMPRESSION=ALL (or METADATA_ONLY, DATA_ONLY, NONE): Compresses dump files. ALL is default since 12c.
+EXCLUDE: Exclude specific object types (e.g., EXCLUDE=TABLE: "IN ('EX_TABLE1', 'EX_TABLE2')", EXCLUDE=INDEX).
+INCLUDE: Include specific object types.
+QUERY: Filter rows during export (e.g., QUERY=your_schema.your_table:"WHERE status='ACTIVE'").
+PARALLEL: Use multiple concurrent streams for faster export (requires job_queue_processes parameter to be set).
+VERSION: Export data compatible with a specific database version.
+CONTENT={ALL | DATA_ONLY | METADATA_ONLY}: Specifies what to export. Default is ALL.
+ESTIMATE_ONLY: Just estimate the export size without actually exporting.
+Step 3: Importing Data (impdp)
+You run impdp from the operating system command line.
+
+Common Import Modes:
+
+ Schema Import (Most Common): Imports objects and data into an existing or new schema.
+
+Bash
+
+impdp your_db_user/your_password@your_tns_alias \
+SCHEMAS=your_source_schema_name \
+DIRECTORY=dp_backup \
+DUMPFILE=your_schema_name.dmp \
+LOGFILE=your_schema_name_imp.log \
+REMAP_SCHEMA=your_source_schema_name:your_target_schema_name \
+REMAP_TABLESPACE=source_tbs:target_tbs
+REMAP_SCHEMA: Crucial for importing into a different schema name. If not used, it tries to import into the original schema name.
+REMAP_TABLESPACE: Essential if tablespaces names are different in the target database.
+Table Import: Imports specific tables.
+
+Bash
+
+impdp your_db_user/your_password@your_tns_alias \
+TABLES=your_schema.table1 \
+DIRECTORY=dp_backup \
+DUMPFILE=your_tables.dmp \
+LOGFILE=your_tables_imp.log
+Full Database Import: Imports the entire database. Requires SYSDBA or DATAPUMP_IMP_FULL_DATABASE privilege.
+
+Bash
+
+impdp system/password@your_tns_alias \
+FULL=Y \
+DIRECTORY=dp_backup \
+DUMPFILE=full_db.dmp \
+LOGFILE=full_db_imp.log
+Useful impdp Options:
+
+REMAP_SCHEMA: Remaps objects from one schema to another.
+REMAP_TABLESPACE: Remaps objects from one tablespace to another.
+TABLE_EXISTS_ACTION={SKIP | APPEND | TRUNCATE | REPLACE}: What to do if a table already exists. Default is SKIP.
+SKIP: Skip the table.
+APPEND: Append rows to existing table.
+TRUNCATE: Truncate and then load.
+REPLACE: Drop and recreate the table, then load.
+TRANSFORM: Apply metadata transformations (e.g., TRANSFORM=SEGMENT_ATTRIBUTES:N).
+EXCLUDE, INCLUDE: Similar to export, allows filtering objects to import.
+PARALLEL: Use multiple concurrent streams for faster import.
+VERSION: Import data compatible with a specific database version.
+REMAP_DATAFILE: Remap data file paths if moving between OS.
+CONTENT={ALL | DATA_ONLY | METADATA_ONLY}: Specifies what to import. Default is ALL.
+SQLFILE: Creates a SQL script of the DDL that would be executed by the import, without actually importing data. Excellent for reviewing or manually running DDL.
+
+
+=================== Monitor ===============================
+
+SELECT owner_name, job_name, operation, job_mode, state, attached_sessions
+FROM dba_datapump_jobs
+WHERE state = 'EXECUTING'; -- To see only actively running jobs
+
+SQL> SELECT owner_name, job_name, operation, job_mode, state, attached_sessions
+FROM dba_datapump_jobs
+WHERE owner_name = 'SCOTT' AND operation = 'EXPORT' AND state = 'EXECUTING';
+
+-- Or, if it's a SYS-owned job (like the default SYS_EXPORT_SCHEMA_NN jobs):
+SQL> SELECT owner_name, job_name, operation, job_mode, state, attached_sessions
+FROM dba_datapump_jobs
+WHERE owner_name = 'SYS' AND operation = 'EXPORT' AND state = 'EXECUTING';
+
+
+
+
+Once you get the job_name, you can attach to it, to continue the work. 
+
+expdp / attach=SYS_EXPORT_SCHEMA_01  # Attach to a running export job
+
+-- Then use commands like STATUS, STOP_JOB, CONTINUE_JOB
+
+SELECT owner_name, job_name, operation, job_mode, state, attached_sessions
+FROM dba_datapump_jobs;
+
+
+
+
+[oracle@DESKTOP-Q7EP4O1 hot]$ expdp system/ DIRECTORY=dpump_dir DUMPFILE=expdp_demo_full.dmp LOGFILE=expdp_demo_full.log
+  SCHEMAS=C##demo_user
+  INCLUDE=TABLE:"IN ('EMPLOYEES','DEPARTMENTS')"
+  COMPRESSION=ALL
+
+Export: Release 23.0.0.0.0 - Production on Tue May 27 07:17:14 2025
+Version 23.7.0.25.01
+
+Copyright (c) 1982, 2025, Oracle and/or its affiliates.  All rights reserved.
+Password:
+
+Connected to: Oracle Database 23ai Free Release 23.0.0.0.0 - Develop, Learn, and Run for Free
+
+Warning: Oracle Data Pump operations are not typically needed when connected to the root or seed of a container database.
+
+Starting "SYSTEM"."SYS_EXPORT_SCHEMA_01":  system/******** DIRECTORY=dpump_dir DUMPFILE=expdp_demo_full.dmp LOGFILE=expdp_demo_full.log
+Processing object type SCHEMA_EXPORT/TABLE/TABLE_DATA
+Processing object type SCHEMA_EXPORT/TABLE/INDEX/STATISTICS/INDEX_STATISTICS
+Processing object type SCHEMA_EXPORT/TABLE/STATISTICS/TABLE_STATISTICS
+Processing object type SCHEMA_EXPORT/SYSTEM_GRANT
+Processing object type SCHEMA_EXPORT/ROLE_GRANT
+Processing object type SCHEMA_EXPORT/DEFAULT_ROLE
+Processing object type SCHEMA_EXPORT/PRE_SCHEMA/PROCACT_SCHEMA/LOGREP
+Processing object type SCHEMA_EXPORT/TABLE/TABLE
+Processing object type SCHEMA_EXPORT/TABLE/COMMENT
+Processing object type SCHEMA_EXPORT/TABLE/INDEX/INDEX
+Master table "SYSTEM"."SYS_EXPORT_SCHEMA_01" successfully loaded/unloaded
+******************************************************************************
+Dump file set for SYSTEM.SYS_EXPORT_SCHEMA_01 is:
+  /var/tellme/obackup/expdp_demo_full.dmp
+Job "SYSTEM"."SYS_EXPORT_SCHEMA_01" successfully completed at Tue May 27 07:19:22 2025 elapsed 0 00:01:54
+
+
+
+
+

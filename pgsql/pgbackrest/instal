@@ -1,0 +1,5 @@
+yum install pgbackrest
+
+Install binary on backup server, and two postgresql server
+
+
