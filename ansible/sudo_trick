@@ -1,0 +1,6 @@
+ansible rl12 -m shell -a "sudo cat /root/.ssh/authorized_keys" -b
+
+This command, -b support sudo, but you have to config on target node
+
+vi /etc/sudoers
+fzhou ALL=(ALL) NOPASSWD:ALL

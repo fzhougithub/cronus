@@ -1,24 +1,3 @@
-dnf install -y epel-release
-dnf install ansible
+brew install ansible
 
-vi /etc/ansible/hosts
-[cass]
-cass1 ansible_connection=docker
-cass2 ansible_connection=docker
-cass3 ansible_connection=docker
-
-
-ansible cass -m command -a "nodetool status"
-
-[root@Wentao ~]# cat pb_ping.yaml
-- hosts: cass
-  vars:
-    target_ip: 8.8.8.8
-  tasks:
-    - name: Ping an IP from each container
-      shell: ping -c 2 {{ target_ip }}
-
-[root@Wentao ~]# ansible-playbook pb_ping.yaml
-
-
-ansible cass -m shell -a "grep ERROR /var/log/cassandra/system.log || true"
+c
