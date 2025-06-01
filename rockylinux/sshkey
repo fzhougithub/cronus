@@ -1,0 +1,43 @@
+To make the customized key file works, like the id_rsa_ssnc work, (because ssh scan the key not contain this one)
+vi ~/.ssh/config
+Host rl11
+    HostName 192.168.1.120
+    User fzhou
+    IdentityFile ~/.ssh/id_rsa_ssnc
+
+Also, to add into ssh-add
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_rsa_ssnc
+
+You also can ignore the ssh-agent command line, that is default in MacOS
+
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+
+generate new key id_rsa_ssnc
+
+add the pub key into target node authorized_keys
+
+vi /etc/ssh/sshd_config
+# Authentication:
+LoginGraceTime 120
+PubkeyAuthentication yes
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+UsePAM no
+
+On server side
+
+systemctl restart sshd
+
+
+ssh-copy-id -i ~/.ssh/id_rsa_testenv.pub fzhou@rl11
+
+cat /etc/ssh/sshd_config|grep -v '[#]'|sed '/^$/d'
+Include /etc/ssh/sshd_config.d/*.conf
+LoginGraceTime 2m
+PubkeyAuthentication yes
+AuthorizedKeysFile	.ssh/authorized_keys
+PasswordAuthentication no
+UsePAM no
+Subsystem	sftp	/usr/libexec/openssh/sftp-server
+ChallengeResponseAuthentication no

@@ -1,0 +1,21 @@
+Got it\! Apologies for the misunderstanding. Here's a table summarizing common Ansible modules that support ad-hoc operations, along with their primary use and an example command.
+
+**Common Ansible Modules for Ad-Hoc Operations**
+
+| Module Name           | Primary Use                                  | Example Ad-Hoc Command                                       | Notes                                                               |
+| :-------------------- | :------------------------------------------- | :----------------------------------------------------------- | :------------------------------------------------------------------ |
+| **`ping`** | Test connectivity and authentication.        | `ansible all -m ping`                                        | Simple check, confirms remote host is reachable.                    |
+| **`setup`** | Gather facts (system information) about hosts. | `ansible all -m setup` or \<br\> `ansible webservers -m setup -a "filter='ansible_os_family'"` | Useful for quick info retrieval; `gather_facts` is an alias.        |
+| **`apt` / `yum` / `dnf` / `package`** | Manage software packages.                    | `ansible webservers -m apt -a "name=nginx state=present"` \<br\> `ansible dbservers -m yum -a "name=mariadb state=latest"` | Use the module appropriate for your distribution's package manager. |
+| **`service`** | Manage system services.                      | `ansible webservers -m service -a "name=apache2 state=started"` \<br\> `ansible dbservers -m service -a "name=mysql state=restarted enabled=yes"` | Start, stop, restart, enable, disable services.                     |
+| **`file`** | Manage files and directories.                | `ansible all -m file -a "path=/tmp/my_dir state=directory mode=0755"` \<br\> `ansible all -m file -a "path=/var/log/app.log state=absent"` | Create, delete, set permissions, ownership for files/dirs.          |
+| **`copy`** | Copy files from control node to remote.      | `ansible webservers -m copy -a "src=/local/file dest=/remote/file"` | Supports `owner`, `group`, `mode`, `backup`, etc.                   |
+| **`fetch`** | Copy files from remote to control node.      | `ansible dbservers -m fetch -a "src=/var/log/mysql.log dest=/tmp/mysql_logs/"` | Retrieves remote files to a specified local directory.              |
+| **`user`** | Manage user accounts.                        | `ansible all -m user -a "name=testuser state=present home=/home/testuser"` | Create, delete, modify users; manage groups, passwords.             |
+| **`group`** | Manage groups.                               | `ansible all -m group -a "name=dev_team state=present"`    | Create, delete, modify groups.                                      |
+| **`lineinfile`** | Ensure a specific line is in a file.         | `ansible all -m lineinfile -a "path=/etc/ssh/sshd_config regexp='^#?Port' line='Port 2222'"` | Useful for modifying config files idempotently.                     |
+| **`debug`** | Print messages or variable values.           | `ansible all -m debug -a "msg='Hostname: {{ ansible_hostname }}'"` | Excellent for quick debugging and checking variable values.         |
+| **`uri`** | Interact with web services (HTTP/HTTPS).     | `ansible localhost -m uri -a "url=https://api.example.com/status"` | Can perform GET, POST, PUT, etc.; check status codes.               |
+
+**General Ad-Hoc Command Syntax:**
+`ansible <inventory_pattern> -m <module_name> -a "<module_arguments>"`
