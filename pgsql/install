@@ -21,6 +21,7 @@ yum install pg_hint_plan_17.aarch64 pg_hint_plan_17-llvmjit.aarch64 pg_increment
 yum install pg_dbms_job_17.aarch64 pg_dbms_lock_17.noarch pg_dbms_metadata_17.noarch pg_dirtyread_17.aarch64 pg_dirtyread_17-llvmjit.aarch64
 yum install -y pg_failover_slots_17.aarch64 pg_failover_slots_17-llvmjit.aarch64 pg_fkpart_17.noarch
 yum install pg_auto_failover_17.aarch64 pg_auto_failover_17-llvmjit.aarch64 pg_background_17.aarch64 pg_background_17-llvmjit.aarch64 pg_auth_mon_17.aarch64 pg_auth_mon_17-llvmjit.aarch64 hypopg_17-llvmjit.aarch64 hypopg_17.aarch64
+yum install pgbouncer_fdw_17.aarch64
 
 
 

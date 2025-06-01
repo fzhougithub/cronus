@@ -15,9 +15,9 @@ CREATE TABLE events_row AS SELECT * FROM events_columnar;
 
 \d+
 
- x247ci_butterfly | events_columnar                              | table             | postgres  | permanent   | columnar      | 25 MB      |
- x247ci_butterfly | events_columnar_event_id_seq                 | sequence          | postgres  | permanent   |               | 8192 bytes |
- x247ci_butterfly | events_row                                   | table             | postgres  | permanent   | heap          | 806 MB     |`
+ xci_butterfly | events_columnar                              | table             | postgres  | permanent   | columnar      | 25 MB      |
+ xci_butterfly | events_columnar_event_id_seq                 | sequence          | postgres  | permanent   |               | 8192 bytes |
+ xci_butterfly | events_row                                   | table             | postgres  | permanent   | heap          | 806 MB     |`
 
 
 Case 2:

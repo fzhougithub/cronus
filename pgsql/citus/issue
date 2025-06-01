@@ -48,10 +48,10 @@ WHERE
 (12 rows)
 
 create user butterfly with password 'butterfly_1';
-create role  x247ci_butterfly;
-alter schema  x247ci_butterfly owner to  x247ci_butterfly;
-GRANT x247ci_butterfly TO butterfly;
-ALTER USER butterfly SET search_path TO x247ci_butterfly, public;
+create role  xci_butterfly;
+alter schema  xci_butterfly owner to  xci_butterfly;
+GRANT xci_butterfly TO butterfly;
+ALTER USER butterfly SET search_path TO xci_butterfly, public;
 
 cca=> SELECT
     relname
@@ -125,7 +125,7 @@ FROM
     JOIN pg_namespace n ON c.relnamespace = n.oid
     JOIN pg_type t ON a.atttypid = t.oid
 WHERE
-    n.nspname = 'x247ci_butterfly'
+    n.nspname = 'xci_butterfly'
     AND c.relname = 'cluster_metadata2'
     AND a.attnum > 0  -- exclude system columns
 GROUP BY
@@ -154,7 +154,7 @@ FROM
     JOIN pg_namespace n ON c.relnamespace = n.oid
     JOIN pg_type t ON a.atttypid = t.oid
 WHERE
-    n.nspname = 'x247ci_butterfly'
+    n.nspname = 'xci_butterfly'
     AND c.relname = 'cluster_metadata2'
     AND a.attnum > 0  -- exclude system columns
 ;
@@ -167,7 +167,7 @@ cca=> \e
 
 
 
-ALTER USER butterfly SET search_path TO x247ci_butterfly, public;
+ALTER USER butterfly SET search_path TO xci_butterfly, public;
 
 
 
@@ -180,7 +180,7 @@ FROM
     JOIN pg_namespace n ON c.relnamespace = n.oid
     JOIN pg_type t ON a.atttypid = t.oid
 WHERE
-    n.nspname = 'x247ci_butterfly'
+    n.nspname = 'xci_butterfly'
     AND c.relname = 'cluster_metadata2'
     AND a.attnum > 0  -- exclude system columns
     AND t.typname = 'jsonb'
