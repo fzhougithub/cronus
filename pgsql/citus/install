@@ -1,8 +1,9 @@
-curl https://install.citusdata.com/community/rpm.sh | sudo bash
+#curl https://install.citusdata.com/community/rpm.sh | sudo bash
 
-https://docs.citusdata.com/en/v12.0/installation/single_node_rhel.html
+#https://docs.citusdata.com/en/v12.0/installation/single_node_rhel.html
 
 yum install -y citus_17.x86_64
+yum install -y citus_17.aarch64 citus_17-devel.aarch64 citus_17-llvmjit.aarch64
 
 vi /var/tellme/pgsql/data/postgresql.conf
 shared_preload_libraries='citus,pg_stat_statements,pg_cron'

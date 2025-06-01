@@ -1,2 +1,4 @@
 dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-$(rpm -E %{rhel})-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 dnf install -y repmgr_17.x86_64
+
+dnf install -y repmgr_17.aarch64 repmgr_17-llvmjit.aarch64 repmgr_17-devel.aarch64

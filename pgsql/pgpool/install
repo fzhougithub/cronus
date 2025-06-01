@@ -9,6 +9,8 @@ dnf install https://www.pgpool.net/yum/rpms/4.4/redhat/rhel-8-x86_64/pgpool-II-r
 
 yum install pgpool-II-pg17-extensions.x86_64
 
+yum install pgpool-II-pg17-extensions.aarch64 --nogpgcheck
+
 [root@Wentao share]# ls -larth /usr/pgsql-17/share/extension/pgpool*
 -rw-r--r-- 1 root root  152 Mar  3 03:35 /usr/pgsql-17/share/extension/pgpool_regclass.control
 -rw-r--r-- 1 root root  283 Mar  3 03:35 /usr/pgsql-17/share/extension/pgpool_regclass--1.0.sql

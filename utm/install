@@ -1,0 +1,19 @@
+1, Brew install GEMU
+brew install GEMU
+
+2. Download and install UTM
+https://rockylinux.org/download
+Download the ARM(aarch64) for Apple M4 CPU
+
+3. Just download the free utm from this side 
+Go to https://mac.getutm.app/
+
+Save and move into application 
+
+4. Start UTM and config the new VM
+
+5. After start the vm, config the static IP. 
+
+6. Clone VM. 
+
+ 

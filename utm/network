@@ -1,0 +1,8 @@
+On target vm
+sudo umtil
+
+Use gui menus change the IPv4 address, and the default gateway, DNS, etc
+
+Then, in the UTM , shutdown VM, change network to bridge, and use network interface en0
+
+Restart the VM

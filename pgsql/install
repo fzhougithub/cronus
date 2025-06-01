@@ -1,5 +1,36 @@
+After all installed, remember the below extensions are very useful, you can install all of them and try to use 
+[root@rl11 extension]# history|grep install|grep pg
+   35  dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-aarch64/pgdg-redhat-repo-latest.noarch.rpm
+   47  yum install pg_cron_17
+   54  yum install -y pgbackrest
+   68  dnf install pgbackrest.aarch64
+   75  yum install pgpool-II-pg17-extensions.aarch64 --nogpgcheck
+  118  yum install pg_top.aarch64
+  121  yum install pg_wait_sampling_17.aarch64 pg_wait_sampling_17-llvmjit.aarch64
+  132  yum install pg_stat_monitor_17.aarch64 pg_stat_monitor_17-llvmjit.aarch64
+  135  yum install pg_stat_kcache_17.aarch64 pg_stat_kcache_17-llvmjit.aarch64
+yum install -y pg_squeeze_17-llvmjit.aarch64
+yum install pg_show_plans_17.aarch64 pg_show_plans_17-llvmjit.aarch64
+yum install pg_roaringbitmap_17.aarch64 pg_roaringbitmap_17-llvmjit.aarch64
+yum install -y pg_repack_17.aarch64 pg_repack_17-llvmjit.aarch64
+yum install pg_profile_17.noarch pg_sample.aarch64
+yum install pg_readme_17.noarch pg_qualstats_17.aarch64 pg_qualstats_17-llvmjit.aarch64
+yum install -y pg_partman_17.aarch64 pg_partman_17-llvmjit.aarch64 pg_prioritize_17.aarch64 pg_prioritize_17-llvmjit.aarch64
+ yum install -y pg_ivm_17.aarch64 pg_ivm_17-llvmjit.aarch64 pg_jobmon_17.noarch
+yum install pg_hint_plan_17.aarch64 pg_hint_plan_17-llvmjit.aarch64 pg_incremental_17.aarch64 pg_incremental_17-llvmjit.aarch64
+yum install pg_dbms_job_17.aarch64 pg_dbms_lock_17.noarch pg_dbms_metadata_17.noarch pg_dirtyread_17.aarch64 pg_dirtyread_17-llvmjit.aarch64
+yum install -y pg_failover_slots_17.aarch64 pg_failover_slots_17-llvmjit.aarch64 pg_fkpart_17.noarch
+yum install pg_auto_failover_17.aarch64 pg_auto_failover_17-llvmjit.aarch64 pg_background_17.aarch64 pg_background_17-llvmjit.aarch64 pg_auth_mon_17.aarch64 pg_auth_mon_17-llvmjit.aarch64 hypopg_17-llvmjit.aarch64 hypopg_17.aarch64
+
+
+
+dnf install epel-release
+
 # Install the repository RPM:
+for intel 
 sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+for macos
+dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-aarch64/pgdg-redhat-repo-latest.noarch.rpm
 
 # Disable the built-in PostgreSQL module:
 sudo dnf -qy module disable postgresql
@@ -18,13 +49,19 @@ postgresql17-pltcl.x86_64                            17.4-1PGDG.rhel9           
 postgresql17-test.x86_64                             17.4-1PGDG.rhel9                     pgdg17
 
 modify /etc/yum.repos.d/rocky.repo
-enable it
+enable crb repo it
+
+rpm --import https://download.postgresql.org/pub/repos/yum/keys/PGDG-RPM-GPG-KEY-RHEL
 
 dnf install perl-IPC-Run
 
 Then, install all for research
 
+Per intel 
 [root@rl01 SPECS]# yum install postgresql17-contrib.x86_64 postgresql17-devel.x86_64 postgresql17-llvmjit.x86_64 postgresql17-docs.x86_64 postgresql17-plpython3.x86_64 postgresql17-pltcl.x86_64 postgresql17-test.x86_64
+
+Per MacOS
+yum install postgresql17.aarch64 postgresql17-contrib.aarch64 postgresql17-libs.aarch64 postgresql17-llvmjit.aarch64 postgresql17-plperl.aarch64 postgresql17-plpython3.aarch64 postgresql17-pltcl.aarch64 postgresql17-server.aarch64 postgresql17-test.aarch64 -y
 
 yum install pg_cron_17
 
