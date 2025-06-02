@@ -1,0 +1,6 @@
+- name: Create empty database if not exists
+  become_user: postgres
+  postgresql_db:
+    name: my_database
+    state: present
+

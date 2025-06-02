@@ -1,0 +1,10 @@
+postgresql_version: 17
+postgresql_db_name: cca
+
+# Template can use these or others as needed
+postgresql_conf_path: /etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+pg_hba_conf_path: /etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf
+postgresql_service_file: /etc/systemd/system/postgresql.service
+
+# You may add replication or citus coordinator settings here in future
+

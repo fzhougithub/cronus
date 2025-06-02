@@ -1,0 +1,36 @@
+# PostgreSQL configuration
+data_directory = '/var/lib/postgresql/{{ postgresql_version }}/main'
+listen_addresses = '*'
+port = 5432
+max_connections = 200
+shared_buffers = 256MB
+work_mem = 4MB
+maintenance_work_mem = 64MB
+effective_cache_size = 512MB
+log_destination = 'stderr'
+logging_collector = on
+log_directory = 'log'
+log_filename = 'postgresql.log'
+
+# Enable Citus
+shared_preload_libraries = 'citus'
+
+# Citus-specific configuration
+{% if inventory_hostname in groups['coordinator'] %}
+# Coordinator node settings
+citus.node_conninfo = 'host={{ inventory_hostname }} port=5432 user=postgres password=yourpassword'
+{% elif inventory_hostname in groups['workers'] %}
+# Worker node settings
+# Workers don't need node_conninfo, but shared_preload_libraries is still required
+{% endif %}
+
+# Replication and WAL settings (optional tuning)
+wal_level = logical
+max_wal_senders = 10
+wal_keep_size = 64
+
+#another logic
+#{% if node_role == 'coordinator' %}
+#citus.node_conninfo = 'host={{ inventory_hostname }} port=5432 user=postgres password=yourpassword'
+#{% endif %}
+

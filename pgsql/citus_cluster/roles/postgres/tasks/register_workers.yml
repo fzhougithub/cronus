@@ -1,0 +1,12 @@
+- name: Collect worker nodes
+  set_fact:
+    worker_nodes: "{{ groups['workers'] | map('extract', hostvars, ['ansible_host']) | list }}"
+
+- name: Register each worker node with Citus
+  become_user: postgres
+  postgresql_query:
+    db: "{{ postgres_db }}"
+    query: "SELECT * FROM master_add_node('{{ item }}', 5432);"
+  loop: "{{ worker_nodes }}"
+  when: worker_nodes | length > 0
+

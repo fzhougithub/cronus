@@ -1,0 +1,16 @@
+- name: Deploy PostgreSQL service file
+  template:
+    src: postgresql.service.j2
+    dest: /etc/systemd/system/postgresql.service
+    mode: '0644'
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start PostgreSQL service
+  systemd:
+    name: postgresql
+    enabled: yes
+    state: started
+

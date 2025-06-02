@@ -1,0 +1,16 @@
+[Unit]
+Description=PostgreSQL database server
+After=network.target
+
+[Service]
+Type=notify
+User=postgres
+ExecStart=/usr/lib/postgresql/{{ postgresql_version }}/bin/postgres -D /var/lib/postgresql/{{ postgresql_version }}/main -c config_file=/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+TimeoutSec=0
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

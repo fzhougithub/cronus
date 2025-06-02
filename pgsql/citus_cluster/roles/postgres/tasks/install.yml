@@ -1,0 +1,9 @@
+- name: Install PostgreSQL and Citus
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - citus
+    state: present
+    update_cache: yes
+

@@ -1,0 +1,6 @@
+- name: Deploy full Citus PostgreSQL cluster
+  hosts: all
+  become: yes
+  roles:
+    - postgres
+

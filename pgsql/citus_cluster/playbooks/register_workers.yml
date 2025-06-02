@@ -1,0 +1,10 @@
+- name: Register worker nodes with Citus coordinator
+  hosts: coordinator
+  become: true
+  vars:
+    postgres_user: postgres
+    postgres_db: postgres
+  roles:
+    - role: postgres
+      tasks_from: register_workers
+
