@@ -1,11 +1,53 @@
+WHen you clone, change ip only one way works
+
+vi /etc/sysconfig/network-scripts/ifcfg-enp0s1
+TYPE=Ethernet
+BOOTPROTO=static        # Change from dhcp to static
+NAME=enp0s1             # Your interface name
+DEVICE=enp0s1           # Your interface name
+ONBOOT=yes
+IPADDR=192.168.1.121    # Your desired static IP
+PREFIX=24               # Subnet mask (24 for /24, 255.255.255.0)
+GATEWAY=192.168.1.254     # Your gateway IP
+DNS1=192.168.1.254            # Primary DNS
+DNS2=8.8.8.8            # Primary DNS
+
+Only change here works
+
 Right click the existing one, clone the node
 
 Change mac-address in network, random
 
 Change IP address by using 
 
+The below command changed the /etc/NetworkManager/system-connections/
+[root@rl15 ~]# more /etc/NetworkManager/system-connections/enp0s1.nmconnection
+[connection]
+id=enp0s1
+uuid=884404ea-22d1-3e2d-9bbc-481199803831
+type=ethernet
+autoconnect-priority=-999
+interface-name=enp0s1
+timestamp=1748755410
+
+[ethernet]
+
+[ipv4]
+address1=192.168.1.125/24,192.168.1.254
+dns=192.168.1.254;8.8.8.8;
+may-fail=false
+method=manual
+
+[ipv6]
+addr-gen-mode=eui64
+method=auto
+
+[proxy]
+
+Command: 
+
 sudo nmcli connection modify enp0s1 ipv4.method manual \
-ipv4.addresses 192.168.1.124/24 \
+ipv4.addresses 192.168.1.121/24 \
 ipv4.gateway 192.168.1.254 \
 ipv4.dns "192.168.1.254,8.8.8.8" \
 connection.autoconnect yes

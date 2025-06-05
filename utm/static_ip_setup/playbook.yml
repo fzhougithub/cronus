@@ -1,0 +1,41 @@
+# host_vars/rl15.yaml
+---
+- name: Configure static IP using nmcli
+  hosts: network_hosts
+  become: yes
+
+  vars:
+    # optional defaults; can be overridden in host_vars
+    # interface: enp0s1
+    # ip_address: 192.168.1.125/24
+    # gateway: 192.168.1.254
+    # dns_servers: "192.168.1.254,8.8.8.8"
+
+  tasks:
+    - name: Show loaded variables
+      ansible.builtin.debug:
+        msg: |
+          Interface: {{ interface }}
+          IP Address: {{ ip_address }}
+          Gateway: {{ gateway }}
+          DNS Servers: {{ dns_servers }}
+
+    - name: Configure static IP using nmcli
+      ansible.builtin.shell: |
+        nmcli connection modify {{ interface }} ipv4.method manual \
+          ipv4.addresses {{ ip_address }} \
+          ipv4.gateway {{ gateway }} \
+          ipv4.dns "{{ dns_servers }}" \
+          connection.autoconnect yes
+
+    - name: Bring the interface down
+      ansible.builtin.shell: nmcli connection down {{ interface }} || true
+
+    - name: Bring the interface up
+      ansible.builtin.shell: nmcli connection up {{ interface }}
+
+    - name: Wait for host to come back with new IP
+      ansible.builtin.wait_for_connection:
+        delay: 10
+        timeout: 60
+

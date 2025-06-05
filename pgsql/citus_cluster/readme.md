@@ -1,3 +1,6 @@
+ansible-playbook -i inventory/hosts.ini playbooks/deploy_service.yml -b --ask-become-pass --limit co
+
+
 citus_cluster/
 ├── inventory/
 │   └── hosts.ini

@@ -1,0 +1,66 @@
+Best practices for using foreign data wrappers (FDWs) in PostgreSQL:
+
+- Use FDWs for read-mostly or low-latency access; avoid for high-frequency OLTP workloads.
+- Limit the number of foreign tables in critical queries to reduce network and planning overhead.
+- Use `IMPORT FOREIGN SCHEMA` to keep foreign table definitions in sync.
+- Secure user mappings and restrict access to sensitive data.
+- Monitor performance and tune fetch size (`fetch_size` option) for large result sets.
+- Prefer explicit column lists in foreign tables to avoid type mismatches.
+- Regularly update statistics on foreign tables with `ANALYZE` for better query planning.
+- Use connection pooling if supported by the FDW to reduce connection overhead.
+- Be aware of transaction and isolation limitations—some FDWs do not support full ACID semantics.
+- Test cross-database or cross-server queries for performance and correctness.
+
+In Citus, sharding is managed at the **cluster** level, but the Citus extension must be installed in **each database** where you want to use Citus features (like distributed tables). You can have multiple databases in a PostgreSQL instance, but Citus does not shard across databases—sharding is within a single database.
+
+**Summary:**
+- You must install the Citus extension in every database you want to shard.
+- Sharding is per database, not across databases.
+- Each database manages its own distributed tables.
+
+To enable Citus in a database:
+```sql
+CREATE EXTENSION citus;
+```
+Run this in each database you want to use with Citus.
+
+To set up `postgres_fdw` for cross-database queries within the same PostgreSQL instance:
+
+1. **Enable the extension in the target database:**
+   ```sql
+   CREATE EXTENSION postgres_fdw;
+   ```
+
+2. **Create a foreign server pointing to the other database:**
+   ```sql
+   CREATE SERVER other_db_server
+     FOREIGN DATA WRAPPER postgres_fdw
+     OPTIONS (host 'localhost', dbname 'other_db', port '5432');
+   ```
+
+3. **Create a user mapping for authentication:**
+   ```sql
+   CREATE USER MAPPING FOR CURRENT_USER
+     SERVER other_db_server
+     OPTIONS (user 'your_user', password 'your_password');
+   ```
+
+4. **Import or define foreign tables:**
+   ```sql
+   IMPORT FOREIGN SCHEMA public
+     FROM SERVER other_db_server
+     INTO public;
+   ```
+   Or manually:
+   ```sql
+   CREATE FOREIGN TABLE foreign_table_name (
+     id integer,
+     data text
+   )
+   SERVER other_db_server
+   OPTIONS (schema_name 'public', table_name 'real_table_name');
+   ```
+
+You can now query `foreign_table_name` as if it were local.
+
+

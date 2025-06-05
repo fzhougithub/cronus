@@ -1,0 +1,12 @@
+- name: Deploy PostgreSQL service file
+  hosts: all
+  become: yes
+  tasks:
+    - name: Debug variables
+      debug:
+        msg: "postgresql_version is {{ postgresql_version }}"
+    - name: Deploy PostgreSQL service file
+      template:
+        src: ../roles/postgres/templates/postgresql.service.j2
+        dest: /usr/lib/systemd/system/postgresql.service
+        mode: '0644'

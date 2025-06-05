@@ -1,0 +1,127 @@
+The error you're seeing, "Author identity unknown," is **not related to your SSH keys or GitHub accounts directly**. It's a Git configuration error. Git needs to know your name and email address to record them in your commits.
+
+Here's how to distinguish your two GitHub accounts for Git commits and fix the error:
+
+**Understanding Git Author Identity:**
+
+Git's `user.name` and `user.email` are part of your commit metadata. They tell who made a commit. This is separate from how you authenticate to GitHub (which is handled by SSH keys or HTTPS tokens).
+
+**How to Configure `user.name` and `user.email`:**
+
+You have two main options:
+
+1.  **Global Configuration (Default for all repositories):**
+    This sets your default name and email for all Git repositories on your machine. Choose the one you use most often (e.g., your personal GitHub email/name).
+
+    ```bash
+    git config --global user.name "Your Name (Personal)"
+    git config --global user.email "your.personal.email@example.com"
+    ```
+
+2.  **Local Configuration (Per Repository):**
+    This is what you'll use to override the global settings for specific repositories. This is crucial for distinguishing your personal and company GitHub accounts.
+
+    **For your Company GitHub repositories:**
+    Navigate into the local directory of your company's Git repository. Then run:
+
+    ```bash
+    cd /path/to/your/company/repo # Replace with the actual path
+    git config user.name "Your Name (Company)"
+    git config user.email "your.company.email@company.com"
+    ```
+    Notice the absence of `--global`. This ensures the setting applies only to the current repository.
+
+**How to Distinguish Your GitHub Accounts (SSH and Git Config):**
+
+Let's put it all together. You'll need to manage both your SSH configuration (for authentication) and your Git configuration (for commit identity).
+
+**Step 1: SSH Key Setup (Review/Confirm)**
+
+This part is for authenticating to the different GitHub servers.
+
+* **Personal GitHub (Public Site):**
+    You likely have `id_rsa_mygit` (or whatever you renamed it to) associated with your personal GitHub account.
+    Your `~/.ssh/config` should look something like this:
+
+    ```
+    Host github.com-personal
+      HostName github.com
+      User git
+      IdentityFile ~/.ssh/id_rsa_mygit # Or ~/.ssh/id_rsa if you kept that for personal
+      AddKeysToAgent yes
+      UseKeychain yes # (Optional, for macOS)
+    ```
+
+* **Company GitHub:**
+    You'll need a *separate* SSH key for your company's GitHub. Let's call it `id_rsa_company`.
+    * **Generate the key:**
+        ```bash
+        ssh-keygen -t rsa -b 4096 -C "your.company.email@company.com" -f ~/.ssh/id_rsa_company
+        ```
+        Follow the prompts for a passphrase.
+    * **Add the public key (`~/.ssh/id_rsa_company.pub`) to your company's GitHub account settings.**
+    * **Add to `~/.ssh/config`:**
+
+        ```
+        Host github.com-company
+          HostName your-company-github-domain.com # e.g., github.com or github.mycompany.com
+          User git
+          IdentityFile ~/.ssh/id_rsa_company
+          AddKeysToAgent yes
+          UseKeychain yes # (Optional, for macOS)
+        ```
+        **Important:** Replace `your-company-github-domain.com` with the actual domain for your company's GitHub instance. If your company uses GitHub Enterprise Cloud, it might still be `github.com`. If it's an on-premise GitHub Enterprise Server, it will be a unique domain.
+
+* **Update Git Remote URLs:**
+    For each local repository, make sure its remote URL points to the correct `Host` alias defined in your `~/.ssh/config`.
+
+    * **For personal repos:**
+        ```bash
+        cd /path/to/personal/repo
+        git remote set-url origin git@github.com-personal:your_personal_github_username/your_repo.git
+        ```
+
+    * **For company repos:**
+        ```bash
+        cd /path/to/company/repo
+        git remote set-url origin git@github.com-company:your_company_github_username/your_repo.git
+        ```
+
+**Step 2: Git Author Identity Configuration**
+
+This part is for setting your name and email in your commits.
+
+1.  **Set Global Defaults:**
+    Decide which identity you use more often and set it as global. For example, your personal one:
+
+    ```bash
+    git config --global user.name "Frank Zhou (Personal)"
+    git config --global user.email "frank.zhou.personal@example.com"
+    ```
+
+2.  **Set Local Overrides for Company Repositories:**
+    For every company repository you clone or work on, navigate into that repository's directory and set the local `user.name` and `user.email`.
+
+    ```bash
+    cd /path/to/your/company/project
+    git config user.name "Frank Zhou (Company)"
+    git config user.email "frank.zhou@yourcompany.com"
+    ```
+
+**To Fix Your Current Error:**
+
+Based on the error message, you just need to set the `user.name` and `user.email` for the specific repository you are working on.
+
+If this is a **personal** repository:
+```bash
+git config user.name "Frank Zhou"
+git config user.email "your.personal.email@example.com"
+```
+
+If this is a **company** repository:
+```bash
+git config user.name "Frank Zhou (Company)"
+git config user.email "frank.zhou@yourcompany.com"
+```
+
+After setting these, try `git commit` again. It should now proceed without the "Author identity unknown" error.

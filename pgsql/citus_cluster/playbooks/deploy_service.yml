@@ -1,7 +1,9 @@
-- name: Deploy PostgreSQL service file
-  hosts: all
+# playbooks/deploy_service.yml (Option 1)
+- name: Deploy PostgreSQL service
+  hosts: co # or all
   become: yes
-  roles:
-    - role: postgres
-      tasks_from: service
-
+  tasks:
+    - name: Include service tasks
+      ansible.builtin.include_tasks: ../roles/postgres/tasks/service.yml
+      # Or import_tasks for static inclusion (resolved at playbook parse time)
+      # ansible.builtin.import_tasks: ../roles/postgres/tasks/service.yml

@@ -1,0 +1,10 @@
+Remember, the demo playbook which change IP address does not work, it is just show the variable file usage and the playbook structure. 
+
+1. Create the project static_ip_setup
+2. vi inventory file, 
+3. vi playbook.yml file
+4. vi host_vars/rl15.yml
+5. dry run to check
+ansible-playbook -i inventory playbook.yml -b --check --diff --ask-become-pass
+
+5. ansible-playbook -i inventory playbook.yml

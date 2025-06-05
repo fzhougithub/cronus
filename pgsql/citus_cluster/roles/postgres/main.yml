@@ -1,0 +1,12 @@
+# roles/postgres/tasks/main.yml
+---
+- name: Include install tasks
+  ansible.builtin.include_tasks: install.yml
+
+- name: Include config tasks
+  ansible.builtin.include_tasks: config.yml
+
+# ... other tasks ...
+
+- name: Include service tasks
+  ansible.builtin.include_tasks: service.yml # This will correctly find service.yml

@@ -1,0 +1,98 @@
+The error you're seeing is not directly related to SSH or your Git key. Instead, it's a GPG (GNU Privacy Guard) signing issue when trying to commit with Git. Here's what's happening:
+
+Error Breakdown
+
+error: gpg failed to sign the data
+fatal: failed to write commit object
+
+gpg failed to sign the data: Git is configured to sign commits with GPG, but it failed to do so.
+
+fatal: failed to write commit object: Because GPG signing failed, Git couldn't create the commit.
+
+Why This Happens
+Git is configured to sign commits with GPG (commit.gpgsign = true).
+
+GPG is not properly set up (missing key, wrong permissions, or not in the agent).
+
+You don't have a GPG key configured for signing.
+
+How to Fix It
+
+Option 1: Disable GPG Signing (Temporary Fix)
+
+If you don't need GPG signing, disable it for this commit:
+git -c commit.gpgsign=false commit
+
+This bypasses GPG and allows the commit to proceed.
+
+Option 2: Fix GPG Signing (Permanent Solution)
+
+If you want to keep GPG signing, ensure:
+GPG is installed:
+
+      gpg --version
+   
+If missing, install it:
+
+macOS: brew install gnupg
+
+Linux: sudo apt install gnupg (Debian/Ubuntu) or sudo yum install gnupg (RHEL/CentOS).
+GPG key is available:
+
+List your GPG keys:
+
+          gpg --list-secret-keys --keyid-format=long
+     
+If no key exists, generate one:
+
+          gpg --full-generate-key
+     
+GPG key is trusted by Git:
+
+Export your GPG key ID:
+
+          gpg --list-secret-keys --keyid-format=long grep sec awk '{print $2}'
+ cut -d'/' -f2
+     
+Tell Git to use this key:
+
+          git config user.signingkey YOUR_GPG_KEY_ID
+     
+GPG agent is running (for password prompts):
+
+Start gpg-agent:
+
+          gpgconf --launch gpg-agent
+     
+If using macOS Keychain, ensure gpg is set up to work with it (may require pinentry-mac).
+Test GPG signing:
+
+      echo "test" | gpg --clearsign
+   
+If this fails, debug GPG issues separately.
+
+Option 3: Reconfigure Git to Not Sign Commits
+
+If you never want GPG signing, disable it globally:
+git config --global commit.gpgsign false
+
+Now git commit will work without GPG.
+
+Why SSH Key (GIT_SSH_COMMAND) Didn't Affect This
+Your GIT_SSH_COMMAND was correctly set, but the error is unrelated to SSH.
+
+The problem is GPG signing, which is a separate Git feature.
+
+Summary of Fixes
+Issue Solution
+
+GPG signing failing Fix GPG setup (gpg --list-secret-keys, git config user.signingkey)
+Don't want GPG signing Disable with git -c commit.gpgsign=false commit or git config --global commit.gpgsign false
+SSH key issue (unrelated) Your GIT_SSH_COMMAND was correct, but not the cause of this error
+
+Final Recommendation
+If you don't need GPG signing, disable it temporarily or permanently.  
+
+If you want GPG signing, ensure your GPG key is set up and working.  
+
+Would you like help setting up GPG signing properly? 🚀
