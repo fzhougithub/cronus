@@ -1,0 +1,196 @@
+The doc contains two part
+1. push using specific key
+2. commit without gpg check
+
+To run git push using a specific SSH key file (e.g., ~/.ssh.bak/id_rsa_mygit), you have three reliable methods:
+
+Method 1: Use GIT_SSH_COMMAND (Recommended for One-Time Use)
+
+This method temporarily specifies the SSH key for just one command:
+GIT_SSH_COMMAND="ssh -i ~/.ssh.bak/id_rsa_mygit" git push origin main
+
+Why this works:  
+
+GIT_SSH_COMMAND overrides the default SSH command Git uses.  
+
+-i ~/.ssh.bak/id_rsa_mygit forces SSH to use your custom key.  
+
+Note:  
+
+Replace origin main with your actual remote name (e.g., upstream dev).  
+
+If the key has a passphrase, you’ll be prompted to enter it.  
+
+Method 2: Configure ~/.ssh/config (Permanent Solution)
+
+If you frequently use this key for a specific host (e.g., GitHub/GitLab), edit ~/.ssh/config:
+nano ~/.ssh/config
+
+Add an entry like:
+
+Host github.com  # Replace with your Git host (e.g., gitlab.com)
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh.bak/id_rsa_mygit
+    IdentitiesOnly yes  # Force SSH to use only this key
+
+Why this works:  
+
+Git automatically uses the key specified in ~/.ssh/config for the matching host.  
+
+IdentitiesOnly yes prevents SSH from trying other keys.  
+
+After saving:  
+
+Run chmod 600 ~/.ssh.bak/id_rsa_mygit to ensure correct permissions.  
+
+Now git push will use the key without extra flags.  
+
+Method 3: Set core.sshCommand (Per-Repository)
+
+If you want to use this key only for one Git repo:
+git config core.sshCommand "ssh -i ~/.ssh.bak/id_rsa_mygit"
+
+Why this works:  
+
+Overrides the SSH command only for the current repository.  
+
+No need to modify global configs.  
+
+To unset later:  
+
+    git config --unset core.sshCommand
+  
+
+Troubleshooting
+Key Permissions:  
+
+   Ensure your key file has strict permissions:  
+      chmod 600 ~/.ssh.bak/id_rsa_mygit
+   
+SSH Agent (If Key Has Passphrase):  
+
+   If the key is encrypted, add it to ssh-agent to avoid repeated passphrase prompts:  
+      eval "$(ssh-agent -s)"
+   ssh-add ~/.ssh.bak/id_rsa_mygit
+   
+Verify SSH Connection:  
+
+   Test if the key works independently of Git:  
+      ssh -i ~/.ssh.bak/id_rsa_mygit git@github.com  # Replace with your Git host
+   
+If this fails, debug SSH first (e.g., wrong key, host blocked).  
+
+Why Your Original Attempt Might Have Failed
+If you ran GIT_SSH_COMMAND="ssh -i ~/.ssh.bak/id_rsa_mygit" git commit, the error was due to GPG signing, not SSH.  
+
+For git push, SSH is the only concern, so the above methods will work.  
+
+Summary
+Method Use Case Command
+
+GIT_SSH_COMMAND One-time override GIT_SSH_COMMAND="ssh -i ~/.ssh.bak/id_rsa_mygit" git push
+~/.ssh/config Permanent setup Edit ~/.ssh/config (see above)
+core.sshCommand Per-repo setting git config core.sshCommand "ssh -i ~/.ssh.bak/id_rsa_mygit"
+
+Choose the method that fits your workflow best. Let me know if you hit any snags! 🚀
+
+
+The error you're seeing is not directly related to SSH or your Git key. Instead, it's a GPG (GNU Privacy Guard) signing issue when trying to commit with Git. Here's what's happening:
+
+Error Breakdown
+
+error: gpg failed to sign the data
+fatal: failed to write commit object
+
+gpg failed to sign the data: Git is configured to sign commits with GPG, but it failed to do so.
+
+fatal: failed to write commit object: Because GPG signing failed, Git couldn't create the commit.
+
+Why This Happens
+Git is configured to sign commits with GPG (commit.gpgsign = true).
+
+GPG is not properly set up (missing key, wrong permissions, or not in the agent).
+
+You don't have a GPG key configured for signing.
+
+How to Fix It
+
+Option 1: Disable GPG Signing (Temporary Fix)
+
+If you don't need GPG signing, disable it for this commit:
+git -c commit.gpgsign=false commit
+
+This bypasses GPG and allows the commit to proceed.
+
+Option 2: Fix GPG Signing (Permanent Solution)
+
+If you want to keep GPG signing, ensure:
+GPG is installed:
+
+      gpg --version
+   
+If missing, install it:
+
+macOS: brew install gnupg
+
+Linux: sudo apt install gnupg (Debian/Ubuntu) or sudo yum install gnupg (RHEL/CentOS).
+GPG key is available:
+
+List your GPG keys:
+
+          gpg --list-secret-keys --keyid-format=long
+     
+If no key exists, generate one:
+
+          gpg --full-generate-key
+     
+GPG key is trusted by Git:
+
+Export your GPG key ID:
+
+          gpg --list-secret-keys --keyid-format=long grep sec awk '{print $2}'
+ cut -d'/' -f2
+     
+Tell Git to use this key:
+
+          git config user.signingkey YOUR_GPG_KEY_ID
+     
+GPG agent is running (for password prompts):
+
+Start gpg-agent:
+
+          gpgconf --launch gpg-agent
+     
+If using macOS Keychain, ensure gpg is set up to work with it (may require pinentry-mac).
+Test GPG signing:
+
+      echo "test" | gpg --clearsign
+   
+If this fails, debug GPG issues separately.
+
+Option 3: Reconfigure Git to Not Sign Commits
+
+If you never want GPG signing, disable it globally:
+git config --global commit.gpgsign false
+
+Now git commit will work without GPG.
+
+Why SSH Key (GIT_SSH_COMMAND) Didn't Affect This
+Your GIT_SSH_COMMAND was correctly set, but the error is unrelated to SSH.
+
+The problem is GPG signing, which is a separate Git feature.
+
+Summary of Fixes
+Issue Solution
+
+GPG signing failing Fix GPG setup (gpg --list-secret-keys, git config user.signingkey)
+Don't want GPG signing Disable with git -c commit.gpgsign=false commit or git config --global commit.gpgsign false
+SSH key issue (unrelated) Your GIT_SSH_COMMAND was correct, but not the cause of this error
+
+Final Recommendation
+If you don't need GPG signing, disable it temporarily or permanently.  
+
+If you want GPG signing, ensure your GPG key is set up and working.  
+
+Would you like help setting up GPG signing properly? 🚀

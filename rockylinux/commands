@@ -1,1 +1,5 @@
 ls -lSr
+
+git -c commit.gpgsign=false commit 
+GIT_SSH_COMMAND="ssh -i ~/.ssh.bak/id_rsa_mygit" git push
+
