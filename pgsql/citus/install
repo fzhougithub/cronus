@@ -1,3 +1,5 @@
+/usr/pgsql-17/bin/postgresql-17-setup initdb
+
 #curl https://install.citusdata.com/community/rpm.sh | sudo bash
 
 #https://docs.citusdata.com/en/v12.0/installation/single_node_rhel.html

@@ -1,0 +1,251 @@
+1. start rl11 rl13 14 15
+	systemctl stop/isable firewalld
+2, setup .pgpass to support the remote login
+	vi ~/.pgpass
+	rl13:5432:*:postgres:p.....1
+	chmod 600 ~/.pgpass
+
+2. Add worker node into cluster
+	SELECT * from master_add_node('rl13','5432');
+	SELECT * from master_add_node('rl14','5432');
+	SELECT * from master_add_node('rl15','5432');
+
+3. Check the works are good
+	SELECT * FROM master_get_active_worker_nodes();
+	postgres=# SELECT * FROM master_get_active_worker_nodes();
+ node_name | node_port
+-----------+-----------
+ rl14      |      5432
+ rl15      |      5432
+ rl13      |      5432
+(3 rows)
+
+
+
+3. Check the works are good
+	SELECT * FROM master_get_active_worker_nodes();
+	postgres=# SELECT * FROM master_get_active_worker_nodes();
+ node_name | node_port
+-----------+-----------
+ rl14      |      5432
+ rl15      |      5432
+ rl13      |      5432
+(3 rows)
+
+
+
+3. Check the works are good
+	SELECT * FROM master_get_active_worker_nodes();
+	postgres=# SELECT * FROM master_get_active_worker_nodes();
+ node_name | node_port
+-----------+-----------
+ rl14      |      5432
+ rl15      |      5432
+ rl13      |      5432
+(3 rows)
+
+
+
+3. Check the works are good
+	SELECT * FROM master_get_active_worker_nodes();
+	postgres=# SELECT * FROM master_get_active_worker_nodes();
+ node_name | node_port
+-----------+-----------
+ rl14      |      5432
+ rl15      |      5432
+ rl13      |      5432
+(3 rows)
+
+
+
+3. Check the works are good
+	SELECT * FROM master_get_active_worker_nodes();
+	postgres=# SELECT * FROM master_get_active_worker_nodes();
+ node_name | node_port
+-----------+-----------
+ rl14      |      5432
+ rl15      |      5432
+ rl13      |      5432
+(3 rows)
+
+4. Download the sample data
+https://docs.citusdata.com/en/v6.2/tutorials/multi-tenant-tutorial.html
+curl https://examples.citusdata.com/tutorial/companies.csv > companies.csv
+curl https://examples.citusdata.com/tutorial/campaigns.csv > campaigns.csv
+curl https://examples.citusdata.com/tutorial/ads.csv > ads.csv
+
+connect to coordinator
+
+CREATE TABLE companies (
+    id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE campaigns (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    name text NOT NULL,
+    cost_model text NOT NULL,
+    state text NOT NULL,
+    monthly_budget bigint,
+    blacklisted_site_urls text[],
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE ads (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    target_url text,
+    impressions_count bigint DEFAULT 0,
+    clicks_count bigint DEFAULT 0,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+4. Download the sample data
+https://docs.citusdata.com/en/v6.2/tutorials/multi-tenant-tutorial.html
+curl https://examples.citusdata.com/tutorial/companies.csv > companies.csv
+curl https://examples.citusdata.com/tutorial/campaigns.csv > campaigns.csv
+curl https://examples.citusdata.com/tutorial/ads.csv > ads.csv
+
+connect to coordinator
+
+CREATE TABLE companies (
+    id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE campaigns (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    name text NOT NULL,
+    cost_model text NOT NULL,
+    state text NOT NULL,
+    monthly_budget bigint,
+    blacklisted_site_urls text[],
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE ads (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    target_url text,
+    impressions_count bigint DEFAULT 0,
+    clicks_count bigint DEFAULT 0,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+4. Download the sample data
+https://docs.citusdata.com/en/v6.2/tutorials/multi-tenant-tutorial.html
+curl https://examples.citusdata.com/tutorial/companies.csv > companies.csv
+curl https://examples.citusdata.com/tutorial/campaigns.csv > campaigns.csv
+curl https://examples.citusdata.com/tutorial/ads.csv > ads.csv
+
+connect to coordinator
+
+CREATE TABLE companies (
+    id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE campaigns (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    name text NOT NULL,
+    cost_model text NOT NULL,
+    state text NOT NULL,
+    monthly_budget bigint,
+    blacklisted_site_urls text[],
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE ads (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    target_url text,
+    impressions_count bigint DEFAULT 0,
+    clicks_count bigint DEFAULT 0,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+4. Download the sample data
+https://docs.citusdata.com/en/v6.2/tutorials/multi-tenant-tutorial.html
+curl https://examples.citusdata.com/tutorial/companies.csv > companies.csv
+curl https://examples.citusdata.com/tutorial/campaigns.csv > campaigns.csv
+curl https://examples.citusdata.com/tutorial/ads.csv > ads.csv
+
+connect to coordinator
+
+CREATE TABLE companies (
+    id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE campaigns (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    name text NOT NULL,
+    cost_model text NOT NULL,
+    state text NOT NULL,
+    monthly_budget bigint,
+    blacklisted_site_urls text[],
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+CREATE TABLE ads (
+    id bigint NOT NULL,
+    company_id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    name text NOT NULL,
+    image_url text,
+    target_url text,
+    impressions_count bigint DEFAULT 0,
+    clicks_count bigint DEFAULT 0,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+ALTER TABLE companies ADD PRIMARY KEY (id);
+ALTER TABLE campaigns ADD PRIMARY KEY (id, company_id);
+ALTER TABLE ads ADD PRIMARY KEY (id, company_id);
+
+5. distribute table
+
+SELECT create_distributed_table('companies', 'id');
+SELECT create_distributed_table('campaigns', 'company_id');
+SELECT create_distributed_table('ads', 'company_id');
+
+6. Load data
+
+\copy companies from 'companies.csv' with csv;
+\copy campaigns from 'campaigns.csv' with csv;
+\copy ads from 'ads.csv' with csv;
+
+https://docs.citusdata.com/en/v6.2/tutorials/multi-tenant-tutorial.html
