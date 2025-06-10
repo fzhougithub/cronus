@@ -1,0 +1,177 @@
+Original:
+
+fzhou=# SELECT pgivm.create_immv('i_stockhistory_quarterly', "SELECT DISTINCT ON (symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) symbol,
+       date_trunc('quarter'::text, (day)::timestamp with time zone) AS quarter_start,
+       first_value(o) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone)) ORDER BY day) AS open_price,
+       max(h) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS high_price,
+       min(l) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS low_price,
+       last_value(c) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone)) ORDER BY day) AS close_price,
+       sum(amount) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS amount_sum,
+       sum(v) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS volume_sum,
+       sum(last) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS last_sum
+FROM stockhistory
+ORDER BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone)), day");
+NOTICE:  identifier "SELECT DISTINCT ON (symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) symbol,
+       date_trunc('quarter'::text, (day)::timestamp with time zone) AS quarter_start,
+       first_value(o) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone)) ORDER BY day) AS open_price,
+       max(h) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS high_price,
+       min(l) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS low_price,
+       last_value(c) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone)) ORDER BY day) AS close_price,
+       sum(amount) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS amount_sum,
+       sum(v) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS volume_sum,
+       sum(last) OVER (PARTITION BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone))) AS last_sum
+FROM stockhistory
+ORDER BY symbol, (date_trunc('quarter'::text, (day)::timestamp with time zone)), day" will be truncated to "SELECT DISTINCT ON (symbol, (date_trunc('quarter'::text, (day):"
+ERROR:  column "SELECT DISTINCT ON (symbol, (date_trunc('quarter'::text, (day):" does not exist
+LINE 1: ...ECT pgivm.create_immv('i_stockhistory_quarterly', "SELECT DI...
+
+
+Step 1: 
+
+SELECT pgivm.create_immv('i_stockhistory_quarterly', $$
+    SELECT DISTINCT ON (symbol, date_trunc('quarter'::text, day::timestamp with time zone))
+        symbol,
+        date_trunc('quarter'::text, day::timestamp with time zone) AS quarter_start,
+        first_value(o) OVER (PARTITION BY symbol, date_trunc('quarter'::text, day::timestamp with time zone) ORDER BY day) AS open_price,
+        max(h) OVER (PARTITION BY symbol, date_trunc('quarter'::text, day::timestamp with time zone)) AS high_price,
+        min(l) OVER (PARTITION BY symbol, date_trunc('quarter'::text, day::timestamp with time zone)) AS low_price,
+        last_value(c) OVER (PARTITION BY symbol, date_trunc('quarter'::text, day::timestamp with time zone) ORDER BY day) AS close_price,
+        sum(amount) OVER (PARTITION BY symbol, date_trunc('quarter'::text, day::timestamp with time zone)) AS amount_sum,
+        sum(v) OVER (PARTITION BY symbol, date_trunc('quarter'::text, day::timestamp with time zone)) AS volume_sum,
+        sum(last) OVER (PARTITION BY symbol, date_trunc('quarter'::text, day::timestamp with time zone)) AS last_sum
+    FROM stockhistory
+    ORDER BY symbol, date_trunc('quarter'::text, day::timestamp with time zone), day
+$$);
+
+date_trunc('quarter'::text, day::timestamp with time zone) is considered a mutable function because it involves:
+
+Type coercions
+
+Time zone effects
+
+And the underlying function date_trunc is marked as STABLE, not IMMUTABLE
+
+To use the query in an incrementally maintainable materialized view, all functions must be immutable, meaning they always return the same result for the same input, regardless of time zone or context.
+
+Step 2:
+
+fzhou=# CREATE VIEW stockhistory_with_quarter AS
+SELECT *,
+       (extract(year from day)::int * 100 + extract(quarter from day)::int) AS quarter_id
+FROM stockhistory;
+CREATE VIEW
+fzhou=# SELECT pgivm.create_immv('i_stockhistory_quarterly', $$
+    SELECT DISTINCT ON (symbol, quarter_id)
+        symbol,
+        quarter_id,
+        first_value(o) OVER (PARTITION BY symbol, quarter_id ORDER BY day) AS open_price,
+        max(h) OVER (PARTITION BY symbol, quarter_id) AS high_price,
+        min(l) OVER (PARTITION BY symbol, quarter_id) AS low_price,
+        last_value(c) OVER (PARTITION BY symbol, quarter_id ORDER BY day) AS close_price,
+        sum(amount) OVER (PARTITION BY symbol, quarter_id) AS amount_sum,
+        sum(v) OVER (PARTITION BY symbol, quarter_id) AS volume_sum,
+        sum(last) OVER (PARTITION BY symbol, quarter_id) AS last_sum
+    FROM stockhistory_with_quarter
+    ORDER BY symbol, quarter_id, day
+$$);
+ERROR:  ORDER BY clause is not supported on incrementally maintainable materialized view
+
+The ORDER BY in a view definition is used for output ordering — but materialized views (especially incrementally maintained ones) are not guaranteed to store or return rows in any particular order. Allowing ORDER BY could lead to ambiguity or unnecessary complexity in maintaining the view incrementally.
+
+Step 3:
+
+SELECT * FROM i_stockhistory_quarterly
+ORDER BY symbol, quarter_id, open_price;
+
+
+fzhou=# SELECT pgivm.create_immv('i_stockhistory_quarterly', $$
+    SELECT DISTINCT ON (symbol, quarter_id)
+        symbol,
+        quarter_id,
+        first_value(o) OVER (PARTITION BY symbol, quarter_id ORDER BY day) AS open_price,
+        max(h) OVER (PARTITION BY symbol, quarter_id) AS high_price,
+        min(l) OVER (PARTITION BY symbol, quarter_id) AS low_price,
+        last_value(c) OVER (PARTITION BY symbol, quarter_id ORDER BY day) AS close_price,
+        sum(amount) OVER (PARTITION BY symbol, quarter_id) AS amount_sum,
+        sum(v) OVER (PARTITION BY symbol, quarter_id) AS volume_sum,
+        sum(last) OVER (PARTITION BY symbol, quarter_id) AS last_sum
+    FROM stockhistory_with_quarter
+$$);
+ERROR:  DISTINCT ON is not supported on incrementally maintainable materialized view
+
+DISTINCT ON is PostgreSQL-specific syntax and introduces ordering-dependent row selection. This makes it non-deterministic and incompatible with incremental maintenance, which needs to reason about deltas deterministically.
+
+You likely used DISTINCT ON to get the first row per group, which is usually better expressed using ROW_NUMBER() or FIRST_VALUE() in a WHERE-filtered subquery.
+
+Let’s rephrase your query to avoid DISTINCT ON.
+
+Step 5:
+
+fzhou=# SELECT pgivm.create_immv('i_stockhistory_quarterly', $$
+    WITH ranked AS (
+        SELECT
+            symbol,
+            quarter_id,
+            day,
+            o,
+            c,
+            h,
+            l,
+            amount,
+            v,
+            last,
+            ROW_NUMBER() OVER (PARTITION BY symbol, quarter_id ORDER BY day) AS rn
+        FROM stockhistory_with_quarter
+    )
+    SELECT
+        r.symbol,
+        r.quarter_id,
+        r.o AS open_price,
+$$);WHERE r.rn = 1agg.symbol AND r.quarter_id = agg.quarter_id
+ERROR:  aggregate functions in nested query are not supported on incrementally maintainable materialized view
+
+This means you cannot put SUM(), MAX(), etc. inside a subquery, CTE, or JOIN when using pgivm.create_immv.
+Aggregate functions must appear in the top-level SELECT only — directly grouped by keys, no nesting.
+
+Step 6:
+
+fzhou=# SELECT pgivm.create_immv('i_stockhistory_quarterly', $$
+    SELECT
+        symbol,
+        quarter_id,
+        -- open price: the "o" value on the earliest "day"
+        MIN(o) FILTER (WHERE day = first_day) AS open_price,
+        MAX(h) AS high_price,
+        MIN(l) AS low_price,
+        -- close price: the "c" value on the latest "day"
+        MAX(c) FILTER (WHERE day = last_day) AS close_price,
+        SUM(amount) AS amount_sum,
+        SUM(v) AS volume_sum,
+        SUM(last) AS last_sum
+    FROM (
+        SELECT *,
+               MIN(day) OVER (PARTITION BY symbol, quarter_id) AS first_day,
+               MAX(day) OVER (PARTITION BY symbol, quarter_id) AS last_day
+        FROM stockhistory_with_quarter
+    ) s
+    GROUP BY symbol, quarter_id
+$$);
+ERROR:  window functions are not supported on incrementally maintainable materialized view
+
+Window functions (OVER (...)) are not supported in incrementally maintainable materialized views.
+
+Feature Used	Allowed in IMMV?	Why Not?
+date_trunc(...)	❌	STABLE not IMMUTABLE
+ORDER BY	❌	Not supported in view definition
+DISTINCT ON	❌	Not deterministic or generalizable
+Aggregates in subquery	❌	Only allowed at top level
+Window functions	❌	Not supported at all
+
+Step 7:
+
+CREATE MATERIALIZED VIEW stockhistory_annotated AS
+SELECT *,
+       (EXTRACT(YEAR FROM day)::int * 100 + EXTRACT(QUARTER FROM day)::int) AS quarter_id
+FROM stockhistory;
+
+

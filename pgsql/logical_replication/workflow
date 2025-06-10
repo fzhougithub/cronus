@@ -1,0 +1,24 @@
+[Primary]
+client --> logical slot --> walsender --> logical decoding (pgoutput) --> stream
+
+[Subscriber]
+stream receiver --> apply worker --> apply to target tables
+
+SELECT * FROM pg_stat_replication;
+
+
+SELECT * FROM pg_replication_slots;
+
+
+SELECT * FROM pg_publication;
+
+SELECT
+    pub.pubname AS publication_name,
+    ns.nspname AS schema_name,
+    c.relname  AS table_name
+FROM pg_publication pub
+JOIN pg_publication_rel pr ON pub.oid = pr.prpubid
+JOIN pg_class c ON c.oid = pr.prrelid
+JOIN pg_namespace ns ON ns.oid = c.relnamespace
+ORDER BY publication_name, schema_name, table_name;
+

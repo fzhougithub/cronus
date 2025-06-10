@@ -1,0 +1,57 @@
+INSERT INTO companies VALUES (5000, 'New Company', 'https://randomurl/image.png', now(), now());
+
+https://docs.citusdata.com/en/v6.2/tutorials/multi-tenant-tutorial.html
+
+curl https://examples.citusdata.com/tutorial/users.csv > users.csv
+curl https://examples.citusdata.com/tutorial/events.csv > events.csv
+
+CREATE TABLE github_events
+(
+    event_id bigint,
+    event_type text,
+    event_public boolean,
+    repo_id bigint,
+    payload jsonb,
+    repo jsonb,
+    user_id bigint,
+    org jsonb,
+    created_at timestamp
+);
+
+CREATE TABLE github_users
+(
+    user_id bigint,
+    url text,
+    login text,
+    avatar_url text,
+    gravatar_id text,
+    display_login text
+);
+
+CREATE INDEX event_type_index ON github_events (event_type);
+CREATE INDEX payload_index ON github_events USING GIN (payload jsonb_path_ops);
+
+Distribute table
+
+SELECT create_distributed_table('github_users', 'user_id');
+SELECT create_distributed_table('github_events', 'user_id');
+
+\copy github_users from 'users.csv' with csv;
+\copy github_events from 'events.csv' with csv;
+
+SELECT date_trunc('minute', created_at) AS minute,
+       sum((payload->>'distinct_size')::int) AS num_commits
+FROM github_events
+WHERE event_type = 'PushEvent'
+GROUP BY minute
+ORDER BY minute;
+
+SELECT login, count(*)
+FROM github_events ge
+JOIN github_users gu
+ON ge.user_id = gu.user_id
+WHERE event_type = 'CreateEvent' AND payload @> '{"ref_type": "repository"}'
+GROUP BY login
+ORDER BY count(*) DESC LIMIT 10;
+
+

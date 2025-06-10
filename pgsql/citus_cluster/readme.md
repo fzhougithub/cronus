@@ -1,3 +1,5 @@
+This is ansible directory
+
 ansible-playbook -i inventory/hosts.ini playbooks/deploy_service.yml -b --ask-become-pass --limit co
 
 

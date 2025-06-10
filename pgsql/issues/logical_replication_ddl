@@ -1,0 +1,249 @@
+To safely perform DDL maintenance on a PostgreSQL logical replication setup, you need to stop logical replication to prevent conflicts, errors, or data inconsistencies while schema changes are applied. Below is a step-by-step procedure to stop logical replication on both the publisher and subscriber sides, ensuring a smooth maintenance process. This assumes you are using PostgreSQL 10 or later with an existing logical replication setup (publication on the publisher and subscription on the subscriber).
+
+---
+
+### Procedure to Stop Logical Replication Before Maintenance
+
+#### 1. **Plan the Maintenance Window**
+   - **Why**: Stopping logical replication temporarily halts data replication, which may cause replication lag or require application downtime. Plan a maintenance window to minimize impact.
+   - **Action**:
+     - Notify application teams to pause or reduce write activity to replicated tables, if possible.
+     - Ensure you have a clear list of DDL changes to apply and test them in a non-production environment first.
+     - Check WAL retention settings on the publisher to ensure WAL segments are retained during maintenance (to avoid errors like “requested WAL segment has already been removed”).
+
+#### 2. **Verify Current Replication Status**
+   - **On the Subscriber**:
+     - Check the status of subscriptions to confirm they are active and note their current state:
+       ```sql
+       SELECT subscription_name, sub_enabled, status, received_lsn, latest_end_lsn
+       FROM pg_stat_subscription;
+       ```
+       - `sub_enabled`: Should be `true` if active.
+       - `status`: Should be `active` or `catching up`.
+       - `received_lsn` and `latest_end_lsn`: Note these to monitor lag later.
+   - **On the Publisher**:
+     - Check replication slots to ensure they are active and not lagging significantly:
+       ```sql
+       SELECT slot_name, slot_type, active, wal_status, restart_lsn, 
+              pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS lag
+       FROM pg_replication_slots;
+       ```
+       - Ensure `slot_type` is `logical` and `active` is `true`.
+       - Check `wal_status` to confirm it’s not `lost` (indicating missing WAL segments).
+   - **Purpose**: This helps you confirm the replication setup and detect any existing issues before stopping replication.
+
+#### 3. **Pause Logical Replication on the Subscriber**
+   - **Why**: Disabling the subscription stops the apply worker process on the subscriber, preventing it from processing new changes from the publisher while DDL maintenance is performed.
+   - **Steps**:
+     1. **Connect to the Subscriber**:
+        ```sql
+        \c subscriber_db
+        ```
+     2. **Disable the Subscription**:
+        - Identify the subscription name from `pg_stat_subscription` or `pg_subscription`:
+          ```sql
+          SELECT sub_name, sub_slot_name, sub_enabled, sub_conninfo
+          FROM pg_subscription;
+          ```
+        - Disable the subscription:
+          ```sql
+          ALTER SUBSCRIPTION my_subscription_name DISABLE;
+          ```
+          - Replace `my_subscription_name` with the actual subscription name.
+        - This stops the apply worker, halting replication of new changes from the publisher.
+     3. **Verify the Subscription is Disabled**:
+        ```sql
+        SELECT subscription_name, sub_enabled, status
+        FROM pg_stat_subscription;
+        ```
+        - Confirm `sub_enabled` is `false` and `status` is no longer `active` (it may be `down` or absent).
+     4. **Check Logs**:
+        - Look at the subscriber’s PostgreSQL logs (e.g., in `pg_log` or as configured by `log_directory`) for messages like:
+          ```
+          LOG: logical replication apply worker for subscription "my_subscription_name" has stopped
+          ```
+   - **Note**: Disabling the subscription does not drop it; it only pauses replication. The subscription retains its configuration and replication slot.
+
+#### 4. **Optionally Pause Replication Slots on the Publisher**
+   - **Why**: While disabling the subscription on the subscriber is usually sufficient, you can also pause the replication slot on the publisher to prevent it from accumulating WAL if the maintenance window is long. This step is optional and typically not needed unless you expect significant WAL growth or want to reduce resource usage.
+   - **Steps**:
+     1. **Connect to the Publisher**:
+        ```sql
+        \c publisher_db
+        ```
+     2. **Identify the Replication Slot**:
+        - Find the slot associated with the subscription:
+          ```sql
+          SELECT slot_name, slot_type, active
+          FROM pg_replication_slots
+          WHERE slot_type = 'logical';
+          ```
+        - The `slot_name` often matches the `sub_slot_name` from the subscriber’s `pg_subscription` table.
+     3. **Temporarily Deactivate the Slot** (Optional):
+        - Logical replication slots don’t have a direct “disable” command, but you can drop and recreate the slot later if needed. Alternatively, ensure the subscriber doesn’t connect (already handled by disabling the subscription).
+        - If you choose to drop the slot (only if absolutely necessary):
+          ```sql
+          SELECT pg_drop_replication_slot('slot_name');
+          ```
+          - **Warning**: Dropping the slot requires recreating the subscription or resyncing data later, so avoid this unless you’re prepared to handle the consequences.
+     4. **Monitor WAL Retention**:
+        - Ensure `wal_keep_size` (PostgreSQL 13+) or `max_wal_size` is sufficient to retain WAL segments during maintenance:
+          ```sql
+          SHOW wal_keep_size;
+          SHOW max_wal_size;
+          ```
+        - If archiving is enabled (`archive_mode = on`), verify WAL files are archived to avoid removal.
+
+#### 5. **Stop Application Writes to Affected Tables (If Possible)**
+   - **Why**: DDL operations (e.g., `ALTER TABLE`, `CREATE INDEX`) may lock tables, and ongoing DML (writes) on the publisher can cause lock conflicts or replication issues when replication resumes.
+   - **Action**:
+     - Pause application writes to the affected tables on the publisher during the maintenance window.
+     - If pausing writes isn’t feasible, use non-disruptive DDL commands (e.g., `CREATE INDEX CONCURRENTLY`, `ALTER TABLE ADD COLUMN` with nullable or default values).
+     - Communicate with application teams to coordinate this step.
+
+#### 6. **Verify Replication is Stopped**
+   - **On the Subscriber**:
+     - Confirm no apply workers are running for the subscription:
+       ```sql
+       SELECT pid, subscription_name, state
+       FROM pg_stat_activity
+       WHERE application_name = 'my_subscription_name' AND state LIKE '%logical%';
+       ```
+       - No rows should be returned if the subscription is disabled.
+     - Check logs for confirmation of the apply worker stopping.
+   - **On the Publisher**:
+     - Verify the replication slot is inactive (if the subscriber is disconnected):
+       ```sql
+       SELECT slot_name, active
+       FROM pg_replication_slots;
+       ```
+       - `active` should be `false` for the slot tied to the disabled subscription.
+   - **Purpose**: Ensures no replication activity occurs during maintenance.
+
+#### 7. **Perform DDL Maintenance**
+   - Follow the DDL maintenance procedure (as outlined in the previous response) to apply schema changes:
+     - Apply DDL on the subscriber first (e.g., `ALTER TABLE my_table ADD COLUMN new_col INTEGER`).
+     - Apply DDL on the publisher.
+     - Ensure changes are compatible with logical replication (e.g., avoid dropping columns without updating the publication).
+   - Example:
+     ```sql
+     -- On subscriber
+     ALTER TABLE my_table ADD COLUMN new_col INTEGER;
+     -- On publisher
+     ALTER TABLE my_table ADD COLUMN new_col INTEGER;
+     ```
+
+#### 8. **Resume Logical Replication**
+   - **On the Subscriber**:
+     1. Re-enable the subscription:
+        ```sql
+        ALTER SUBSCRIPTION my_subscription_name ENABLE;
+        ```
+     2. Verify the subscription resumes:
+        ```sql
+        SELECT subscription_name, sub_enabled, status
+        FROM pg_stat_subscription;
+        ```
+        - Confirm `sub_enabled` is `true` and `status` is `active` or `catching up`.
+     3. Check logs for messages like:
+        ```
+        LOG: logical replication apply worker for subscription "my_subscription_name" has started
+        ```
+   - **On the Publisher**:
+     - Confirm the replication slot becomes active:
+       ```sql
+       SELECT slot_name, active, pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS lag
+       FROM pg_replication_slots;
+       ```
+     - Ensure `active` is `true` and lag decreases as the subscriber catches up.
+   - **Test DML**:
+     - Insert a test row on the publisher:
+       ```sql
+       INSERT INTO my_table (id, new_col) VALUES (1, 100);
+       ```
+     - Verify it replicates to the subscriber:
+       ```sql
+       SELECT * FROM my_table WHERE id = 1;
+       ```
+
+#### 9. **Monitor for Errors**
+   - **On the Subscriber**:
+     - Check for errors in the logs (e.g., conflicts, missing columns, or WAL issues).
+     - Monitor `pg_stat_subscription` for lag:
+       ```sql
+       SELECT subscription_name, pg_size_pretty(pg_wal_lsn_diff(latest_end_lsn, received_lsn)) AS apply_lag
+       FROM pg_stat_subscription;
+       ```
+   - **On the Publisher**:
+     - Ensure WAL segments are available:
+       ```sql
+       SELECT slot_name, wal_status
+       FROM pg_replication_slots;
+       ```
+       - If `wal_status` is `lost`, you may need to resync the subscription (see below).
+   - **Handle Errors**:
+     - If replication fails (e.g., due to schema mismatches), resolve the issue (e.g., apply missing DDL, fix conflicts).
+     - If WAL segments are missing (like `0000000200000E3A000000EB` from your earlier question), you may need to:
+       - Drop and recreate the subscription:
+         ```sql
+         DROP SUBSCRIPTION my_subscription_name;
+         CREATE SUBSCRIPTION my_subscription_name CONNECTION 'host=publisher_host port=5432 user=rep_user dbname=publisher_db' PUBLICATION my_publication;
+         ```
+       - Resync initial data using `pg_dump` or table synchronization.
+
+#### 10. **Clean Up and Document**
+   - Confirm all tables are replicating correctly.
+   - Document the maintenance steps, including subscription names, DDL applied, and any issues encountered.
+   - Update WAL retention settings if needed to prevent future errors (e.g., increase `wal_keep_size`).
+
+---
+
+### Key Notes
+- **Minimize Downtime**: Disabling the subscription is quick and doesn’t require dropping it, preserving the replication slot and configuration.
+- **WAL Retention**: Ensure the publisher retains enough WAL segments (`wal_keep_size` or archived WAL) to cover the maintenance period, especially if it’s long.
+- **Non-Disruptive DDL**: For changes like adding nullable columns or concurrent indexes, you may not need to stop replication, but monitor closely.
+- **Version-Specific Features**: In PostgreSQL 15+, `ALTER SUBSCRIPTION ... REFRESH PUBLICATION` can help with some schema changes, but DDL still requires manual application.
+- **Error Prevention**: The error `requested WAL segment 0000000200000E3A000000EB has already been removed` from your earlier question can be avoided by:
+  - Increasing `wal_keep_size` (e.g., `SET wal_keep_size = '1GB';`).
+  - Enabling `archive_mode` and ensuring WAL files are archived.
+
+### Example: Stopping and Resuming Replication
+**Scenario**: Pause replication for a subscription named `sub_prod_ods` to add a column.
+
+1. **Check Status**:
+   ```sql
+   -- On subscriber
+   SELECT subscription_name, sub_enabled, status FROM pg_stat_subscription WHERE subscription_name = 'sub_prod_ods';
+   -- On publisher
+   SELECT slot_name, active FROM pg_replication_slots WHERE slot_name = 'sub_prod_ods';
+   ```
+
+2. **Disable Subscription**:
+   ```sql
+   -- On subscriber
+   ALTER SUBSCRIPTION sub_prod_ods DISABLE;
+   ```
+
+3. **Apply DDL**:
+   ```sql
+   -- On subscriber
+   ALTER TABLE orders ADD COLUMN status VARCHAR(20);
+   -- On publisher
+   ALTER TABLE orders ADD COLUMN status VARCHAR(20);
+   ```
+
+4. **Resume Replication**:
+   ```sql
+   -- On subscriber
+   ALTER SUBSCRIPTION sub_prod_ods ENABLE;
+   ```
+
+5. **Verify**:
+   ```sql
+   -- On subscriber
+   SELECT subscription_name, status FROM pg_stat_subscription WHERE subscription_name = 'sub_prod_ods';
+   -- On publisher
+   SELECT slot_name, active, wal_status FROM pg_replication_slots WHERE slot_name = 'sub_prod_ods';
+   ```
+
+If you have specific details (e.g., subscription name, PostgreSQL version, or the DDL changes planned), share them, and I can customize the steps further!
