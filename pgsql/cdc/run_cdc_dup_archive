@@ -1,0 +1,43 @@
+CREATE OR REPLACE FUNCTION run_cdc_cleanup(base_table TEXT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    full_table TEXT := 'misc.' || base_table;
+    archive_table TEXT := full_table || '_dupe_archive';
+BEGIN
+    -- Create archive table if not exists
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I (LIKE %I INCLUDING ALL)',
+        archive_table, full_table
+    );
+
+    -- Insert duplicate rows into archive table
+    EXECUTE format($f$
+        INSERT INTO %I
+        SELECT t.*
+        FROM %I t
+        JOIN (
+            SELECT customer_id, claim_id, MIN(ctid) AS keep_ctid
+            FROM %I
+            GROUP BY customer_id, claim_id
+            HAVING COUNT(*) > 1
+        ) dups ON t.customer_id = dups.customer_id
+              AND t.claim_id = dups.claim_id
+        WHERE t.ctid <> dups.keep_ctid
+    $f$, archive_table, full_table, full_table);
+
+    -- Delete the duplicate rows (preserving the one with MIN(ctid))
+    EXECUTE format($f$
+        DELETE FROM %I t
+        USING (
+            SELECT customer_id, claim_id, MIN(ctid) AS keep_ctid
+            FROM %I
+            GROUP BY customer_id, claim_id
+            HAVING COUNT(*) > 1
+        ) dups
+        WHERE t.customer_id = dups.customer_id
+          AND t.claim_id = dups.claim_id
+          AND t.ctid <> dups.keep_ctid
+    $f$, full_table, full_table);
+END;
+$$;
+

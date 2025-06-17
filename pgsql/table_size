@@ -1,0 +1,101 @@
+That's a very reasonable frustration — and you're not alone in thinking this. PostgreSQL *does* offer very powerful introspection, but it often exposes those via a wide set of functions (like `pg_relation_size`, `pg_total_relation_size`, `pg_size_pretty`) rather than wrapping them into simple, high-level utility views or functions like "get\_table\_size('table\_name')".
+
+Here’s **why PostgreSQL doesn’t encapsulate table size checks into one simple function**:
+
+---
+
+### 🧩 1. **PostgreSQL Philosophy: Power > Convenience**
+
+PostgreSQL prioritizes flexibility and composability over one-size-fits-all interfaces. It gives you:
+
+* Building blocks (`pg_class`, `pg_stat_user_tables`, `pg_relation_size`, etc.)
+* But expects you to compose them to your needs.
+
+This avoids opinionated abstractions but does place the burden on the user.
+
+---
+
+### 🛠️ 2. **It’s Actually Already Modular — Just Verbose**
+
+What you're using like:
+
+```sql
+SELECT pg_size_pretty(pg_total_relation_size('your_table'::regclass));
+```
+
+is in fact a composed call of:
+
+* `pg_total_relation_size()` – includes TOAST + indexes
+* `pg_size_pretty()` – formats in KB/MB/GB
+
+They *are* functions — just not as bundled as you might like.
+
+---
+
+### 📊 3. **No "one-size-fits-all" table size**
+
+Table size is nuanced:
+
+* Just the table?
+* Table + indexes?
+* Including TOAST?
+* Pretty format or raw bytes?
+
+PostgreSQL avoids hardcoding assumptions into a “get\_table\_size” because the user might want *only* one part of that.
+
+---
+
+### 🧰 4. **You Can Wrap It Yourself**
+
+Many teams define their own wrapper functions like this:
+
+```sql
+CREATE OR REPLACE FUNCTION get_table_size_pretty(text)
+RETURNS text AS $$
+SELECT pg_size_pretty(pg_total_relation_size($1::regclass));
+$$ LANGUAGE SQL;
+```
+
+Now you can run:
+
+```sql
+SELECT get_table_size_pretty('my_table');
+```
+
+---
+
+### ✅ Summary
+
+PostgreSQL doesn’t include an encapsulated function for table size because:
+
+* It wants to stay unopinionated and flexible
+* There are multiple valid definitions of "size"
+* You can easily write your own wrapper functions tailored to your needs
+
+Let me know if you’d like help [creating a reusable custom size-check function for your schema](dr).
+
+
+
+CREATE OR REPLACE FUNCTION get_partitioned_table_size_pretty(parent_table text)
+RETURNS text AS $$
+DECLARE
+  total_size bigint := 0;
+  partition regclass;
+BEGIN
+  -- Loop over all partitions of the given parent table
+  FOR partition IN
+    SELECT inhrelid
+    FROM pg_inherits
+    WHERE inhparent = parent_table::regclass
+  LOOP
+    total_size := total_size + pg_total_relation_size(partition);
+  END LOOP;
+
+  -- Add parent table size itself (usually small but included)
+  total_size := total_size + pg_total_relation_size(parent_table::regclass);
+
+  -- Return pretty size
+  RETURN pg_size_pretty(total_size);
+END;
+$$ LANGUAGE plpgsql;
+

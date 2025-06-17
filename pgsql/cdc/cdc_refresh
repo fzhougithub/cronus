@@ -1,0 +1,75 @@
+-- CDC for PostgreSQL table test1_tbl using test1_tmp as delta source
+-- Step 1: Prepare Keys Tables
+DROP TABLE IF EXISTS test1_tmp_keys;
+DROP TABLE IF EXISTS test1_tbl_keys;
+
+CREATE TABLE test1_tmp_keys AS
+SELECT customer_id,
+       claim_id,
+       md5(t::text) AS checksum,
+       process_create_ts
+  FROM test1_tmp t;
+
+CREATE TABLE test1_tbl_keys AS
+SELECT customer_id,
+       claim_id,
+       md5(t::text) AS checksum,
+       process_create_ts
+  FROM test1_tbl t;
+
+-- Step 2: Create action table
+DROP TABLE IF EXISTS test1_action;
+CREATE TABLE test1_action (
+  customer_id TEXT,
+  claim_id TEXT,
+  action CHAR(1)  -- 'I', 'D'
+);
+
+-- Step 3: Populate action table
+TRUNCATE TABLE test1_action;
+
+-- Insertions (new rows in tmp)
+INSERT INTO test1_action (customer_id, claim_id, action)
+SELECT tmp.customer_id, tmp.claim_id, 'I'
+  FROM test1_tmp_keys tmp
+  LEFT JOIN test1_tbl_keys tbl ON tmp.customer_id = tbl.customer_id AND tmp.claim_id = tbl.claim_id
+ WHERE tbl.customer_id IS NULL;
+
+-- Deletions (rows removed in tmp)
+INSERT INTO test1_action (customer_id, claim_id, action)
+SELECT tbl.customer_id, tbl.claim_id, 'D'
+  FROM test1_tbl_keys tbl
+  LEFT JOIN test1_tmp_keys tmp ON tmp.customer_id = tbl.customer_id AND tmp.claim_id = tbl.claim_id
+ WHERE tmp.customer_id IS NULL;
+
+-- Updates (PK exists but checksum differs)
+INSERT INTO test1_action (customer_id, claim_id, action)
+SELECT tmp.customer_id, tmp.claim_id, 'D'
+  FROM test1_tmp_keys tmp
+  JOIN test1_tbl_keys tbl ON tmp.customer_id = tbl.customer_id AND tmp.claim_id = tbl.claim_id
+ WHERE tmp.checksum <> tbl.checksum;
+
+INSERT INTO test1_action (customer_id, claim_id, action)
+SELECT tmp.customer_id, tmp.claim_id, 'I'
+  FROM test1_tmp_keys tmp
+  JOIN test1_tbl_keys tbl ON tmp.customer_id = tbl.customer_id AND tmp.claim_id = tbl.claim_id
+ WHERE tmp.checksum <> tbl.checksum;
+
+-- Step 4: Apply changes to test1_tbl
+-- Delete
+DELETE FROM test1_tbl t
+ USING test1_action a
+WHERE a.action = 'D'
+  AND t.customer_id = a.customer_id
+  AND t.claim_id = a.claim_id;
+
+-- Insert
+INSERT INTO test1_tbl
+SELECT tmp.*
+  FROM test1_tmp tmp
+  JOIN test1_action a ON tmp.customer_id = a.customer_id AND tmp.claim_id = a.claim_id
+ WHERE a.action = 'I';
+
+-- Optional: Wrap the logic into a function for cron job
+-- You can copy-paste the above SQL into a PL/pgSQL function or script block.
+

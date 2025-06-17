@@ -1,0 +1,59 @@
+-- This function performs CDC-based refresh for a large table.
+-- It expects a base name like 'test1' and works on tables:
+--   <base>_tbl, <base>_tmp, <base>_keys, <base>_tmp_keys, <base>_action
+
+CREATE OR REPLACE FUNCTION run_cdc_refresh(base_name TEXT)
+RETURNS VOID AS $$
+DECLARE
+    tbl_name TEXT := base_name || '_tbl';
+    tmp_name TEXT := base_name || '_tmp';
+    tbl_keys TEXT := base_name || '_keys';
+    tmp_keys TEXT := base_name || '_tmp_keys';
+    action_table TEXT := base_name || '_action';
+BEGIN
+    -- Step 1: Create temp keys table
+    EXECUTE format('DROP TABLE IF EXISTS %I', tmp_keys);
+    EXECUTE format('CREATE TABLE %I AS SELECT customer_id, claim_id, md5(t::text) AS checksum, process_create_ts FROM %I t', tmp_keys, tmp_name);
+
+    -- Step 2: Create base keys table
+    EXECUTE format('DROP TABLE IF EXISTS %I', tbl_keys);
+    EXECUTE format('CREATE TABLE %I AS SELECT customer_id, claim_id, md5(t::text) AS checksum, process_create_ts FROM %I t', tbl_keys, tbl_name);
+
+    -- Step 3: Refresh action table
+    EXECUTE format('TRUNCATE TABLE %I', action_table);
+    EXECUTE format(
+        'INSERT INTO %I (customer_id, claim_id, action)
+         SELECT a.customer_id, a.claim_id, ''I'' FROM %I a
+         LEFT JOIN %I b ON a.customer_id = b.customer_id AND a.claim_id = b.claim_id
+         WHERE b.customer_id IS NULL
+         UNION ALL
+         SELECT b.customer_id, b.claim_id, ''D'' FROM %I b
+         LEFT JOIN %I a ON a.customer_id = b.customer_id AND a.claim_id = b.claim_id
+         WHERE a.customer_id IS NULL
+         UNION ALL
+         SELECT a.customer_id, a.claim_id, ''I'' FROM %I a
+         JOIN %I b ON a.customer_id = b.customer_id AND a.claim_id = b.claim_id
+         WHERE a.checksum <> b.checksum
+         UNION ALL
+         SELECT b.customer_id, b.claim_id, ''D'' FROM %I a
+         JOIN %I b ON a.customer_id = b.customer_id AND a.claim_id = b.claim_id
+         WHERE a.checksum <> b.checksum',
+         action_table, tmp_keys, tbl_keys, tbl_keys, tmp_keys, tmp_keys, tbl_keys, tmp_keys, tbl_keys);
+
+    -- Step 4: DELETE rows from main table
+    EXECUTE format(
+        'DELETE FROM %I t
+         USING %I a
+         WHERE a.action = ''D'' AND t.customer_id = a.customer_id AND t.claim_id = a.claim_id',
+         tbl_name, action_table);
+
+    -- Step 5: INSERT new/updated rows
+    EXECUTE format(
+        'INSERT INTO %I
+         SELECT tmp.* FROM %I tmp
+         JOIN %I a ON tmp.customer_id = a.customer_id AND tmp.claim_id = a.claim_id
+         WHERE a.action = ''I''',
+         tbl_name, tmp_name, action_table);
+END;
+$$ LANGUAGE plpgsql;
+

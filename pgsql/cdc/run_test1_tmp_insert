@@ -1,0 +1,32 @@
+CREATE OR REPLACE FUNCTION run_cdc_cleanup(base_table TEXT)
+RETURNS VOID AS $$
+DECLARE
+    tmp_table TEXT := base_table || '_dedup_tmp';
+    pk_cols TEXT := 'customer_id, claim_id';
+    full_table TEXT;
+BEGIN
+    -- Qualify with schema if needed (adjust here if all tables are in specific schema like 'misc.')
+    full_table := 'misc.' || base_table;
+
+    -- Create deduplicated temp table with latest ctid (or use other preferred logic)
+    EXECUTE format('DROP TABLE IF EXISTS misc.%I', tmp_table);
+
+    EXECUTE format('
+        CREATE TEMP TABLE misc.%I AS
+        SELECT DISTINCT ON (%s) *
+        FROM %s
+        ORDER BY %s, ctid DESC
+    ', tmp_table, pk_cols, full_table, pk_cols);
+
+    -- Truncate original and re-insert deduplicated data
+    EXECUTE format('TRUNCATE TABLE %s', full_table);
+
+    EXECUTE format('
+        INSERT INTO %s
+        SELECT * FROM misc.%I
+    ', full_table, tmp_table);
+
+    RAISE NOTICE 'Cleanup completed: duplicates removed from table %', full_table;
+END;
+$$ LANGUAGE plpgsql;
+

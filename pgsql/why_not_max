@@ -1,0 +1,174 @@
+Excellent — you're asking the right thing.
+
+You **can** put `SELECT MAX(...)` in a CTE — and in fact, **sometimes it makes sense**. But the key difference is:
+
+> **`MAX()` gives you the maximum *value*, but not the full row** associated with that value (unless you join back, which adds complexity and cost).
+> `ORDER BY ... DESC LIMIT 1` (or `DISTINCT ON`) gives you the entire row, sorted and filtered for you.
+
+---
+
+### 🔎 So why **not** use `MAX()` in a CTE?
+
+Let’s say you write:
+
+```sql
+WITH max_times AS (
+  SELECT customer_id, claim_id, MAX(process_adjust_created_ts) AS max_ts
+  FROM claimsprocess.a_claim_core
+  GROUP BY customer_id, claim_id
+)
+```
+
+That gives you only:
+
+* `customer_id`
+* `claim_id`
+* `max_ts`
+
+But you **still need to get the full row**, like `status`, `amount`, etc. So you’d need to **join again**:
+
+```sql
+SELECT a.*
+FROM claimsprocess.a_claim_core a
+JOIN max_times m
+  ON a.customer_id = m.customer_id
+ AND a.claim_id = m.claim_id
+ AND a.process_adjust_created_ts = m.max_ts;
+```
+
+That works — but it:
+
+* **requires another join**
+* may **not use indexes efficiently**
+* may cause **duplicate matches** if `process_adjust_created_ts` is not unique per `(customer_id, claim_id)` — you'll get multiple rows unexpectedly.
+
+---
+
+### ✅ Alternative: `DISTINCT ON` or `ROW_NUMBER()` in CTE
+
+This gets the **full row**, with one pass:
+
+```sql
+WITH latest AS (
+  SELECT DISTINCT ON (customer_id, claim_id) *
+  FROM claimsprocess.a_claim_core
+  ORDER BY customer_id, claim_id, process_adjust_created_ts DESC
+)
+```
+
+Or, using a window function:
+
+```sql
+WITH ranked AS (
+  SELECT *, ROW_NUMBER() OVER (
+      PARTITION BY customer_id, claim_id
+      ORDER BY process_adjust_created_ts DESC
+  ) AS rn
+  FROM claimsprocess.a_claim_core
+)
+SELECT * FROM ranked WHERE rn = 1;
+```
+
+These methods:
+
+* Get you **exactly one row per `(customer_id, claim_id)`**
+* Let PostgreSQL **use indexes** efficiently
+* Avoid an extra join
+* Are **safer** if `process_adjust_created_ts` isn’t unique
+
+---
+
+### 🧠 Bottom Line
+
+You **can** use `MAX()` in a CTE — but it's often less efficient and more complex to retrieve full rows. That’s why in performance-tuned SQL, you'll usually see `DISTINCT ON`, `ROW_NUMBER()`, or `ORDER BY ... LIMIT 1` in CTEs instead of `MAX()`.
+
+Would you like help benchmarking both approaches on your actual dataset to see the performance difference? [We can do that](dr).
+
+
+Great question — let’s clear this up:
+
+### 🧠 Why `ORDER BY ... DESC LIMIT 1` can be cheaper than `SELECT MAX(...)` in practice
+
+From a *theoretical* standpoint:
+
+* `SELECT MAX(...)` and `ORDER BY ... DESC LIMIT 1` are functionally equivalent if all you're doing is getting the maximum value of a column.
+
+But in **PostgreSQL execution**:
+
+* `ORDER BY ... DESC LIMIT 1` **can use an index more efficiently** — it may be able to stop after the first row, whereas `MAX()` usually **has to scan all matching rows** unless there is a special-purpose index.
+
+---
+
+### ✅ Example: Consider this query
+
+```sql
+SELECT MAX(process_adjust_created_ts)
+FROM claimsprocess.a_claim_core
+WHERE customer_id = X AND claim_id = Y;
+```
+
+PostgreSQL has to scan **all rows** matching `(customer_id, claim_id)` to find the max, unless there's a **multi-column index in the right order**.
+
+---
+
+### 🔍 How `ORDER BY ... DESC LIMIT 1` helps
+
+```sql
+SELECT *
+FROM claimsprocess.a_claim_core
+WHERE customer_id = X AND claim_id = Y
+ORDER BY process_adjust_created_ts DESC
+LIMIT 1;
+```
+
+If there's an index like:
+
+```sql
+CREATE INDEX ON a_claim_core (customer_id, claim_id, process_adjust_created_ts DESC);
+```
+
+then:
+
+* PostgreSQL can do an **index scan**, starting from the top of the tree.
+* It grabs the **first match** — **no need to scan the rest.**
+
+This is especially helpful when you're joining and want the **whole row**, not just the max timestamp.
+
+---
+
+### 🤔 Why do this in a CTE?
+
+When you write:
+
+```sql
+WITH latest_a_claim_core AS (
+  SELECT DISTINCT ON (customer_id, claim_id) *
+  FROM claimsprocess.a_claim_core
+  ORDER BY customer_id, claim_id, process_adjust_created_ts DESC
+)
+```
+
+You're saying:
+
+* "For every `(customer_id, claim_id)`, give me the **row with the latest timestamp**."
+* This only runs once, and PostgreSQL can **use indexes** for it.
+* Then your main query **joins to the result**, rather than running a subquery repeatedly.
+
+This avoids the *per-row execution* cost of the correlated subquery with `MAX(...)`.
+
+---
+
+### 🧪 In summary
+
+| Method                            | Index Friendly     | Repeated per row? | Whole row access |
+| --------------------------------- | ------------------ | ----------------- | ---------------- |
+| `MAX(...)` in correlated subquery | ❌ Usually not      | ✅ Yes             | ❌ Just the value |
+| `ORDER BY ... LIMIT 1` LATERAL    | ✅ Yes (with index) | ❌ No              | ✅ Yes            |
+| `DISTINCT ON ... ORDER BY` in CTE | ✅ Yes              | ❌ No              | ✅ Yes            |
+
+---
+
+Let me know if you want help writing the right index for this table structure to speed up `ORDER BY ... LIMIT 1`. [We can dig into that](dr).
+
+
+

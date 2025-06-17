@@ -1,0 +1,17 @@
+Please provide the code for CDC (change data capture) process for postgresql table test1 incremental refresh, the fact and requirement like below
+The fact
+1. the target table: test1_tbl, it is pretty big, has more than 2billion records, and more than 1000 columns, its PK is (customer_id, claim_id). 
+2. we need to daily generate the new data set using complicate insert select statement, which we already have, we will save the new result of select into test1_tmp table
+
+
+We need the code to 
+1. Compare the PK on both test1_tmp and test1_tbl, truncate and refill the test1_action table 
+    a. You can generate both test1_tmp_keys and test1_tbl_keys table, adopt 4 columns in each of the table from their own base, for example:
+        insert into test1_tmp_keys select customer_id, clamin_id, md5(t::text) checksum, process_create_ts from test1_tmp;
+    b. Compare test1_tmp_keys and test1_tbl_keys and full fill the test1_action table. 
+         - The PK in test1_tmp but not in test1_tbl, action = "I"
+         - The PK not in test1_tmp, but in test1_tbl, action = "D"
+         - If the PK are equal on both test1_tmp and test_tbl , go ahead to compare checksum column, if same, ignore, if different, insert 2 line, one is the "D", and another is "I"
+    c. After generate the action table, run the refresh work, first delete all of the rows in test1_tbl if the action tag is "D", then, insert all of the rows which tag is "I", by insert into test1_tbl select from test1_tmp. 
+
+It is better to encapsulate them into function, so that we can use cron to easily control them

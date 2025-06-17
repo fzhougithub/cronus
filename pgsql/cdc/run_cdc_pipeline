@@ -1,0 +1,90 @@
+CREATE TABLE misc.insert_sql_library (
+    table_base_name TEXT PRIMARY KEY,
+    insert_script TEXT
+);
+
+INSERT INTO misc.insert_sql_library (table_base_name, insert_script)
+VALUES (
+  'test1',
+  $$INSERT INTO misc.test1_tmp
+    WITH ...
+    SELECT ...
+    FROM schema1.table1 t1
+    LEFT JOIN schema2.table2 t2 ON ...
+    WHERE ...$$
+);
+
+
+-- Using shell script generate the auto insert
+#!/bin/bash
+
+# Usage: ./wrap_insert_sql.sh test1_insert.sql > test1_wrapped.sql
+
+INPUT_FILE="$1"
+
+if [ ! -f "$INPUT_FILE" ]; then
+  echo "Error: File '$INPUT_FILE' not found!"
+  exit 1
+fi
+
+# Derive base name from filename: e.g., test1_insert.sql → test1
+TABLE_BASE=$(basename "$INPUT_FILE" _insert.sql)
+
+# Escape single quotes for safe SQL insertion
+ESCAPED_SQL=$(sed "s/'/''/g" "$INPUT_FILE")
+
+# Print the SQL insert block
+cat <<EOF
+INSERT INTO misc.insert_sql_library (table_base_name, insert_script)
+VALUES (
+  '$TABLE_BASE',
+  \$\$${ESCAPED_SQL}\$\$
+);
+EOF
+
+
+CREATE OR REPLACE FUNCTION misc.run_cdc_pipeline(target_table_base TEXT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    tmp_table TEXT := format('misc.%s_tmp', target_table_base);
+    insert_sql TEXT;
+BEGIN
+    -- Load insert SQL from a metadata table or file, here assumed to be a table
+    SELECT insert_script INTO insert_sql
+    FROM misc.insert_sql_library
+    WHERE table_base_name = target_table_base;
+
+    IF insert_sql IS NULL THEN
+        RAISE EXCEPTION 'Insert SQL not found for table %', target_table_base;
+    END IF;
+
+    -- Drop PK constraint if it exists
+    BEGIN
+        EXECUTE format('ALTER TABLE %I DROP CONSTRAINT IF EXISTS %I_pkey', tmp_table, target_table_base);
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Failed to drop constraint for table %', tmp_table;
+    END;
+
+    -- Truncate
+    EXECUTE format('TRUNCATE %I', tmp_table);
+
+    -- Run the insert
+    EXECUTE insert_sql;
+
+    -- Remove duplicates
+    EXECUTE format($$
+        DELETE FROM %I a
+        USING (
+            SELECT ctid,
+                   ROW_NUMBER() OVER (PARTITION BY customer_id, claim_id ORDER BY ctid) AS rn
+            FROM %I
+        ) b
+        WHERE a.ctid = b.ctid AND b.rn > 1
+    $$, tmp_table, tmp_table);
+
+    -- Restore PK constraint
+    EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I_pkey PRIMARY KEY (customer_id, claim_id)', tmp_table, target_table_base);
+
+END;
+$$;
+
