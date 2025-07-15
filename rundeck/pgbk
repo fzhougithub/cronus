@@ -1,0 +1,126 @@
+#!/usr/local/bin/python3.11
+import sys
+import argparse
+from distutils.util import strtobool
+import boto3
+import subprocess, datetime
+from os import environ, chmod, path, remove
+from bz2 import BZ2File
+from shutil import copyfileobj
+parser = argparse.ArgumentParser(prog='pgbk',
+                                 description='Backup Postgres databases to S3 bucket',
+                                 usage='%(prog)s [options]')
+parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
+parser.add_argument('-c', '--connection', type=str, required=True, help='Hostname and port of Postgres. EX host:5432')
+parser.add_argument('-d', '--database', type=str, required=True, help='Postgres Database')
+parser.add_argument('-n', '--schemas', type=str, required=False, help='Comma delimited Postgres Database schemas. EX schema1,schema2')
+parser.add_argument('-u', '--user', type=str, required=True, help='Postgres database user name')
+parser.add_argument('-p', '--password', type=str, required=True, help='Postgres database password')
+parser.add_argument('-e', '--endpoint', type=str, required=True, help='S3 Endpoint URL')
+parser.add_argument('-b', '--bucket', type=str, required=True, help='S3 bucket to store the backup to')
+parser.add_argument('-f', '--folder', type=str, required=False, help='Folder in S3 path to use')
+parser.add_argument('-k', '--key', type=str, required=True, help='AWS key for S3 access')
+parser.add_argument('-s', '--secret', type=str, required=True, help='AWS secret for S3 access')
+parser.add_argument('-t', '--tempdirectory', type=str, required=True, help='Temp local path to backu db to')
+parser.add_argument('-z', '--bzcompress', type=lambda x: bool(strtobool(x)), default=True, required=False, help='set to false to skip bzip compression')
+args = parser.parse_args()
+def main():
+    print('Backing up {} to S3: {}'.format(args.database, args.bucket))
+    sys.exit(do_backup(db_conn=args.connection,
+                       db_name=args.database,
+                       user=args.user,
+                       password=args.password,
+                       endpoint=args.endpoint,
+                       backup_path=args.tempdirectory,
+                       bucket=args.bucket,
+                       aws_access_key_id=args.key,
+                       aws_secret_access_key=args.secret
+                       )
+             )
+def copy_to_s3(source_path, endpoint, aws_access_key_id, aws_secret_access_key, bucket, s3_path):
+    sys.stdout.write("\n    Copying {} to S3 => {}/{}: ".format(source_path, bucket, path.basename(source_path)))
+    sys.stdout.flush()
+    try:
+        s3 = boto3.client(
+            service_name='s3',
+            endpoint_url=endpoint,
+            verify=False,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key
+        )
+        print(f'Trying to copy from: {source_path} to {s3_path}')
+        with open(source_path, 'rb') as data:
+            s3.upload_fileobj(data, bucket, s3_path)
+    except Exception as e:
+        print("FAILED")
+        print(e)
+        return 1
+    else:
+        print("SUCCESS")
+    return 0
+def do_backup(db_conn, db_name, user, password, endpoint, aws_access_key_id, aws_secret_access_key, backup_path, bucket):
+    now = datetime.datetime.utcnow()
+    date_str = "%04d%02d%02d%02d%02d%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
+    print("Starting backup of local databases :: {}".format(db_name))
+    db_hostname = db_conn.split(":")[0]
+    schemas = []
+    if args.schemas:
+        if ',' in args.schemas:
+            schemas = args.schemas.split(',')
+        else:
+            schemas.append(args.schemas)
+        print(f'Schemas specified: {schemas}')
+    port = db_conn.split(":")[1]
+    filename = path.join(backup_path, db_name + '.{}.backup'.format(date_str))
+    filename_bz2 = filename + '.bz2'
+    passfile = '{}.pgpass'.format(db_name)
+    with open(passfile, 'w') as f:
+        f.write('{}:{}:{}:{}:{}'.format(db_hostname,
+                                        port,
+                                        db_name,
+                                        user,
+                                        password))
+    chmod(passfile, 0o600)
+    print("Backing up {} from {} to temp location: {}:".format(db_name, db_hostname, filename))
+    sys.stdout.write("     Dumping {} from {}: ".format(db_name, db_hostname))
+    sys.stdout.flush()
+    environ["PGPASSFILE"] = passfile
+    cmd_args = ['pg_dump', '-Z9', '-Fc',
+                '-h', db_hostname,
+                '-p', port,
+                '-U', user,
+                '-f', filename]
+    for schema in schemas:
+        cmd_args.append('-n')
+        cmd_args.append(schema)
+    cmd_args.append(db_name)
+    ret_val = subprocess.call(cmd_args)
+    if ret_val != 0:
+        print(f"FAILED - Backup to {filename}")
+        return 1
+    else:
+        print(f"SUCCESS - Backup to {filename}")
+    if args.bzcompress:
+        sys.stdout.write(f"\n    Compressing {filename}")
+        with open(filename, 'rb') as input:
+            with BZ2File(filename_bz2, 'wb', compresslevel=9) as output:
+                copyfileobj(input, output)
+        source_file_to_copy = filename_bz2
+        s3_path = f'{db_name}/{path.basename(filename_bz2)}'
+        remove(filename)
+    else:
+        source_file_to_copy = filename
+        s3_path = '{}/{}'.format(db_name, path.basename(filename))
+    if args.folder:
+        s3_path = f'{args.folder}/{s3_path}'
+    copy_to_s3(source_path=source_file_to_copy,
+               endpoint=endpoint,
+               aws_access_key_id=aws_access_key_id,
+               aws_secret_access_key=aws_secret_access_key,
+               bucket=bucket,
+               s3_path=s3_path)
+    remove(source_file_to_copy)
+    remove(passfile)
+    del environ["PGPASSFILE"]
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,22 @@
+#!/usr/local/bin/python3.11
+import sys
+import subprocess
+from os import environ
+
+
+cmd_args = ['pgbk',
+                '-c', environ.get('RD_OPTION_DB_CONNECTION'),
+                '-d', environ.get('RD_OPTION_DB'),
+                '-u', environ.get('RD_OPTION_DB_USER'),
+                '-p', environ.get('RD_OPTION_DB_PASS'),
+                '-e', environ.get('RD_OPTION_S3_ENDPOINT_URL'),
+                '-b', environ.get('RD_OPTION_BUCKET'),
+                '-k', environ.get('RD_OPTION_AWS_ACCESS_KEY_ID'),
+                '-s', environ.get('RD_OPTION_AWS_SECRET_ACCESS_KEY'),
+                '-t', environ.get('RD_OPTION_TEMP_DIR')
+            ]
+
+ret_val = subprocess.call(cmd_args)
+if (ret_val != 0):
+    exit(1)
+
