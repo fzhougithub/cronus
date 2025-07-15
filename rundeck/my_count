@@ -1,0 +1,30 @@
+#!/bin/bash
+
+PUB_CONN="psql -h publisher_host -U your_user -d your_db -At -c"
+SUB_CONN="psql -h subscriber_host -U your_user -d your_db -At -c"
+
+# Get list of replicated tables from subscriber
+TABLES=$($SUB_CONN "
+SELECT n.nspname || '.' || c.relname
+FROM pg_subscription_rel sr
+JOIN pg_class c ON sr.srrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+ORDER BY 1;
+")
+
+echo -e "Table\t\tPublisher\tSubscriber\tStatus"
+echo "-------------------------------------------------------------"
+
+for tbl in $TABLES; do
+    PUB_CNT=$($PUB_CONN "SELECT COUNT(*) FROM $tbl;")
+    SUB_CNT=$($SUB_CONN "SELECT COUNT(*) FROM $tbl;")
+    
+    if [ "$PUB_CNT" == "$SUB_CNT" ]; then
+        STATUS="OK"
+    else
+        STATUS="MISMATCH"
+    fi
+    
+    echo -e "$tbl\t$PUB_CNT\t$SUB_CNT\t$STATUS"
+done
+
