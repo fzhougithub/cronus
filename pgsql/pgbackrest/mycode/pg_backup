@@ -1,0 +1,71 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 check/run"
+	exit 1
+else
+	action=$1
+fi
+
+[ $action == 'run' ] && echo "pg_backup start: $(date)"
+
+log() { echo "[$(date)] $*"; }
+warn() { log "WARN:  $*"; }
+fatal() { log "CRITICAL: $*"; }
+
+STANZA=$(hostname | cut -d '.' -f 1)
+bkdir=$(grep repo1-path /etc/pgbackrest.conf|cut -d= -f2)
+
+[ -d "$bkdir" ] || fatal "Backup path not found: $backup_dir"
+
+diskinfo=$(df -k $bkdir| awk 'NR==2 {print $2,$3,$4}'|sed 's/G//g')
+set - $diskinfo
+disk_total=$(echo $1/1024/1024|bc)
+disk_used=$(echo $2/1024/1024|bc)
+disk_free=$(echo $3/1024/1024|bc)
+keepday=7
+
+fullbk_info=$(pgbackrest info --stanza=$STANZA --output=json | jq -r '.[].backup')
+fullbk_size=$(echo "$fullbk_info" | jq -r '.[0].info.repository.size')
+fullbk_size=$(echo $fullbk_size/1024/1024/1024|bc)
+
+log "DiskStatus: total:${disk_total}G, used:${disk_used}G(full_backup:${fullbk_size}G, archive:$((disk_used - fullbk_size))G), free: ${disk_free}G"
+
+fullbk_time=$(pgbackrest info --stanza="$STANZA" --output=json | jq -r '.[0].backup[] | select(.type=="full") | .timestamp.start' | sort -n | tail -n 1)
+if [ -z "$fullbk_time" ]; then
+  fatal " ==== Run Full Backup Now ==== "
+  [ $action == 'run' ] && /usr/bin/pgbackrest --stanza=$STANZA stanza-create
+  [ $action == 'run' ] && /usr/bin/pgbackrest --stanza=$STANZA --type=full backup
+  exit
+fi
+
+bk_date=$(date -d "@$fullbk_time" '+%Y-%m-%d')
+today=$(date '+%Y-%m-%d')
+days_since_bk=$(( ($(date -d $today '+%s') - $(date -d $bk_date '+%s')) / 86400 ))
+
+echo $fullbk_size $disk_free
+if (( fullbk_size * 12 < disk_free * 10 )) && [ $days_since_bk -ge $keepday ]; then
+    log " ==== Run Full Backup Now after $days_since_bk days of previous full backup ===="
+    log "/usr/bin/pgbackrest --stanza=$STANZA --type=full backup "
+    [ $action == 'run' ] && /usr/bin/pgbackrest --stanza=$STANZA --type=full backup
+elif (( fullbk_size * 12 < disk_free * 10 )) && [ "$days_since_bk" -lt $keepday ]; then
+    log " ===== Run incr backup ========"
+    log "/usr/bin/pgbackrest --stanza=$STANZA --type=incr backup > /dev/null 2>&1"
+    [ $action == 'run' ] && /usr/bin/pgbackrest --stanza=$STANZA --type=incr backup
+elif (( fullbk_size < disk_free )) && (( fullbk_size * 12 > disk_free )); then
+    warn " ==== Run Full Backup Now, and Expire old backups ===="
+    warn "/usr/bin/pgbackrest --stanza=$STANZA --type=full backup > /dev/null 2>&1"
+    [ $action == 'run' ] && /usr/bin/pgbackrest --stanza=$STANZA --type=full backup
+    warn "/usr/bin/pgbackrest --stanza=$STANZA --repo1-retention-full=1 --repo1-retention-full-type=count expire"
+    [ $action == 'run' ] && /usr/bin/pgbackrest --stanza=$STANZA --repo1-retention-full=1 --repo1-retention-full-type=count expire
+elif (( fullbk_size > disk_free )); then
+    fatal " ===== Either move data out, or remove all existing backup,  run Full backup ===="
+    fatal "If remove, use below command"
+    fatal "  rm -rf /pg_backups/backup/$STANZA/* /pg_backups/archive/$STANZA/*"
+    fatal "Reinitialize Repo"
+    fatal "  /usr/bin/pgbackrest --stanza=$STANZA stanza-create > /dev/null 2>&1"
+    fatal "Use screen run below command"
+    fatal "  /usr/bin/pgbackrest --stanza=$STANZA --type=full backup > /dev/null 2>&1"
+fi
