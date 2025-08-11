@@ -1,0 +1,5 @@
+python3 ddl_review.py alter_alternatives_add_update_columns.sql drugmgmt_pub
+python3 ddl_review.py create_history_alternatives.sql drugmgmt_pub
+
+https://confluence.ssnc-corp.cloud/display/HARC/Schema+Change+and+Logical+Replication
+

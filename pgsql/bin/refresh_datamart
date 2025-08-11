@@ -1,0 +1,131 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]; then
+        echo "Usage: $0 [odsIP] [dry/run]"
+        echo "e.g: $0 ods-db-01-alma8-qc-drx-kc.ssnc-corp.cloud dry"
+        exit 1
+else
+	odsIP=$1
+	action=$2
+	sqlfile=multistep.sql
+	runscript=screens
+	runpath=$(dirname $0)
+	tmpdir=$runpath/tmp
+fi
+
+
+prepare() {
+
+[ ! -d $tmpdir ] && mkdir -p $tmpdir
+
+find "$tmpdir" -type f -name "*.log" -delete
+
+echo "--$(date)" > $sqlfile; echo "\timing on" >> $sqlfile
+echo "#$(date)" > $runscript
+
+for i in $(ls -1 1_*sql);do echo "\echo $i" >> $sqlfile; echo "\i $i" >> $sqlfile;done
+for i in $(ls -1 2_*sql);do echo "\echo $i" >> $sqlfile; echo "\i $i" >> $sqlfile;done
+for i in $(ls -1 3_*sql);do echo "\echo $i" >> $sqlfile; echo "\i $i" >> $sqlfile;done
+
+for i in $(ls -1 *sql|grep -v $sqlfile);
+do 
+	head -10 $i | grep -Fxq '\timing on' || sed -i '1i\\\timing on' $i; 
+	head -10 $i | grep -Fxq "\\\echo $i" || sed -i "1i\\\echo $i" $i; 
+	tail -5 $i| grep -Fxq '\echo COMPLETE' || echo '' >> $i; 
+	tail -5 $i| grep -Fxq '\echo COMPLETE' || echo '\echo COMPLETE' >> $i;
+done
+
+for i in $(ls -1 $sqlfile);
+do 
+	head -10 $i | grep -Fxq '\timing on' || sed -i '1i\\\timing on' $i; 
+	tail -1 $i| grep -Fxq '\echo COMPLETE' || echo '' >> $i;
+	tail -1 $i| grep -Fxq '\echo COMPLETE' || echo '\echo COMPLETE' >> $sqlfile;
+done
+
+echo "screen -dmS $sqlfile bash -c 'psql -h $odsIP -d ods_domani -q -t -f $sqlfile > $tmpdir/$sqlfile.log 2>&1'" >> $runscript
+
+for i in $(ls -1 *sql|egrep -v '1_|2_|3_');
+do 
+	echo "screen -dmS refresh_$i bash -c 'psql -h $odsIP -d ods_domani -q -t -f $i > $tmpdir/$i.log 2>&1'" >> $runscript;
+done
+
+chmod 755 $runscript
+
+}
+
+wait_for_screens() {
+    while screen -list | grep -q refresh_; do
+        echo "$(date): Waiting for running screen jobs to finish..."
+        sleep 120
+    done
+}
+
+check_logs() {
+    local failed=0
+    shopt -s nullglob
+    for i in $(ls $tmpdir/*sql.log); do
+        if ! grep -q COMPLETE $i; then
+            echo "[ERROR] $i did not complete successfully."
+            failed=1
+        else
+            echo "[OK] $i completed successfully."
+        fi
+    done
+    return $failed
+}
+
+tellme() {
+/usr/bin/python3 $runpath/tellme.py \
+    --webhook-url "${TEAMS_WEBHOOK_URL}" \
+    --message "${ALERT_MESSAGE}" \
+    --title "${ALERT_TITLE}" \
+    --facts "${FACTS_JSON}" \
+    --log-link-name "View Job Logs" \
+#    --log-link-uri "${LOG_URL}"
+}
+
+
+cd $runpath
+
+nurl=$(cat /home/fzhou/.url)
+TEAMS_WEBHOOK_URL="$nurl"
+ALERT_MESSAGE="test alert message"
+ALERT_TITLE="Good luck"
+FACTS_JSON='[{"name": "Status", "value": "Succeeded"}, {"name": "Time", "value": "'"${CURRENT_TIME}"'"}, {"name": "Job Name", "value": "'"${JOB_NAME}"'"}]'
+#    --log-link-uri "${LOG_URL}"
+
+tellme
+
+case $action in
+	dry)	prepare; cat $runscript
+		;;
+	run)
+		LOCK_FILE=$tmpdir/rebuild.lock
+		if [ -f "$LOCK_FILE" ]; then
+	    		echo "Another rebuild process is already running. Exiting."
+    			exit 3
+		fi
+		touch "$LOCK_FILE"
+		trap "rm -f $LOCK_FILE" EXIT
+		echo "Preparing refresh tasks"; prepare
+		echo "Starting refresh screens..."; ./$runscript
+		echo "Wait for refresh jobs to finish..."; wait_for_screens
+		echo "Checking logs for results..."
+		if check_logs; then
+			echo "All refres jobs completed successfully."
+			echo ""
+			echo "==== Refresh Timing ======="
+			for i in $(ls -1 $tmpdir/*log);do echo -e $(cat $i|grep Time|cut -d: -f2|awk '{s+=$1} END {printf "%.2f", s/60000}') mins:	$i;done |sort -k1nr
+			echo "==== The queries has errors ===="
+			grep -i error tmp/*log|cut -d: -f1,2|sort|uniq -c
+
+			exit 0
+		else
+			echo "Some refresh jobs failed. check *sql.log for details."
+			exit 10
+		fi
+		;;
+	*)	;;
+esac
+
+exit 0

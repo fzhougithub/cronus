@@ -1,0 +1,43 @@
+WITH list_partitions AS (
+  SELECT c.oid, c.relname
+  FROM pg_class c
+  WHERE c.relname IN (
+    'claim_core_p1_319',
+    'claim_core_p1_320',
+    'claim_core_p1_544',
+    'claim_core_p1_828',
+    'claim_core_p1_829',
+    'claim_core_p1_830',
+    'claim_core_p1_837'
+  )
+),
+range_subpartitions AS (
+  SELECT
+    child.oid,
+    n.nspname,
+    child.relname,
+    pg_get_expr(child.relpartbound, child.oid) AS partition_bound
+  FROM pg_inherits i
+  JOIN list_partitions p ON i.inhparent = p.oid
+  JOIN pg_class child ON i.inhrelid = child.oid
+  JOIN pg_namespace n ON child.relnamespace = n.oid
+  WHERE child.relpartbound IS NOT NULL
+),
+filtered AS (
+  SELECT
+    nspname,
+    relname,
+    partition_bound,
+    substring(partition_bound FROM '''([^'']+)''') AS from_date_str
+  FROM range_subpartitions
+)
+SELECT
+  'DROP TABLE IF EXISTS ' || quote_ident(nspname) || '.' || quote_ident(relname) || ' CASCADE;' AS drop_statement,
+  from_date_str,
+  partition_bound
+FROM filtered
+WHERE from_date_str >= '2030-01-01'
+ORDER BY from_date_str;
+
+
+

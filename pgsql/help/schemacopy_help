@@ -1,0 +1,112 @@
+To **duplicate a schema** in PostgreSQL (including all tables, indexes, constraints, etc.), there's **no built-in `CREATE SCHEMA ... LIKE`**, so you need to do it in steps. Here's how:
+
+---
+
+## ✅ Goal:
+
+Duplicate schema `source_schema` ➝ `target_schema`
+
+---
+
+## 🔧 Option 1: Using `pg_dump` + `psql` (Most Reliable for Large/Complex Schemas)
+
+```bash
+pg_dump -h your_host -U your_user -d your_db \
+  -n source_schema --schema-only > source_schema.sql
+
+# Edit the file to replace schema name
+sed 's/\bsource_schema\b/target_schema/g' source_schema.sql > target_schema.sql
+
+# Then load it
+psql -h your_host -U your_user -d your_db -f target_schema.sql
+```
+
+### ✅ Pros:
+
+* Handles tables, types, sequences, indexes, constraints
+* Very reliable and version-aware
+
+### ❗Caution:
+
+* Does **not** copy data (schema-only)
+* Manual fix might be needed for functions/views that reference objects across schemas
+
+---
+
+## 🔧 Option 2: Use `pg_dump` with `--column-inserts` to Copy Both Schema + Data
+
+```bash
+pg_dump -h your_host -U your_user -d your_db \
+  -n source_schema --column-inserts > full.sql
+
+sed 's/\bsource_schema\b/target_schema/g' full.sql > full_copy.sql
+
+psql -h your_host -U your_user -d your_db -f full_copy.sql
+```
+
+This will recreate both schema and data in the new schema.
+
+---
+
+## 🧰 Option 3: Pure SQL (Not Recommended for Complex Schemas)
+
+For simple table-only copies:
+
+```sql
+CREATE SCHEMA target_schema;
+
+-- For each table:
+CREATE TABLE target_schema.table_name (LIKE source_schema.table_name INCLUDING ALL);
+INSERT INTO target_schema.table_name SELECT * FROM source_schema.table_name;
+```
+
+But this skips:
+
+* views, materialized views
+* functions, triggers
+* security policies
+* sequences ownership links
+
+---
+
+## 🛠️ Bonus: Scripted Copy via `pg_dump` from SQL
+
+You can also run from inside psql:
+
+```sql
+\! pg_dump -n source_schema --schema-only | sed 's/\bsource_schema\b/target_schema/g' | psql
+```
+
+---
+
+## 🔍 After Copy
+
+Check:
+
+```sql
+-- Make sure objects landed in correct schema
+\dn
+\dt target_schema.*
+```
+
+If sequences were copied, make sure ownership is fixed:
+
+```sql
+ALTER SEQUENCE target_schema.some_seq OWNED BY target_schema.some_table.some_column;
+```
+
+---
+
+## 🧪 Tip for Testing
+
+Use a temporary DB:
+
+```bash
+createdb test_clone
+pg_dump -n source_schema your_db | psql test_clone
+```
+
+---
+
+Let me know if your schema contains special objects (e.g. foreign tables, RLS, triggers, functions), and I can adjust for that too.
+

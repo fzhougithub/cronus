@@ -1,0 +1,1 @@
+/usr/pgsql-14/bin/pg_repack -d ods_domani -U postgres ods_domani --all --jobs=4

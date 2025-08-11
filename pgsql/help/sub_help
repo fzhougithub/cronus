@@ -1,0 +1,72 @@
+No.1
+SELECT application_name, state, sent_lsn, write_lsn, flush_lsn, replay_lsn
+FROM pg_stat_replication;
+
+Is nothing there, forget the other, the replication broken!
+
+
+
+!!!! Very careful, you can create issue
+
+SELECT
+  srrelid::regclass AS table_name,
+  srsubstate
+FROM pg_subscription_rel
+WHERE srsubstate != 'r';
+
+
+
+This should always be null, if there is d, must be wrong!
+
+SELECT
+  srrelid::regclass AS table_name,
+  srsubstate,
+  CASE srsubstate
+    WHEN 'i' THEN 'Initializing'
+    WHEN 'd' THEN 'Data Sync In Progress'
+    WHEN 's' THEN 'Sync Done, Awaiting Apply'
+    WHEN 'r' THEN 'Replicating'
+    ELSE 'Unknown'
+  END AS state_description
+FROM pg_subscription_rel
+WHERE srrelid::regclass::text = 'pct_humana.pct_data';
+
+
+
+
+UPDATE pg_subscription_rel
+SET srsubstate = 'r'
+WHERE srsubstate = 'd';
+
+This is enforce to mark the change on subscriber. 
+
+
+
+
+
+SELECT
+                s.subname AS subscription_name,
+                s.subconninfo AS connection_info,
+                s.subpublications AS publication_list
+            FROM pg_subscription s;
+
+SELECT pid, state, backend_type, application_name
+FROM pg_stat_activity
+WHERE backend_type = 'logical replication worker';
+
+
+SELECT 
+  sub.subname AS subscription_name,
+  sub.subconninfo AS connection_info,
+  sub.subenabled AS enabled
+FROM pg_subscription sub;
+
+
+ALTER SUBSCRIPTION sit_drugmgmt_sub REFRESH PUBLICATION;
+
+SELECT
+  srrelid::regclass AS table_name,
+  srsubstate
+FROM pg_subscription_rel
+WHERE srsubstate != 'r';
+

@@ -1,0 +1,21 @@
+claimsprocess=# SELECT nspname AS schema, proname
+FROM pg_proc
+JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
+WHERE proname = 'pgstattuple';
+      schema      |   proname
+------------------+-------------
+ stg_customer_320 | pgstattuple
+ stg_customer_320 | pgstattuple
+(2 rows)
+
+claimsprocess=# SELECT * FROM stg_customer_320.pgstattuple('claim_core_p1_320_202310_pkey'::regclass);
+
+ table_len  | tuple_count | tuple_len  | tuple_percent | dead_tuple_count | dead_tuple_len | dead_tuple_percent | free_space | free_percent
+------------+-------------+------------+---------------+------------------+----------------+--------------------+------------+--------------
+ 3772063744 |    58168499 | 2326739960 |         61.68 |                0 |              0 |                  0 | 1151477264 |        30.53
+(1 row)
+
+claimsprocess=#
+claimsprocess=# REINDEX INDEX CONCURRENTLY claim_core_p1_320_202310_pkey;
+
+

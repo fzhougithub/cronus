@@ -1,0 +1,55 @@
+SELECT 
+    a.pid AS waiting_pid,
+    a.query AS waiting_query,
+    l1.locktype,
+    l1.mode AS waiting_mode,
+    l1.relation::regclass AS locked_relation,
+    a.state,
+    now() - a.query_start AS wait_time,
+    b.pid AS blocker_pid,
+    b.query AS blocker_query,
+    b.state AS blocker_state
+FROM pg_locks l1
+JOIN pg_stat_activity a ON l1.pid = a.pid
+JOIN pg_locks l2 ON l1.locktype = l2.locktype
+                  AND l1.database IS NOT DISTINCT FROM l2.database
+                  AND l1.relation IS NOT DISTINCT FROM l2.relation
+                  AND l1.page IS NOT DISTINCT FROM l2.page
+                  AND l1.tuple IS NOT DISTINCT FROM l2.tuple
+                  AND l1.transactionid IS NOT DISTINCT FROM l2.transactionid
+                  AND l1.classid IS NOT DISTINCT FROM l2.classid
+                  AND l1.objid IS NOT DISTINCT FROM l2.objid
+                  AND l1.objsubid IS NOT DISTINCT FROM l2.objsubid
+                  AND l1.pid <> l2.pid
+JOIN pg_stat_activity b ON l2.pid = b.pid
+WHERE NOT l1.granted;
+
+
+-- Show all activity
+SELECT pid, state, wait_event_type, wait_event, query
+FROM pg_stat_activity
+WHERE datname = current_database()
+ORDER BY state, wait_event_type;
+
+-- Show locks held
+SELECT * FROM pg_locks WHERE relation::regclass::text = 'claimsprocess_humana.claim_core';
+
+-- Show blocking PIDs
+SELECT blocked_locks.pid AS blocked_pid,
+       blocked_activity.query AS blocked_query,
+       blocking_locks.pid AS blocking_pid,
+       blocking_activity.query AS blocking_query
+FROM pg_locks blocked_locks
+JOIN pg_stat_activity blocked_activity
+  ON blocked_activity.pid = blocked_locks.pid
+JOIN pg_locks blocking_locks
+  ON blocking_locks.locktype = blocked_locks.locktype
+ AND blocking_locks.database IS NOT DISTINCT FROM blocked_locks.database
+ AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
+ AND blocking_locks.page IS NOT DISTINCT FROM blocked_locks.page
+ AND blocking_locks.tuple IS NOT DISTINCT FROM blocked_locks.tuple
+ AND blocking_locks.pid != blocked_locks.pid
+JOIN pg_stat_activity blocking_activity
+  ON blocking_activity.pid = blocking_locks.pid
+WHERE NOT blocked_locks.granted;
+

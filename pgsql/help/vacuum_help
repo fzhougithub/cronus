@@ -1,0 +1,287 @@
+📌 Summary Operation	Frees Space	Updates n_dead_tup?	Updates Planner Stats
+VACUUM		✅ (partially)	✅ Yes			❌ No
+ANALYZE		❌		❌ No			✅ Yes
+VACUUM FULL	✅✅ fully	❌ No			❌ No
+VACUUM ANALYZE	✅ (partially)	✅ Yes			✅ Yes
+VACUUM (INDEX_CLEANUP on, VERBOSE) global.x88;
+
+
+| Parameter                | Description                                             | Default |
+| ------------------------ | ------------------------------------------------------- | ------- |
+| `vacuum_cost_page_hit`   | Cost for reading a page found already in shared buffers | `1`     |
+| `vacuum_cost_page_miss`  | Cost for reading a page from disk                       | `10`    |
+| `vacuum_cost_page_dirty` | Cost for writing a page that's been dirtied by vacuum   | `20`    |
+| `vacuum_cost_limit`      | Maximum cost before vacuum pauses                       | `200`   |
+| `vacuum_cost_delay`      | Delay in ms once cost limit is reached                  | `0`     |
+
+SELECT name, setting, unit, short_desc
+FROM pg_settings
+WHERE name LIKE 'vacuum_cost_%'
+ORDER BY name;
+
+SELECT pid, wait_event_type, wait_event, state, query
+FROM pg_stat_activity
+WHERE query ILIKE '%vacuum%' OR query ILIKE '%analyze%';
+
+SHOW log_autovacuum_min_duration;
+
+SELECT *
+FROM pg_stat_activity
+WHERE query LIKE 'autovacuum%';
+
+SELECT schemaname, relname, last_autovacuum, last_autoanalyze
+FROM pg_stat_all_tables
+WHERE last_autovacuum IS NOT NULL
+ORDER BY last_autovacuum DESC
+LIMIT 10;
+
+SELECT count(*) 
+FROM pg_stat_activity 
+WHERE query LIKE 'autovacuum:%';
+
+SELECT n_tup_ins, n_tup_upd, n_tup_del
+FROM pg_stat_user_tables
+WHERE relname = 'dt_user_role_backup';
+
+WITH constants AS (
+  SELECT current_setting('block_size')::numeric AS bs
+),
+table_estimates AS (
+  SELECT
+    schemaname,
+    tablename,
+    reltuples::numeric AS est_rows,
+    relpages::numeric AS pages,
+    pg_relation_size(schemaname || '.' || tablename) AS table_size_bytes
+  FROM pg_stat_user_tables
+  JOIN pg_class ON relname = tablename
+),
+bloat_calc AS (
+  SELECT
+    schemaname,
+    tablename,
+    table_size_bytes,
+    est_rows,
+    pages,
+    (table_size_bytes / NULLIF(est_rows, 0)) AS avg_row_size,
+    bs,
+    pages * bs AS expected_size,
+    table_size_bytes - (pages * bs) AS wasted_bytes
+  FROM table_estimates, constants
+)
+SELECT
+  schemaname,
+  tablename,
+  pg_size_pretty(table_size_bytes) AS table_size,
+  pg_size_pretty(wasted_bytes) AS bloat_estimate,
+  ROUND(100 * wasted_bytes / NULLIF(table_size_bytes, 0), 1) AS bloat_percent
+FROM bloat_calc
+WHERE wasted_bytes > (10 * 1024 * 1024)  -- More than 10MB wasted
+ORDER BY wasted_bytes DESC;
+
+-- fz this one will never change, does not matter you vacuum, vacuum analyze etc
+SELECT
+  schemaname,
+  relname,
+  n_dead_tup,
+  n_live_tup,
+  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 1) AS dead_pct
+FROM pg_stat_user_tables
+WHERE n_dead_tup > 10000
+ORDER BY dead_pct DESC NULLS LAST;
+
+CREATE EXTENSION IF NOT EXISTS pgstattuple WITH SCHEMA misc;
+SELECT * FROM misc.pgstattuple('global.x88');
+ table_len  | tuple_count | tuple_len  | tuple_percent | dead_tuple_count | dead_tuple_len | dead_tuple_percent | free_space | free_percent
+------------+-------------+------------+---------------+------------------+----------------+--------------------+------------+--------------
+ 3061825536 |    14957943 | 1291588981 |         42.18 |         17763534 |     1527650134 |              49.89 |   22527172 |         0.74
+(1 row)
+
+SELECT
+  schemaname,
+  relname,
+  pg_size_pretty(pg_table_size(relid)) AS table_size,
+  pg_size_pretty(pg_total_relation_size(relid) - pg_table_size(relid)) AS bloat_estimate,
+  n_dead_tup,
+  n_live_tup,
+  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 1) AS dead_pct
+FROM pg_stat_user_tables
+WHERE relname = 'x88';
+
+SELECT c.oid::regclass AS table,
+       age(c.relfrozenxid) AS frozen_age,
+       c.relfrozenxid
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relname = 'x88' AND n.nspname = 'global';
+
+SELECT pid, backend_xmin, age(backend_xmin) AS xmin_age, state, query
+FROM pg_stat_activity
+WHERE backend_xmin IS NOT NULL
+  AND age(backend_xmin) > (
+    SELECT age(c.relfrozenxid)
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = 'x88' AND n.nspname = 'global'
+  )
+ORDER BY xmin_age DESC;
+
+-- fz one tool
+WITH target AS (
+  SELECT c.oid, c.relfrozenxid
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relname = 'x88' AND n.nspname = 'global'
+)
+SELECT pid, state, age(backend_xmin) AS xmin_age, now() - query_start AS runtime, query
+FROM pg_stat_activity, target
+WHERE backend_xmin IS NOT NULL
+  AND age(backend_xmin) > age(target.relfrozenxid)
+ORDER BY xmin_age DESC;
+
+VACUUM (INDEX_CLEANUP on, VERBOSE) global.x88;
+
+ods_domani=# VACUUM (INDEX_CLEANUP on, VERBOSE) global.x88;
+INFO:  vacuuming "global.x88"
+INFO:  launched 1 parallel vacuum worker for index cleanup (planned: 1)
+INFO:  table "x88": found 0 removable, 30284093 nonremovable row versions in 346049 out of 373758 pages
+********************DETAIL:  17763534 dead row versions cannot be removed yet, oldest xmin: 141119120
+Skipped 0 pages due to buffer pins, 27709 frozen pages.
+CPU: user: 1.98 s, system: 0.52 s, elapsed: 37.26 s.
+
+🔥 Likely cause: an old replication slot or prepared transaction
+
+SELECT slot_name, plugin, active, xmin, catalog_xmin, restart_lsn
+FROM pg_replication_slots
+WHERE xmin IS NOT NULL OR catalog_xmin IS NOT NULL;
+
+SELECT gid, prepared, owner, database
+FROM pg_prepared_xacts;
+
+ROLLBACK PREPARED 'gid';
+-- or COMMIT PREPARED 'gid';
+
+SELECT pid, state, xact_start, backend_xid, backend_xmin,
+       age(backend_xmin) AS xmin_age, now() - xact_start AS xact_age,
+       query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY xact_start;
+
+
+VACUUM (DISABLE_PAGE_SKIPPING, VERBOSE) global.x88;
+
+ods_domani=# SELECT count(*) FROM global.x88 WHERE xmin::text::bigint < 141119120;
+-[ RECORD 1 ]--
+count | 2714961
+
+Time: 729.494 ms
+
+SELECT ctid, xmin, xmax FROM global.x88
+WHERE xmin::text::bigint < 141119120
+LIMIT 10;
+
+
+Final approach;
+
+VACUUM (INDEX_CLEANUP ON, FREEZE, VERBOSE) global.x88;
+
+
+-- Option 1: Blocking, clean rebuild
+CREATE TABLE global.x88_new (LIKE global.x88 INCLUDING ALL);
+INSERT INTO global.x88_new SELECT * FROM global.x88 WHERE true;
+DROP TABLE global.x88;
+ALTER TABLE global.x88_new RENAME TO x88;
+
+
+
+❗ Root Cause Identified
+Your global.x88 table has 2.7 million rows with:
+
+text
+Copy
+Edit
+xmin = 80352170 (and still visible)
+Yet VACUUM reports:
+
+ods_domani=# SELECT count(*) FROM global.x88 WHERE xmin::text::bigint < 141119120;
+-[ RECORD 1 ]--
+count | 2714961
+
+✅ These rows are not dead — they are very old but still visible
+Because:
+
+xmax = 0 → not deleted
+
+xmin = 80352170 → older than relfrozenxid = 141119120
+
+➤ But not yet frozen!
+sql
+Copy
+Edit
+dead row versions cannot be removed yet, oldest xmin: 141119120
+This means:
+
+✅ These rows are not dead — they are very old but still visible
+Because:
+
+xmax = 0 → not deleted
+
+xmin = 80352170 → older than relfrozenxid = 141119120
+
+➤ But not yet frozen!
+
+
+
+Finally
+
+
+🛠 Solution: Force FREEZE of those tuples
+sql
+Copy
+Edit
+VACUUM (FREEZE, VERBOSE) global.x88;
+
+This will:
+
+Traverse all pages
+
+Force freezing of any row old enough
+
+Update relfrozenxid
+
+Allow XID wraparound protection to advance
+
+ods_domani=# VACUUM (FREEZE, VERBOSE) global.x88;
+INFO:  aggressively vacuuming "global.x88"
+INFO:  launched 1 parallel vacuum worker for index cleanup (planned: 1)
+INFO:  table "x88": found 0 removable, 30284093 nonremovable row versions in 346049 out of 373758 pages
+DETAIL:  17763534 dead row versions cannot be removed yet, oldest xmin: 141119120
+Skipped 0 pages due to buffer pins, 27709 frozen pages.
+CPU: user: 1.93 s, system: 0.49 s, elapsed: 37.18 s.
+VACUUM
+Time: 38213.795 ms (00:38.214)
+ods_domani=# SELECT relfrozenxid, age(relfrozenxid)
+ods_domani-# FROM pg_class
+ods_domani-# JOIN pg_namespace n ON n.oid = pg_class.relnamespace
+ods_domani-# WHERE relname = 'x88' AND n.nspname = 'global';
+ relfrozenxid |  age
+--------------+-------
+    141119120 | 86372
+(1 row)
+
+Time: 0.605 ms
+
+
+VACUUM (FREEZE, DISABLE_PAGE_SKIPPING, VERBOSE) global.x88;
+
+
+
+
+SELECT pid, usename, datname, state, backend_xid, backend_xmin, xact_start, query_start, state_change, query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY xact_start ASC;
+
+
+

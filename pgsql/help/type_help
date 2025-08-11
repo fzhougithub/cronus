@@ -1,0 +1,68 @@
+SELECT
+    c.relname,
+    c.relkind,
+    CASE c.relkind
+        WHEN 'r' THEN 'ordinary table'
+        WHEN 'i' THEN 'index'
+        WHEN 'S' THEN 'sequence'
+        WHEN 'v' THEN 'view'
+        WHEN 'm' THEN 'materialized view'
+        WHEN 'c' THEN 'composite type (e.g., a table''s row type)'
+        WHEN 't' THEN 'TOAST table'
+        WHEN 'f' THEN 'foreign table'
+        WHEN 'p' THEN 'partitioned table'
+        WHEN 'I' THEN 'partitioned index'
+        ELSE 'unknown'
+    END AS relkind_description
+FROM
+    pg_class c
+WHERE
+    c.relname IN ('o60', 'o59');
+
+
+
+
+
+
+
+SELECT
+    c.relname AS object_name,
+    n.nspname AS schema_name, -- This is the key column to look at!
+    c.oid AS object_oid,
+    c.relnamespace AS schema_oid, -- The OID of the schema
+    c.relkind,
+    CASE c.relkind
+        WHEN 'r' THEN 'ordinary table'
+        WHEN 'i' THEN 'index'
+        WHEN 'S' THEN 'sequence'
+        WHEN 'v' THEN 'view'
+        WHEN 'm' THEN 'materialized view'
+        WHEN 'c' THEN 'composite type'
+        WHEN 't' THEN 'TOAST table'
+        WHEN 'f' THEN 'foreign table'
+        WHEN 'p' THEN 'partitioned table'
+        WHEN 'I' THEN 'partitioned index'
+        ELSE 'unknown'
+    END AS object_type_description,
+    c.reltype AS row_type_oid,
+    t.typname AS row_type_name,
+    CASE t.typtype
+        WHEN 'c' THEN 'composite (row) type'
+        WHEN 'b' THEN 'base type'
+        WHEN 'd' THEN 'domain'
+        WHEN 'e' THEN 'enum type'
+        WHEN 'p' THEN 'pseudo-type'
+        WHEN 'r' THEN 'range type'
+        WHEN 'm' THEN 'multirange type'
+        ELSE 'other type'
+    END AS row_type_description
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN
+    pg_type t ON t.oid = c.reltype
+WHERE
+    c.relname IN ('o60', 'o59');
+
+

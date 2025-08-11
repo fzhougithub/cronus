@@ -1,0 +1,5 @@
+sudo mkfs.ext4 /dev/sdb
+sudo mkdir /mnt/pgbadger_tmp
+sudo mount /dev/sdb /mnt/pgbadger_tmp
+sudo chown postgres:postgres /mnt/pgbadger_tmp
+df -h /mnt/pgbadger_tmp

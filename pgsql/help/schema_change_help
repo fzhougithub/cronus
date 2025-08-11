@@ -1,0 +1,77 @@
+1. ./check_pubsub ods-domani-sit-db.ssnc-corp.cloud ods_domani |grep drug
+sit_drugmgmt_sub|sit_drugmgmt_pub|host=10.173.12.61 dbname=benefits port=5432
+
+2. (p3) fzhou@DST-JXK2FKH0CK 9933 % python3 ddl_review.py DDL_alter_drug_alternatives_add_columns.sql sit_drugmgmt_pub
+ALTER PUBLICATION sit_drugmgmt_pub
+DROP TABLE
+  drugmgmt.drug_alternative,
+  drugmgmt.drug_alternative_diagnosis_assoc,
+  drugmgmt.drug_alternative_ndc,
+  drugmgmt.drug_alternative_util_manage_assoc;
+
+ALTER SUBSCRIPTION sit_drugmgmt_pub_sub REFRESH PUBLICATION;
+
+-- Apply schema changes on both publisher and subscriber manually here.
+
+ALTER PUBLICATION sit_drugmgmt_pub
+ADD TABLE
+  drugmgmt.drug_alternative,
+  drugmgmt.drug_alternative_diagnosis_assoc,
+  drugmgmt.drug_alternative_ndc,
+  drugmgmt.drug_alternative_util_manage_assoc;
+
+ALTER SUBSCRIPTION sit_drugmgmt_pub_sub REFRESH PUBLICATION;
+
+
+
+
+
+To help your developers and DBAs manage schema changes in a PostgreSQL **logical replication** environment (e.g., replicating from an application DB to a reporting DB), it's critical to clarify which DDLs are safe, which require coordination, and what process to follow. Below is a **guidance table** that outlines common DDL scenarios, whether they're supported in logical replication, potential impact, and the proper procedure to handle them.
+
+---
+
+### 🔧 Logical Replication DDL Handling Guide
+
+| #  | **DDL Scenario**                        | **Supported in Logical Replication?** | **Impact**                                                         | **Procedure to Handle**                                                                              | **Ticket Requirements**                                   |
+| -- | --------------------------------------- | ------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1  | `ADD COLUMN` (without `NOT NULL`)       | ✅ Yes                                 | Column will not exist on subscriber unless added manually          | Add column manually on subscriber **before** applying on publisher                                   | Must specify: column name, data type, default (if any)    |
+| 2  | `ADD COLUMN` with `NOT NULL`            | ⚠️ No (if default not set)            | Breaks replication unless column is added with a default           | Add column with `DEFAULT`, then run `ALTER ... SET NOT NULL` after syncing                           | Must specify if NOT NULL and DEFAULT provided             |
+| 3  | `DROP COLUMN`                           | ❌ No                                  | Will break replication — subscriber still expects column           | Stop replication, drop column on subscriber, re-sync or re-init table                                | Must explain why column is dropped, confirm safe downtime |
+| 4  | `ALTER TYPE` (e.g., change column type) | ⚠️ Partial                            | May cause replication errors or silent issues                      | Recommended to: 1) stop replication, 2) apply changes, 3) re-init the table if needed                | Specify: old & new type, why change is required           |
+| 5  | `RENAME COLUMN` / `TABLE`               | ❌ No                                  | Breaks replication; replication uses internal column name mappings | Must drop and re-create subscription or do rename **on both sides** simultaneously                   | Clearly state new name and justification                  |
+| 6  | `CREATE TABLE`                          | ✅ Yes (if added to publication)       | Safe if added correctly                                            | Create table on both sides manually first (if structure not identical), then `ALTER PUBLICATION ...` | Indicate whether table should be replicated               |
+| 7  | `DROP TABLE`                            | ❌ No                                  | Will break replication unless removed from publication first       | Remove table from publication and subscription, drop on both sides                                   | Confirm data no longer needed                             |
+| 8  | `TRUNCATE`                              | ❌ No (not replicated)                 | No effect on subscriber; leads to data inconsistency               | Use `DELETE` instead, or manually truncate on both sides during downtime                             | Confirm safe and coordinated                              |
+| 9  | `ALTER TABLE ... ADD CONSTRAINT`        | ⚠️ Local only                         | Not replicated — subscriber remains unaware                        | Apply on both publisher and subscriber manually                                                      | Must describe the constraint fully                        |
+| 10 | `ALTER SEQUENCE`                        | ⚠️ Not replicated                     | Subscriber will have diverging sequence values                     | Manually adjust sequence values on subscriber or switch to identity/explicit inserts                 | Explain if replicated inserts use sequences               |
+| 11 | `ALTER INDEX` / `CREATE INDEX`          | ✅/❌ Not replicated                    | No replication impact, local performance only                      | Add/drop indexes independently on both sides as needed                                               | Justify if reporting DB needs same index                  |
+
+---
+
+### 📘 Developer Ticket Template (Required Fields)
+
+To reduce confusion and ensure DBAs can act efficiently, require developers to **fill these fields** in schema change tickets:
+
+* **Table name(s):**
+* **DDL to apply:**
+* **Why is this change needed?**
+* **Is the table in logical replication?** (Yes/No/Not sure)
+* **Is there a default value for new columns?**
+* **Is the column/table in active use in reporting?**
+* **Expected deployment date/time:**
+* **Is downtime acceptable? If yes, how much?**
+
+---
+
+### 📌 General Rules & Best Practices
+
+1. **DDL is not replicated** in PostgreSQL logical replication — only **DML** (INSERT/UPDATE/DELETE) is.
+2. Always assume schema changes must be **manually applied on both sides**.
+3. Some changes (like renames or column drops) are **replication-breaking** and must be carefully coordinated.
+4. Avoid changing primary keys or column order — requires full resync.
+5. Consider using **tools like `pglogical` or `pg_auto_failover`** if you require more advanced DDL support — but PostgreSQL native replication is limited in this regard.
+
+---
+
+Would you like a markdown/pdf version of this guide to distribute to your team, or should I help integrate this into an internal Confluence or README page?
+

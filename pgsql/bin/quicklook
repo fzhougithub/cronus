@@ -1,0 +1,9 @@
+#!/bin/bash
+
+echo "========= DDL Code ==============="
+egrep -i "alter|create|drop|modify" *.sql
+
+echo ""
+
+echo "========= DML Code =============="
+egrep -i "insert|update|delete" *.sql

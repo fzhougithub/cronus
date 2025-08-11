@@ -1,0 +1,106 @@
+1. boot sda IO, pretty high
+
+High I/O on the `/boot` directory (which typically resides on device `/dev/sda1`) is unusual — it's a mostly static area that stores kernel and initramfs images. If you're getting high I/O alerts on it, here are some **possible causes** to investigate:
+
+---
+
+### 🔍 Common Causes of High `/boot` I/O
+
+#### 1. **Frequent `initramfs` or kernel rebuilds**
+
+* Check for repeated `dracut`, `mkinitcpio`, or `update-initramfs` runs.
+* **Culprit:** Automatic updates (e.g., `dnf update`, `yum`, or unattended-upgrades) installing new kernels.
+
+🧪 Check:
+
+```bash
+ls -ltr /boot
+```
+
+Look for frequent timestamp updates or growing number of `vmlinuz-*` and `initramfs-*` files.
+
+---
+
+#### 2. **Log-based security or monitoring tools accessing files**
+
+* Some tools like **OSSEC**, **Tripwire**, **AIDE**, or antivirus might constantly read `/boot` for change detection.
+
+🧪 Check who’s reading:
+
+```bash
+sudo lsof | grep '/boot'
+```
+
+---
+
+#### 3. **Backup software including `/boot` in every backup**
+
+* If backup tools (like `rsync`, `tar`, or snapshot-based tools) scan `/boot` often, they may cause spikes.
+
+🧪 Check cron jobs or timers:
+
+```bash
+grep boot /etc/cron*/* /etc/systemd/system/*.timer 2>/dev/null
+```
+
+---
+
+#### 4. **Filesystem issues or bad disk sectors**
+
+* Failing sectors on `/dev/sda1` could trigger retries, increasing I/O.
+
+🧪 Check disk health:
+
+```bash
+sudo smartctl -a /dev/sda
+sudo dmesg | grep sda
+```
+
+---
+
+#### 5. **GRUB or bootloader reconfiguration**
+
+* Frequent updates to bootloader config (`grub.cfg`, `systemd-boot`, etc.) may involve rewriting to `/boot`.
+
+🧪 Check:
+
+```bash
+ls -ltr /boot/grub*/grub.cfg
+```
+
+---
+
+### 🛠️ If You Want to Monitor `/boot` Usage:
+
+```bash
+sudo iotop -oPa   # shows real-time per-process I/O
+```
+
+```bash
+sudo iostat -xd 1 /dev/sda
+```
+
+---
+
+### 🔒 What *should not* be writing to `/boot` frequently:
+
+* Normal user activity.
+* Applications or daemons (unless specifically working with kernel/initramfs).
+* System updates more than once per kernel update cycle.
+
+---
+
+### ✅ Summary
+
+| Cause                     | Investigate With               |               |
+| ------------------------- | ------------------------------ | ------------- |
+| Kernel/initramfs rebuilds | `ls -ltr /boot`, \`rpm -qa     | grep kernel\` |
+| Backup software           | `lsof`, cron jobs, backup logs |               |
+| Monitoring tools          | `lsof`, process list           |               |
+| Disk issues               | `smartctl`, `dmesg`            |               |
+| GRUB reconfigurations     | `ls -ltr /boot/grub*/grub.cfg` |               |
+
+---
+
+Let me know what distro and what alerted you — I can give more targeted checks.
+

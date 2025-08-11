@@ -1,0 +1,46 @@
+SELECT 
+  n.nspname AS schema_name,
+  SUM(pg_total_relation_size(c.oid))/1024/1024 AS "schema_size(MB)"
+FROM 
+  pg_class c
+JOIN 
+  pg_namespace n ON n.oid = c.relnamespace
+WHERE 
+  n.nspname NOT LIKE 'pg_%'
+  AND n.nspname != 'information_schema'
+  AND c.relkind IN ('r', 'm', 't')  -- tables, mat views, toast
+GROUP BY 
+  n.nspname
+ORDER BY 
+  SUM(pg_total_relation_size(c.oid)) DESC;
+
+
+SELECT 
+  n.nspname AS schema_name,
+  ROUND(SUM(pg_total_relation_size(c.oid)) / 1024.0 / 1024.0, 2) AS "total_schema_size(MB)"
+FROM 
+  pg_class c
+JOIN 
+  pg_namespace n ON n.oid = c.relnamespace
+WHERE 
+  n.nspname = 'your_schema_name'       -- replace with your schema name
+  AND c.relkind IN ('r', 'p', 'm')
+GROUP BY 
+  n.nspname;
+
+SELECT 
+  n.nspname AS schema_name,
+  c.relname AS object_name,
+  c.relkind,
+  ROUND(pg_total_relation_size(c.oid) / 1024.0 / 1024.0, 2) AS "object_size_MB"
+FROM 
+  pg_class c
+JOIN 
+  pg_namespace n ON n.oid = c.relnamespace
+WHERE 
+  n.nspname = 'your_schema_name'
+  AND c.relkind IN ('r', 'p', 'm')
+ORDER BY 
+  pg_total_relation_size(c.oid) DESC;
+
+

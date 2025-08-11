@@ -1,0 +1,66 @@
+#!/bin/bash
+
+if [ $# -ne 3 ];then
+	echo "Usage: $0 schemaname,user,ro/rw"
+	echo "e.g: $0 finance_humana, hplpdclaimresearch, ro"
+	exit 1
+else
+	ro=${1}_ro
+	rw=${1}_rw
+	user=${2}
+fi
+
+if [ $3 == 'ro' ];then
+cat <<EOF
+--\set ECHO ALL
+--\du+ $ro
+--\du+ $user
+
+CREATE ROLE $ro;
+-- CREATE ROLE $2 WITH LOGIN PASSWORD ';
+GRANT USAGE ON SCHEMA $1 TO $ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA $1 TO $ro;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA $1 TO $ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT SELECT ON TABLES TO $ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT SELECT ON SEQUENCES TO $ro;
+GRANT $ro to $user;
+\du+ $user
+EOF
+
+elif [ $3 == 'rw' ];then
+cat <<EOF
+
+CREATE ROLE $rw; 
+
+\du+ $rw
+\du+ $user
+
+-- if there is no required user, create it seperately with password and push password
+-- CREATE ROLE $2 WITH LOGIN PASSWORD '<generated_32_password';
+
+CREATE ROLE $rw; 
+-- CREATE ROLE $2 WITH LOGIN PASSWORD ';
+GRANT USAGE ON SCHEMA $1 to $rw;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA $1 TO $rw;
+GRANT SELECT,INSERT,DELETE,UPDATE ON ALL TABLES in SCHEMA $1 to $rw;
+ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $rw;
+ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO $rw;
+GRANT $rw to $user;
+-- GRANT CREATE ON SCHEMA $1 TO $user; 
+-- should change owner of sequence to allow user to alter sequence. 
+
+\du+ $user
+EOF
+fi
+
+#Notes:
+#| Letter | Privilege      | Meaning                                              |
+#| ------ | -------------- | ---------------------------------------------------- |
+#| **a**  | **INSERT**     | Ability to insert new rows into the table            |
+#| **r**  | **SELECT**     | Ability to read (query) rows from the table          |
+#| **w**  | **UPDATE**     | Ability to update existing rows                      |
+#| **d**  | **DELETE**     | Ability to delete rows                               |
+#| **D**  | **TRUNCATE**   | Ability to truncate the table (remove all rows)      |
+#| **x**  | **REFERENCES** | Ability to create foreign keys referencing the table |
+#| **t**  | **TRIGGER**    | Ability to create triggers on the table              |
+

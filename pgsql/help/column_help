@@ -1,0 +1,12 @@
+select 'max('||column_name||'),' from information_schema.columns where table_schema='customer' and table_name='ax8' and column_name like '%dt';
+
+SELECT
+  'ALTER TABLE stg_customer_320.dur_tmp_1 ALTER COLUMN '
+  || quote_ident(column_name)
+  || ' TYPE varchar;'
+FROM information_schema.columns
+WHERE table_schema = 'stg_customer_320'
+  AND table_name = 'dur_tmp_1';
+
+
+

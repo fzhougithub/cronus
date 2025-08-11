@@ -1,0 +1,118 @@
+sed 's/[ \t]*$//' a
+above remove the line contains either space or tab only
+
+
+Yes! `sed` supports several commands that work with the `/pattern/command` style — meaning: **"if a line matches this pattern, do this command."** It's a very powerful pattern-action model.
+
+---
+
+### 🔧 Common `sed` Commands Using `/pattern/command` Style:
+
+Here's a list of `sed` commands that can be paired with patterns:
+
+---
+
+#### ✅ `d` — Delete lines
+
+```bash
+sed '/^#/d' file.txt   # Delete lines that start with "#"
+```
+
+---
+
+#### ✅ `p` — Print lines
+
+```bash
+sed -n '/error/p' file.log  # Print only lines containing "error"
+```
+
+> The `-n` option tells `sed` to **suppress automatic printing** — so only the `p` command explicitly prints lines.
+
+---
+
+#### ✅ `s` — Substitute (can also be conditional)
+
+```bash
+sed '/foo/s/bar/baz/' file.txt
+```
+
+> Only lines containing `foo` will have `bar` replaced with `baz`.
+
+---
+
+#### ✅ `a` — Append after a matching line
+
+```bash
+sed '/pattern/a\New line here' file.txt
+```
+
+---
+
+#### ✅ `i` — Insert before a matching line
+
+```bash
+sed '/pattern/i\Header line' file.txt
+```
+
+---
+
+#### ✅ `c` — Change the matching line to something else
+
+```bash
+sed '/pattern/c\This line was replaced' file.txt
+```
+
+---
+
+#### ✅ `q` — Quit when a pattern matches
+
+```bash
+sed '/STOP/q' file.txt
+```
+
+> Stops reading the file once a line containing "STOP" is found.
+
+---
+
+#### ✅ `=` — Print line number
+
+```bash
+sed '/ERROR/=' file.txt
+```
+
+> Prints the line number for lines that contain "ERROR".
+
+---
+
+### 🔁 You can also use **address ranges**:
+
+```bash
+sed '/START/,/END/d' file.txt
+```
+
+> Deletes all lines between and including "START" and "END".
+
+---
+
+### 🔧 Combining Multiple Commands
+
+```bash
+sed '/pattern/{
+  s/foo/bar/
+  i\Inserted before match
+  a\Appended after match
+}' file.txt
+```
+
+---
+
+### ✅ Summary
+
+In `sed`, the pattern/command style (`/pattern/command`) applies to many commands:
+
+* `d`, `p`, `s`, `a`, `i`, `c`, `q`, `=`, etc.
+
+They're super flexible for filtering and transforming text based on patterns.
+
+Let me know if you want cheat-sheet-style examples or multi-line editing tricks!
+

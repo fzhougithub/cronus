@@ -1,0 +1,32 @@
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS object_name,
+    CASE c.relkind
+        WHEN 'r' THEN 'table'
+        WHEN 'i' THEN 'index'
+        WHEN 'S' THEN 'sequence'
+        WHEN 'v' THEN 'view'
+        WHEN 'm' THEN 'materialized view'
+        WHEN 't' THEN 'TOAST table'
+        WHEN 'f' THEN 'foreign table'
+        WHEN 'p' THEN 'partitioned table'
+        WHEN 'I' THEN 'partitioned index'
+        ELSE c.relkind::text
+    END AS object_type,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+JOIN
+    pg_tablespace ts ON ts.oid = c.reltablespace
+WHERE
+    ts.spcname = 'your_tablespace_name' -- <<< IMPORTANT: Replace with the actual tablespace name
+    AND c.relkind IN ('r', 'i', 'm', 't', 'S', 'f', 'p', 'I') -- Filter for storage-consuming relations
+ORDER BY
+    schema_name, object_type, object_name;
+
+
+SELECT spcname, pg_tablespace_location(oid) AS location, pg_size_pretty(pg_tablespace_size(oid)) AS size
+FROM pg_tablespace
+ORDER BY spcname;

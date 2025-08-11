@@ -1,0 +1,1 @@
+for i in *_clean; do mv "$i" "${i%_clean}"; done

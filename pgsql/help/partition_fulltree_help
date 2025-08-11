@@ -1,0 +1,9 @@
+SELECT 
+  p.relname AS parent,
+  c.relname AS child
+FROM pg_inherits i
+JOIN pg_class p ON p.oid = i.inhparent
+JOIN pg_class c ON c.oid = i.inhrelid
+WHERE p.relname LIKE 'claim_core_p1%'
+ORDER BY p.relname, c.relname;
+

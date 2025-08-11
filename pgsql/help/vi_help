@@ -1,0 +1,30 @@
+Great question! The difference between `:s/foo/bar/g` and `:%s/foo/bar/g` lies in **what range of lines** the substitution applies to.
+
+---
+
+### `:s/foo/bar/g`
+
+* This applies the substitution **only on the current line** (where the cursor is).
+* The `g` flag means “replace all occurrences” on that line (not just the first).
+* Example: If you're on line 42, only line 42 is affected.
+
+---
+
+### `:%s/foo/bar/g`
+
+* This applies the substitution to **all lines in the file** (`%` is a range shortcut for `1,$`, i.e., first to last line).
+* The `g` flag again means “replace all occurrences per line.”
+
+---
+
+### Summary:
+
+| Command             | Affects                 | Scope        |
+| ------------------- | ----------------------- | ------------ |
+| `:s/foo/bar/g`      | Current line only       | One line     |
+| `:%s/foo/bar/g`     | All lines in the buffer | Entire file  |
+| `:10,20s/foo/bar/g` | Lines 10 to 20          | Line range   |
+| `:'<,'>s/foo/bar/g` | Visually selected lines | Visual range |
+
+Let me know if you want to [build a substitution command that skips comments or matches contextually](dr).
+

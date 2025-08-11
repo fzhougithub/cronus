@@ -1,0 +1,111 @@
+Absolutely — **Option 2: Custom middleware bot/service** is a flexible and powerful approach, especially when:
+
+* You want **full control** over ticket creation logic (e.g., parse alert JSON, deduplicate, route to the right Jira project).
+* Your alert sources already send JSON to Microsoft Teams via webhook.
+* You don't want to rely on Power Automate or pay for connectors.
+
+---
+
+### ✅ Example Use Case
+
+**Use case**: A company uses a monitoring system (e.g., Prometheus Alertmanager or Datadog) that posts alerts to a **Microsoft Teams channel** via webhook. They want to **automatically create Jira tickets for any “CRITICAL” alerts**, but only if one doesn't already exist.
+
+**Solution**:
+
+* Deploy a small **Node.js (or Python) service** that:
+
+  1. Listens to incoming messages (or is subscribed to Teams activity via Graph API).
+  2. Filters messages with severity `"CRITICAL"`.
+  3. Calls **Jira REST API** to check if a ticket for that alert already exists (e.g., based on alert ID or title).
+  4. If not found, **creates a new Jira issue**.
+  5. Optionally, posts back the created ticket link to the Teams thread.
+
+---
+
+### 🌐 Public Example Projects & Code
+
+#### 1. **GitHub: teams-alert-to-jira (Node.js)**
+
+* Example project that listens to Teams webhook and creates a Jira ticket
+* Repo: [https://github.com/Switch-NZ/teams-alert-to-jira](https://github.com/Switch-NZ/teams-alert-to-jira)
+* Highlights:
+
+  * Webhook listener using Express
+  * Filters Teams message
+  * Posts to Jira using basic auth or API token
+
+#### 2. **Python Example: Flask + Jira API**
+
+```python
+from flask import Flask, request
+import requests
+
+app = Flask(__name__)
+
+JIRA_API_URL = "https://your-domain.atlassian.net/rest/api/3/issue"
+JIRA_AUTH = ("your_email", "your_jira_api_token")
+
+@app.route("/teams-webhook", methods=["POST"])
+def handle_teams_alert():
+    data = request.json
+    message_text = data.get("text", "")
+
+    if "CRITICAL" in message_text:
+        summary = message_text.splitlines()[0]
+        issue = {
+            "fields": {
+                "project": {"key": "OPS"},
+                "summary": summary,
+                "description": message_text,
+                "issuetype": {"name": "Incident"}
+            }
+        }
+        r = requests.post(JIRA_API_URL, json=issue, auth=JIRA_AUTH)
+        return f"Created Jira ticket: {r.status_code}", r.status_code
+
+    return "Ignored", 200
+
+if __name__ == "__main__":
+    app.run(port=5000)
+```
+
+#### 3. **Microsoft Graph API for Teams Bots**
+
+* To monitor **actual Teams channels**, use:
+
+  * [Graph API subscriptions](https://learn.microsoft.com/en-us/graph/api/subscription-post-subscriptions?view=graph-rest-1.0&tabs=http)
+  * [ChatMessage webhook event](https://learn.microsoft.com/en-us/graph/api/resources/chatmessage?view=graph-rest-1.0)
+* This method is more involved (requires Azure app registration) but gives you **fine-grained access to Teams activity**.
+
+---
+
+### 🧰 Tools You’ll Likely Use
+
+| Tool                    | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| Flask or Express        | Handle webhook or polling logic              |
+| Jira REST API           | Create and query Jira tickets                |
+| Microsoft Teams Webhook | (Optional) Post back status to alert channel |
+| Microsoft Graph API     | (Advanced) Monitor Teams messages directly   |
+| Redis or DB             | (Optional) Store state / deduplication       |
+
+---
+
+### 📦 Deploy Options
+
+* Lightweight: Deploy on Heroku, Fly.io, or a Docker container
+* Production: Run in your internal Kubernetes or ECS cluster
+
+---
+
+### 🧠 Need Help Starting?
+
+If you'd like, I can generate a **ready-to-run GitHub repo scaffold** for a service that:
+
+* Accepts Teams webhook JSON
+* Filters based on severity
+* Creates Jira ticket with metadata
+* Posts ticket link back to Teams
+
+Would that help? Or do you want it in a specific language like Python, Node.js, or Go?
+

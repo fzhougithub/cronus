@@ -1,0 +1,30 @@
+SELECT
+    n.nspname AS schema_name,
+    pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_schema_size
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname NOT LIKE 'pg_%' -- Exclude internal pg_ schemas
+    AND n.nspname <> 'information_schema' -- Exclude information_schema
+    AND c.relkind IN ('r', 'i', 'm', 't', 'S')
+GROUP BY
+    n.nspname
+ORDER BY
+    SUM(pg_total_relation_size(c.oid)) DESC; -- Order by size, largest first
+
+
+
+SELECT
+    n.nspname AS schema_name,
+    pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_schema_size
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    c.relkind IN ('r', 'i', 'm', 't', 'S') -- r: table, i: index, m: materialized view, t: TOAST table, S: sequence
+    n.nspname = 'pct_global' -- Replace with the actual schema name (e.g., 'public', 'app_data')
+GROUP BY
+    n.nspname;

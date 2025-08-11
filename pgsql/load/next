@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 old_table new_table"
+    exit 1
+else
+    old=$1
+    new=$2
+fi
+
+# Escape slashes and other special characters
+old_escaped=$(printf '%s\n' "$old" | sed 's/[\/&]/\\&/g')
+new_escaped=$(printf '%s\n' "$new" | sed 's/[\/&]/\\&/g')
+
+# Apply sed substitution for each file (macOS-compatible)
+sed -E -i '' "s/${old_escaped}/${new_escaped}/g" get_chunks.sql
+grep "$new" get_chunks.sql
+
+sed -E -i '' "s/${old_escaped}/${new_escaped}/g" insert_prod.sql
+grep "$new" insert_prod.sql
+

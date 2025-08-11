@@ -1,0 +1,27 @@
+psql -At -c "
+SELECT inhrelid::regclass
+FROM pg_inherits
+WHERE inhparent = 'my_data'::regclass;
+" |
+parallel -j 4 'psql -c "ANALYZE {};"'
+
+
+
+
+
+ods_domani=# select * from pg_stat_progress_analyze;
+-[ RECORD 1 ]-------------+---------------------
+pid                       | 1134443
+datid                     | 16411
+datname                   | ods_domani
+relid                     | 110674363
+phase                     | computing statistics
+sample_blks_total         | 300000
+sample_blks_scanned       | 300000
+ext_stats_total           | 0
+ext_stats_computed        | 0
+child_tables_total        | 0
+child_tables_done         | 0
+current_child_table_relid | 0
+
+

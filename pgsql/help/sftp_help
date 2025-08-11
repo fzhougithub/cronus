@@ -1,0 +1,3 @@
+sftp wdc
+get *
+bye

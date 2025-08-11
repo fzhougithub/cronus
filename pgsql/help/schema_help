@@ -1,0 +1,21 @@
+create schema datamart_humana authorization dba_admin;
+
+CREATE ROLE datamart_humana_ro;
+
+GRANT USAGE ON SCHEMA datamart_humana TO datamart_humana_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA datamart_humana TO datamart_humana_ro;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA datamart_humana TO datamart_humana_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA datamart_humana GRANT SELECT ON TABLES TO datamart_humana_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA datamart_humana GRANT SELECT ON SEQUENCES TO datamart_humana_ro;
+
+GRANT datamart_humana_ro to dt74466;
+
+CREATE ROLE datamart_humana_rw if not exists;
+
+GRANT USAGE ON SCHEMA datamart_humana to datamart_humana_rw;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA datamart_humana TO datamart_humana_rw;
+GRANT SELECT,INSERT,DELETE,UPDATE ON ALL TABLES in SCHEMA datamart_humana to datamart_humana_rw;
+ALTER DEFAULT PRIVILEGES IN SCHEMA datamart_humana GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO datamart_humana_rw;
+ALTER DEFAULT PRIVILEGES IN SCHEMA datamart_humana GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO datamart_humana_rw;
+GRANT datamart_humana_rw to dt74466;
+GRANT CREATE ON SCHEMA datamart_humana to dt74466;

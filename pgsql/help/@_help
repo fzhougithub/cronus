@@ -1,0 +1,82 @@
+Perfect — here’s a **cheat sheet** of how the `@` symbol is used in different tools and languages, depending on the context. This will help you recognize its meaning wherever you encounter it.
+
+---
+
+## 🔧 In Shell / Bash
+
+| Context          | Usage                | Meaning                                            |
+| ---------------- | -------------------- | -------------------------------------------------- |
+| `date -d "@123"` | `@` before a number  | Interpret number as a Unix timestamp               |
+| `"$@"`           | All script arguments | Expands to all arguments passed to script/function |
+| `'@'` in strings | Character literal    | Just the `@` symbol as a character                 |
+
+---
+
+## 🐍 In Python
+
+| Context         | Usage              | Meaning                                    |
+| --------------- | ------------------ | ------------------------------------------ |
+| `@decorator`    | Function decorator | Wraps or modifies function behavior        |
+| `@classmethod`  | Decorator type     | Defines class-level method                 |
+| `@staticmethod` | Decorator type     | Defines method not using class or instance |
+
+---
+
+## 🐪 In Perl
+
+| Context  | Usage    | Meaning                       |
+| -------- | -------- | ----------------------------- |
+| `@array` | Variable | Declares or accesses an array |
+
+---
+
+## 💻 In C# / .NET
+
+| Context      | Usage    | Meaning                                        |
+| ------------ | -------- | ---------------------------------------------- |
+| `@variable`  | Verbatim | Allows reserved keyword as identifier          |
+| `@"C:\Path"` | Verbatim | Verbatim string literal (ignores escape chars) |
+
+---
+
+## 📜 In SQL
+
+| Context     | Usage      | Meaning                           |
+| ----------- | ---------- | --------------------------------- |
+| `@variable` | Variable   | Declares or uses variable (T-SQL) |
+| `@@version` | Global var | System-defined variable           |
+
+---
+
+## 🧾 In JSON/YAML (rare)
+
+| Context        | Usage      | Meaning                             |
+| -------------- | ---------- | ----------------------------------- |
+| `"@timestamp"` | Field name | Often used for log/event timestamps |
+
+---
+
+## 📧 In General Text
+
+| Context          | Example            | Meaning                       |
+| ---------------- | ------------------ | ----------------------------- |
+| Email            | `user@example.com` | Separates username and domain |
+| Twitter / Social | `@user`            | Mention or tag a user         |
+
+---
+
+## 🔌 In Git
+
+| Context              | Usage  | Meaning                                |
+| -------------------- | ------ | -------------------------------------- |
+| `HEAD@{1}`           | Reflog | Shows prior location of HEAD           |
+| `branch@{yesterday}` | Reflog | Time-relative lookup of a branch state |
+
+---
+
+### 🧠 Summary
+
+The `@` character is **context-dependent** — sometimes it’s syntax (like in `date -d`), sometimes a naming convention (`@timestamp`), and sometimes part of the language grammar (`@decorator` in Python).
+
+Let me know if you want examples in any one of these areas.
+

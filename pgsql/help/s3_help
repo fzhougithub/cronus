@@ -1,0 +1,5 @@
+etl-prod-phi-rw	OFmPHB5cXY2Pv2eUOJMe29OXlPKPZNDU	sftp-prod-drx-kc.ssnc-corp.cloud: 2022
+ 
+ 
+/apps/lib/pgsql/14/scripts/exec_bulkload.sh
+ 

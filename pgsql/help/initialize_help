@@ -1,0 +1,6 @@
+cd work/domani-infra
+./install.sh
+
+Install all
+
+brew install --cask pycharm-ce

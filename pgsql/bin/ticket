@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+	echo "Usage: $0 ticket_number"
+	echo Download the zip file first
+	exit 1
+fi
+
+cd ~/work/bug
+
+[ -d ~/work/bug/$1 ] || mkdir -p ~/work/bug/$1
+
+cd ~/work/bug/$1
+pwd
+mv ~/Downloads/DEVOPS-${1}*.zip ~/work/bug/$1/.
+unzip DEVOPS-${1}*.zip
+
+echo "==== Ticket Preparation Complete ===="
+ls -larth ~/work/bug/$1

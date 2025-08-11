@@ -1,0 +1,20 @@
+REINDEX INDEX CONCURRENTLY your_index_name_on_parent_table;
+
+
+CREATE EXTENSION IF NOT EXISTS pageinspect;
+ SELECT * FROM stg_customer_320.bt_metap('stg_customer_320.o60_pkey'::text);
+ magic  | version |  root   | level | fastroot | fastlevel | last_cleanup_num_delpages | last_cleanup_num_tuples | allequalimage
+--------+---------+---------+-------+----------+-----------+---------------------------+-------------------------+---------------
+ 340322 |       4 | 4020006 |     4 |  4020006 |         4 |                         0 |                      -1 | f
+(1 row)
+
+CREATE EXTENSION pgstattuple;
+CREATE EXTENSION
+
+SELECT * FROM pgstatindex('stg_customer_320.o60_pkey'::regclass);
+ version | tree_level | index_size  | root_block_no | internal_pages | leaf_pages | empty_pages | deleted_pages | avg_leaf_density | leaf_fragmentation
+---------+------------+-------------+---------------+----------------+------------+-------------+---------------+------------------+--------------------
+       4 |          4 | 82999377920 |       4020006 |          64128 |   10067631 |           0 |             0 |            90.14 |                  0
+(1 row)
+
+

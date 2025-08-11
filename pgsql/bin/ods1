@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <platform> <schema>"
+	exit 1
+else
+	dbIP=ods-db-01-alma8-$1-drx-kc.ssnc-corp.cloud
+	schema=$2
+fi
+echo "PGOPTIONS=\"--search_path=${schema}\" psql -h $dbIP -d ods_domani"
+
+PGOPTIONS="--search_path=${schema}" psql -h $dbIP -d ods_domani

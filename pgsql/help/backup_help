@@ -1,0 +1,26 @@
+pgbackrest --stanza=10-xxx-xxx-xxx --repo1-retention-full=1 --repo1-retention-full-type=count expire
+
+
+[root@ods-db-01-alma8-dev-drx-kc 10-222-94-20]$ pgbackrest --stanza=10-222-94-20 --repo1-retention-full=1 --repo1-retention-full-type=count expire
+2025-07-16 17:15:21.503 P00   INFO: expire command begin 2.55.1: --exec-id=2765969-864665ce --lock-path=/pg_backups/tmp --log-level-console=info --log-level-file=detail --log-path=/pg_logs/pgbackrest --repo1-path=/pg_backups --repo1-retention-full=1 --repo1-retention-full-type=count --repo1-retention-history=547 --stanza=10-222-94-20
+2025-07-16 17:15:21.506 P00   WARN: backup '20250701-230001F_20250712-230001I' missing manifest removed from backup.info
+2025-07-16 17:15:21.506 P00   WARN: backup '20250701-230001F_20250711-230002I' missing manifest removed from backup.info
+2025-07-16 17:15:21.506 P00   WARN: backup '20250701-230001F_20250705-230001I' missing manifest removed from backup.info
+2025-07-16 17:15:21.506 P00   WARN: backup '20250701-230001F_20250704-230001I' missing manifest removed from backup.info
+2025-07-16 17:15:21.506 P00   WARN: backup '20250701-230001F_20250703-230001I' missing manifest removed from backup.info
+2025-07-16 17:15:21.506 P00   WARN: backup '20250701-230001F_20250702-230001I' missing manifest removed from backup.info
+2025-07-16 17:15:21.506 P00   WARN: backup '20250701-230001F' missing manifest removed from backup.info
+2025-07-16 17:15:21.693 P00   WARN: invalid backup '20250701-230001F_20250702-230001I' cannot be added to current backups
+2025-07-16 17:15:21.897 P00   WARN: invalid backup '20250701-230001F_20250703-230001I' cannot be added to current backups
+2025-07-16 17:15:22.113 P00   WARN: invalid backup '20250701-230001F_20250704-230001I' cannot be added to current backups
+2025-07-16 17:15:22.334 P00   WARN: invalid backup '20250701-230001F_20250705-230001I' cannot be added to current backups
+2025-07-16 17:15:22.552 P00   WARN: invalid backup '20250701-230001F_20250711-230002I' cannot be added to current backups
+2025-07-16 17:15:22.782 P00   WARN: invalid backup '20250701-230001F_20250712-230001I' cannot be added to current backups
+2025-07-16 17:15:22.802 P00   INFO: repo1: remove expired backup 20250713-093001F
+2025-07-16 17:15:22.810 P00   INFO: repo1: remove expired backup 20250701-230001F_20250712-230001I
+2025-07-16 17:15:22.830 P00   INFO: repo1: remove expired backup 20250701-230001F_20250711-230002I
+2025-07-16 17:15:23.083 P00   INFO: repo1: remove expired backup 20250701-230001F_20250705-230001I
+2025-07-16 17:15:23.103 P00   INFO: repo1: remove expired backup 20250701-230001F_20250704-230001I
+2025-07-16 17:15:23.120 P00   INFO: repo1: remove expired backup 20250701-230001F_20250703-230001I
+2025-07-16 17:15:23.143 P00   INFO: repo1: remove expired backup 20250701-230001F_20250702-230001I
+2025-07-16 17:15:23.165 P00   INFO: expire command end: completed successfully (1663ms)

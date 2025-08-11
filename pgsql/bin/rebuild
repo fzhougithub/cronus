@@ -1,0 +1,91 @@
+#!/bin/bash
+
+if [ $# -ne 4 ]; then
+    echo "Usage: $0 <hostname> <db_name> <number_of_files> dry/run"
+    echo "e.g.: $0 ods-db-01-alma8-qc-drx-kc.ssnc-corp.cloud ods_domani 20 dry"
+    exit 1
+else
+    host=$1
+    db=$2
+    num_files=$3
+    action=$4
+fi
+
+prepare() {
+
+if [ $(ls run_*|wc -l) -gt 0 ];then
+	rm -rf run_* chunk*
+fi
+
+source ~/work/p3/bin/activate
+psql -h $host -d $db -t -f get_chunks.sql > chunks.csv
+
+python3 get_runsql.py
+
+total_insert=$(grep -c insert run_insert.sql)
+inserts_per_file=$(( (total_insert + num_files - 1) / num_files ))
+lines_per_file=$(( inserts_per_file * 4 ))
+
+#echo $lines_per_file
+split -l $lines_per_file -d -a 2 run_insert.sql run_insert_
+
+for i in $(ls run_insert_*);do echo "select now()||': COMPLETE';">> $i;done
+for i in $(ls run_insert_*);do echo "screen -dmS $i bash -c 'psql -h $host -d $db -t -f $i > $i.log 2>&1'">>run_screens ;done
+
+chmod 755 run_screens
+}
+
+wait_for_screens() {
+    while screen -list | grep -q run_insert_; do
+        echo "$(date): Waiting for running screen jobs to finish..."
+        sleep 300
+    done
+}
+
+check_logs() {
+    local failed=0
+    shopt -s nullglob
+    for log in $(ls run_insert_*.log); do
+        if ! grep -q COMPLETE "$log"; then
+            echo "[ERROR] $log did not complete successfully."
+            failed=1
+        else
+            echo "[OK] $log completed successfully."
+        fi
+    done
+    return $failed
+}
+
+
+if [ "$action" == "run" ];then
+	LOCK_FILE="/tmp/rebuild.lock"
+	if [ -f "$LOCK_FILE" ]; then
+    	echo "Another rebuild process is already running. Exiting."
+    	exit 3
+	fi
+	touch "$LOCK_FILE"
+	trap "rm -f $LOCK_FILE" EXIT
+
+	echo "Preparing insert tasks"
+	prepare
+
+	echo "Starting insert screens..."
+	./run_screens
+
+	echo "Waiting for insert jobs to finish..."
+	wait_for_screens
+
+	echo "Checking logs for results..."
+    	if check_logs; then
+        	echo "All insert jobs completed successfully."
+        	exit 0
+    	else
+        echo "Some insert jobs failed. Check each run_insert_xx.log for details."
+        	exit 10
+    	fi
+elif [ "$action" == "dry" ];then 
+	prepare
+	cat run_screens
+fi
+
+exit 0

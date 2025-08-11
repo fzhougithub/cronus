@@ -1,0 +1,19 @@
+ops-ctl-uat-drx-kc
+
+1. select the projects
+name:.*-db-01-.*
+echo "=== NODE: $(hostname) ==="; sudo -u postgres df -h | grep pg_backups; sudo -u postgres du -h --max-depth=2 /pg_backups
+
+2. Or, if we do have cli rd
+Define local job as 
+#!/bin/bash
+
+# List of nodes - update this based on your Rundeck environment
+nodes=$(rd nodes list --filter 'name:.*-db-01-.*' -p DomaniRx SIT Environment -f '%nodename')
+
+for node in $nodes; do
+  echo "=== NODE: $node ==="
+  ssh -o BatchMode=yes -o ConnectTimeout=5 "$node" \
+    'echo "Disk usage on $(hostname):"; sudo -u postgres df -h | grep pg_backups; sudo -u postgres du -h --max-depth=2 /pg_backups'
+  echo
+done

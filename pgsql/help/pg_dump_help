@@ -1,0 +1,23 @@
+grep -Eo 'TO [a-zA-Z0-9_]+' datamart_other.sql | awk '{print $2}' | sort -u
+
+datamart_other_ro
+dba_admin
+dt204295
+dt74466
+fzhou
+qpdreporting
+
+grep -Eo '(TO|FOR ROLE) [a-zA-Z0-9_]+' datamart_other.sql | awk '{print $2}' | sort -u
+datamart_other_ro
+dba_admin
+dt204295
+dt74466
+fzhou
+qpdreporting
+ROLE
+
+If just dump schema, you can create required roles before load schema
+
+If you created the relevant role, the dump file will automatically grant the privileges of new schema to all relevant users. 
+
+

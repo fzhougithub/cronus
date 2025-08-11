@@ -1,0 +1,17 @@
+https://code.ssnc.dev/pharmacy/DomaniRx_Data/blob/main/ODS/DDL/Release/MVP%201.1/misc/Procedures/skeleton_tables_sp.sql
+
+/* The following is composing reporting userID for the env
+*/
+	if lower(v_env) = 'dev' then v_reporing_user := 'tpdreporting';
+		elseif lower(v_env) = 'qc' then v_reporing_user := 'qpdreporting' ;
+		elseif lower(v_env) = 'uat' then v_reporing_user := 'updreporting' ;
+		elseif lower(v_env) = 'huat' then v_reporing_user := 'updreporting' ;
+		elseif lower(v_env) = 'rtl' then v_reporing_user := 'rtlpdreporting' ;
+		elseif lower(v_env) = 'hpls' then v_reporing_user := 'hplspdreporting' ;
+		elseif lower(v_env) = 'sit' then v_reporing_user := 'sitpdreporting' ;
+		elseif lower(v_env) = 'uatpls' then v_reporing_user := 'plspdreporting' ;
+		elseif lower(v_env) = 'prod' then v_reporing_user := 'ppdreporting' ;
+		else RAISE NOTICE 'unknown userID';
+	end if;
+
+dt74466

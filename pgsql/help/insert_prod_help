@@ -1,0 +1,17 @@
+SELECT string_agg(
+  format(
+    'CASE WHEN trim(BOTH '' '' FROM %1$I) = '''' THEN NULL ELSE %1$I::%2$s END AS %1$I',
+    column_name,
+    CASE
+      WHEN data_type = 'character varying' AND character_maximum_length IS NOT NULL
+        THEN format('character varying(%s)', character_maximum_length)
+      ELSE udt_name
+    END
+  ),
+  ', ' || E'\n'
+  ORDER BY ordinal_position
+)
+FROM information_schema.columns
+WHERE table_schema = 'stg_customer_320'
+  AND table_name = 'dur_p';
+

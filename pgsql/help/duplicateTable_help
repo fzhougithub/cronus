@@ -1,0 +1,17 @@
+DO $$
+BEGIN
+  FOR i IN 2..10 LOOP
+    EXECUTE format('DROP TABLE IF EXISTS stg_customer_320.dur_tmp_%s CASCADE', i);
+    EXECUTE format('CREATE TABLE stg_customer_320.dur_tmp_%s (LIKE stg_customer_320.dur_tmp_1 INCLUDING ALL)', i);
+  END LOOP;
+END $$;
+
+DO $$
+BEGIN
+  FOR i IN 2..10 LOOP
+    EXECUTE format('ALTER TABLE stg_customer_320.dur_tmp_%s SET TABLESPACE tblspc1', i);
+  END LOOP;
+END $$;
+
+
+

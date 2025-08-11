@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# You need to create ticket subdirectory, like 9933
+# Download and unzip the attached zip file into this directory
+
+if [ $# -ne 6 ];then
+	echo "Usage: $0 <pubIP> <pubDB> <subIP> <subDB> <subname> <schame>"
+	exit 1
+else
+	pubIP=$1
+	pubDB=$2
+	subIP=$3
+	subDB=$4
+	subName=$5
+	schema=$6
+fi
+
+repstat=$(psql -h $subIP -d $subDB -t -q -c "SELECT application_name, state, sent_lsn, write_lsn, flush_lsn, replay_lsn FROM pg_stat_replication;")
+
+if [ -z $repstat ];then
+	echo "There is no replication running right now! Stop and check"
+	exit 10
+fi
+
+if [ $? -ne 0 ]; then
+    echo "Failed to connect to $subDB on $subIP"
+    exit 1
+fi
+
+#echo "check_pubsub $subIP $subDB |grep $subName|cut -d'|' -f2"
+pubName=$(check_pubsub $subIP $subDB |grep $subName|cut -d'|' -f2)
+
+filelist=$(ls -1 *sql)
+
+fulltab=$(basename ${PWD})_tablist
+cat /dev/null > $fulltab
+
+cat /dev/null > review.txt
+
+echo -e "\n==== Invloved SQL File ===="
+for i in $filelist
+do 
+	echo $i
+	cat $i >> review.txt
+done
+
+echo -e "\n==== Analyze All of the SQL Files ===="
+review_ddl.py $pubName $subName	review.txt
+echo -e "\n==== Final Confirm On Sub ===="
+echo "SELECT application_name, state, sent_lsn, write_lsn, flush_lsn, replay_lsn FROM pg_stat_replication;"
+echo "SELECT srrelid::regclass AS table_name,srsubstate FROM pg_subscription_rel WHERE srsubstate != 'r';"
+
+echo -e "\n==== Involved tables ===="
+cat tablist|sort|uniq>a
+has_schema=$(grep "\." a|wc -l)
+if [ $has_schema -eq 0 ];then
+	for i in $(cat a);do echo $schema.$i >> $fulltab;done
+else
+	mv a $fulltab
+fi
+cat $fulltab
+
+echo -e "\n==== Check DML Impact ====="
+for i in $(cat $fulltab);
+do
+	impact=$(egrep -i "insert|update|delete|truncate" review.txt |grep -i $i|grep -v grep)
+	[ ! -z "$impact" ] && echo -e "\n " $(grep "$impact" $filelist)
+done
+
+echo -e "\n==== Current Table Count ===="
+
+echo "check_count $fulltab $pubIP $pubDB $subIP $subDB" > count
+chmod 755 count
+
+check_count $fulltab $pubIP $pubDB $subIP $subDB 
+
+echo -e "\n==== Rename check_cout.out to BEFOR/AFTER to decide wether truncate Sub Table ==="

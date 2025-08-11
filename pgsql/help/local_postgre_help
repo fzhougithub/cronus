@@ -1,0 +1,5 @@
+sudo dscl . -create /Users/postgres
+sudo dscl . -create /Users/postgres UserShell /usr/bin/false
+sudo dscl . -create /Users/postgres UniqueID 26
+sudo dscl . -create /Users/postgres PrimaryGroupID 26
+sudo dscl . -create /Users/postgres NFSHomeDirectory /opt/homebrew/var/postgresql@14

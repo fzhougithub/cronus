@@ -1,0 +1,39 @@
+SELECT
+  pid,
+  datname,
+  relid::regclass AS table_being_indexed,
+  index_relid::regclass AS index_being_built,
+  command,
+  phase,
+  lockers_total,
+  lockers_done,
+  current_locker_pid,
+  blocks_total,
+  blocks_done,
+  tuples_total,
+  tuples_done,
+  partitions_total,
+  partitions_done
+FROM pg_stat_progress_create_index;
+
+
+SELECT
+  c.relname AS child_table,
+  i.indexrelid::regclass AS index_name
+FROM pg_inherits
+JOIN pg_class c ON pg_inherits.inhrelid = c.oid
+JOIN pg_index i ON i.indrelid = c.oid
+WHERE pg_inherits.inhparent = 'claim_core'::regclass;
+SELECT
+  c.relname AS child_table,
+  i.indexrelid::regclass AS index_name,
+  a.attname AS column_name,
+  i.indisunique
+FROM pg_inherits
+JOIN pg_class c ON pg_inherits.inhrelid = c.oid
+JOIN pg_index i ON i.indrelid = c.oid
+JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
+WHERE pg_inherits.inhparent = 'claim_core'::regclass
+  AND a.attname IN ('customer_id', 'claim_id')
+ORDER BY child_table, index_name;
+

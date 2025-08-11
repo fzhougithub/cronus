@@ -1,0 +1,12 @@
+[Unit]
+Description=Rundeck
+
+[Service]
+WorkingDirectory=/apps/rundeck
+User=rundeck
+Group=rundeck
+ExecStart=/usr/bin/java -Xmx4096m -jar rundeck-4.14.1-20230622.war
+
+[Install]
+WantedBy=multi-user.target
+

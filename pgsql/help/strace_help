@@ -1,0 +1,5 @@
+sudo strace -p 1635911 -e trace=read -f
+
+sudo iotop -aoP
+
+

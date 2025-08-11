@@ -1,0 +1,5 @@
+while read -r host; do
+ ./ck_db_size "$host" | grep base || echo "$host failed"
+done < huat_nodes_cksize
+
+-- don't use for loop, there is weird character 

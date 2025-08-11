@@ -1,0 +1,4 @@
+#!/bin/bash
+
+
+echo "tr -d '\000' < /apps/lib/pgsql/14/pg_bulkload/$1|dos2unix > /apps/lib/pgsql/14/pg_bulkload/$1_clean"

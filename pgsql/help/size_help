@@ -1,0 +1,63 @@
+SELECT
+    child.relname AS partition_name,
+    nmsp_child.nspname AS partition_schema,
+    pg_size_pretty(pg_total_relation_size(child.oid)) AS partition_size_pretty,
+    pg_total_relation_size(child.oid) AS partition_size_bytes
+FROM
+    pg_inherits
+JOIN
+    pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN
+    pg_class child ON pg_inherits.inhrelid = child.oid
+LEFT JOIN
+    pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+LEFT JOIN
+    pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+WHERE
+    parent.relname = 'claim_core'
+ORDER BY
+    partition_size_bytes DESC;
+
+SELECT
+    'Partition' AS type,
+    child.relname AS name,
+    nmsp_child.nspname AS schema,
+    pg_size_pretty(pg_total_relation_size(child.oid)) AS size_pretty,
+    pg_total_relation_size(child.oid) AS size_bytes
+FROM
+    pg_inherits
+JOIN
+    pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN
+    pg_class child ON pg_inherits.inhrelid = child.oid
+LEFT JOIN
+    pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+LEFT JOIN
+    pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+WHERE
+    parent.relname = 'claim_core'
+    -- Optional: specify schema if known:
+    -- AND nmsp_parent.nspname = 'claimsprocess'
+    
+UNION ALL
+
+SELECT
+    'Total' AS type,
+    'All Partitions' AS name,
+    NULL AS schema,
+    pg_size_pretty(SUM(pg_total_relation_size(child.oid))) AS size_pretty,
+    SUM(pg_total_relation_size(child.oid)) AS size_bytes
+FROM
+    pg_inherits
+JOIN
+    pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN
+    pg_class child ON pg_inherits.inhrelid = child.oid
+LEFT JOIN
+    pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+LEFT JOIN
+    pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+WHERE
+    parent.relname = 'claim_core';
+
+

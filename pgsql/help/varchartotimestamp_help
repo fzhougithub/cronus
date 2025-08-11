@@ -1,0 +1,39 @@
+SELECT prcs_add_tmsp
+FROM dur_tmp_02
+WHERE prcs_add_tmsp::TIMESTAMP IS NULL AND prcs_add_tmsp IS NOT NULL;
+
+ prcs_add_tmsp
+---------------
+(0 rows)
+
+Time: 22658.621 ms (00:22.659)
+
+ALTER TABLE dur_tmp_02 ADD COLUMN prcs_add_ts TIMESTAMP;
+
+UPDATE dur_tmp_02
+SET prcs_add_ts = prcs_add_tmsp::TIMESTAMP
+WHERE prcs_add_tmsp IS NOT NULL;
+
+ALTER TABLE dur_tmp_02 DROP COLUMN prcs_add_tmsp;
+
+ALTER TABLE dur_tmp_02
+ALTER COLUMN prcs_add_tmsp TYPE TIMESTAMP
+USING prcs_add_tmsp::TIMESTAMP;
+
+Most safe approach
+
+-- 1. Add new TIMESTAMP column
+ALTER TABLE dur_tmp_02 ADD COLUMN prcs_add_ts TIMESTAMP;
+
+-- 2. Populate it (only valid rows)
+UPDATE dur_tmp_02
+SET prcs_add_ts = prcs_add_tmsp::TIMESTAMP
+WHERE prcs_add_tmsp ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$';
+
+-- 3. (Optional) Check how many failed to convert
+SELECT COUNT(*) FROM dur_tmp_02 WHERE prcs_add_tmsp IS NOT NULL AND prcs_add_ts IS NULL;
+
+-- 4. (Later) Drop old column if everything looks good
+-- ALTER TABLE dur_tmp_02 DROP COLUMN prcs_add_tmsp;
+
+

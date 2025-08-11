@@ -1,0 +1,33 @@
+SELECT 
+  pid,
+  usename,
+  state,
+  wait_event_type,
+  wait_event,
+  query,
+  now() - query_start AS duration,
+  blocked_by.pid AS blocked_by
+FROM 
+  pg_stat_activity a
+LEFT JOIN 
+  pg_locks l ON a.pid = l.pid
+LEFT JOIN LATERAL (
+    SELECT pid 
+    FROM pg_locks bl
+    WHERE bl.locktype = l.locktype 
+      AND bl.database IS NOT DISTINCT FROM l.database
+      AND bl.relation IS NOT DISTINCT FROM l.relation
+      AND bl.page IS NOT DISTINCT FROM l.page
+      AND bl.tuple IS NOT DISTINCT FROM l.tuple
+      AND bl.transactionid IS NOT DISTINCT FROM l.transactionid
+      AND bl.classid IS NOT DISTINCT FROM l.classid
+      AND bl.objid IS NOT DISTINCT FROM l.objid
+      AND bl.objsubid IS NOT DISTINCT FROM l.objsubid
+      AND bl.mode = l.mode
+      AND bl.pid <> l.pid
+      AND NOT bl.granted
+    LIMIT 1
+) blocked_by ON TRUE
+WHERE a.query ILIKE '%claim_core%'
+  AND a.state = 'active';
+

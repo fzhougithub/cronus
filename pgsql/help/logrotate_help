@@ -1,0 +1,6 @@
+Dry run logrotate. 
+logrotate -d /etc/logrotate.conf
+logrotate -f /etc/logrotate.d/postgresql
+
+sealert -l 9cdc3fc8-bf68-4ab0-8789-35b2a02f4b25
+

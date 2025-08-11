@@ -1,0 +1,107 @@
+Yes, **`logrotate` can be configured to rotate logs hourly**, but it's **not enabled by default** — you must explicitly set it up.
+
+---
+
+## ✅ How to Configure Hourly Log Rotation with `logrotate`
+
+### 🧱 Step-by-step Setup:
+
+### 1. **Create the hourly logrotate directory**
+
+```bash
+sudo mkdir -p /etc/logrotate.hourly
+```
+
+This is separate from the default `/etc/logrotate.d`, which is processed **daily**.
+
+---
+
+### 2. **Write your logrotate config file**
+
+Example: `/etc/logrotate.hourly/mylog`
+
+```bash
+/var/log/myapp/*.log {
+    hourly
+    rotate 24               # keep last 24 hours
+    missingok
+    compress
+    delaycompress
+    notifempty
+    create 0640 root adm
+    sharedscripts
+    postrotate
+        systemctl reload myapp.service > /dev/null 2>&1 || true
+    endscript
+}
+```
+
+> Note: `hourly` is not a standard `logrotate` directive by itself — it’s used **as a hint or convention** when you run `logrotate` manually or via a custom cron job.
+
+---
+
+### 3. **Create a cron job or systemd timer to run logrotate hourly**
+
+#### Option A: cron job
+
+```bash
+sudo bash -c 'echo "0 * * * * root /usr/sbin/logrotate -s /var/lib/logrotate.status /etc/logrotate.hourly/mylog" > /etc/cron.d/logrotate_hourly'
+```
+
+#### Option B: systemd timer (modern systems)
+
+Create `/etc/systemd/system/logrotate-hourly.timer`:
+
+```ini
+[Unit]
+Description=Hourly Logrotate
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Create `/etc/systemd/system/logrotate-hourly.service`:
+
+```ini
+[Unit]
+Description=Hourly Logrotate
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate -s /var/lib/logrotate.hourly.status /etc/logrotate.hourly/mylog
+```
+
+Then enable:
+
+```bash
+sudo systemctl daemon-reexec
+sudo systemctl enable --now logrotate-hourly.timer
+```
+
+---
+
+## 🔍 Important Notes
+
+* `logrotate` itself does **not have an internal scheduler**. You must schedule it using **cron** or **systemd**.
+* The `hourly` keyword is **non-functional unless you manually run logrotate hourly**.
+* Default systems only run `logrotate` daily via `/etc/cron.daily/logrotate`.
+
+---
+
+## ✅ Summary
+
+| What to do                 | How                                      |
+| -------------------------- | ---------------------------------------- |
+| Enable hourly log rotation | Create config in `/etc/logrotate.hourly` |
+| Schedule execution         | Use `cron` or `systemd timer`            |
+| Real logrotate behavior    | Controlled entirely by your scheduler    |
+| Default behavior           | Only runs daily unless customized        |
+
+---
+
+Let me know if you want a pre-made config bundle or auto-deploy script.
+

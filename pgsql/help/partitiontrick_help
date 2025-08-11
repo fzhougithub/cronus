@@ -1,0 +1,19 @@
+CREATE TABLE dur_tmp_02 (
+    clm_id VARCHAR,
+    clm_id_bigint BIGINT GENERATED ALWAYS AS (clm_id::BIGINT) STORED
+) PARTITION BY RANGE (clm_id_bigint);
+
+-- Partition for clm_id_bigint between 0 and 1,000,000,000,000
+CREATE TABLE dur_tmp_02_part1 PARTITION OF dur_tmp_02
+    FOR VALUES FROM (0) TO (1000000000000);
+
+-- Partition for clm_id_bigint between 1,000,000,000,000 and 2,000,000,000,000
+CREATE TABLE dur_tmp_02_part2 PARTITION OF dur_tmp_02
+    FOR VALUES FROM (1000000000000) TO (2000000000000);
+
+-- Add more partitions as needed...
+
+INSERT INTO dur_tmp_02 (clm_id) VALUES ('455045451751');
+INSERT INTO dur_tmp_02 (clm_id) VALUES ('375002491251');
+
+

@@ -1,0 +1,67 @@
+SELECT inhrelid::regclass FROM pg_inherits WHERE inhparent ='dur_p'::regclass;
+
+select distinct relkind from pg_class;
+
+select relname from pg_class where relkind='p';
+
+\dS claim_extension_1
+
+Partition key: RANGE (claim_id)
+Indexes:
+    "claim_extension_1_pkey" PRIMARY KEY, btree (customer_id, claim_id)
+Partitions: claim_extension_1_00 FOR VALUES FROM ('000000000000') TO ('010000000000'),
+            claim_extension_1_01 FOR VALUES FROM ('010000000000') TO ('020000000000'),
+            claim_extension_1_02 FOR VALUES FROM ('020000000000') TO ('030000000000'),
+            claim_extension_1_03 FOR VALUES FROM ('030000000000') TO ('040000000000'),
+            claim_extension_1_04 FOR VALUES FROM ('040000000000') TO ('050000000000'),
+            claim_extension_1_05 FOR VALUES FROM ('050000000000') TO ('060000000000'),
+            claim_extension_1_06 FOR VALUES FROM ('060000000000') TO ('070000000000'),
+
+
+Nothing can be refered to . 
+
+
+Partition key: RANGE (claim_id)
+Indexes:
+    "a_claim_extension_2_pkey" PRIMARY KEY, btree (customer_id, claim_id, process_adjust_ts)
+Partitions: a_claim_extension_2_00 FOR VALUES FROM ('000000000000') TO ('010000000000'),
+            a_claim_extension_2_01 FOR VALUES FROM ('010000000000') TO ('020000000000'),
+            a_claim_extension_2_02 FOR VALUES FROM ('020000000000') TO ('030000000000'),
+            a_claim_extension_2_03 FOR VALUES FROM ('030000000000') TO ('040000000000'),
+            a_claim_extension_2_04 FOR VALUES FROM ('040000000000') TO ('050000000000'),
+            a_claim_extension_2_05 FOR VALUES FROM ('050000000000') TO ('060000000000'),
+            a_claim_extension_2_06 FOR VALUES FROM ('060000000000') TO ('070000000000'),
+            a_claim_extension_2_07 FOR VALUES FROM ('070000000000') TO ('080000000000'),
+            a_claim_extension_2_08 FOR VALUES FROM ('080000000000') TO ('090000000000'),
+
+
+Get the partition definition
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS parent_table,
+    CASE p.partstrat
+        WHEN 'r' THEN 'RANGE'
+        WHEN 'l' THEN 'LIST'
+        WHEN 'h' THEN 'HASH'
+    END AS partition_strategy,
+    pg_get_partkeydef(c.oid) AS partition_key,
+    (
+        SELECT array_agg(
+            pc.relname || ': ' || pg_get_expr(pc.relpartbound, pc.oid)
+            ORDER BY pc.relname
+        )
+        FROM pg_inherits i
+        JOIN pg_class pc ON i.inhrelid = pc.oid
+        WHERE i.inhparent = c.oid
+    ) AS partitions
+FROM
+    pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    JOIN pg_partitioned_table p ON c.oid = p.partrelid
+WHERE
+    c.relkind = 'p'
+    AND n.nspname = 'public'
+ORDER BY
+    n.nspname, c.relname;
+

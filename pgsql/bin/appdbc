@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ $# -lt 3 ];then
+	echo "Usage: $0 <dbIP> <dbname> <schema>"
+	exit 1
+else
+	dbIP=$1
+	db=$2
+	schema=$3
+fi
+
+echo "==== Connect to Host:$dbIP DB:ods_domani Schema:$schema, run SQLFile: $sqlfile ===="
+echo ""
+
+echo "PGOPTIONS=\"--search_path=$schema\" psql -h $dbIP -d $db  -At -c \"\"" 
+

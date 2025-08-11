@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <dbIP> <schema>"
+	exit 1
+else
+	dbIP=$1
+	schema=$2
+fi
+
+PGOPTIONS="--search_path=${schema}" psql -h $dbIP -d ods_domani

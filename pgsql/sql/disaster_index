@@ -1,0 +1,61 @@
+claimsprocess=# WITH RECURSIVE index_partitions AS (
+    SELECT c.oid AS index_oid, c.relname AS index_name
+    FROM pg_class c
+    JOIN pg_index i ON i.indexrelid = c.oid
+    WHERE c.relname = 'claim_core_p1_uniq_idx1'
+
+    UNION ALL
+
+    SELECT c.oid, c.relname
+    FROM pg_inherits h
+    JOIN pg_class c ON c.oid = h.inhrelid
+    JOIN index_partitions p ON p.index_oid = h.inhparent
+)
+SELECT
+    pg_size_pretty(SUM(pg_relation_size(index_oid))) AS total_index_size,
+    COUNT(*) AS num_leaf_indexes
+FROM index_partitions
+WHERE NOT EXISTS (
+    SELECT 1 FROM pg_inherits WHERE inhparent = index_oid
+);
+ total_index_size | num_leaf_indexes
+------------------+------------------
+ 81 GB            |             1204
+(1 row)
+
+claimsprocess=#
+claimsprocess=# WITH RECURSIVE index_partitions AS (
+    SELECT c.oid AS index_oid, c.relname AS index_name
+    FROM pg_class c
+    JOIN pg_index i ON i.indexrelid = c.oid
+    WHERE c.relname = 'claim_core_p1_uniq_idx1'
+
+    UNION ALL
+
+    SELECT c.oid, c.relname
+    FROM pg_inherits h
+    JOIN pg_class c ON c.oid = h.inhrelid
+    JOIN index_partitions p ON p.index_oid = h.inhparent
+)
+SELECT
+    index_name,
+    pg_size_pretty(pg_relation_size(index_oid)) AS size
+FROM index_partitions
+WHERE NOT EXISTS (
+    SELECT 1 FROM pg_inherits WHERE inhparent = index_oid
+)
+ORDER BY pg_relation_size(index_oid) DESC
+LIMIT 10;
+                    index_name                     |  size
+---------------------------------------------------+---------
+ claim_core_p1_320_202310_customer_id_claim_id_idx | 2253 MB
+ claim_core_p1_320_202410_customer_id_claim_id_idx | 2210 MB
+ claim_core_p1_320_202303_customer_id_claim_id_idx | 2131 MB
+ claim_core_p1_320_202308_customer_id_claim_id_idx | 2118 MB
+ claim_core_p1_320_202501_customer_id_claim_id_idx | 2114 MB
+ claim_core_p1_320_202210_customer_id_claim_id_idx | 2113 MB
+ claim_core_p1_320_202312_customer_id_claim_id_idx | 2111 MB
+ claim_core_p1_320_202412_customer_id_claim_id_idx | 2079 MB
+ claim_core_p1_320_202311_customer_id_claim_id_idx | 2077 MB
+ claim_core_p1_320_202305_customer_id_claim_id_idx | 2074 MB
+(10 rows)

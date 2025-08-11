@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ $# -ne 3 ]
+then
+	echo
+	echo "Usage: $0 [dbhost] [dbname] [schemaname]"
+	echo
+	exit
+else
+	host=$1
+	db="$2"
+	sch="$3"
+fi
+
+PSQL=/usr/pgsql-14/bin/psql
+
+SQL="SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname = '${sch}'"
+echo "$SQL" | psql -h $host -t $db | grep -v "^$"

@@ -1,0 +1,2 @@
+#!/bin/bash
+sudo -u postgres bash -c "export PS1='\w\$ '; exec bash"

@@ -1,0 +1,90 @@
+SELECT
+  l.locktype,
+  l.mode,
+  l.granted,
+  l.pid,
+  a.usename,
+  a.application_name,
+  a.client_addr,
+  a.backend_start,
+  a.query,
+  a.state,
+  a.wait_event_type,
+  a.wait_event
+FROM pg_locks l
+JOIN pg_class t ON l.relation = t.oid
+LEFT JOIN pg_stat_activity a ON l.pid = a.pid
+WHERE t.relname = 'claim_core'
+  AND t.relnamespace = 'claimsprocess'::regnamespace;
+
+
+
+SELECT
+    l.locktype,
+    l.relation::regclass AS table_name,
+    l.mode,
+    l.granted,
+    a.pid,
+    a.usename,
+    a.application_name,
+    a.client_addr,
+    a.state,
+    a.query,
+    a.query_start,
+    a.backend_start
+FROM
+    pg_locks l
+LEFT JOIN pg_stat_activity a ON l.pid = a.pid
+LEFT JOIN pg_class c ON l.relation = c.oid
+LEFT JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE
+    -- Optional: filter by specific table
+    c.relname = 'claim_core' AND n.nspname = 'claimsprocess'
+    -- If you're not sure about schema, you can skip the schema filter:
+    -- c.relname = 'claim_core'
+;
+
+
+SELECT
+    pid,
+    usename,
+    application_name,
+    state,
+    query,
+    query_start,
+    now() - query_start AS running_time
+FROM pg_stat_activity
+WHERE pid = 1038643;
+
+
+SELECT
+  blocked_locks.pid AS blocked_pid,
+  blocked_activity.query AS blocked_query,
+  blocking_locks.pid AS blocking_pid,
+  blocking_activity.query AS blocking_query
+FROM pg_locks blocked_locks
+JOIN pg_stat_activity blocked_activity
+  ON blocked_locks.pid = blocked_activity.pid
+JOIN pg_locks blocking_locks
+  ON blocked_locks.locktype = blocking_locks.locktype
+  AND blocked_locks.database IS NOT DISTINCT FROM blocking_locks.database
+  AND blocked_locks.relation IS NOT DISTINCT FROM blocking_locks.relation
+  AND blocked_locks.page IS NOT DISTINCT FROM blocking_locks.page
+  AND blocked_locks.tuple IS NOT DISTINCT FROM blocking_locks.tuple
+  AND blocked_locks.virtualxid IS NOT DISTINCT FROM blocking_locks.virtualxid
+  AND blocked_locks.transactionid IS NOT DISTINCT FROM blocking_locks.transactionid
+  AND blocked_locks.classid IS NOT DISTINCT FROM blocking_locks.classid
+  AND blocked_locks.objid IS NOT DISTINCT FROM blocking_locks.objid
+  AND blocked_locks.objsubid IS NOT DISTINCT FROM blocking_locks.objsubid
+  AND blocked_locks.pid != blocking_locks.pid
+JOIN pg_stat_activity blocking_activity
+  ON blocking_locks.pid = blocking_activity.pid
+WHERE NOT blocked_locks.granted;
+
+
+SELECT pid, state, wait_event_type, wait_event, query_start, query
+FROM pg_stat_activity
+WHERE query ILIKE '%create index%' AND state = 'active';
+
+
+

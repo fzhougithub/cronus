@@ -1,0 +1,158 @@
+The pgbackrest has its own log, /pg_logs/pgbackrest/10-222-56-182-backup.log
+
+pgbackrest info --stanza=10-222-254-160|awk '/repo1/ {print}'
+pgbackrest check --stanza=10-222-56-182
+pgbackrest start --stanza=10-222-56-182
+start command will remove the stopped files
+pgbackrest stop --stanza=10-222-56-182
+
+if you see the error like
+2025-07-21 18:21:03.048 P00   WARN: backup '20250721-175001F' cannot be resumed: new compression 'lz4' does not match resumable compression 'none'
+then
+rm -rf /pg_backups/backup/10-222-56-182/20250721-175001F
+ls -larth /pg_backups/tmp/10-222-56-182-backup-1.lock
+Then, restart the backup
+
+
+
+When you kill running process, using -15, gracefully kill
+kill -15 2291202 2291214
+
+/usr/bin/pgbackrest --stanza=10-222-254-160 --type=full backup > /var/tmp/full_backup.info 2>&1
+
+pgbackrest --stanza=10-222-105-14 --repo1-retention-full=1 expire
+pgbackrest --stanza=`hostname | cut -d '.' -f 1` --repo1-retention-full=1 --repo1-retention-full-type=count expire
+
+pgbackrest \
+  --stanza=10-222-105-14 \
+  --repo1-retention-full=1 \
+  --repo1-retention-full-type=count \
+  expire
+
+
+retention policy
+
+repo1-retention-full=2
+repo1-retention-diff=4
+repo1-retention-archive=7
+
+
+
+[global]
+repo1-path=/pg_backups
+lock-path=/pg_logs/pgbackrest/tmp
+spool-path=/pg_logs/pgbackrest/spool
+log-path=/pg_logs/pgbackrest/log
+
+
+
+pgbackrest --stanza=10-222-254-160 stanza-create
+
+pgbackrest info --stanza=10-222-254-160
+
+Perfect — since `/pg_logs` has plenty of space (375G free), it's a safe temporary home for **pgBackRest metadata, lock, and log files**.
+
+---
+
+### ✅ How to change pgBackRest to use `/pg_logs` temporarily
+
+#### 1. Edit your `pgbackrest.conf`
+
+Update the `[global]` section (or create it if not present):
+
+```ini
+[global]
+repo1-path=/pg_backups
+
+log-path=/pg_logs/pgbackrest
+lock-path=/pg_logs/pgbackrest/lock
+spool-path=/pg_logs/pgbackrest/spool
+
+log-level-file=info
+log-level-console=info
+```
+
+---
+
+#### 2. Create the directories
+
+Make sure the directories exist and are writable by `postgres`:
+
+```bash
+mkdir -p /pg_logs/pgbackrest/{log,lock,spool}
+chown -R postgres:postgres /pg_logs/pgbackrest
+```
+
+---
+
+#### 3. Run stanza creation and backup
+
+```bash
+pgbackrest --stanza=10-222-254-160 stanza-create
+pgbackrest --stanza=10-222-254-160 --type=full backup
+```
+
+---
+
+### 🔁 When & How to Revert the Config
+
+Once you:
+
+* Clean up the `/pg_backups` volume (e.g., by expiring WALs),
+* And have enough free space in `/pg_backups` (usually \~10GB for metadata, 1–2GB for tmp/log),
+
+...you can **move the metadata paths back to `/pg_backups`**.
+
+---
+
+#### 1. Check that `/pg_backups` has space again:
+
+```bash
+df -h /pg_backups
+```
+
+---
+
+#### 2. Revert `pgbackrest.conf` to default paths (or remove the overrides):
+
+```ini
+[global]
+repo1-path=/pg_backups
+
+# Remove or comment these if you want to use defaults
+# log-path=/pg_logs/pgbackrest
+# lock-path=/pg_logs/pgbackrest/lock
+# spool-path=/pg_logs/pgbackrest/spool
+```
+
+pgBackRest will default to:
+
+* `log-path` → `/var/log/pgbackrest`
+* `lock-path` → `${repo-path}/tmp`
+* `spool-path` → `${repo-path}/tmp`
+
+---
+
+#### 3. Clean up the temporary `/pg_logs` directories (optional):
+
+```bash
+rm -rf /pg_logs/pgbackrest
+```
+
+---
+
+### 🧠 Tip: Keep this as a fallback
+
+Some admins **keep the `/pg_logs/pgbackrest/` config permanently** for reliability and monitoring, especially if `/pg_backups` is NFS-mounted or space-limited.
+
+You might even want:
+
+```ini
+log-path=/pg_logs/pgbackrest/log
+lock-path=/var/run/pgbackrest  # for locks only
+```
+
+---
+
+Let me know if you'd like help checking the new config after you edit it.
+

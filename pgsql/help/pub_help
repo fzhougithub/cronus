@@ -1,0 +1,44 @@
+SELECT n.nspname AS schema,
+       c.relname AS table
+FROM pg_publication p
+JOIN pg_publication_rel pr ON p.oid = pr.prpubid
+JOIN pg_class c ON pr.prrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE p.pubname = 'rtl_pct_other_pub'
+  AND n.nspname = 'pct_other'
+  AND c.relname = 'pct_data';
+
+SELECT pt.schemaname,
+       pt.tablename,
+       pub.pubname
+FROM pg_publication pub
+JOIN pg_publication_rel pr ON pub.oid = pr.pubid
+JOIN pg_class c ON pr.relid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+JOIN (
+    SELECT table_schema AS schemaname,
+           table_name AS tablename
+    FROM information_schema.tables
+) pt ON pt.schemaname = n.nspname AND pt.tablename = c.relname
+WHERE pub.pubname = 'rtl_pct_other_pub'
+  AND pt.schemaname = 'pct_other'
+  AND pt.tablename = 'pct_data';
+
+
+1. Check the slot healthy on pub
+
+SELECT slot_name, plugin, slot_type, active, restart_lsn
+FROM pg_replication_slots
+WHERE slot_name LIKE 'sit_%';
+
+
+SELECT
+  slot_name,
+  active,
+  confirmed_flush_lsn,
+  pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS pending_wal
+FROM pg_replication_slots
+WHERE slot_type = 'logical';
+
+
+

@@ -1,0 +1,10 @@
+financials=# SELECT n.nspname AS schema,
+       has_schema_privilege('finance_humana_ro', n.nspname, 'USAGE') AS has_usage,
+       has_schema_privilege('finance_humana_ro', n.nspname, 'CREATE') AS has_create
+FROM pg_namespace n
+WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname in ('finance_humana','finance_ddc','finance_other','finance_global');
+     schema     | has_usage | has_create
+----------------+-----------+------------
+ finance_global | f         | f
+ finance_humana | t         | f
+(2 rows)

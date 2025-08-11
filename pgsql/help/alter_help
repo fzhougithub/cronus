@@ -1,0 +1,3 @@
+ALTER ROLE app_user SET search_path = my_schema;
+alter view misc_other.claim_price_detail_vw owner to dt74466;
+

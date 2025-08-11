@@ -1,0 +1,32 @@
+#!/bin/bash
+
+usage() {
+  echo "Usage: $0 <subhost> <subdatabase>"
+  echo "  <host>     PostgreSQL host"
+  echo "  <database> Database name"
+  exit 1
+}
+
+if [ "$#" -ne 2 ]; then
+  usage
+fi
+
+PGHOST=$1
+PGDATABASE=$2
+
+psql -X -A -q -t -h "$PGHOST" -d "$PGDATABASE" <<'SQL'
+WITH subs AS (
+  SELECT
+    subname,
+    subconninfo,
+    subpublications
+  FROM pg_subscription
+)
+SELECT
+  subname AS subscription_name,
+  COALESCE(array_to_string(subpublications, ', '), '(none)') AS publications,
+  subconninfo AS connection_info
+FROM subs
+ORDER BY subname;
+SQL
+

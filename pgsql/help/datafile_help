@@ -1,0 +1,10 @@
+SELECT datname FROM pg_database WHERE oid = 16411;
+
+SELECT relname, oid, relfilenode
+FROM pg_class
+WHERE relfilenode = 30264;
+
+lsof -p 1210374|sort -k7 -n
+
+postmaste 1210374 postgres  861u      REG    253,7 672931840  538414970 /apps/lib/pgsql/14/data/base/16411/22064008.1
+postmaste 1210374 postgres  828u      REG    253,7 964493312  551547873 /apps/lib/pgsql/14/data/base/16411/30264

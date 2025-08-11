@@ -1,0 +1,124 @@
+To check whether **Prometheus is picking up the PostgreSQL exporter’s output** from the **PostgreSQL server**, follow these steps:
+
+---
+
+## ✅ 1. **Verify the PostgreSQL Exporter Process on the Server**
+
+Run this on the PostgreSQL server:
+
+```bash
+ps aux | grep postgres_exporter
+```
+
+You should see a process like:
+
+```
+postgres  12345  0.1  1.2 123456 12345 ?  Ssl  10:00   0:01 /usr/local/bin/postgres_exporter --web.listen-address=:9187 ...
+```
+
+Or check the systemd status:
+
+```bash
+systemctl status postgres-exporter
+```
+
+Also verify the service is listening on the correct port:
+
+```bash
+ss -ltnp | grep 9187
+```
+
+---
+
+## ✅ 2. **Check Exporter Output from Browser or Curl**
+
+From **Prometheus server** (or any machine that can reach the exporter):
+
+```bash
+curl http://<postgresql_server_ip>:9187/metrics
+```
+
+You should see Prometheus-formatted output like:
+
+```
+# HELP pg_up Whether the PostgreSQL server is up.
+# TYPE pg_up gauge
+pg_up 1
+...
+```
+
+---
+
+## ✅ 3. **Check Prometheus Target Status**
+
+On the **Prometheus server**, go to:
+
+```
+http://<prometheus_host>:9090/targets
+```
+
+* Look under the "Targets" page
+* You should see an entry like:
+
+```
+postgresql-exporter   UP   http://<postgresql_server_ip>:9187/metrics
+```
+
+If it's **down**, you’ll see errors like:
+
+* `connection refused`
+* `timeout`
+* `no route to host`
+
+---
+
+## ✅ 4. **Check Prometheus Configuration**
+
+Make sure Prometheus is configured to scrape the exporter. Look for this in your `prometheus.yml`:
+
+```yaml
+- job_name: 'postgresql'
+  static_configs:
+    - targets: ['postgresql-server-01:9187']
+```
+
+You can reload Prometheus after changing the config:
+
+```bash
+kill -HUP $(pidof prometheus)
+# or
+curl -X POST http://localhost:9090/-/reload
+```
+
+---
+
+## ✅ 5. **Confirm Metrics Are Ingested**
+
+In Prometheus web UI ([http://localhost:9090](http://localhost:9090)), try querying:
+
+```
+pg_up
+```
+
+You should get:
+
+```
+pg_up{instance="postgresql-server-01:9187", job="postgresql"} 1
+```
+
+---
+
+## 🛠️ Troubleshooting Tips
+
+| Issue                    | Check                                              |
+| ------------------------ | -------------------------------------------------- |
+| Exporter not running     | `systemctl status postgres-exporter`               |
+| Port not open            | `ss -ltnp` or `firewalld`/`iptables`               |
+| Prometheus can't connect | Confirm IP/port, check Prometheus logs             |
+| Wrong metrics output     | Confirm correct database login/config for exporter |
+| Exporter logs errors     | Check logs: `journalctl -u postgres-exporter`      |
+
+---
+
+Let me know if you need help verifying the actual metrics output or if Prometheus is scraping via service discovery (e.g., Ansible inventory, Consul, etc).
+

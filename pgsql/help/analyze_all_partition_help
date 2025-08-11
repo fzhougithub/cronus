@@ -1,0 +1,28 @@
+WITH RECURSIVE recursive_partitions AS (
+  -- Start with the parent table itself
+  SELECT
+    c.oid,
+    n.nspname,
+    c.relname
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relname = 'claim_core_p1'
+    AND n.nspname = 'claimsprocess'
+
+  UNION ALL
+
+  -- Recursively find all partitions (children)
+  SELECT
+    child.oid,
+    n.nspname,
+    child.relname
+  FROM pg_inherits i
+  JOIN recursive_partitions p ON i.inhparent = p.oid
+  JOIN pg_class child ON i.inhrelid = child.oid
+  JOIN pg_namespace n ON child.relnamespace = n.oid
+)
+SELECT
+  'ANALYZE VERBOSE ' || quote_ident(nspname) || '.' || quote_ident(relname) || ';' AS analyze_stmt
+FROM recursive_partitions
+ORDER BY nspname, relname;
+

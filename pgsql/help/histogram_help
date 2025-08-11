@@ -1,0 +1,106 @@
+The first is the manual bucket solution, always good, slow
+The second is the width bucket, different algorithm, 13=12 manual because the max will be throw out. 
+
+
+WITH bounds AS (
+    SELECT
+        MIN(clm_id::BIGINT) AS min_val,
+        MAX(clm_id::BIGINT) AS max_val
+    FROM dur_tmp_02
+),
+bucket_width AS (
+    SELECT
+        (max_val - min_val) / 12.0 AS width
+    FROM bounds
+),
+buckets AS (
+    SELECT
+        generate_series(0, 11) AS bucket_idx,
+        min_val + (generate_series(0, 11) * width) AS bucket_start,
+        min_val + ((generate_series(0, 11) + 1) * width) AS bucket_end
+    FROM bounds, bucket_width
+),
+histogram AS (
+    SELECT
+        b.bucket_idx,
+        b.bucket_start,
+        b.bucket_end,
+        COUNT(*) AS count_in_bucket
+    FROM buckets b
+    LEFT JOIN dur_tmp_02 d
+        ON d.clm_id::BIGINT >= b.bucket_start
+           AND d.clm_id::BIGINT < b.bucket_end
+    GROUP BY b.bucket_idx, b.bucket_start, b.bucket_end
+)
+SELECT
+    *,
+    ROUND(count_in_bucket * 100.0 / SUM(count_in_bucket) OVER (), 2) AS percentage
+FROM histogram
+ORDER BY bucket_idx;
+
+ bucket_idx |     bucket_start      |      bucket_end       | count_in_bucket | percentage
+------------+-----------------------+-----------------------+-----------------+------------
+          0 |      1130110.00000000 |  81371033911.75000000 |         5142723 |       9.35
+          1 |  81371033911.75000000 | 162740937713.50000000 |        15856596 |      28.83
+          2 | 162740937713.50000000 | 244110841515.25000000 |        15436318 |      28.07
+          3 | 244110841515.25000000 | 325480745317.00000000 |         2534754 |       4.61
+          4 | 325480745317.00000000 | 406850649118.75000000 |         9153124 |      16.64
+          5 | 406850649118.75000000 | 488220552920.50000000 |         5062884 |       9.21
+          6 | 488220552920.50000000 | 569590456722.25000000 |         1775797 |       3.23
+          7 | 569590456722.25000000 | 650960360524.00000000 |           27552 |       0.05
+          8 | 650960360524.00000000 | 732330264325.75000000 |            4134 |       0.01
+          9 | 732330264325.75000000 | 813700168127.50000000 |            2357 |       0.00
+         10 | 813700168127.50000000 | 895070071929.25000000 |            1818 |       0.00
+         11 | 895070071929.25000000 | 976439975731.00000000 |            1942 |       0.00
+(12 rows)
+
+Time: 127702.566 ms (02:07.703)
+
+550M rows. 35GB tables.
+
+WITH bounds AS (
+    SELECT
+        MIN(clm_id::BIGINT) AS min_val,
+        MAX(clm_id::BIGINT) AS max_val
+    FROM dur_tmp_02
+)
+SELECT
+    width_bucket(clm_id::BIGINT, min_val, max_val, 10) AS bucket_idx,
+    MIN(clm_id::BIGINT) AS bucket_start,
+    MAX(clm_id::BIGINT) AS bucket_end,
+    COUNT(*) AS count_in_bucket
+FROM dur_tmp_02, bounds
+GROUP BY bucket_idx
+ORDER BY bucket_idx;
+
+ bucket_idx | bucket_start |  bucket_end  | count_in_bucket
+------------+--------------+--------------+-----------------
+          1 |      1130110 |  97644779621 |         8852708
+          2 |  97645051621 | 195288895201 |        19887698
+          3 | 195288899521 | 287661766801 |         9978903
+          4 | 294020101001 | 387658731151 |         7236602
+          5 | 394020003881 | 487600496641 |         7230488
+          6 | 494020000441 | 584608991411 |         1780806
+          7 | 595480009001 | 676439787271 |           26673
+          8 | 705798748551 | 776439946601 |            2331
+          9 | 805798470831 | 876439999171 |            1848
+         10 | 976368352711 | 976439972051 |            1942
+         11 | 976439975731 | 976439975731 |               1
+(11 rows)c
+
+
+claimsprocess=# select count(1),min(prcs_add_tmsp::timestamp), max(prcs_add_tmsp::timestamp)  from dur_tmp_02 where clm_id::bigint between 895070071929 and 976439975731;
+ count |            min             |            max
+-------+----------------------------+----------------------------
+  1943 | 2017-08-24 12:28:26.206717 | 2017-08-31 22:30:28.400784
+(1 row)
+
+claimsprocess=# select count(1),min(prcs_add_tmsp::timestamp), max(prcs_add_tmsp::timestamp)  from dur_tmp_02 where clm_id::bigint between 294020101001 and 387658731151;
+  count  |            min             |            max
+---------+----------------------------+----------------------------
+ 7236602 | 2009-01-02 14:01:15.564015 | 2020-12-24 01:27:38.933817
+(1 row)
+
+Time: 49400.498 ms (00:49.400)
+
+

@@ -1,0 +1,313 @@
+
+Great observation. Even though your `logrotate` config is set to keep only 28 log files, **you're seeing 100+ compressed logs** going back to **March** — which clearly violates the intended rotation policy.
+
+---
+
+### 🚨 So what’s wrong?
+
+Several possibilities could cause this:
+
+---
+
+## ✅ 1. **`logrotate` is not managing these logs at all**
+
+Despite having a config like:
+
+```bash
+/pg_logs/*.log {
+    ...
+}
+```
+
+### ⛔️ PostgreSQL might not be writing logs to `/pg_logs/*.log`
+
+**Check the actual PostgreSQL log filenames** in `postgresql.conf`:
+
+```conf
+log_directory = 'pg_logs'
+log_filename = 'postgresql-%d.log'  -- or something similar
+```
+
+If the files PostgreSQL creates **do not match `/pg_logs/*.log`**, then `logrotate` will skip them.
+
+**In your case, your files are named:**
+
+```
+postgresql-20.log-20250320.gz
+postgresql-21.log-20250321.gz
+```
+
+🛠️ **That suffix (`.log-YYYYMMDD.gz`) doesn’t match `*.log`**, so your logrotate pattern doesn't catch them!
+
+> ✅ **Fix:** Change `/pg_logs/*.log` to something like `/pg_logs/postgresql-*.log*` or `/pg_logs/*log*`.
+
+---
+
+## ✅ 2. **PostgreSQL is already rotating logs itself**
+
+If PostgreSQL has log rotation features enabled (e.g., `log_filename`, `log_rotation_age`, `log_rotation_size`), it may be **managing logs independently**, and **`logrotate` is never involved**.
+
+Check these settings:
+
+```sql
+SHOW log_filename;
+SHOW log_rotation_age;
+SHOW log_rotation_size;
+```
+
+> If PostgreSQL rotates logs **daily** and appends the date, then logrotate won’t even touch them unless filenames match.
+
+---
+
+## ✅ 3. **`logrotate` is configured but not being run properly**
+
+Even if the config is correct, `logrotate` must run via cron or systemd timer.
+
+Check:
+
+```bash
+cat /etc/cron.daily/logrotate
+systemctl list-timers --all | grep logrotate
+```
+
+If it's not running daily, files won't be cleaned up as expected.
+
+---
+
+## ✅ 4. **Missing `dateext` and `dateformat` in logrotate**
+
+If you configured PostgreSQL to generate daily log files (e.g., with the date in the filename), **logrotate's rotation naming** (like `filename.log.1`, `filename.log.2.gz`) **isn’t even in play**.
+
+So **logrotate's `rotate 28` has no effect** — because it only deletes files it rotated itself.
+
+---
+
+### ✅ Recommended Fixes:
+
+1. **Update your logrotate pattern**:
+
+   ```bash
+   /pg_logs/postgresql-*.log* {
+       daily
+       rotate 28
+       compress
+       delaycompress
+       missingok
+       notifempty
+       create 660 postgres postgres
+   }
+   ```
+
+2. **OR** let PostgreSQL handle rotation and use a cleanup cron:
+
+   ```bash
+   find /pg_logs -name 'postgresql-*.log*' -type f -mtime +28 -delete
+   ```
+
+3. **Verify that logrotate is actually running:**
+
+   ```bash
+   logrotate -d /etc/logrotate.conf     # dry run to test
+   ```
+
+---
+
+Would you like help writing a proper cleanup cron job instead of relying on logrotate?
+
+
+
+
+
+
+
+
+
+
+
+To reduce the growth rate of PostgreSQL server logs (text logs, e.g., `/var/lib/pgsql/15/data/log/postgresql.log` or similar) on your `ods-db-01-alma8-qc-drx-kc` system, you need to adjust specific parameters in the PostgreSQL configuration file (`postgresql.conf`, typically at `/var/lib/pgsql/15/data/postgresql.conf`). These logs, distinct from WAL logs used by `pgBackRest`, record database activity like errors, queries, and connections. Excessive logging can fill up your `/pg_backups` filesystem (1002G total, 559G available), so minimizing verbosity and optimizing rotation is key. Below are the key `postgresql.conf` parameters that control server log growth, with recommendations to reduce their increase speed.
+
+### Key Parameters to Control Server Log Growth
+1. **log_min_messages**:
+   - **Purpose**: Sets the minimum severity level for messages written to the server log.
+   - **Default**: `warning`
+   - **Options**: `debug5`, `debug4`, `debug3`, `debug2`, `debug1`, `info`, `notice`, `warning`, `error`, `log`, `fatal`, `panic`
+   - **Recommendation**: Set to `error` to log only critical issues, reducing verbosity:
+     ```conf
+     log_min_messages = error
+     ```
+   - **Impact**: Excludes informational or debug messages, significantly reducing log volume. For example, `info` or `debug` levels can log every query or transaction, causing rapid growth.
+
+2. **log_min_error_statement**:
+   - **Purpose**: Logs the SQL statement causing errors at or above the specified severity.
+   - **Default**: `error`
+   - **Options**: Same as `log_min_messages`
+   - **Recommendation**: Set to `error` or higher (e.g., `fatal`):
+     ```conf
+     log_min_error_statement = error
+     ```
+   - **Impact**: Prevents logging statements for minor issues (e.g., `notice`), reducing log entries, especially in your `Datamart` operations with frequent SQL executions.
+
+3. **log_statements**:
+   - **Purpose**: Controls which SQL statements are logged.
+   - **Default**: `none`
+   - **Options**: `none`, `ddl`, `mod`, `all`
+   - **Recommendation**: Ensure it’s set to `none`:
+     ```conf
+     log_statements = none
+     ```
+   - **Impact**: Disables logging of all SQL statements (e.g., `SELECT`, `INSERT`), which can generate massive logs in high-transaction environments like yours.
+
+4. **log_min_duration_statement**:
+   - **Purpose**: Logs statements that take longer than the specified duration (in milliseconds).
+   - **Default**: `-1` (disabled)
+   - **Recommendation**: Set to a high value (e.g., `10000` for 10 seconds) or keep disabled:
+     ```conf
+     log_min_duration_statement = 10000
+     ```
+   - **Impact**: Reduces logging of moderately slow queries, common in your `Datamart` scripts (e.g., `drug_list.sql.log` taking 351.13 minutes). Only log queries that are truly problematic.
+
+5. **log_connections** and **log_disconnections**:
+   - **Purpose**: Logs each client connection/disconnection.
+   - **Default**: `off`
+   - **Recommendation**: Keep or set to `off`:
+     ```conf
+     log_connections = off
+     log_disconnections = off
+     ```
+   - **Impact**: Prevents logging every session, which can add up in a busy system.
+
+6. **log_line_prefix**:
+   - **Purpose**: Defines the format of each log line (e.g., timestamp, user, database).
+   - **Default**: Varies, often `'%m [%p] '`
+   - **Recommendation**: Use a minimal prefix to reduce log size:
+     ```conf
+     log_line_prefix = '%t [%p]: '
+     ```
+   - **Impact**: Shortens each log line (e.g., removes user or query details), saving space while retaining essential info (timestamp, process ID).
+
+7. **log_rotation_size**:
+   - **Purpose**: Rotates the log file when it reaches the specified size (in kB).
+   - **Default**: `0` (disabled, no size-based rotation)
+   - **Recommendation**: Set to a reasonable size (e.g., `10MB`):
+     ```conf
+     log_rotation_size = 10240
+     ```
+   - **Impact**: Rotates logs frequently, preventing individual files from growing too large. Combine with `log_filename` for daily rotation.
+
+8. **log_rotation_age**:
+   - **Purpose**: Rotates the log file after the specified time (in minutes).
+   - **Default**: `0` (disabled, no time-based rotation)
+   - **Recommendation**: Set to daily rotation (e.g., `1d` or `1440` minutes):
+     ```conf
+     log_rotation_age = 1d
+     ```
+   - **Impact**: Creates a new log file daily, making it easier to manage and delete old logs.
+
+9. **log_filename**:
+   - **Purpose**: Specifies the naming pattern for log files (e.g., daily logs).
+   - **Default**: `postgresql-%Y-%m-%d_%H%M%S.log`
+   - **Recommendation**: Use a daily naming pattern:
+     ```conf
+     log_filename = 'postgresql-%a.log'
+     ```
+   - **Impact**: Creates files like `postgresql-Mon.log`, overwriting weekly to limit log accumulation. Combine with `log_rotation_age`.
+
+10. **log_truncate_on_rotation**:
+    - **Purpose**: Overwrites existing log files with the same name during rotation.
+    - **Default**: `off`
+    - **Recommendation**: Enable with daily rotation:
+      ```conf
+      log_truncate_on_rotation = on
+      ```
+    - **Impact**: Ensures old logs (e.g., last Monday’s `postgresql-Mon.log`) are overwritten, reducing disk usage.
+
+### Steps to Apply Changes
+1. **Edit `postgresql.conf`**:
+   - Locate the file (likely `/var/lib/pgsql/15/data/postgresql.conf`):
+     ```bash
+     vim /var/lib/pgsql/15/data/postgresql.conf
+     ```
+   - Add or modify:
+     ```conf
+     logging_collector = on
+     log_destination = 'csvlog'
+     log_min_messages = error
+     log_min_error_statement = error
+     log_statements = none
+     log_min_duration_statement = 10000
+     log_connections = off
+     log_disconnections = off
+     log_line_prefix = '%t [%p]: '
+     log_rotation_size = 10240
+     log_rotation_age = 1d
+     log_filename = 'postgresql-%a.log'
+     log_truncate_on_rotation = on
+     ```
+
+2. **Reload Configuration**:
+   - Apply changes without restarting PostgreSQL:
+     ```bash
+     pg_ctl reload -D /var/lib/pgsql/15/data
+     ```
+   - Or, if a restart is feasible:
+     ```bash
+     systemctl restart postgresql-15
+     ```
+
+3. **Clean Up Old Logs**:
+   - Check current log size:
+     ```bash
+     du -sh /var/lib/pgsql/15/data/log/*
+     ```
+   - Remove old logs (e.g., older than 7 days):
+     ```bash
+     find /var/lib/pgsql/15/data/log -name "*.log" -mtime +7 -delete
+     ```
+
+### Additional Recommendations
+- **Monitor Log Growth**:
+  - Check log directory usage:
+    ```bash
+    du -sh /var/lib/pgsql/15/data/log
+    ```
+  - If logs are still growing fast, inspect content:
+    ```bash
+    head -n 50 /var/lib/pgsql/15/data/log/postgresql-*.log
+    ```
+    Look for frequent `INFO` or `NOTICE` messages that could be suppressed.
+
+- **External Log Rotation**:
+  - Use `logrotate` for additional control:
+    ```bash
+    vim /etc/logrotate.d/postgresql
+    ```
+    Example configuration:
+    ```conf
+    /var/lib/pgsql/15/data/log/*.log {
+        daily
+        rotate 7
+        compress
+        missingok
+        notifempty
+    }
+    ```
+    Run manually to test:
+    ```bash
+    logrotate -f /etc/logrotate.d/postgresql
+    ```
+
+- **Context with `pgBackRest`**:
+  - Your `pgBackRest` setup (424G full backup, 559G available) is impacted by disk space. Reducing server log growth helps preserve space for WAL archives (`/pg_backups/archive/10-222-254-160`). If WAL logs are also a concern, consider adjusting `wal_level`, `archive_timeout`, or `checkpoint_timeout` (let me know if you need these).
+
+- **Verify Settings**:
+  - Check current values:
+    ```sql
+    SELECT name, setting FROM pg_settings WHERE name LIKE 'log%';
+    ```
+
+### Expected Impact
+- **Reduced Verbosity**: Setting `log_min_messages` and `log_min_error_statement` to `error` eliminates non-critical logs, cutting volume significantly.
+- **Rotation**: `log_rotation_size` and `log_rotation_age` prevent large files, and `log_truncate_on_rotation` limits accumulation.
+- **Space Savings**: Combined, these changes can reduce daily log growth from GBs to MBs, depending on your workload (e.g., `Datamart` scripts like `drug_list.sql`).
+
+If you share a sample of your log file or specific workload details (e.g., frequent queries causing logs), I can suggest further optimizations.

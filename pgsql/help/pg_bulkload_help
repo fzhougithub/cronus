@@ -1,0 +1,7 @@
+postgres 1635910 1635908  0 15:37 pts/2    00:00:00 /usr/pgsql-14/bin/pg_bulkload -d claimsprocess /pg_bulkload/klk_bulkload/pg_bulkload_EE1/dur/dur.load.ctl
+postgres 1651908 1651906  0 17:01 pts/4    00:00:00 /usr/pgsql-14/bin/pg_bulkload -d claimsprocess /pg_bulkload/klk_bulkload/pg_bulkload_EE1/dur/dur_tmp_s8/dur.load.ctl
+root     1652981 1652980  0 17:12 ?        00:00:00 sudo -u postgres /apps/lib/pgsql/14/scripts/exec_bulkload.sh -e https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud -p 443 -u s3://etl-prod-phi/prod/ -n etl_prod_phi -w /apps/lib/pgsql/14/pg_bulkload -d claimsprocess -s stg_customer_320 -l /pg_logs/pg_bulkload -a 2 -f DUR.UNLOAD.D250714.S1.ZIP
+postgres 1653004 1652981  0 17:12 ?        00:00:00 /bin/bash /apps/lib/pgsql/14/scripts/exec_bulkload.sh -e https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud -p 443 -u s3://etl-prod-phi/prod/ -n etl_prod_phi -w /apps/lib/pgsql/14/pg_bulkload -d claimsprocess -s stg_customer_320 -l /pg_logs/pg_bulkload -a 2 -f DUR.UNLOAD.D250714.S1.ZIP
+postgres 1653274 1653004 99 17:14 ?        00:04:56 /usr/bin/unzip /apps/lib/pgsql/14/pg_bulkload/DUR.UNLOAD.D250714.S1.ZIP -d /apps/lib/pgsql/14/pg_bulkload
+
+

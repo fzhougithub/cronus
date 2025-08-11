@@ -1,0 +1,22 @@
+SELECT reltuples::bigint
+FROM pg_class
+WHERE oid = '2382643138'::regclass;
+
+
+
+
+SELECT
+    c.relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    pg_size_pretty(pg_relation_size(c.oid)) AS table_data_size,
+    pg_size_pretty(pg_indexes_size(c.oid)) AS indexes_size,
+    pg_size_pretty(pg_total_relation_size(c.reltoastrelid)) AS toast_size
+FROM
+    pg_class c
+LEFT JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    c.relkind = 'r' -- 'r' for regular tables
+    AND n.nspname = current_schema() -- Limits to the current schema of your session
+ORDER BY
+    pg_total_relation_size(c.oid) DESC;

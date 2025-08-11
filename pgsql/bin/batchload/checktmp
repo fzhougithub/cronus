@@ -1,0 +1,5 @@
+#!/bin/bash
+
+tmpps=$(ls -larth  /apps/lib/pgsql/14/data/base/pgsql_tmp/|awk '{print $9}'|cut -d. -f1|cut -dp -f3|sort|uniq|sed '/^$/d')
+for i in $(echo $tmpps);do ps -ef|grep $i|grep -v grep;du -k  /apps/lib/pgsql/14/data/base/pgsql_tmp/*${i}*|awk '{sum+=$1} END {print sum/1024/1024"GB"}';done
+echo "Total: $(du -hs /apps/lib/pgsql/14/data/base/pgsql_tmp/)"

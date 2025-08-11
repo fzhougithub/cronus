@@ -1,0 +1,86 @@
+Great question! The `shift` command in a shell script is used to **shift positional parameters to the left** — essentially **discarding the first argument** and moving the rest down by one.
+
+---
+
+### 🔍 In Context of Your Script:
+
+```bash
+set - $line
+```
+
+This splits the current `$line` into positional parameters: `$1`, `$2`, `$3`, etc.
+
+Then:
+
+```bash
+insTS="$1 $2"     # Combine first two fields as timestamp
+insTZ="$3"        # Third field (timezone?)
+shift             # Discard $1 (first word)
+shift             # Discard new $1 (was originally $2)
+shift             # Discard new $1 (was originally $3)
+insErrStr="$*"    # Remaining words — the error string or message
+```
+
+---
+
+### ✅ What Happens Step-by-Step?
+
+Let’s say `line` contains:
+
+```bash
+2025-07-08 10:45:01 UTC ERROR: table not found
+```
+
+Then:
+
+```bash
+set - $line
+```
+
+Gives:
+
+* `$1 = 2025-07-08`
+* `$2 = 10:45:01`
+* `$3 = UTC`
+* `$4 = ERROR:`
+* `$5 = table`
+* `$6 = not`
+* `$7 = found`
+
+Now after 3 shifts:
+
+```bash
+shift     # $1 becomes 10:45:01
+shift     # $1 becomes UTC
+shift     # $1 becomes ERROR:
+```
+
+So now:
+
+* `$1 = ERROR:`
+* `$2 = table`
+* `$3 = not`
+* `$4 = found`
+
+Then:
+
+```bash
+insErrStr="$*"
+```
+
+Becomes:
+
+```
+insErrStr="ERROR: table not found"
+```
+
+---
+
+### ✅ Summary of `shift`
+
+* **`shift`** discards the current `$1` and shifts all others left (`$2` → `$1`, `$3` → `$2`, etc.).
+* Useful for parsing fields or arguments in loops.
+* In your script: it's used to isolate the *error message* part after extracting the timestamp and timezone.
+
+Let me know if you want a version that parses fields more robustly (e.g., quoted strings or tabs).
+

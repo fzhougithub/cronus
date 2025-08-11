@@ -1,0 +1,1 @@
+tmpdir=tmp;for i in $(ls -1 $tmpdir/*log);do echo -e $(cat $i|grep Time|cut -d: -f2|awk '{s+=$1} END {printf "%.2f", s/60000}') mins:   $i;done |sort -k1nr

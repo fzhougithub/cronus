@@ -1,0 +1,26 @@
+SELECT
+    'ALTER INDEX ' || quote_ident(n.nspname) || '.' || quote_ident(i.relname) || ' SET TABLESPACE tblspc1;'
+FROM pg_index ix
+JOIN pg_class i ON i.oid = ix.indexrelid
+JOIN pg_class t ON t.oid = ix.indrelid
+JOIN pg_namespace n ON n.oid = t.relnamespace
+LEFT JOIN pg_tablespace ts ON i.reltablespace = ts.oid
+WHERE t.relname LIKE 'claim_core_p1\_%' ESCAPE '\'
+  AND t.relkind = 'r'  -- regular tables (partition tables)
+  AND ix.indisvalid
+  AND ix.indisready
+  AND COALESCE(ts.spcname, 'pg_default') = 'pg_default';
+
+
+SELECT
+    'ALTER TABLE ' || quote_ident(n.nspname) || '.' || quote_ident(c.relname) ||
+    ' SET TABLESPACE tblspc1;'
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_tablespace ts ON ts.oid = c.reltablespace
+WHERE c.relname LIKE 'claim_core_p1\_%' ESCAPE '\'
+  AND c.relkind = 'r'  -- regular table
+  AND COALESCE(ts.spcname, 'pg_default') <> 'tblspc1';
+
+
+

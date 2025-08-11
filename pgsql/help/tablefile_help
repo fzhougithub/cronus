@@ -1,0 +1,27 @@
+SELECT
+    c.relname,
+    n.nspname AS schema_name,
+    c.oid AS object_oid,
+    c.reltablespace AS tablespace_oid,
+    c.relfilenode
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname = 'stg_customer_320'
+    AND c.relname = 'o59'
+    AND c.relkind = 'r'; -- Ensure it's the table, not an index or other object
+
+ relname |   schema_name    | object_oid | tablespace_oid | relfilenode
+---------+------------------+------------+----------------+-------------
+ o59     | stg_customer_320 | 2382643098 |     1726710161 |  1726710642
+(1 row)
+
+
+
+claimsprocess=# SELECT pg_relation_filepath('stg_customer_320.o59');
+                 pg_relation_filepath
+-------------------------------------------------------
+ pg_tblspc/1726710161/PG_14_202107181/16386/1726710642
+(1 row)

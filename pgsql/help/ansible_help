@@ -1,0 +1,136 @@
+ss -ltnp | grep 9187
+
+To deploy a **PostgreSQL Prometheus exporter** to a target server using the Ansible role you described, you typically follow these steps:
+
+---
+
+## ✅ 1. **Understand the Role Structure You Have**
+
+You've already got a valid Ansible role structure:
+
+```
+prometheus-pg-exporter/
+├── defaults/main.yaml                  # Default variables (lowest priority)
+├── handlers/main.yaml                  # Handlers like systemd reload/restart
+├── tasks/
+│   ├── install.yaml                    # Installation tasks (e.g. binary, user)
+│   ├── configure.yaml                  # Config setup (e.g. systemd, configs)
+│   └── main.yaml                       # Entry point for the role
+└── templates/postgres-exporter.service.j2  # Systemd service file template
+```
+
+---
+
+## ✅ 2. **Write a Playbook That Uses the Role**
+
+Create a playbook like `deploy-exporter.yaml`:
+
+```yaml
+- name: Deploy PostgreSQL Exporter
+  hosts: exporters
+  become: true
+  roles:
+    - role: prometheus-pg-exporter
+```
+
+---
+
+## ✅ 3. **Define Your Inventory File**
+
+Create `inventory.yaml` (or use `hosts` file):
+
+```ini
+[exporters]
+pg-target-01 ansible_host=192.168.10.100
+
+[exporters:vars]
+pg_user=postgres
+exporter_version=0.15.0
+```
+
+Or YAML format:
+
+```yaml
+all:
+  hosts:
+    pg-target-01:
+      ansible_host: 192.168.10.100
+  children:
+    exporters:
+      hosts:
+        pg-target-01:
+```
+
+---
+
+## ✅ 4. **Ensure the Role’s `main.yaml` Includes Other Tasks**
+
+Example: `tasks/main.yaml` should include your subtasks:
+
+```yaml
+- name: Include install tasks
+  include_tasks: install.yaml
+
+- name: Include configure tasks
+  include_tasks: configure.yaml
+```
+
+---
+
+## ✅ 5. **Run the Playbook**
+
+```bash
+ansible-playbook -i inventory.yaml deploy-exporter.yaml
+```
+
+---
+
+## ✅ 6. **Common Role Tasks You Might Include**
+
+### install.yaml:
+
+* Download binary or install via `apt`/`yum`
+* Create user `postgres_exporter`
+* Place the binary in `/usr/local/bin/`
+
+### configure.yaml:
+
+* Use `templates/postgres-exporter.service.j2` to create a systemd unit
+* Reload systemd
+* Enable + start service
+
+### handlers/main.yaml:
+
+```yaml
+- name: Restart postgres exporter
+  systemd:
+    name: postgres-exporter
+    state: restarted
+    enabled: true
+    daemon_reload: true
+```
+
+---
+
+## 🔧 Optional Variables (`defaults/main.yaml`):
+
+```yaml
+exporter_version: "0.15.0"
+exporter_user: postgres_exporter
+exporter_install_path: /usr/local/bin
+exporter_service_name: postgres-exporter
+```
+
+---
+
+## ✅ Summary
+
+To deploy your `prometheus-pg-exporter` role:
+
+1. Create a playbook using the role.
+2. Define target hosts in inventory.
+3. Ensure your role includes proper install/configure tasks.
+4. Run `ansible-playbook`.
+
+Let me know if you'd like a **complete working example** of the role files (`install.yaml`, `service.j2`, etc.).
+

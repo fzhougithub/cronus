@@ -1,0 +1,38 @@
+gpg --version
+
+gpg (GnuPG) 2.4.8
+libgcrypt 1.11.1
+Copyright (C) 2025 g10 Code GmbH
+License GNU GPL-3.0-or-later <https://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Home: /Users/fzhou/.gnupg
+Supported algorithms:
+Pubkey: RSA, ELG, DSA, ECDH, ECDSA, EDDSA
+Cipher: IDEA, 3DES, CAST5, BLOWFISH, AES, AES192, AES256, TWOFISH,
+        CAMELLIA128, CAMELLIA192, CAMELLIA256
+Hash: SHA1, RIPEMD160, SHA256, SHA384, SHA512, SHA224
+Compression: Uncompressed, ZIP, ZLIB, BZIP2
+
+
+
+gpg --list-secret-keys --keyid-format=long
+
+fzhou@DST-JXK2FKH0CK ODS % gpg --list-secret-keys --keyid-format=long
+[keyboxd]
+---------
+sec   rsa4096/EC0758591BB2F1EA 2025-06-04 [SC] [expires: 2035-06-02]
+      AD4029883ED740C9F956F861EC0758591BB2F1EA
+uid                 [ultimate] Frank Zhou <frank.zhou@sscinc.com>
+ssb   rsa4096/15F4C6913C8C852F 2025-06-04 [E] [expires: 2035-06-02]
+
+
+git config --global user.signingkey EC0758591BB2F1EA
+ 
+git commit -m "Add datamart related code"
+success
+
+export GPG_TTY=$(tty)
+
+

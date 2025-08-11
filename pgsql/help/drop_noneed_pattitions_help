@@ -1,0 +1,28 @@
+WITH partition_info AS (
+  SELECT
+    c.oid,
+    n.nspname AS schema_name,
+    c.relname AS partition_name,
+    pg_get_expr(conbin, c.oid) AS constraint_expr
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_constraint con ON con.conrelid = c.oid AND con.contype = 'c' -- check constraints
+  WHERE c.relname LIKE 'claim_core_p1\_%' ESCAPE '\'
+    AND c.relkind = 'r'  -- regular tables (partitions)
+    AND c.relname ~ '^[^_]+_[0-9]{6}$' -- likely range subpartitions with dates in name (optional)
+),
+from_dates AS (
+  SELECT
+    schema_name,
+    partition_name,
+    -- Extract the "FROM" date from constraint, rough parse for "process_create_ts >= 'YYYY-MM-DD ...'"
+    substring(constraint_expr from '''(\d{4}-\d{2}-\d{2})') AS from_date_str
+  FROM partition_info
+)
+SELECT
+  'DROP TABLE IF EXISTS ' || quote_ident(schema_name) || '.' || quote_ident(partition_name) || ' CASCADE;'
+FROM from_dates
+WHERE from_date_str IS NOT NULL
+  AND from_date_str >= '2030-01-01'
+ORDER BY from_date_str;
+

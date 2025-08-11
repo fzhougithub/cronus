@@ -1,0 +1,9 @@
+1. Create new team and channel, add connector, pickup webhook, and configure the name, get the URL
+https://ssctechnologiesinc.webhook.office.com/webhookb2/1f2d5937-c277-4c1b-bff5-6c205939f782@f4c566ce-a3ce-4b10-b55b-1e9d56ad1b26/IncomingWebhook/54d693348995408981ff7917042120ea/dd293d08-491b-4a95-abbe-24a946fcc7b4/V2toy45DHFiN3POLeVlmQSUvKUvuw1D-ZYKSgJC24_cP01
+
+2. Tune your python code to test the new setup webhook, make sure it works, then, you can go to alert server to deploy it. 
+python3 /Users/fzhou/bin/alert_test.py
+It works, can get the notification
+
+3. Setup job on rundeck
+

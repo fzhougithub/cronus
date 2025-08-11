@@ -1,0 +1,21 @@
+WITH RECURSIVE partition_tables AS (
+  SELECT c.oid, n.nspname AS schema_name, c.relname AS table_name
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'claimsprocess' AND c.relname = 'claim_core_p1_320'
+
+  UNION ALL
+
+  SELECT c.oid, n.nspname, c.relname
+  FROM pg_inherits i
+  JOIN pg_class c ON c.oid = i.inhrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN partition_tables pt ON pt.oid = i.inhparent
+)
+SELECT
+  'ALTER TABLE ' || quote_ident(schema_name) || '.' || quote_ident(table_name) || ' SET TABLESPACE tblspc1;'
+FROM partition_tables
+ORDER BY table_name;
+
+
+

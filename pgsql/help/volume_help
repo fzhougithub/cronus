@@ -1,0 +1,270 @@
+1. Create the ticket description, refer to devops-9838
+
+We add 2TB into app, 
+
+vgdisplay appsvg
+/usr/bin/rescan-scsi-bus.sh
+pvresize /dev/mapper/appsvg-appslv  
+
+You have to modify the terraform code
+
+1. Login to your look around server
+ssh wdcprodelbastion01.ssnc-corp.cloud
+cd work
+git clone git@code.ssnc.dev:pharmacy/domanirx-infra.git
+
+git checkout -b  DEVOPS-9839-add-space-to-uatpls-db-kc
+
+Then, we need to connect visual studio code to remote ssh
+1. install extension
+2. using the config, and login to
+3. open the folder, find the terraform main.tf code, 
+4. change the size configured there. 
+5. save. 
+
+git add .
+
+source ~/.prod_vault
+#source ~/.nonprod_vault
+
+export GPG_TTY=$(tty)
+
+
+# to find the terraform code location
+[fzhou@10-222-206-136 domanirx-infra]$ find . -name '*uatpls*'|grep environment
+./iidr/environments/uatpls
+./kubernetes/environments/uatpls
+./terraform/environments/domanirx/uatpls
+./terraform/environments/reporting_analysis/uatpls
+./terraform/environments/reporting_analysis/uatpls/databases/ods-db-01-alma8-uatpls-drx-kc
+
+Modify the code. 
+
+
+git commit -m 'DEVOPS-9389 add space for apps in ualpls db'
+
+It will prompt out the message require to unlock OpenGPG secret key:
+type in , and complete it. 
+
+git push origin <branch name>
+
+#AWS_PROFILE='prod' terraform init --upgrade
+AWS_PROFILE='non-prod' terraform init
+AWS_PROFILE='non-prod' terraform plan
+
+Need to cut/paste the plan change part, into the pull request in Git
+Then, click "create pull request" 
+
+```Terraform
+Then, cut/paste the part terraform plan generated to here
+```
+submit
+Then, get the link of pull request. 
+Then, pull request got generated. 
+
+
+Copy the difference (pull request link) between the code change to the ticket. 
+
+Then, copy the pull request to devops channel for review and approval
+
+Then, go to "Technical Scrum of Scrum Channel" to notify people, 
+@Everyone, we are doing maintenance on UATPLS ODS db server, The database will be donw for 5 to 10 minutes. 
+
+Then, go to "DomaniRx Environment Maintenance" channel, 
+Maintenance for UATPLS ODS DB 
+cut/paste the same notification info like above in SOS channel. 
+
+Then,we can apply terraform change
+
+AWS_PROFILE="non-prod" terraform init
+
+AWS_PROFINE='non-prod' terraform apply
+
+After apply complete, go to portal instance to check the volume change from 3T to 5TB
+
+lsblk -- but, we could not see the new space
+
+Now, we need to run 
+/usr/bin/rescan-scsi-bus.sh
+
+Still, after the command, still could not see the new space, so we need to restart the VM
+
+Now, systemctl stop postgresql.... service
+
+Using portal power off -> guest reboot
+
+After reboot, lsblk can show the disk space increased to 5TB, the LVM under disk is still small like 3T
+
+Now, run again
+/usr/bin/rescan-scsi-bus.sh
+ 
+Now
+pvresize /dev/sdd
+
+Now,
+
+lvresize -r -L +1996G /dev/mapper/appsvg-appslv
+df -h
+
+Now you can see the size of /apps changed. 
+
+
+Then, go to the website, click "compare & push" button, 
+
+restart the node, remember, to notice 
+
+lvresize -r -L +2000 /dev/mapper/appsvg-appslv
+
+Ensure that Postgres services are running
+
+Ensure that Pg2Pg replication is good
+
+Ensure that Postgres services are running
+
+Ensure that Pg2Pg replication is good
+
+
+[root@ods-db-01-alma8-uatpls ~]$ yum list installed|grep pgbackrest
+pgbackrest.x86_64                                        2.55.1-1PGDG.rhel8                      @pgdg-common
+
+[postgres@ods-db-01-alma8-uatpls scripts]$ ls -larth
+total 12K
+drwxr-xr-x. 5 postgres postgres   47 Dec 23  2024 ..
+-rwxr--r--. 1 root     root      260 Dec 23  2024 postgres-pre-start.sh
+-rwxr-xr-x. 1 postgres postgres 1.2K Mar  6 21:41 materialized_views.sh
+drwxr-xr-x. 2 postgres postgres   94 Mar  6 21:41 .
+-rw-r--r--. 1 postgres postgres  417 Jun 30 05:07 materialized_views.log
+
+[root@ods-db-01-alma8-uatpls data]$ ls -larth *conf
+-rw-------. 1 postgres postgres  27K Jan 25 18:29 postgresql.conf
+-rw-------. 1 postgres postgres 1.7K Jan 25 21:49 pg_ident.conf
+-rw-------. 1 postgres postgres 5.1K May 13 19:06 pg_hba.conf
+-rw-------. 1 postgres postgres  398 May 23 14:50 postgresql.auto.conf
+
+cd /var/lib/pgsql/PostgresDBA/logical_replication/
+
+ls -larth
+8 scripts should be there
+
+history|grep gen|grep claim
+
+gen_ddl.sh ods_domani 10.222.254.104 claimsprocess claimsprocess_other > claimsprocess_other.sql
+
+Then, could not make it work, William change to another way
+pg_dump -d ods_domani -n claimsprocess -s > claimsprocess_ddl.dump
+
+cp claimsprocess_ddl.dump claimsprocess_other.sql
+
+sed -i 's/\<claimprocess\.\>/claimsprocess_other./g;s/\<claimsprocess\>/claimsprocess_other/g' claimsprocess_other.sql
+sed -i 's/\<claimprocess\.\>/claimsprocess_humana./g;s/\<claimsprocess\>/claimsprocess_humana/g' claimsprocess_humana.sql
+
+Then, using \i script to create the new schema claimsprocess_other and claimsprocess_hunama
+
+./gen_ddl.sh ods_domani 10.222.254.104 claimsprocess claimsprocess_other > claimsprocess_other.sql
+./gen_ddl.sh ods_domani 10.222.254.104 claimsprocess claimsprocess_humana > claimsprocess_humana.sql
+
+
+Then, he login to database
+drop schema claimsprocess_humana cascade;
+drop schema claimsprocess_other cascade;
+
+create schema claimsprocess_other authorization dba_admin;
+create schema claimsprocess_humana authorization dba_admin;
+
+\i claimsprocess_other.sql
+\i claimsprocess_humana.sql
+
+becuse it is on the source, there is no required test user, ignore
+
+? Where the user info saved? 
+
+./gen_full_tablist.sh ods_domani claimsprocess_other > claimsprocess_other.tablist
+./gen_full_tablist.sh ods_domani claimsprocess_humana > claimsprocess_humana.tablist
+
+psql -d ods_domani
+
+\dRs
+
+./deploy_logical_replication.sh uatpls_claims_other_pub uatpls_claims_other_sub 10.222.254.104 claimprocess ods_domani 5432 5432 claimsprocess_other.tablist
+
+\dRp
+
+./deploy_logical_replication.sh uatpls_claims_humana_pub uatpls_claims_humana_sub 10.222.254.104 claimprocess ods_domani 5432 5432 claimsprocess_humana.tablist
+
+Now, you can check
+
+./check_counts.sh claimsprocess_other.tablist 10.222.254.104 claimsprocess
+./check_counts.sh claimsprocess_humana.tablist 10.222.254.104 claimsprocess
+
+Now, need to run the grant privileges statement etc
+
+create role claimprocess_other_ro;
+grant usage on schema claimprocess_other to claimprocess_other_ro;
+alter default privileges for role postgres in schema claimsprocess_other;
+grant select on tables to claimprocess_other_ro;
+grant select on sequences to claimsprocess_other_ro;
+grant select on all tables  in schema claimsprocess_other to claimsprocess_other_ro;
+grant select on all sequences in schema claimsprocess_other to claimsprocess_other_ro;
+
+create role claimprocess_humana_ro;
+grant usage on schema claimprocess_humana to claimprocess_other_ro;
+alter default privileges for role postgres in schema claimsprocess_humana;
+grant select on tables to claimprocess_humana_ro;
+grant select on sequences to claimsprocess_humana_ro;
+grant select on all tables  in schema claimsprocess_humana to claimsprocess_humana_ro;
+grant select on all sequences in schema claimsprocess_humana to claimsprocess_humana_ro;
+
+#create role claimprocess_test_ro;
+#grant usage on schema claimprocess_test to claimprocess_other_ro;
+#alter default privileges for role postgres in schema claimsprocess_test;
+#grant select on tables to claimprocess_test_ro;
+#grant select on sequences to claimsprocess_test_ro;
+#grant select on all tables  in schema claimsprocess_test to claimsprocess_test_ro;
+#grant select on all sequences in schema claimsprocess_test to claimsprocess_test_ro;
+
+select * from pg_replication_slots;
+
+check wether active or not
+
+Then, how to fix the one slot not active? 
+The slot is not active means there is no client of standby using that slot at all;
+
+Then, william drop publication in this time
+
+drop publication claims_pub;
+
+Then he went to the subscription node, and run create roles code first, 
+
+drop subscription claims_sub;
+
+Then, on standby side
+
+./gen_ddl.sh ods_domani 10.222.254.104 claimprocess claimprocess > claimsprocess.sql
+
+Then, because it is in standby, he dropped the schema clamsprocess at all
+
+drop schema claimsprocess cascade;
+
+create schema claimsprocess authorization dba_admin;
+
+\i claimsprocess.sql
+
+then, generate tablist again
+
+Then, it will run the long time initialization process using nohup command
+
+nohup ./deploy_logical_replication.sh claims_pub claims_sub 10.222.254.104 claimsprocess ods_domani 5432 5432 claimsprocess.tablist &
+
+more nohup.out
+
+./check_counts.sh claimsprocess.tablist 10.224.254.104 claimprocess > count
+This one this time run for a log time
+
+On primary node
+select pg_replication_slots;
+Many process are running
+
+
+Completed!
+
+

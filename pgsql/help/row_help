@@ -1,0 +1,2 @@
+SELECT md5(array_agg(md5(t.*::text))::text) FROM schema.table t;
+

@@ -1,0 +1,5 @@
+On server side
+base64 /tmp/pgbadger_report.html > /tmp/pgbadger_report.b64
+
+On mac
+base64 -d -i pgbadger_report.b64 -o pgbadger_report1.html
