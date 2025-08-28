@@ -1,0 +1,8 @@
+!!!! Killer skill !!!
+
+ALTER TABLE stg_customer_320.c52 SET (
+  autovacuum_enabled = false,
+  toast.autovacuum_enabled = false
+);
+
+

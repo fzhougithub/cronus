@@ -1,0 +1,11 @@
+so, just the vacuum could not be run as parallel by nature
+
+
+
+| Feature                                             | Parallel Support?                                                 | Config Option Example                     |
+| --------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------- |
+| Parallel SELECT queries                             | Yes                                                               | `max_parallel_workers_per_gather`         |
+| Parallel scans on a table                           | Yes (settable per table)                                          | `ALTER TABLE t SET (parallel_workers=4);` |
+| VACUUM / ANALYZE on table                           | ANALYZE uses parallel scans; VACUUM no parallel across partitions | None for VACUUM partitions                |
+| Parallelism on partitioned tables across partitions | No                                                                | Manual scripting needed                   |
+

@@ -1,0 +1,28 @@
+WITH RECURSIVE partitions AS (
+    -- Start from the parent table
+    SELECT
+        c.oid,
+        c.relname AS partition_name,
+        n.nspname AS schema_name
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'         -- change schema if needed
+      AND c.relname = 'claim_core'     -- your parent table name
+
+    UNION ALL
+
+    -- Recursively get child partitions
+    SELECT
+        c.oid,
+        c.relname AS partition_name,
+        n.nspname AS schema_name
+    FROM pg_inherits i
+    JOIN pg_class c ON c.oid = i.inhrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN partitions p ON p.oid = i.inhparent
+)
+SELECT schema_name, partition_name
+FROM partitions
+WHERE oid NOT IN (SELECT inhparent FROM pg_inherits)  -- only leaf partitions
+ORDER BY schema_name, partition_name;
+

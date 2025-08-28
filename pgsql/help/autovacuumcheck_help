@@ -1,0 +1,149 @@
+SELECT n.nspname AS schema_name,
+       c.relname AS table_name,
+       s.n_dead_tup,
+       c.reltuples::bigint,
+       s.last_autovacuum,
+       s.last_autoanalyze,
+       o.option_value AS autovacuum_vacuum_scale_factor
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+JOIN pg_stat_all_tables s
+  ON s.relid = c.oid
+LEFT JOIN LATERAL (
+    SELECT option_value
+    FROM pg_options_to_table(c.reloptions)
+    WHERE option_name = 'autovacuum_vacuum_scale_factor'
+) o ON true
+WHERE n.nspname = 'claimsprocess'
+  AND c.relkind = 'r'
+ORDER BY s.n_dead_tup DESC;
+
+
+
+
+
+  schema_name  |                   table_name                   | n_dead_tup | reltuples  |        last_autovacuum        |       last_autoanalyze        | autovacuum_vacuum_scale_factor
+---------------+------------------------------------------------+------------+------------+-------------------------------+-------------------------------+--------------------------------
+ claimsprocess | dur_hist_8unlog320_97                          |   28227085 |  116386472 | 2025-08-11 07:04:57.085867+00 | 2025-08-11 05:18:31.320127+00 |
+ claimsprocess | claim_error_25                                 |   16753781 |  365445632 | 2025-08-11 11:18:35.998089+00 | 2025-08-11 11:19:08.31097+00  |
+ claimsprocess | claim_error_45
+
+
+
+ALTER TABLE claimsprocess.claim_core_p1_320_202507
+  SET (autovacuum_vacuum_scale_factor = 0.01,
+       autovacuum_vacuum_threshold = 500,
+       autovacuum_analyze_scale_factor = 0.02,
+       autovacuum_vacuum_cost_delay = 0,
+       autovacuum_vacuum_cost_limit = 2000);
+
+SELECT pid,
+       relid::regclass AS table_name,
+       phase,
+       heap_blks_total,
+       heap_blks_scanned,
+       heap_blks_vacuumed,
+       index_vacuum_count,
+       max_dead_tuples,
+       num_dead_tuples
+FROM pg_stat_progress_vacuum;
+
+SELECT pid,
+       relid::regclass AS table_name,
+       phase,
+       heap_blks_total,
+       heap_blks_scanned,
+       heap_blks_vacuumed,
+       index_vacuum_count,
+       max_dead_tuples,
+       num_dead_tuples
+FROM pg_stat_progress_vacuum;
+
+SELECT relname,
+       n_dead_tup,
+       reltuples,
+       last_autovacuum,
+       last_autoanalyze,
+       (SELECT setting FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_options_to_table(c.reloptions) o ON true
+        WHERE n.nspname = 'claimsprocess' AND c.relname = t.relname
+        AND o.option_name = 'autovacuum_vacuum_scale_factor') AS scale_factor
+FROM pg_stat_all_tables t
+WHERE schemaname = 'claimsprocess'
+ORDER BY n_dead_tup DESC;
+
+
+
+claimsprocess=# SELECT
+  pid,
+  usename,
+  backend_start,
+  xact_start,
+  now() - xact_start AS xact_age,
+  query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY xact_start ASC
+LIMIT 5;
+   pid   | usename  |         backend_start         |          xact_start           |       xact_age        |                                query
+---------+----------+-------------------------------+-------------------------------+-----------------------+----------------------------------------------------------------------
+ 2746703 |          | 2025-08-10 04:17:02.867011+00 | 2025-08-10 04:25:27.653272+00 | 1 day 15:52:06.685219 | autovacuum: VACUUM stg_customer_320.c52 (to prevent wraparound)
+ 2902485 |          | 2025-08-10 12:03:52.797255+00 | 2025-08-10 12:09:04.854433+00 | 1 day 08:08:29.484058 | autovacuum: VACUUM stg_customer_320.o60 (to prevent wraparound)
+ 3372210 |          | 2025-08-11 09:26:44.686922+00 | 2025-08-11 19:24:02.426139+00 | 00:53:31.912352       | autovacuum: VACUUM ANALYZE claimsprocess.dur_hist_8unlog320_93
+ 3618019 | dt204295 | 2025-08-11 20:06:19.10656+00  | 2025-08-11 20:13:17.559638+00 | 00:04:16.778853       | call stg_global.clm_refresh_claim_error('stg_customer_320', '320')
+ 3537883 | fzhou    | 2025-08-11 16:54:32.567295+00 | 2025-08-11 20:17:34.338491+00 | 00:00:00              | SELECT                                                              +
+         |          |                               |                               |                       |   pid,                                                              +
+         |          |                               |                               |                       |   usename,                                                          +
+         |          |                               |                               |                       |   backend_start,
+                      +
+         |          |                               |                               |                       |   xact_start,
+                      +
+         |          |                               |                               |                       |   now() - xact_start AS xact_age,
+                      +
+         |          |                               |                               |                       |   query
+                      +
+         |          |                               |                               |                       | FROM pg_stat_activity
+                      +
+         |          |                               |                               |                       | WHERE xact_start IS NOT NULL
+                      +
+         |          |                               |                               |                       | ORDER BY xact_start ASC
+                      +
+         |          |                               |                               |                       | LIMIT 5;
+(5 rows)
+
+
+SELECT
+  pid,
+  usename,
+  backend_start,
+  xact_start,
+  now() - xact_start AS xact_age,
+  query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY xact_start ASC
+LIMIT 10;
+
+claimsprocess=# SELECT
+  relname,
+  n_dead_tup,
+  n_live_tup,
+  last_autovacuum,
+  last_autovacuum,
+  last_analyze,
+  last_autoanalyze
+FROM pg_stat_all_tables
+WHERE schemaname = 'claimsprocess'
+  AND relname = 'claim_core_p1_828_202507';
+         relname          | n_dead_tup | n_live_tup |        last_autovacuum        |        last_autovacuum        |         last_analyze          |       last_autoanalyze
+--------------------------+------------+------------+-------------------------------+-------------------------------+-------------------------------+-------------------------------
+ claim_core_p1_828_202507 |         12 |    1783161 | 2025-08-06 10:28:07.933638+00 | 2025-08-06 10:28:07.933638+00 | 2025-08-11 18:57:11.722251+00 | 2025-08-06 10:30:16.834839+00
+(1 row)
+
+claimsprocess=# SELECT * FROM stg_customer_320.pgstattuple('claimsprocess.claim_core_p1_828_202507');
+ table_len  | tuple_count | tuple_len  | tuple_percent | dead_tuple_count | dead_tuple_len | dead_tuple_percent | free_space | free_percent
+------------+-------------+------------+---------------+------------------+----------------+--------------------+------------+--------------
+ 2446024704 |     1789818 | 2234867406 |         91.37 |               12 |          15164 |                  0 |  193154304 |          7.9
+(1 row)

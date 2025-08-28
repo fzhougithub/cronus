@@ -1,0 +1,36 @@
+SELECT
+  schemaname,
+  relname,
+  last_autovacuum,
+  last_autoanalyze,
+  n_dead_tup,
+  n_live_tup,
+  vacuum_count,
+  autovacuum_count
+FROM pg_stat_all_tables
+WHERE schemaname = 'claimsprocess'
+  AND relname LIKE 'claim_core_p1%'
+ORDER BY n_dead_tup DESC;
+
+
+-- Special Check
+
+claimsprocess=# SELECT
+  pid,
+  backend_start,
+  state,
+  wait_event_type,
+  wait_event,
+  query_start,
+  now() - query_start AS running_for,
+  query
+FROM pg_stat_activity
+WHERE state = 'idle in transaction'
+ORDER BY query_start ASC
+LIMIT 10;
+  pid  |        backend_start         |        state        | wait_event_type | wait_event |          query_start          |   running_for   |                                                                             query
+-------+------------------------------+---------------------+-----------------+------------+-------------------------------+-----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 65333 | 2025-08-03 11:35:34.28974+00 | idle in transaction | Client          | ClientRead | 2025-08-11 19:04:32.195553+00 | 00:00:00.000111 | UPDATE "iidr_prod_hddp_claims_admin".TS_BOOKMARK SET STATUSINFO = $1, INTERNAL1 = $2, INTERNAL2 = $3 WHERE SRCSYSID = $4 AND STATUSTYPE = $5 AND STATUSID = $6
+(1 row)
+
+

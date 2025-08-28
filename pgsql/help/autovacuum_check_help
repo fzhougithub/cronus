@@ -1,0 +1,9 @@
+SELECT
+  relname AS table_name,
+  schemaname AS schema_name,
+  last_autovacuum,
+  last_autoanalyze,
+  autovacuum_count,
+  autoanalyze_count
+FROM pg_stat_user_tables
+ORDER BY autovacuum_count DESC;

@@ -1,0 +1,1 @@
+/usr/pgsql-14/bin/repmgr -f /apps/lib/pgsql/14/repmgr/repmgr.conf    primary unregister --node-id=1

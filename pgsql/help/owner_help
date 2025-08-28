@@ -1,0 +1,25 @@
+WITH schema_owner AS (
+  SELECT nspname, nspowner
+  FROM pg_namespace
+  WHERE nspname = 'datamart_humana'
+),
+objects AS (
+  SELECT c.oid, c.relkind, c.relname, c.relowner
+  FROM pg_class c
+  JOIN pg_namespace n ON c.relnamespace = n.oid
+  WHERE n.nspname = 'datamart_humana'
+  UNION ALL
+  SELECT p.oid, 'f'::"char" AS relkind, p.proname AS relname, p.proowner AS relowner
+  FROM pg_proc p
+  JOIN pg_namespace n ON p.pronamespace = n.oid
+  WHERE n.nspname = 'datamart_humana'
+)
+SELECT
+  o.relkind,
+  o.relname,
+  pg_catalog.pg_get_userbyid(o.relowner) AS current_owner,
+  pg_catalog.pg_get_userbyid(so.nspowner) AS schema_owner
+FROM objects o
+CROSS JOIN schema_owner so
+WHERE o.relowner <> so.nspowner;
+

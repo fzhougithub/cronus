@@ -1,0 +1,39 @@
+1. schema level
+
+SELECT nspname AS schema_name,
+       pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+GROUP BY nspname
+ORDER BY SUM(pg_total_relation_size(c.oid)) DESC;
+
+
+2. table level
+SELECT c.oid::regclass AS table_name,
+       pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+       pg_total_relation_size(c.oid) AS total_bytes
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'your_schema_name'  -- replace with your schema
+  AND c.relkind = 'r'                 -- only regular tables
+ORDER BY pg_total_relation_size(c.oid) DESC
+LIMIT 20;
+
+3. toast table
+
+ods_domani=# SELECT c.oid::regclass AS toast_table,
+       pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size
+FROM pg_class c
+WHERE c.reltoastrelid <> 0
+  AND c.oid = 'claimsprocess.claim_message_tracking'::regclass;
+      toast_table       | total_size
+------------------------+------------
+ claim_message_tracking | 7941 GB
+(1 row)
+
+SELECT relname, relkind, pg_size_pretty(pg_total_relation_size(oid)) AS total_size
+FROM pg_class
+WHERE relname LIKE 'pg_toast%' OR relname LIKE 'claim_message_tracking%';
+
+

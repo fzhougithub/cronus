@@ -1,0 +1,4 @@
+for wal in /apps/lib/pgsql/14/data/pg_wal/00000001*; do
+  echo "Processing $wal"
+  pgbackrest --stanza=10-222-200-6 --log-level-console=debug archive-push $wal
+done

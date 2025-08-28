@@ -1,0 +1,52 @@
+-- Show table/view/sequence grants for a role
+SELECT 
+    grantor,
+    grantee,
+    table_schema,
+    table_name,
+    privilege_type
+FROM 
+    information_schema.role_table_grants
+WHERE 
+    grantee = 'your_role_name';
+
+
+
+-- Table/View/Sequence privileges
+SELECT 
+    grantor,
+    grantee,
+    table_schema,
+    table_name,
+    privilege_type
+FROM 
+    information_schema.role_table_grants
+WHERE 
+    grantee = 'your_role_name';
+
+-- Schema USAGE/CREATE
+SELECT 
+    nspname AS schema,
+    has_schema_privilege('your_role_name', n.oid, 'USAGE') AS can_use,
+    has_schema_privilege('your_role_name', n.oid, 'CREATE') AS can_create
+FROM 
+    pg_namespace n;
+
+-- Database CONNECT/CREATE/TEMP
+SELECT 
+    datname AS database,
+    has_database_privilege('your_role_name', d.oid, 'CONNECT') AS can_connect,
+    has_database_privilege('your_role_name', d.oid, 'CREATE') AS can_create,
+    has_database_privilege('your_role_name', d.oid, 'TEMPORARY') AS can_temp
+FROM 
+    pg_database d;
+
+-- Function EXECUTE
+SELECT 
+    proname AS function,
+    n.nspname AS schema,
+    has_function_privilege('your_role_name', p.oid, 'EXECUTE') AS can_execute
+FROM 
+    pg_proc p
+JOIN 
+    pg_namespace n ON p.pronamespace = n.oid;

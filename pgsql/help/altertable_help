@@ -1,0 +1,70 @@
+pct=# alter publication pct_ddc_pub drop table pct_ddc.pct_file, pct_ddc.pct_data;
+ALTER PUBLICATION
+
+ods_domani=# alter subscription pct_ddc_sub refresh publication;
+ALTER SUBSCRIPTION
+
+Apply the change
+
+ods_domani=# show search_path;
+ search_path
+-------------
+ pct_ddc
+(1 row)
+
+
+ods_domani=# \i ExecuteCommand.txt
+UPDATE 1
+ALTER TABLE
+INSERT 0 1
+UPDATE 1
+UPDATE 1
+ALTER TABLE
+INSERT 0 1
+UPDATE 1
+
+pct=# show search_path;
+ search_path
+-------------
+ pct_ddc
+(1 row)
+
+pct=# \i ExecuteCommand.txt
+UPDATE 1
+ALTER TABLE
+INSERT 0 1
+UPDATE 1
+UPDATE 1
+ALTER TABLE
+INSERT 0 1
+UPDATE 1
+
+
+Add table back to replication
+
+
+ods_domani=# truncate table pct_ddc.pct_file;
+TRUNCATE TABLE
+ods_domani=# truncate table pct_ddc.pct_data;
+TRUNCATE TABLE
+
+pct=# alter publication pct_ddc_pub add table pct_ddc.pct_file, pct_ddc.pct_data;
+ALTER PUBLICATION
+
+ods_domani=# alter subscription pct_ddc_sub refresh publication;
+ALTER SUBSCRIPTION
+
+Wait Until 
+
+ods_domani=# SELECT pid,
+       datname,
+       relid::regclass AS table_name,
+       bytes_processed,
+       bytes_total,
+       ROUND(100.0 * bytes_processed / NULLIF(bytes_total, 0), 2) AS pct_done
+FROM pg_stat_progress_copy;
+ pid | datname | table_name | bytes_processed | bytes_total | pct_done
+-----+---------+------------+-----------------+-------------+----------
+(0 rows)
+
+Complete

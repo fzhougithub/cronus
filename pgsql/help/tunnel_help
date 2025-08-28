@@ -1,0 +1,1 @@
+export KUBECONFIG=~/.kube/domanirx-devopshuat-oidc.config

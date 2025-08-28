@@ -1,0 +1,29 @@
+kubectl  port-forward svc/kube-prometheus-stack-alertmanager 9093:9093 -n monitoring
+
+localhost:9093
+
+
+export KUBECONFIG=~/.kube/blue-domanirx-nonclaims-prod-oidc.config
+
+NONCLAIMS
+kubectl config view
+ 
+kubectl get ns
+ 
+ 
+kubectl get pod -n finance
+ 
+ 
+ 
+CLAIMS
+kubectl config view
+ 
+kubectl get ns
+ 
+kubectl get pod -n claims
+export KUBECONFIG=~/.kube/domanirx-devopshuat-oidc.config
+kubectl config view
+kubectl get ns
+kubectl port-forward svc/kube-prometheus-stack-alertmanager 9093:9093 -n monitoring
+
+https://localhost:9093

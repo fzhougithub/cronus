@@ -1,0 +1,69 @@
+The error `ModuleNotFoundError: No module named '_ctypes'` occurs because `_ctypes` is a **built-in Python module** (not a pip-installable package) that requires the `libffi` system library during Python compilation. Your Python 3.8.10 was compiled without proper `libffi` support, which is why this module is missing.
+
+
+### Here's how to fix it (using pyenv, which properly handles dependencies):
+
+#### 1. First, ensure `libffi` is installed via Homebrew
+```bash
+# Install libffi (required for _ctypes)
+brew install libffi
+
+# Link the library so Python can find it
+export PKG_CONFIG_PATH="$(brew --prefix libffi)/lib/pkgconfig"
+```
+
+
+#### 2. Reinstall Python 3.8.10 using pyenv (with proper libffi support)
+Since your current virtual environment was created with a broken Python build, we'll use pyenv to install a fresh, working Python 3.8.10:
+
+```bash
+# Install pyenv if you haven't already
+brew install pyenv
+
+# Add pyenv to your shell config (if not already done)
+echo 'eval "$(pyenv init -)"' >> ~/.zshrc
+source ~/.zshrc
+
+# Install Python 3.8.10 with libffi support
+pyenv install 3.8.10
+```
+
+During installation, pyenv will automatically detect `libffi` and compile Python with `_ctypes` support.
+
+
+#### 3. Create a new virtual environment with the fixed Python
+```bash
+# Delete the old broken virtual environment
+rm -rf ~/work/p38-asb29
+
+# Create a new virtual environment using pyenv's working Python 3.8.10
+pyenv local 3.8.10  # Set 3.8.10 as the local version
+python -m venv ~/work/p38-asb29
+
+# Activate the new environment
+source ~/work/p38-asb29/bin/activate
+```
+
+
+#### 4. Verify `_ctypes` works
+```bash
+python -c "import _ctypes; print('Success!')"
+```
+
+You should now see `Success!` printed, confirming the module is working.
+
+
+#### 5. Install Ansible 2.9.27
+With the fixed Python environment, Ansible will install correctly:
+```bash
+pip install --upgrade pip
+pip install ansible==2.9.27
+```
+
+
+### Why this works:
+- `_ctypes` is not a separate package but a built-in module that requires `libffi` during Python compilation.
+- Pyenv handles the compilation process properly, ensuring `libffi` is detected and linked.
+- Reinstalling Python with pyenv guarantees the correct dependencies are included.
+
+This will resolve the `_ctypes` error and allow you to install Ansible successfully.

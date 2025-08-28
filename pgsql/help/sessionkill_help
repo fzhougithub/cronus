@@ -1,0 +1,6 @@
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'fdb'
+  AND pid <> pg_backend_pid();
+drop schema fdb45 cascade;
+create schema fdb45;

@@ -1,0 +1,98 @@
+0. install package
+yum install rpmdevtools -y
+
+1. as root, build the rpm directory
+/root
+[root@finance-db-01-alma8-olly-drx-kc ~]$ tree rpmbuild
+rpmbuild
+├── BUILD
+├── BUILDROOT
+├── RPMS
+│   └── noarch
+│       └── checklog-1.0-1.el8.noarch.rpm
+├── SOURCES
+│   ├── checklog.py
+│   └── checklog.service
+├── SPECS
+│   └── checklog.spec
+└── SRPMS
+    └── checklog-1.0-1.el8.src.rpm
+Just create required directory is enough, the rest will be filled later
+
+2. cd rpmbuild/SOURCES
+cp /usr/local/bin/checklog.py .
+cp /etc/systemd/system/checklog.service .
+
+3. cd rpmbuild/SPECS
+vi checklog.spec
+Name:           checklog
+Version:        1.0
+Release:        1%{?dist}
+Summary:        PostgreSQL ERROR log watcher daemon
+
+License:        GPL
+URL:            https://yourproject.example.com
+Source0:        checklog.py
+Source1:        checklog.service
+
+BuildArch:      noarch
+
+Requires:       python3
+Requires(post): systemd
+Requires(pre):  systemd
+Requires(postun): systemd
+Requires(preun): systemd
+
+%description
+A daemon to monitor PostgreSQL logs and extract ERROR lines.
+
+%prep
+# nothing to prepare
+
+%build
+# no build necessary
+
+%install
+mkdir -p %{buildroot}/usr/local/bin
+install -m 755 %{SOURCE0} %{buildroot}/usr/local/bin/checklog.py
+
+mkdir -p %{buildroot}/etc/systemd/system
+install -m 644 %{SOURCE1} %{buildroot}/etc/systemd/system/checklog.service
+
+%post
+%systemd_post checklog.service
+
+%preun
+%systemd_preun checklog.service
+
+%postun
+%systemd_postun_with_restart checklog.service
+
+%files
+/usr/local/bin/checklog.py
+/etc/systemd/system/checklog.service
+
+%changelog
+* Wed Aug 20 2025 Frank Zhou <fzhou@ssnc-corp.global> - 1.0-1
+- Initial RPM release
+
+4. rpmdev-setuptree
+
+5. rpmbuild -ba SPECS/checklog.spec
+
+Then, you get the rpm file
+
+[root@finance-db-01-alma8-olly-drx-kc ~]$ tree rpmbuild/
+rpmbuild/
+├── BUILD
+├── BUILDROOT
+├── RPMS
+│   └── noarch
+│       └── checklog-1.0-1.el8.noarch.rpm
+├── SOURCES
+│   ├── checklog.py
+│   └── checklog.service
+├── SPECS
+│   └── checklog.spec
+└── SRPMS
+    └── checklog-1.0-1.el8.src.rpm

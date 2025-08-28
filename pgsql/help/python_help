@@ -1,0 +1,5 @@
+curl -O https://www.python.org/ftp/python/3.6.8/python-3.6.8-macosx10.9.pkg
+open python-3.6.8-macosx10.9.pkg
+/Library/Frameworks/Python.framework/Versions/3.6/bin/python3.6 -m venv ~/work/p36
+cd /Users/fzhou/work1/domanirx-infra/terraform/environments/domanirx/olly/databases/finance-db-01-alma8/ansible
+

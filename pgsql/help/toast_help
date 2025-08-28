@@ -1,0 +1,89 @@
+-- See how much data is being TOASTed and compression effectiveness
+SELECT
+  n.nspname as schema,
+  pg_size_pretty(pg_total_relation_size(c.oid)) as total_size,
+  pg_size_pretty(pg_relation_size(c.oid)) as table_size,
+  pg_size_pretty(pg_total_relation_size(c.oid) - pg_relation_size(c.oid)) as toast_size,
+  round((pg_relation_size(c.oid)::numeric / pg_total_relation_size(c.oid)) * 100, 2) as table_percent
+FROM pg_class c
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE c.relname = 'claim_message_tracking';
+
+
+-- -- More reasonable setting if you really need to adjust (rarely necessary)
+-- ALTER TABLE claim_message_tracking SET (toast_tuple_target = 1500);
+
+
+SELECT 
+  relname,
+  pg_size_pretty(pg_total_relation_size(oid)) as total_size,
+  pg_size_pretty(pg_relation_size(oid)) as table_size,
+  pg_size_pretty(pg_total_relation_size(oid) - pg_relation_size(oid)) as toast_size
+FROM pg_class 
+WHERE relname = 'claim_message_tracking';
+
+SELECT relname, reloptions 
+FROM pg_class 
+WHERE relkind = 't' 
+AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'pg_toast');
+
+
+SELECT
+  c.relname AS source_table_name,
+  c.relpages AS source_table_number_of_pages,
+  c.reltuples AS source_table_number_of_tuples,
+  c.reltoastrelid AS toast_table_oid,
+  t.relname AS toast_table_name,
+  t.relpages AS toast_table_number_of_pages,
+  t.reltuples AS toast_table_number_of_tuples
+FROM
+  pg_class c
+JOIN
+  pg_class t ON c.reltoastrelid = t.oid
+WHERE
+  c.relname = 'claim_message_tracking'
+  AND c.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'claimsprocess');
+
+SELECT
+  c.table_name,
+  c.column_name,
+  a.attstorage,
+  CASE a.attstorage
+    WHEN 'p' THEN 'plain'
+    WHEN 'm' THEN 'main'
+    WHEN 'e' THEN 'external'
+    WHEN 'x' THEN 'extended'
+  END as storage_type
+FROM information_schema.columns c
+JOIN pg_attribute a ON c.column_name = a.attname
+JOIN pg_class tbl ON tbl.oid = a.attrelid
+JOIN pg_namespace nsp ON nsp.oid = tbl.relnamespace
+WHERE c.table_name = 'claim_message_tracking'
+AND c.data_type = 'jsonb'
+AND nsp.nspname = 'claimsprocess'; -- or your schema name
+
+SELECT 
+  oid,
+  relname,
+  reltoastrelid,
+  (SELECT relname FROM pg_class WHERE oid = c.reltoastrelid) as toast_table_name
+FROM pg_class c
+WHERE relname = 'claim_message_tracking';
+
+SELECT 
+  c.oid,
+  c.relname,
+  n.nspname as schema_name,
+  pg_size_pretty(pg_total_relation_size(c.oid)) as total_size,
+  pg_size_pretty(pg_relation_size(c.oid)) as table_size,
+  pg_size_pretty(pg_total_relation_size(c.oid) - pg_relation_size(c.oid)) as toast_size
+FROM pg_class c
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE c.relname = 'claim_message_tracking'
+ORDER BY pg_total_relation_size(c.oid) DESC;
+
+# For each schema
+pg_dump -Fc -n schema_name -t claim_message_tracking source_db > schema_dump.dump
+pg_restore -d target_db -n schema_name schema_dump.dump
+
+# Then create subscription with copy_data = false

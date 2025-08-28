@@ -1,0 +1,59 @@
+WITH recursive partition_tree AS (
+    -- Start with the given table oid
+    SELECT oid AS relid, relname AS tablename
+    FROM pg_class
+    WHERE oid = 'claimsprocess.claim_message_tracking'::regclass
+
+    UNION ALL
+
+    -- Recursively collect partitions
+    SELECT c.oid, c.relname
+    FROM pg_inherits i
+    JOIN pg_class c ON c.oid = i.inhrelid
+    JOIN partition_tree pt ON pt.relid = i.inhparent
+)
+SELECT
+    SUM(pg_total_relation_size(relid)) AS total_size_bytes,
+    pg_size_pretty(SUM(pg_total_relation_size(relid))) AS total_size_pretty
+FROM
+    partition_tree;
+
+
+
+WITH recursive partition_tree AS (
+  -- Start with all tables in the target schema
+  SELECT oid AS relid, relname AS tablename
+  FROM pg_class c
+  JOIN pg_namespace n ON c.relnamespace = n.oid
+  WHERE n.nspname = 'claimsprocess' -- Replace with your schema name
+    AND c.relkind IN ('r', 'p')     -- 'r' = ordinary table, 'p' = partitioned table
+
+  UNION ALL
+
+  -- Recursively find partitions for partitioned tables
+  SELECT c.oid, c.relname
+  FROM pg_inherits i
+  JOIN pg_class c ON c.oid = i.inhrelid
+  JOIN partition_tree pt ON pt.relid = i.inhparent
+)
+SELECT
+  pt.tablename,
+  pg_size_pretty(SUM(pg_total_relation_size(pt.relid))) AS total_size,
+  SUM(pg_total_relation_size(pt.relid)) AS total_size_bytes
+FROM partition_tree pt
+GROUP BY pt.tablename
+ORDER BY total_size_bytes DESC;
+
+                   tablename                    | total_size | total_size_bytes
+------------------------------------------------+------------+------------------
+ claim_message_tracking                         | 895 GB     |     960577642496
+ claim_message                                  | 172 GB     |     184602574848
+ claim_component_block_information              | 41 GB      |      43915239424
+ claim_extension_1_25                           | 29 GB      |      31129649152
+ claim_processing_system_error                  | 27 GB      |      28502106112
+ claim_extension_1_24                           | 19 GB      |      20140883968
+ pos_transaction_raw_data                       | 16 GB      |      17700323328
+ claim_core_23                                  | 12 GB      |      12829392896
+ pos_transaction_formatted_claim_detail         | 11 GB      |      11576451072
+
+

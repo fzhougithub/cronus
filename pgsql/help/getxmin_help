@@ -1,0 +1,50 @@
+claimsprocess=# SELECT datname, age(datfrozenxid), datfrozenxid, datminmxid, age(datminmxid)
+FROM pg_database;
+    datname    |    age    | datfrozenxid | datminmxid |    age
+---------------+-----------+--------------+------------+------------
+ postgres      | 138041065 |    102706821 |          1 | 2147483647
+ repmgr        | 138041065 |    102706821 |          1 | 2147483647
+ template1     |  88041065 |    152706821 |    2826255 |  237921631
+ template0     |  88041065 |    152706821 |    2826255 |  237921631
+ claimsprocess | 238958733 |      1789153 |          1 | 2147483647
+(5 rows)
+
+claimsprocess=# SELECT pid,
+       usename,
+       state,
+       backend_xid,
+       backend_xmin,
+       xact_start,
+       query_start,
+       wait_event_type,
+       wait_event,
+       query
+FROM pg_stat_activity
+WHERE backend_xmin IS NOT NULL
+  AND backend_xmin::text = '240491835'
+ORDER BY xact_start;
+ pid | usename | state | backend_xid | backend_xmin | xact_start | query_start | wait_event_type | wait_event | query
+-----+---------+-------+-------------+--------------+------------+-------------+-----------------+------------+-------
+(0 rows)
+
+
+claimsprocess=# SELECT pid,
+       usename,
+       state,
+       backend_xid,
+       backend_xmin,
+       xact_start,
+       query_start,
+       wait_event_type,
+       wait_event,
+       query
+FROM pg_stat_activity
+WHERE backend_xmin IS NOT NULL
+  AND backend_xmin::text <= '241019934'
+ORDER BY backend_xmin::text;
+   pid   | usename | state  | backend_xid | backend_xmin |          xact_start           |          query_start          | wait_event_type | wait_event  |                                  query
+---------+---------+--------+-------------+--------------+-------------------------------+-------------------------------+-----------------+-------------+-------------------------------------------------------------------------
+ 4041446 |         | active |             |    240825295 | 2025-08-12 06:27:04.701363+00 | 2025-08-12 06:27:04.701363+00 | Timeout         | VacuumDelay | autovacuum: VACUUM ANALYZE stg_customer_320.c52 (to prevent wraparound)
+(1 row)
+
+!!! Remember above issue, very funny and interesting!!!

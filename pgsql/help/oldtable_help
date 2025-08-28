@@ -1,0 +1,18 @@
+ods_domani=# SELECT 'vacuum(freeze,ANALYZE, DISABLE_PAGE_SKIPPING)'||c.oid::regclass||';'
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind IN ('r','m')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND c.relfrozenxid::text::bigint < 30000
+ORDER BY age(c.relfrozenxid) DESC;
+
+
+SELECT c.oid::regclass AS table_name,
+       c.relfrozenxid,
+       age(c.relfrozenxid) AS xid_age
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind IN ('r','m')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  and c.relfrozenxid::text::bigint<30000
+ORDER BY age(c.relfrozenxid) DESC;
