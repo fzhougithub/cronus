@@ -1,0 +1,17 @@
+-- See which tables are stuck in sync
+SELECT
+    srrelid::regclass as table_name,
+    srsubstate,
+    CASE srsubstate
+        WHEN 'i' THEN 'INITIALIZING'
+        WHEN 'd' THEN 'DATA COPY'
+        WHEN 'f' THEN 'FINISHED COPY'
+        WHEN 's' THEN 'SYNCHRONIZED'
+        WHEN 'r' THEN 'READY'
+        ELSE 'UNKNOWN'
+    END as state_description
+FROM pg_subscription_rel
+WHERE srsubstate NOT IN ('s', 'r')
+ORDER BY srsubstate;
+
+

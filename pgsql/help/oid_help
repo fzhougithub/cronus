@@ -1,0 +1,40 @@
+test=# SELECT oid, datname FROM pg_database;
+  oid   |    datname
+--------+---------------
+      1 | template1
+  14485 | template0
+  68404 | test
+  68405 | postgres
+ 219591 | claimsprocess
+ 219592 | benefits
+ 219593 | finance
+  68406 | ods_domani
+(8 rows)
+
+SELECT pg_class.relfilenode,relname, relkind, nspname
+FROM pg_class
+JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid;
+
+or
+
+SELECT pg_class.relfilenode,relname, relkind, nspname
+FROM pg_class
+JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid where relfilenode=1542521979;
+ relfilenode |    relname    | relkind |    nspname
+-------------+---------------+---------+---------------
+  1542521979 | claim_message | r       | claimsprocess
+(1 row)
+
+and
+
+test=# select pg_total_relation_size('claimsprocess.claim_message')/1024/1024/1024;
+ ?column?
+----------
+       10
+(1 row)
+
+[postgres@ods-db-01-alma8-uatpls 68404]$ ls -larth|grep  1542521982|wc -l
+12
+
+Funny funny, funny
+

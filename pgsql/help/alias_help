@@ -1,0 +1,6 @@
+alias currentlog='tail -f /pg_logs/$(ls -t /pg_logs/|head -1)'
+alias repmgr='/usr/pgsql-17/bin/repmgr -f /apps/lib/pgsql/17/repmgr/repmgr.conf'
+alias pgbackr='pgbackrest --stanza=$(hostname|cut -d. -f1)'
+alias pgconfig='cat /apps/lib/pgsql/17/data/postgresql.conf'
+alias hbaconfig='cat /apps/lib/pgsql/17/data/pg_hba.conf'
+

@@ -1,4 +1,6 @@
-1. Create the ticket description, refer to devops-9838
+https://domanirx.atlassian.net/browse/DEVOPS-10708
+
+1. Create the ticket description, refer to devops-9839
 
 We add 2TB into app, 
 
@@ -48,7 +50,12 @@ type in , and complete it.
 
 git push origin <branch name>
 
+cd to the directory contain main.tf file
+
 #AWS_PROFILE='prod' terraform init --upgrade
+
+source ~/vault-nonprod
+
 AWS_PROFILE='non-prod' terraform init
 AWS_PROFILE='non-prod' terraform plan
 
@@ -64,8 +71,22 @@ Then, pull request got generated.
 
 
 Copy the difference (pull request link) between the code change to the ticket. 
+``` terraform
+
+Copy from Terraform will perform the following actions:
+....
+Plan: 0 to add, 2 to change, 0 to destroy.
+
+```
 
 Then, copy the pull request to devops channel for review and approval
+
+If there is something need to be changed in 
+git commit --amend
+DEVOPS-10708 Add space for apps and pg_backup for ods-db-01-alma8 in HUAT
+
+git push origin DEVOPS-10708-add-space-to-huat-db-kc -f
+
 
 Then, go to "Technical Scrum of Scrum Channel" to notify people, 
 @Everyone, we are doing maintenance on UATPLS ODS db server, The database will be donw for 5 to 10 minutes. 
@@ -103,7 +124,8 @@ pvresize /dev/sdd
 
 Now,
 
-lvresize -r -L +1996G /dev/mapper/appsvg-appslv
+lvextend -r -l +100%FREE /dev/mapper/appsvg-appslv
+#lvresize -r -L +1996G /dev/mapper/appsvg-appslv
 df -h
 
 Now you can see the size of /apps changed. 

@@ -1,0 +1,20 @@
+SELECT subname, srrelid::regclass AS table, srsubstate, srsublsn
+FROM pg_subscription_rel
+JOIN pg_stat_subscription ON subid = subid
+WHERE subname IN ('qc_finance_other_sub', 'qc_encounters_other_sub', 'qc_encounters_global_sub');
+
+
+SELECT slot_name, active, wal_status, restart_lsn, confirmed_flush_lsn
+FROM pg_replication_slots
+WHERE slot_name IN ('qc_finance_other_sub', 'qc_encounters_other_sub', 'qc_encounters_global_sub');
+
+FK
+
+SELECT conname, conrelid::regclass AS table, confrelid::regclass AS referenced_table
+FROM pg_constraint
+WHERE contype = 'f' AND conrelid IN (SELECT oid FROM pg_class WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'finance_other'));
+
+
+
+
+

@@ -9,7 +9,7 @@ NONCLAIMS
 kubectl config view
  
 kubectl get ns
- 
+kubectl get pods -n monitoring -o wide 
  
 kubectl get pod -n finance
  
@@ -27,3 +27,7 @@ kubectl get ns
 kubectl port-forward svc/kube-prometheus-stack-alertmanager 9093:9093 -n monitoring
 
 https://localhost:9093
+
+kubectl get pods --all-namespaces --field-selector spec.nodeName=k-226nhm55jqag21ar5ee2pqf79rr4kv8u-md-00000-v7-c4n7t -o custom-columns=NAMESPACE:.metadata.namespace,PODNAME:.metadata.name
+
+

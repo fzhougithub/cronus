@@ -1,0 +1,5 @@
+pg_restore -a -d claimsprocess -Fd /var/tmp/devops-10957/ -n claimsprocess_humana
+pg_restore -h claimshumana-db-01-rtl-drx-kc.ssnc-corp.cloud -d claimsprocess -Fd /pg_backups/p_claimsprocess_humana.claim_extension_2 -U fzhou -v -j 5
+bzcat claimsprocess.20250827001000.backup.bz2 | pg_restore -p 5433 -d claimsprocess -Fc -j 6 -v
+
+

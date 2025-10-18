@@ -1,0 +1,27 @@
+ssh-copy-id -i ~/.ssh/id_rsa.pub 10-222-73-109.ssnc-corp.cloud
+
+source ~/vault-nonprod
+source work/p312/bin/activate
+
+
+git clone git@code.ssnc.dev:pharmacy/domanirx-infra.git
+cd domanirx-infra
+git fetch origin
+git branchs
+git checkout -b DEVOPS-11135-increase-finance-qc-capacity
+git add terraform/environments/domanirx/qc/databases/finance-db-01-alma8/ansible/vars/finance.yaml
+git add terraform/environments/domanirx/qc/databases/finance-db-01-alma8/main.tf
+
+git commit -m "DEVOPS-11135 Increase Capacity for finance qc"
+git rm ../../../../../../.idea/inspectionProfiles/profiles_settings.xml ../../../../../../.idea/misc.xml ../../../../../../.idea/modules.xml ../../../../../../.idea/vcs.xml
+git status
+git commit --amend --no-edit
+git push origin DEVOPS-11135-increase-finance-qc-capacity
+
+AWS_PROFILE='non-prod' terraform init
+AWS_PROFILE='non-prod' terraform plan
+AWS_PROFILE='non-prod' terraform apply
+
+ansible-playbook ./playbook.yaml --diff --check
+ansible-playbook ./playbook.yaml --diff -e "postgresql_restart_allowed=yes"
+

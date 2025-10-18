@@ -1,0 +1,5 @@
+grep -i 'alter table' *.sql|egrep -vi '\--|insert'|cut -d: -f2|awk '{print $3}'|sort|uniq|tr -d '\r' |sed "s/.*/'&'/g"
+
+cat 2025R6_global_uat_ddl.sql|grep -i 'alter table'|awk '{print $3}'|sort|uniq|sed 's/.*/"&"/'|paste -sd',' -
+
+for i in $(cat list);do echo --table=$i;done|paste -sd ' ' /dev/stdin

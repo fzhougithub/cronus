@@ -1,3 +1,31 @@
+pgbackrest --stanza=10-222-57-191 restore --type=time --target="2025-09-04 05:10:00" --delta --pg1-path=/apps/lib/pgsql/14/data1
+
+2025-09-05 02:19:35.776 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2025-09-05 02:19:35.776 P00   INFO: restore size = 1456.3GB, file total = 13034
+2025-09-05 02:19:35.778 P00   INFO: restore command end: completed successfully (4229387ms)
+
+pgbackrest --stanza=10-222-57-191 restore --type=time --target="2025-09-04 05:10:00" --delta --pg1-path=/apps/lib/pgsql/14/data1
+just remember above command!
+
+
+
+After start, the backend process like
+[postgres@claims-db-01-alma8-rtl-drx-kc 14]$ ps -ef|grep pgbackrest
+postgres    1833       1  0 Aug03 ?        00:05:19 /usr/local/bin/pgbackrest_exporter --backrest.config=/etc/pgbackrest.conf --web.listen-address=0.0.0.0:9854
+postgres 2953045 2952026  0 01:09 pts/0    00:00:00 pgbackrest --stanza=10-222-57-191 restore --type=time --target=2025-09-04 05:10:00 --delta --pg1-path=/apps/lib/pgsql/14/data1
+postgres 2953046 2953045 92 01:09 pts/0    00:50:34 pgbackrest --exec-id=2953045-a91ed4e0 --log-level-console=off --log-level-file=off --log-level-stderr=error --pg1-path=/apps/lib/pgsql/14/data1 --process=1 --remote-type=repo --stanza=10-222-57-191 restore:local
+postgres 2954985 2951624  0 02:03 pts/4    00:00:00 grep --color=auto pgbackrest
+
+The command screen output like
+
+[postgres@ 14]$ pgbackrest --stanza=10-222-57-191 restore --type=time --target="2025-09-04 05:10:00" --delta --pg1-path=/apps/lib/pgsql/14/data1
+2025-09-05 01:09:06.391 P00   INFO: restore command begin 2.56.0: --delta --exec-id=2953045-a91ed4e0 --lock-path=/pg_backups/tmp --log-level-console=info --log-level-file=detail --log-path=/pg_logs/pgbackrest --pg1-path=/apps/lib/pgsql/14/data1 --repo1-path=/pg_backups --spool-path=/pg_backups/archive/spool --stanza=10-222-57-191 --target="2025-09-04 05:10:00" --type=time
+2025-09-05 01:09:06.392 P00   WARN: --delta or --force specified but unable to find 'PG_VERSION' or 'backup.manifest' in '/apps/lib/pgsql/14/data1' to confirm that this is a valid $PGDATA directory. --delta and --force have been disabled and if any files exist in the destination directories the restore will be aborted.
+2025-09-05 01:09:06.476 P00   INFO: repo1: restore backup set 20250831-093001F_20250903-230001I, recovery will start at 2025-09-03 23:00:01
+2025-09-05 01:09:06.476 P00   INFO: remap data directory to '/apps/lib/pgsql/14/data1'
+
+
+
 The pgbackrest has its own log, /pg_logs/pgbackrest/10-222-56-182-backup.log
 
 pgbackrest info --stanza=10-222-254-160|awk '/repo1/ {print}'
@@ -155,4 +183,9 @@ lock-path=/var/run/pgbackrest  # for locks only
 ---
 
 Let me know if you'd like help checking the new config after you edit it.
+
+pgbackrest --stanza=your_stanza --delta --pg1-path=/new/location/data restore
+ 
+pgbackrest --stanza=10-222-87-6 restore   --type=time   --target="2025-08-12 02:59:40.354828+00"   --delta
+ 
 

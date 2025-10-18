@@ -1,3 +1,11 @@
+cat lumilist|sed "s/.*/'&'/g"
+
+grep -irl "log_duration" * | grep yaml | xargs sed -i '' -E '/- option: log_duration/{n;N;s/\n[[:space:]]*value: off//;}' 
+
+grep -irl "log_duration" * | grep yaml | xargs sed -n -E '/log_duration/{n;s/(value:)[[:space:]]*on/\1 off/p;}'
+
+grep -irl "log_min_duration_statement" * | grep yaml | xargs sed -i '' -E '/log_min_duration_statement/{n;s/(value:)[[:space:]]*0/\1 100/;}'
+
 sed 's/[ \t]*$//' a
 above remove the line contains either space or tab only
 

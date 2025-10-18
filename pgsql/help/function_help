@@ -1,3 +1,25 @@
+SELECT 
+  'ALTER FUNCTION ' || 
+  quote_ident(nsp.nspname) || '.' || 
+  quote_ident(p.proname) || '(' || 
+  pg_get_function_identity_arguments(p.oid) || 
+  ') OWNER TO postgres;' AS alter_owner_statement
+FROM pg_proc p
+JOIN pg_namespace nsp ON p.pronamespace = nsp.oid
+WHERE pg_get_userbyid(p.proowner) = 'fzhou';
+
+
+
+SELECT proname, prosrc
+FROM pg_proc
+WHERE proname IN ('verify_date_value', 'verify_time_value')
+AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'stg_global');
+
+
+
+
+
+
 claimsprocess=# SELECT pg_get_functiondef(p.oid)
 claimsprocess-# FROM pg_proc p
 claimsprocess-# JOIN pg_namespace n ON n.oid = p.pronamespace

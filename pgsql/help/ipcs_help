@@ -1,0 +1,6 @@
+ipcs -l
+ipcs -s
+ipcs -a
+
+sysctl kernel.sem
+top -H -p <postgresql pid>

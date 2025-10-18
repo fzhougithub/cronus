@@ -1,0 +1,18 @@
+SELECT local_id, external_id, remote_lsn, local_lsn 
+FROM pg_replication_origin_status;
+
+SELECT s.subname, r.roname
+FROM pg_subscription s
+JOIN pg_replication_origin r
+  ON r.roname = 'pg_' || s.oid::text;
+
+
+SELECT * from pg_replication_origin;
+
+SELECT pg_replication_origin_advance
+
+SELECT pg_replication_origin_reset();
+
+SELECT pg_replication_origin_advance('origin_name', 'LSN_position');
+
+

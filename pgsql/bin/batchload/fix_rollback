@@ -1,0 +1,35 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 "run number"
+	echo "e.g: $0 "09"
+	exit 1
+fi
+
+log=run_insert_$1.log
+source=run_insert_$1
+error_id=error_$1
+keep_row=keep_row_$1
+delete_row=delete_row_$1
+redo=redo_$1
+fix=rerun_$1
+
+./check_rollback $log $source|grep exists |awk '{print $3,$4,$5}'|sed 's/[() ]//g'|sed 's/=/,/g'> $error_id
+
+while read -r l 
+do
+	echo $l |awk -F',' '{print "insert into claim_p_keep select * from claim_p where customer_id="$3" and claim_id='\''"$4"'\'';"}'
+done < $error_id > $keep_row
+
+while read -r l 
+do
+	echo $l |awk -F',' '{print "delete from claim_p where customer_id="$3" and claim_id='\''"$4"'\'';"}'
+done < $error_id > $delete_row
+
+./check_rollback run_insert_09.log run_insert_09|egrep 'set|insert_prod'|grep -v ERROR > $redo
+
+echo "\i $keep_row" > $fix
+echo "\i $delete_row" >> $fix
+echo "\i $redo" >> $fix
+
+cat $fix

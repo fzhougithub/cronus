@@ -1,0 +1,26 @@
+-- Reset failed table to retry sync
+UPDATE pg_subscription_rel
+SET srsubstate = 'i'
+WHERE srrelid = 'schema.table'::regclass
+  AND srsubid = (SELECT oid FROM pg_subscription WHERE subname = 'your_sub');
+
+-- Then restart subscription
+ALTER SUBSCRIPTION your_sub REFRESH PUBLICATION;
+
+
+
+
+SELECT srrelid::regclass, srsubstate
+FROM pg_subscription_rel
+WHERE srsubid = 523350909
+  AND srsubstate <> 'r';
+
+SELECT relname
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'finance_global'
+EXCEPT
+SELECT srrelid::regclass::text
+FROM pg_subscription_rel
+WHERE srsubid = 523350909;
+

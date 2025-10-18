@@ -1,12 +1,58 @@
+create subscription uatpls_finance_other_sub connection 'host=10.222.223.132 dbname=financials port=5432' publication uatpls_finance_other_pub with (copy_data=false);
+
+crt_sub="CREATE SUBSCRIPTION ${subname} connection 'host=${publisher} dbname=${pub_db} port=${pub_port}' PUBLICATION ${pubname} ;"
+create subscription qc_finance_other_sub connection 'host=10.222.73.109 dbname=financials port=5432' publication qc_finance_other_pub;
+
 No.1
 SELECT application_name, state, sent_lsn, write_lsn, flush_lsn, replay_lsn
 FROM pg_stat_replication;
 
+SELECT * FROM pg_stat_subscription where received_lsn is null and last_msg_send_time is null;
+
+SELECT srsubid, srrelid::regclass, srsubstate, srsublsn FROM pg_subscription_rel where srsubstate <> 'r';
+
 Is nothing there, forget the other, the replication broken!
 
-
-
 !!!! Very careful, you can create issue
+
+ods_domani=# SELECT srrelid::regclass AS table_name,srsubstate FROM pg_subscription_rel WHERE srsubstate != 'r';
+              table_name              | srsubstate
+--------------------------------------+------------
+ claimsprocess.claim_message_tracking | d
+(1 row)
+
+SELECT n.nspname AS schema_name, c.relname AS table_name, sr.srsubstate
+FROM pg_subscription_rel sr
+JOIN pg_class c ON c.oid = sr.srrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE sr.srsubstate != 'r';
+
+SELECT a.pid, a.wait_event_type, a.wait_event, a.query, a.state
+FROM pg_stat_activity a
+WHERE a.backend_type LIKE '%logical%'
+AND a.wait_event IS NOT NULL;
+
+SELECT
+    'Subscription' as type,
+    subname,
+    subenabled::text as status,
+    array_to_string(subpublications, ',') as publications
+FROM pg_subscription
+WHERE subname = 'qc_finance_other_sub'
+UNION ALL
+SELECT
+    'Table Status' as type,
+    c.relname as subname,
+    sr.srsubstate as status,
+    '' as publications
+FROM pg_subscription_rel sr
+JOIN pg_class c ON c.oid = sr.srrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'finance_other'
+AND sr.srsubstate != 'r'
+LIMIT 10;
+
+
 
 SELECT
   srrelid::regclass AS table_name,
@@ -14,6 +60,17 @@ SELECT
 FROM pg_subscription_rel
 WHERE srsubstate != 'r';
 
+ods_domani=# SELECT pid,
+       datname,
+       relid::regclass AS table_name,
+       bytes_processed,
+       bytes_total,
+       ROUND(100.0 * bytes_processed / NULLIF(bytes_total, 0), 2) AS pct_done
+FROM pg_stat_progress_copy;
+   pid   |  datname   | table_name | bytes_processed | bytes_total | pct_done
+---------+------------+------------+-----------------+-------------+----------
+ 1206607 | ods_domani | pct_data   |      4798518180 |           0 |
+(1 row)
 
 
 This should always be null, if there is d, must be wrong!
@@ -70,3 +127,64 @@ SELECT
 FROM pg_subscription_rel
 WHERE srsubstate != 'r';
 
+
+SELECT
+    s.subname,
+    r.roident,
+    r.roname
+FROM
+    pg_subscription s
+JOIN
+    pg_replication_origin r
+ON
+    r.roname = 'pg_' || s.oid::text;
+
+
+SELECT
+   s.subname,
+   sr.srrelid,
+   r.roident,
+   r.roname
+FROM
+   pg_subscription s
+JOIN
+   pg_subscription_rel sr ON sr.srsubid = s.oid
+JOIN
+   pg_replication_origin r ON r.roname = 'pg_' || sr.srrelid::text;
+
+
+ods_domani=# alter subscription qc_finance_other_test_sub disable;
+ALTER SUBSCRIPTION
+Time: 71.805 ms
+ods_domani=# alter subscription qc_finance_other_test_sub set(slot_name = none);
+ALTER SUBSCRIPTION
+Time: 75.911 ms
+ods_domani=# drop subscription qc_finance_other_test_sub;
+DROP SUBSCRIPTION
+Time: 75.977 ms
+
+SELECT subname, received_lsn, last_msg_send_time, last_msg_receipt_time, latest_end_lsn, latest_end_time
+FROM pg_stat_subscription where received_lsn is null order by subname;
+         subname          | received_lsn |      last_msg_send_time       |     last_msg_receipt_time     | latest_end_lsn |        latest_end_time
+--------------------------+--------------+-------------------------------+-------------------------------+----------------+-------------------------------
+ qc_encounters_global_sub |              | 2025-09-26 08:09:21.621798+00 | 2025-09-26 08:09:21.621798+00 |                | 2025-09-26 08:09:21.621798+00
+ qc_encounters_global_sub |              | 2025-09-26 08:09:21.630524+00 | 2025-09-26 08:09:21.630524+00 |                | 2025-09-26 08:09:21.630524+00
+ qc_encounters_global_sub |              | 2025-09-26 08:09:21.607491+00 | 2025-09-26 08:09:21.607491+00 |                | 2025-09-26 08:09:21.607491+00
+ qc_encounters_other_sub  |              | 2025-09-26 08:09:21.593202+00 | 2025-09-26 08:09:21.593202+00 |                | 2025-09-26 08:09:21.593202+00
+ qc_encounters_other_sub  |              | 2025-09-26 08:09:21.604971+00 | 2025-09-26 08:09:21.604971+00 |                | 2025-09-26 08:09:21.604971+00
+ qc_encounters_other_sub  |              | 2025-09-26 08:09:21.611782+00 | 2025-09-26 08:09:21.611782+00 |                | 2025-09-26 08:09:21.611782+00
+ qc_encounters_other_sub  |              | 2025-09-26 08:09:21.624336+00 | 2025-09-26 08:09:21.624336+00 |                | 2025-09-26 08:09:21.624336+00
+ qc_encounters_other_sub  |              | 2025-09-26 08:09:21.554827+00 | 2025-09-26 08:09:21.554827+00 |                | 2025-09-26 08:09:21.554827+00
+ qc_finance_other_sub     |              | 2025-09-26 08:09:21.484216+00 | 2025-09-26 08:09:21.484216+00 |                | 2025-09-26 08:09:21.484216+00
+ qc_finance_other_sub     |              | 2025-09-26 08:09:21.510939+00 | 2025-09-26 08:09:21.510939+00 |                | 2025-09-26 08:09:21.510939+00
+ qc_finance_other_sub     |              | 2025-09-26 08:09:21.488644+00 | 2025-09-26 08:09:21.488644+00 |                | 2025-09-26 08:09:21.488644+00
+ qc_finance_other_sub     |              | 2025-09-26 08:09:21.505736+00 | 2025-09-26 08:09:21.505736+00 |                | 2025-09-26 08:09:21.505736+00
+ qc_finance_other_sub     |              | 2025-09-26 08:09:21.651942+00 | 2025-09-26 08:09:21.651942+00 |                | 2025-09-26 08:09:21.651942+00
+(13 rows)
+
+CREATE SUBSCRIPTION subscription_name
+    CONNECTION 'conninfo'
+    PUBLICATION publication_name [, ...]
+    [ WITH ( subscription_parameter [= value] [, ... ] ) ]
+
+WITH (copy_data=true, enabled = false)

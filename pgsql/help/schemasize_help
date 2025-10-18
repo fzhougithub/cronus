@@ -25,6 +25,6 @@ JOIN
     pg_namespace n ON n.oid = c.relnamespace
 WHERE
     c.relkind IN ('r', 'i', 'm', 't', 'S') -- r: table, i: index, m: materialized view, t: TOAST table, S: sequence
-    n.nspname = 'pct_global' -- Replace with the actual schema name (e.g., 'public', 'app_data')
+    and n.nspname = 'pct_global' -- Replace with the actual schema name (e.g., 'public', 'app_data')
 GROUP BY
     n.nspname;

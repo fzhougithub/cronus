@@ -1,0 +1,21 @@
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-rtl/ --profile db-backup-rtl --no-verify-ssl
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-rtl/claimsprocess/ --profile db-backup-rtl --no-verify-ssl
+aws s3 cp --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-rtl/claimsprocess/claimsprocess.20250827001000.backup.bz2 /pg_backups/ --profile db-backup-rtl --no-verify-ssl
+
+
+
+aws s3 cp --endpoint-url http://wdc-ecs-01-dtn.dstcorp.net:9020 ./rundeck_enc_keyfile.key.enc s3://terraform-non-prod/rundeck/uat/rundeck_enc_keyfile.key.enc --profile terraform-non-prod
+
+bzip2 -d claimsprocess.20250827001000.backup.bz2
+
+
+[rundeck@ops-ctl-uat-drx-kc pg_backups]$ aws configure list
+      Name                    Value             Type    Location
+      ----                    -----             ----    --------
+   profile                <not set>             None    None
+access_key                <not set>             None    None
+secret_key                <not set>             None    None
+    region                <not set>             None    None
+
+
+

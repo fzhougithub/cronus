@@ -1,0 +1,72 @@
+The error "ERROR: syntax error at or near "SPLIT"" suggests that the PostgreSQL version you are using does not support the `ALTER TABLE... SPLIT PARTITION` syntax.
+
+### Key Information:
+
+  * The `ALTER TABLE... SPLIT PARTITION` and `MERGE PARTITIONS` commands were introduced in **PostgreSQL 17**.
+  * If you are running an older version (e.g., PostgreSQL 16 or earlier), this syntax is not available.
+
+### Solution for Older PostgreSQL Versions (Pre-17)
+
+To "split" a partition in older PostgreSQL versions, you need to perform a multi-step process using `ALTER TABLE DETACH PARTITION` and `CREATE TABLE ... PARTITION OF ...` or a separate table, followed by data movement.
+
+Here is the general, multi-step procedure to split your `sales_2024_2025` range partition at the point `'2025-01-01'`:
+
+1.  **Start a Transaction:** Wrap all steps in a transaction to ensure atomicity.
+
+2.  **Detach the Original Partition:** Temporarily turn the partition into a standalone table.
+
+    ```sql
+    ALTER TABLE sales
+    DETACH PARTITION sales_2024_2025;
+    ```
+
+    *The table `sales_2024_2025` is now an independent table, and its data is no longer part of the `sales` partitioned table.*
+
+3.  **Create the New Partitions:** Create two new partitions with the desired ranges, but without any data yet.
+
+      * **Partition 1 (2024):** From the start of the old partition range up to the split point.
+      * **Partition 2 (2025):** From the split point up to the end of the old partition range.
+
+    <!-- end list -->
+
+    ```sql
+    -- Create the 2024 partition (assuming the original partition started at '2024-01-01')
+    CREATE TABLE sales_2024 PARTITION OF sales
+    FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+
+    -- Create the 2025 partition (assuming the original partition ended at '2026-01-01' for example)
+    CREATE TABLE sales_2025 PARTITION OF sales
+    FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+    ```
+
+    *You would need to use the actual bounds of your original `sales_2024_2025` partition to correctly define the bounds for `sales_2024` and `sales_2025`.*
+
+4.  **Move the Data:** Insert the data from the detached table (`sales_2024_2025`) into the new partitioned table, which will automatically distribute the rows into `sales_2024` and `sales_2025` based on their partition keys.
+
+    ```sql
+    INSERT INTO sales
+    SELECT * FROM sales_2024_2025;
+    ```
+
+5.  **Drop the Old Table:** Once the data is successfully moved, you can drop the detached, now-empty table.
+
+    ```sql
+    DROP TABLE sales_2024_2025;
+    ```
+
+6.  **Commit:**
+
+    ```sql
+    COMMIT;
+    ```
+
+### Alternative (Potentially Faster) for Large Data
+
+If the detached table `sales_2024_2025` is very large, step 4 can be slow due to the `INSERT` operation. A faster, but more complex, approach is to:
+
+1.  **Detach** the original table (Step 2).
+2.  **Rename** the detached table to one of the new partition names (e.g., `ALTER TABLE sales_2024_2025 RENAME TO sales_2024_temp`).
+3.  **Create** the final partitions (Step 3).
+4.  **Move** only the data that belongs to the *other* partition into the correct new partition using an `INSERT` (e.g., move data $\ge$ '2025-01-01' to `sales_2025`).
+5.  **Clean** the first partition (e.g., `DELETE FROM sales_2024_temp WHERE partition_key >= '2025-01-01'`).
+6.  **Attach** the split tables back to the main partitioned table using `ALTER TABLE sales ATTACH PARTITION ...`.

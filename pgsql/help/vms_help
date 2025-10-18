@@ -1,0 +1,7 @@
+1. run individual playbook first to make sure lvm created
+2. comment out the pgpool key part until the pgpool vm got created
+3. for all of the python missing code, install on local, not server
+
+pip install psycopg2-binary
+pip install hvac
+

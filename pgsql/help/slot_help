@@ -1,0 +1,29 @@
+SELECT slot_name, plugin, slot_type, database, active, active_pid,confirmed_flush_lsn, restart_lsn, wal_status
+FROM pg_replication_slots;
+
+-- Check if slots are preventing WAL cleanup
+SELECT slot_name, 
+       restart_lsn,
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) as lag_size
+FROM pg_replication_slots 
+WHERE restart_lsn IS NOT NULL;
+
+
+-- If you see slots with plugins like 'pgoutput', 'test_decoding', etc.
+-- These are from previous logical replication setups
+SELECT slot_name, plugin FROM pg_replication_slots WHERE slot_type = 'logical';
+
+
+-- Check which slots are inactive and safe to remove
+SELECT slot_name, slot_type, active, database
+FROM pg_replication_slots 
+WHERE active = false;
+
+-- Generate drop commands for inactive logical slots
+SELECT 'SELECT pg_drop_replication_slot(''' || slot_name || ''');' as drop_command
+FROM pg_replication_slots 
+WHERE slot_type = 'logical' 
+AND active = false
+AND database = 'your_database_name';  -- Specify your database
+
+

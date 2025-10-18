@@ -1,0 +1,18 @@
+SELECT DISTINCT c.child_table AS child
+FROM (
+  VALUES
+    ('claim_component_block_information'),
+    ('claim_extension_1'),
+    ('claim_error'),
+    ('claim_core'),
+    ('error_configuration'),
+    ('ncpdp_error_configuration'),
+    ('transition_error_override'),
+    ('claim_module_flow'),
+    ('cip_claims_table_catalog'),
+    ('databasechangelog'),
+    ('cip_claims_table_catalog_bak')
+) AS p(parent_table)
+JOIN pg_inherits ON inhparent = p.parent_table::regclass
+JOIN LATERAL (SELECT inhrelid::regclass AS child_table) AS c ON true
+ORDER BY c.child_table;

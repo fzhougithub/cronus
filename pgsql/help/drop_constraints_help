@@ -1,0 +1,9 @@
+-- Generate DROP statements for all FK constraints in finance_other schema
+SELECT 
+    'ALTER TABLE ' || nspname || '.' || conrelid::regclass::text || 
+    ' DROP CONSTRAINT ' || conname || ';' as drop_command
+FROM pg_constraint c
+JOIN pg_namespace n ON n.oid = connamespace
+WHERE contype = 'f'  -- foreign keys
+AND nspname = 'finance_global'
+ORDER BY conrelid::regclass::text, conname;

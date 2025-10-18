@@ -1,0 +1,15 @@
+SELECT pg_read_file(pg_current_logfile()) AS log_content
+WHERE pg_read_file(pg_current_logfile()) LIKE '%qc_finance_global_sub%';
+
+# Enhanced logical replication logging
+log_min_messages = debug1
+log_error_verbosity = verbose
+log_logical_rewrite_streaming = on
+wal_level = logical
+
+# Specific to logical replication
+debug_print_parse = on
+debug_print_rewritten = on
+debug_print_plan = on
+
+

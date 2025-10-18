@@ -1,0 +1,108 @@
+sysstat-11.7.3-13.el8_10.x86_64
+nethogs-0.8.5-9.el8.x86_64
+iotop-0.6-18.el8.noarch
+iftop-1.0-0.21.pre4.el8.x86_64
+zstd-1.4.4-1.el8.x86_64
+
+
+[postgres@odshumana-db-01-alma8-prod-drx-kc ~]$ ss -t -p -i | grep 2582144
+ESTAB      3280664 0       10.222.93.97:44418     10.222.79.110:postgres     users:(("pg_dump",pid=2582144,fd=3))
+[postgres@odshumana-db-01-alma8-prod-drx-kc ~]$ ss -t -p -i | grep 2582144
+ESTAB      8995    0       10.222.93.97:44418     10.222.79.110:postgres     users:(("pg_dump",pid=2582144,fd=3))
+[postgres@odshumana-db-01-alma8-prod-drx-kc ~]$ ss -t -p -i | grep 2582144
+ESTAB      3023367 0       10.222.93.97:44418     10.222.79.110:postgres     users:(("pg_dump",pid=2582144,fd=3))
+
+[postgres@odshumana-db-01-alma8-prod-drx-kc ~]$ ps -ef|grep pg_dump|awk '{print $2}'|paste -sd'|' -
+2575751|2575809|2575929|2576149|2576164|2579237|2579352|2579395|2579524|2579773|2580310|2580355|2580379|2580500|2581156|2581449|2582144|2585947|2586300|2607824|2608195
+[postgres@odshumana-db-01-alma8-prod-drx-kc ~]$ ss -t -p -i|egrep '2575751|2575809|2575929|2576149|2576164|2579237|2579352|2579395|2579524|2579773|2580310|2580355|2580379|2580500|2581156|2581449|2582144|2585947|2586300|2607824|2608195'
+
+[postgres@odshumana-db-01-alma8-prod-drx-kc ~]$ ss -t -p -i|egrep '2575751|2575809|2575929|2576149|2576164|2579237|2579352|2579395|2579524|2579773|2580310|2580355|2580379|2580500|2581156|2581449|2582144|2585947|2586300|2607824|2608195'|awk '{sum+=$2} END{print sum/1024/1024}'
+81.3535
+
+81M/s 
+
+nethogs -p 2575751
+iostat -dx 1
+iftop -f "port 5432"
+psql -d ods_domani -c "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';"
+ss -t -p -i | grep 2575751
+
+pidstat -d -p 2575751 1 5
+
+
+iotop -p 2575751
+
+
+cat /proc/2575751/fd/1
+
+ls -lh /proc/2575751/fd/1
+
+cat /proc/2575751/io
+
+ps aux | grep pg_restore | grep -v grep
+pstree -p 2575751
+
+watch -n 30 "psql -d ods_domani -c \"
+SELECT schemaname, tablename, n_live_tup 
+FROM pg_stat_user_tables 
+WHERE schemaname = 'claimsprocess_humana' 
+ORDER BY n_live_tup DESC 
+LIMIT 10;\""
+
+SELECT 'truncate table claimsprocess_humana.'||relname||' cascade;'
+FROM pg_stat_user_tables
+WHERE schemaname = 'claimsprocess_humana'
+and n_live_tup > 0
+ORDER BY n_live_tup DESC
+LIMIT 100;
+
+SELECT
+    sum(pg_total_relation_size(schemaname||'.'||relname))/1024/1024/1024 as sizeGB
+FROM pg_stat_user_tables
+WHERE schemaname = 'claimsprocess_humana';
+
+
+SELECT 
+    schemaname,
+    relname,
+    n_live_tup as row_count,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname)) as size
+FROM pg_stat_user_tables 
+WHERE schemaname = 'claimsprocess_humana'
+ORDER BY n_live_tup DESC 
+LIMIT 10;
+
+SELECT 
+    pid,
+    usename,
+    application_name,
+    state,
+    query_start,
+    query 
+FROM pg_stat_activity 
+WHERE datname = 'ods_domani' 
+AND state = 'active';
+
+
+#!/bin/bash
+PID=2575751
+
+echo "=== Process $PID Status ==="
+echo "CPU usage: $(ps -p $PID -o %cpu --no-headers)"
+echo "Memory usage: $(ps -p $PID -o %mem --no-headers)"
+echo "State: $(ps -p $PID -o state --no-headers)"
+
+echo -e "\n=== Network Connection ==="
+lsof -p $PID | grep TCP
+
+echo -e "\n=== Target Database Progress ==="
+psql -d ods_domani -t -c "
+SELECT schemaname, tablename, n_live_tup 
+FROM pg_stat_user_tables 
+WHERE schemaname = 'claimsprocess_humana' 
+ORDER BY n_live_tup DESC 
+LIMIT 5;"
+
+echo -e "\n=== Log File Size ==="
+ls -lh /var/lib/pgsql/PostgresDBA/logical_replication/restore_logs/claimsprocess_humana.claim_core_320_202212.log
+

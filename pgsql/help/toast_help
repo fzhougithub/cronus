@@ -9,6 +9,37 @@ FROM pg_class c
 JOIN pg_namespace n ON c.relnamespace = n.oid
 WHERE c.relname = 'claim_message_tracking';
 
+SELECT attname, attstorage
+FROM pg_attribute
+WHERE attrelid = 'claim_message_tracking'::regclass
+  AND attstorage IS NOT NULL;
+
+attstorage can be:
+
+p → plain (no compression, stored inline)
+
+e → external (moved to TOAST, no compression)
+
+m → main (compressed if needed, stored in TOAST)
+
+x → extended (compress + out-of-line, default for large values)
+
+
+SELECT relname AS toast_table, reltoastrelid, reloptions
+FROM pg_class
+WHERE relname = 'claim_message_tracking';
+      toast_table       | reltoastrelid | reloptions
+------------------------+---------------+------------
+ claim_message_tracking |      14404472 |
+ claim_message_tracking |      97879352 |
+ claim_message_tracking |      97928471 |
+(3 rows)
+
+SELECT attname, attstorage, pg_column_compression(attrelid, attnum) AS compression
+FROM pg_attribute
+WHERE attrelid = 'claim_message_tracking'::regclass
+  AND attnum > 0;
+
 
 -- -- More reasonable setting if you really need to adjust (rarely necessary)
 -- ALTER TABLE claim_message_tracking SET (toast_tuple_target = 1500);

@@ -1,3 +1,42 @@
+0. Install python env
+
+brew install pyenv
+pyenv install 3.12.9
+pyenv virtualenv 3.12.9 venv
+# ~/.zshrc
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)
+pyenv activate venv
+
+
+
+
+
+1. Install 3.7 python
+
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install pyenv
+
+Modify .zshrc file with 
+# pyenv initialization
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+
+# pyenv-virtualenv initialization (Crucial for 'pyenv activate')
+eval "$(pyenv virtualenv-init -)"
+
+source ~/.zshrc
+
+pyenv install 3.7.17
+
+cd work
+pyenv local p37
+python --version
+
+pip install ansible
+
+2. 
 curl -O https://www.python.org/ftp/python/3.6.8/python-3.6.8-macosx10.9.pkg
 open python-3.6.8-macosx10.9.pkg
 /Library/Frameworks/Python.framework/Versions/3.6/bin/python3.6 -m venv ~/work/p36

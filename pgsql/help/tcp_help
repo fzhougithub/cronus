@@ -1,0 +1,16 @@
+# Add to /etc/sysctl.conf
+net.ipv4.tcp_keepalive_time = 600
+net.ipv4.tcp_keepalive_intvl = 60
+net.ipv4.tcp_keepalive_probes = 10
+net.ipv4.tcp_fin_timeout = 30
+
+# Apply immediately
+sudo sysctl -p
+
+postgresql TCP setting
+
+tcp_keepalives_idle = 60
+tcp_keepalives_interval = 10
+tcp_keepalives_count = 10
+
+

@@ -1,0 +1,159 @@
+SELECT pg_postmaster_start_time() AS database_start_time;
+
+0. Best query
+
+SELECT
+    blocked.pid     AS blocked_pid,
+    blocked.query   AS blocked_query,
+    blocking.pid    AS blocking_pid,
+    blocking.query  AS blocking_query
+FROM pg_locks bl
+JOIN pg_stat_activity blocked
+  ON blocked.pid = bl.pid
+JOIN pg_locks kl
+  ON bl.locktype = kl.locktype
+  AND bl.database IS NOT DISTINCT FROM kl.database
+  AND bl.relation IS NOT DISTINCT FROM kl.relation
+  AND bl.page IS NOT DISTINCT FROM kl.page
+  AND bl.tuple IS NOT DISTINCT FROM kl.tuple
+  AND bl.virtualxid IS NOT DISTINCT FROM kl.virtualxid
+  AND bl.transactionid IS NOT DISTINCT FROM kl.transactionid
+  AND bl.classid IS NOT DISTINCT FROM kl.classid
+  AND bl.objid IS NOT DISTINCT FROM kl.objid
+  AND bl.objsubid IS NOT DISTINCT FROM kl.objsubid
+  AND kl.pid != bl.pid
+JOIN pg_stat_activity blocking
+  ON blocking.pid = kl.pid
+WHERE NOT bl.granted
+  AND kl.granted;
+
+
+
+1. Simple
+
+SELECT 
+    blocked_locks.pid AS blocked_pid,
+    blocked_activity.query AS blocked_query,
+    blocking_locks.pid AS blocking_pid,
+    blocking_activity.query AS blocking_query
+FROM pg_catalog.pg_locks blocked_locks
+JOIN pg_catalog.pg_stat_activity blocked_activity 
+    ON blocked_activity.pid = blocked_locks.pid
+JOIN pg_catalog.pg_locks blocking_locks
+    ON blocking_locks.locktype = blocked_locks.locktype
+    AND blocking_locks.DATABASE IS NOT DISTINCT FROM blocked_locks.DATABASE
+    AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
+    AND blocking_locks.page IS NOT DISTINCT FROM blocked_locks.page
+    AND blocking_locks.tuple IS NOT DISTINCT FROM blocked_locks.tuple
+    AND blocking_locks.mode = blocked_locks.mode
+    AND blocking_locks.pid != blocked_locks.pid
+JOIN pg_catalog.pg_stat_activity blocking_activity 
+    ON blocking_activity.pid = blocking_locks.pid
+WHERE NOT blocked_locks.granted AND blocking_locks.granted;
+
+2. Complicate
+
+SELECT
+    blocked.pid     AS blocked_pid,
+    blocked.query   AS blocked_query,
+    blocking.pid    AS blocking_pid,
+    blocking.query  AS blocking_query
+FROM pg_locks bl
+JOIN pg_stat_activity blocked
+  ON blocked.pid = bl.pid
+JOIN pg_locks kl
+  ON bl.locktype = kl.locktype
+  AND bl.database IS NOT DISTINCT FROM kl.database
+  AND bl.relation IS NOT DISTINCT FROM kl.relation
+  AND bl.page IS NOT DISTINCT FROM kl.page
+  AND bl.tuple IS NOT DISTINCT FROM kl.tuple
+  AND bl.virtualxid IS NOT DISTINCT FROM kl.virtualxid
+  AND bl.transactionid IS NOT DISTINCT FROM kl.transactionid
+  AND bl.classid IS NOT DISTINCT FROM kl.classid
+  AND bl.objid IS NOT DISTINCT FROM kl.objid
+  AND bl.objsubid IS NOT DISTINCT FROM kl.objsubid
+JOIN pg_stat_activity blocking
+  ON blocking.pid = kl.pid
+WHERE NOT bl.granted
+  AND blocking.pid != blocked.pid;
+
+4. Full lock detail
+
+SELECT 
+  blocked_locks.pid AS blocked_pid,
+  blocked_activity.query AS blocked_query,
+  blocking_locks.pid AS blocking_pid,
+  blocking_activity.query AS blocking_query,
+  blocking_activity.state,
+  now() - blocking_activity.xact_start AS blocking_duration
+FROM pg_catalog.pg_locks blocked_locks
+JOIN pg_catalog.pg_locks blocking_locks 
+  ON blocked_locks.locktype = blocking_locks.locktype
+  AND blocked_locks.database IS NOT DISTINCT FROM blocking_locks.database
+  AND blocked_locks.relation IS NOT DISTINCT FROM blocking_locks.relation
+  AND blocked_locks.page IS NOT DISTINCT FROM blocking_locks.page
+  AND blocked_locks.tuple IS NOT DISTINCT FROM blocking_locks.tuple
+  AND blocked_locks.virtualxid IS NOT DISTINCT FROM blocking_locks.virtualxid
+  AND blocked_locks.transactionid IS NOT DISTINCT FROM blocking_locks.transactionid
+  AND blocked_locks.classid IS NOT DISTINCT FROM blocking_locks.classid
+  AND blocked_locks.objid IS NOT DISTINCT FROM blocking_locks.objid
+  AND blocked_locks.objsubid IS NOT DISTINCT FROM blocking_locks.objsubid
+  AND blocked_locks.pid != blocking_locks.pid
+JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_locks.pid = blocked_activity.pid
+JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_locks.pid = blocking_activity.pid
+WHERE NOT blocked_locks.granted AND blocked_locks.pid = 555068;  -- Your blocked PID
+
+5. Same query all got blocked
+
+SELECT
+    query,
+    COUNT(*) AS sessions_running,
+    array_agg(pid) AS pids
+FROM pg_stat_activity
+WHERE state = 'active'
+GROUP BY query
+HAVING COUNT(*) > 1
+ORDER BY sessions_running DESC;
+-[ RECORD 1 ]----+------------------------------------------------------------------
+query            | SELECT                                                           +
+                 |     c.customer_id ,                                              +
+                 |     h87.full_title AS customer_name,                             +
+                 |      c.client_id ,                                               +
+                 |      cl.full_title as client_name,                               +
+                 |     trim(TO_CHAR(c.pharmacy_id, '0000000')) AS pharmacy_id,      +
+                 |    -- c.pharmacy_affiliation_id,                                 +
+                 |     c.npi_prescriber_id,                                         +
+                 |     c.fill_dt,                                                   +
+                 |     c.process_create_ts::date as processed_date,                 +
+                 |     c.prescription_id,                                           +
+                 |     c.specific_therapy_class_cd,                                 +
+                 |     c.gcn_id,                                                    +
+                 |     c.claim_status_cd,                                           +
+                 |     c.claim_id,                                                  +
+                 |     c.total_paid_amt,                                            +
+                 |   --  c.pharmacy_chain_id,                                       +
+                 |     (   SELECT                                                   +
+                 |             COALESCE(S50C.postal_st_cd, s.postal_st_cd)          +
+                 |         FROM customer.s50            s                           +
+                 |         LEFT OUTER JOIN customer.s50 S50C                        +
+                 |             ON  S50C.PHARMACY_ID = S.PHARMACY_ID                 +
+                 |             AND S50C.RECORD_TYPE_CD = 'C'                        +
+                 |             AND S50C.CUSTOMER_SET_ID = e21.customer_set_id       +
+                 |         WHERE s.pharmacy_id::INT = c.pharmacy_id                 +
+                 |         AND s.postal_st_cd IS NOT NULL                           +
+                 |         AND s.RECORD_TYPE_CD IN ( 'A',                           +
+                 |                                  'M' )                           +
+                 |         LIMIT 1) AS pharmacy_address_state                       +
+                 | FROM claimsprocess_humana.claim_core     c                       +
+                 | INNER JOIN
+sessions_running | 8
+pids             | {2554221,2554222,1968752,2554223,2554224,2554225,2554226,2554227}
+
+SELECT pid, backend_type, leader_pid, query
+FROM pg_stat_activity
+WHERE pid IN (2554221,2554222,1968752,2554223,2554224,2554225,2554226,2554227);
+
+See, all of above sessions are parallel worker sessions, they have same leader 1968752, which has no wait_event. 
+
+Then, kill the leader session. 
+

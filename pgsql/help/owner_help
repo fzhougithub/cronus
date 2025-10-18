@@ -1,3 +1,5 @@
+select 'alter table '||schemaname||'.'||tablename||' owner to postgres;' from pg_tables where tableowner='fzhou';
+
 WITH schema_owner AS (
   SELECT nspname, nspowner
   FROM pg_namespace
@@ -22,4 +24,13 @@ SELECT
 FROM objects o
 CROSS JOIN schema_owner so
 WHERE o.relowner <> so.nspowner;
+
+SELECT
+    relname,
+    pg_get_userbyid(relowner) AS owner_name
+FROM
+    pg_class
+WHERE
+    relkind = 'r';
+
 

@@ -1,0 +1,8 @@
+ls -1 --time-style=+%Y-%m-%d | xargs -I{} stat --format='%y %n' {} | \
+awk '{print $1}' | sort | uniq -c | sort
+
+find /path/to/archive -type f -printf "%TY-%Tm-%Td\n" | \
+sort | uniq -c | sort
+
+find /path/to/archive -type f -printf "%TY-%Tm-%Td\n" | \
+sort | uniq -c | sort -nr

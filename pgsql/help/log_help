@@ -1,3 +1,35 @@
+SELECT 
+    slot_name,
+    confirmed_flush_lsn,
+    pg_current_wal_lsn(),
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) as replication_lag,
+    pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) as lag_bytes,
+    CASE 
+        WHEN pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) > 1000000000 THEN 'HIGH LAG'
+        WHEN pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) > 100000000 THEN 'MEDIUM LAG' 
+        ELSE 'LOW LAG'
+    END as lag_status
+FROM pg_replication_slots 
+WHERE slot_name = 'debezium';
+
+benefits=# -- Check if there's an active process using this slot
+SELECT
+    pid,
+    usename,
+    application_name,
+    client_addr,
+    state,
+    sync_state,
+    sent_lsn,
+    write_lsn,
+    flush_lsn,
+    replay_lsn
+FROM pg_stat_replication
+WHERE pid = 3103826;  -- Use the active_pid from your slot
+
+
+
+
 
 Great observation. Even though your `logrotate` config is set to keep only 28 log files, **you're seeing 100+ compressed logs** going back to **March** — which clearly violates the intended rotation policy.
 

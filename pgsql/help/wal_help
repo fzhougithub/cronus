@@ -1,0 +1,3 @@
+for wal in /apps/lib/pgsql/14/data/pg_wal/000*; do
+  pgbackrest --stanza=10-222-200-6 archive-push $wal
+done

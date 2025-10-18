@@ -1,0 +1,3 @@
+SELECT pg_create_logical_replication_slot('qc_finance_global_sub', 'pgoutput');
+
+

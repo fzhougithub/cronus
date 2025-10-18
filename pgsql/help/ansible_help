@@ -1,3 +1,79 @@
+This is the final solution for the ansible required python
+brew install pyenv
+brew install pyenv-virtualenv
+pyenv install 3.12.9
+pyenv virtualenv 3.12.9 venv
+# ~/.zshrc
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)
+pyenv activate venv
+pip3 install ansible==9.13.0 ansible-core==2.16.14 hvac dnspython
+
+==========================================================
+ansible-playbook ./playbook.yaml --tags pg-base,pg-repmanager,pg-credentials -e "do_replica_bootstrap=yes" -e "postgresql_restart_allowed=yes"
+ansible-playbook ./playbook.yaml --tags pg-repmanager -e "do_replica_bootstrap=yes" -e "postgresql_restart_allowed=yes"
+
+
+
+ansible-doc -t lookup -l
+
+source work/p312/bin/activate
+Then, you can get the right ansible-playbook
+
+ansible-playbook ./playbook.yaml --limit claimshumana-db-01-alma8-prod-drx-kc.ssnc-corp.cloud --diff --tags pg-base --check
+ansible-playbook ./playbook.yaml --limit claimshumana-db-01-alma8-prod-drx-kc.ssnc-corp.cloud --diff --tags pg-base
+
+Right way
+
+1. brew install python@3.12
+2.  /opt/homebrew/bin/python3.12 -m venv ~/work/p312
+3. source ~/work/p312/bin/activate
+4. vi ~/work/p312/requirements.txt
+   ansible==9.13.0
+   ansible-core==2.16.14
+5. pip install -r ~/work/p312/requirements.txt
+
+Finally, got the right python and ansible version. 
+
+
+
+ansible-playbook ./playbook.yaml --limit finance-db-01-olly-drx-kc.ssnc-corp.cloud --diff --tags pgbase
+pip install 'ansible-core<2.12' 'ansible<5.0'
+
+ansible-galaxy collection install ansible.posix
+pip install certifi --upgrade
+
+ansible-galaxy collection install ansible.posix --ignore-certs
+
+pip install certifi
+/Applications/Python\ 3.6/Install\ Certificates.command
+
+pip install --upgrade "ansible>=2.13"
+
+curl -O https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tgz
+
+tar xzf Python-3.8.10.tgz
+
+cd Python-3.8.10
+./configure --prefix=/usr/local/Python3.8 --enable-optimizations --with-system-ffi --with-computed-gotos --enable-loadable-sqlite-extensions
+make -j $(nproc)
+
+sudo make altinstall
+
+ /usr/local/Python3.8/bin/python3.8 --version
+Python 3.8.10
+
+/usr/local/Python3.8/bin/python3.8 -m venv ~/work/p38
+
+https://www.doubao.com/thread/w859e0787409d72fb
+
+
+
+brew install python@3.9
+/opt/homebrew/bin/python3.9 -m venv ~/work/p3.9
+source ~/work/p3.9/bin/activate
+
+
 ss -ltnp | grep 9187
 
 To deploy a **PostgreSQL Prometheus exporter** to a target server using the Ansible role you described, you typically follow these steps:

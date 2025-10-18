@@ -1,0 +1,1 @@
+grep -i 'alter table' *.sql|egrep -vi '\--|insert'|cut -d: -f2|awk '{print $3}'|sort|uniq|tr -d '\r' |sed "s/.*/'&'/g"

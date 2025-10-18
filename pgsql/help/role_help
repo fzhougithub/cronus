@@ -1,0 +1,82 @@
+SELECT
+    r.rolname AS user_or_role,
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    p.privilege_type
+FROM
+    pg_roles r,
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+CROSS JOIN
+    (
+        VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), 
+               ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+    ) AS p(privilege_type)
+WHERE
+    -- Filter for regular tables
+    c.relkind IN ('r', 'v', 'm') -- r: table, v: view, m: materialized view
+    
+    -- Exclude system schemas
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    
+    -- Filter for your specific user/role (or any role with LOGIN)
+    AND r.rolname = 'your_username'  -- <<-- REPLACE WITH YOUR USERNAME
+    
+    -- The core function that checks effective privilege
+    AND has_table_privilege(r.rolname, c.oid, p.privilege_type)
+ORDER BY
+    schema_name, table_name, privilege_type;
+
+
+
+SELECT
+    grantee,
+    table_schema,
+    table_name,
+    privilege_type
+FROM
+    information_schema.role_table_grants
+WHERE
+    grantee = 'finance_rw'
+    AND table_name IN ('journal_entry', 'journal_entry_category', 'subledger')
+ORDER BY
+    table_name, privilege_type;
+
+SELECT
+    grantee AS user_name,
+    table_schema,
+    table_name,
+    STRING_AGG(privilege_type, ', ' ORDER BY privilege_type) AS granted_privileges
+FROM
+    information_schema.role_table_grants
+WHERE
+    grantee IN (
+        'DT240961',
+        'DT238242',
+        'DT79590',
+        'DT235433',
+        'DT241195',
+        'DT238679',
+        'DT238219',
+        'anagariy',
+        'DT241147',
+        'DT224402'
+    )
+GROUP BY
+    grantee,
+    table_schema,
+    table_name
+ORDER BY
+    grantee,
+    table_schema,
+    table_name;
+
+
+\z journal_entry
+     Schema     |     Name      | Type  | Access privileges | Column privileges | Policies
+----------------+---------------+-------+-------------------+-------------------+----------
+ finance_humana | journal_entry | table |                   |                   |
+(1 row)
+
+	

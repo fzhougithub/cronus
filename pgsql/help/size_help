@@ -1,4 +1,20 @@
 SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    c.relkind AS table_type,
+    pg_total_relation_size(c.oid)/1024/1024 AS total_bytes,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind IN ('r', 'p', 't', 'm')  -- r=table, p=partitioned table, t=TOAST, m=materialized view
+ORDER BY total_bytes DESC;
+
+
+
+
+
+SELECT
     child.relname AS partition_name,
     nmsp_child.nspname AS partition_schema,
     pg_size_pretty(pg_total_relation_size(child.oid)) AS partition_size_pretty,

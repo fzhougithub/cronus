@@ -1,1 +1,6 @@
-/usr/pgsql-14/bin/repmgr -f /apps/lib/pgsql/14/repmgr/repmgr.conf    primary unregister --node-id=1
+/usr/pgsql-14/bin/repmgr -f /apps/lib/pgsql/17/repmgr/repmgr.conf    primary register --node-id=1
+/usr/pgsql-14/bin/repmgr -f /apps/lib/pgsql/17/repmgr/repmgr.conf    primary unregister --node-id=1
+/usr/pgsql-17/bin/repmgr -f /apps/lib/pgsql/17/repmgr/repmgr.conf cluster show
+/usr/pgsql-17/bin/repmgr -f /apps/lib/pgsql/17/repmgr/repmgr.conf standby register --node-id=
+/usr/pgsql-17/bin/repmgr -f /apps/lib/pgsql/17/repmgr/repmgr.conf standby register --node-id={{ node_id }} --upstream-node-id={{ primary_node_id }}
+

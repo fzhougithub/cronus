@@ -1,0 +1,4 @@
+dmesg | grep -i huge
+dmesg | grep -i fail
+cat /proc/meminfo | grep -i huge
+

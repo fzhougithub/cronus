@@ -1,0 +1,12 @@
+max_logical_replication_workers
+max_sync_workers_per_subscription
+wal_receiver_timeout
+wal_receiver_status_interval
+max_connections
+work_mem
+maintenance_work_mem
+max_wal_size and min_wal_size (Publisher)
+wal_sender_timeout (Publisher
+tcp_keepalives_idle = 7200, tcp_keepalives_interval = 75)
+
+

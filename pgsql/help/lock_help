@@ -1,3 +1,79 @@
+-- Run this query in a separate session while your ALTER TABLE is hanging.
+-- It identifies sessions (PIDs) that are currently blocking other sessions.
+
+SELECT
+-- Blocking Session Info (Details about the session holding the lock)
+B.pid AS blocking_pid,
+BlockingActivity.usename AS blocking_user,
+BlockingActivity.client_addr AS blocking_client,
+BlockingActivity.application_name AS blocking_app,
+BlockingActivity.query AS blocking_query,
+AGE(NOW(), BlockingActivity.query_start) AS blocking_duration,
+-- Blocked Session Info (Details about the session waiting for the lock, where your ALTER TABLE should appear)
+L.pid AS blocked_pid,
+BlockedActivity.usename AS blocked_user,
+pg_class.relname AS blocked_table,
+BlockedActivity.query AS blocked_query,
+-- Lock Details
+L.mode AS blocked_lock_type,
+B.mode AS blocking_lock_type
+FROM
+pg_catalog.pg_locks L
+JOIN
+pg_catalog.pg_stat_activity BlockedActivity ON L.pid = BlockedActivity.pid -- Get activity details for the waiting session (L)
+JOIN
+pg_catalog.pg_locks B ON B.locktype = L.locktype
+AND B.database IS NOT DISTINCT FROM L.database
+AND B.relation IS NOT DISTINCT FROM L.relation
+AND B.page IS NOT DISTINCT FROM L.page
+AND B.tuple IS NOT DISTINCT FROM L.tuple
+AND B.virtualxid IS NOT DISTINCT FROM L.virtualxid
+AND B.transactionid IS NOT DISTINCT FROM L.transactionid
+AND B.classid IS NOT DISTINCT FROM L.classid
+AND B.objid IS NOT DISTINCT FROM L.objid
+AND B.objsubid IS NOT DISTINCT FROM L.objsubid
+AND B.pid != L.pid -- Exclude self-blocking
+JOIN
+pg_catalog.pg_stat_activity BlockingActivity ON B.pid = BlockingActivity.pid -- Get activity details for the blocking session (B)
+LEFT JOIN
+pg_class ON pg_class.oid = L.relation -- Optional join to get table name (only if the lock is on a table/relation)
+WHERE
+L.granted = 'f' -- Find only waiting/blocked queries
+ORDER BY
+blocking_duration DESC;
+
+
+SELECT 
+    l.locktype,
+    l.database,
+    l.relation,
+    l.page,
+    l.tuple,
+    l.virtualxid,
+    l.pid,
+    l.mode,
+    l.granted,
+    a.query,
+    a.query_start,
+    a.usename
+FROM pg_locks l
+JOIN pg_stat_activity a ON l.pid = a.pid
+ORDER BY l.locktype, l.granted DESC;
+
+
+SELECT
+    a.pid,
+    a.wait_event_type,
+    a.wait_event,
+    a.query,
+    a.state
+FROM pg_stat_activity a
+WHERE a.backend_type LIKE '%logical%'
+AND a.wait_event IS NOT NULL;
+
+
+
+
 SELECT
   l.locktype,
   l.mode,

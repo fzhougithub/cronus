@@ -1,0 +1,8 @@
+SELECT
+    pg_last_wal_receive_lsn() AS last_received,
+    pg_last_wal_replay_lsn()  AS last_replayed,
+    pg_last_xact_replay_timestamp() AS last_replay_ts,
+    now() - pg_last_xact_replay_timestamp() AS replication_delay;
+
+
+

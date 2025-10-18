@@ -1,0 +1,32 @@
+(ansible) [08/28/25 2:03:02]:ansible_adhoc_playbooks/check_repl_slots  > cat ~/.vaults/nonprod
+export VAULT_ADDR=https://vault.ssnc-corp.cloud/
+export VAULT_AUTH_METHOD=approle
+export VAULT_ROLE_ID=1ad1f17e-1c7b-b9e8-cc98-5f86caff05c0
+export VAULT_SECRET_ID=790f31d5-a055-7e74-9ef1-ccffdd53b9d9
+export TF_VAR_VAULT_USER=tgilmore
+export TF_VAR_VAULT_PASSWORD=<redacted>
+
+# Non-PRD vault approle
+export VAULT_ADDR=https://vault.ssnc-corp.cloud/
+export VAULT_AUTH_METHOD=approle
+export VAULT_ROLE_ID=1ad1f17e-1c7b-b9e8-cc98-5f86caff05c0
+export VAULT_SECRET_ID=790f31d5-a055-7e74-9ef1-ccffdd53b9d9
+export VALUT_LDAP=ldap-ssnc-corp
+
+
+# Vault user/pass
+export TF_VAR_VAULT_USER=zpapikya
+export TF_VAR_VAULT_PASSWORD=*****
+export TF_VAR_VAULT_LDAP=ldap-ssnc-corp
+
+
+before running TF, source that file - source ~/.vaults/nonprod
+ 
+Run with AWS_PROFILE="non-prod" 
+
+terraform init or AWS_PROFILE="non-prod" 
+terraform plan or AWS_PROFILE="non-prod" 
+terraform apply
+ 
+
+

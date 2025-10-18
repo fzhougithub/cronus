@@ -1,0 +1,1 @@
+watch -n 10 "ls -lh /pg_backups/claimsprocess_pub_dump | wc -l"

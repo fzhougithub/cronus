@@ -1,3 +1,24 @@
+SELECT
+  parent_ns.nspname AS parent_schema,
+  parent.relname AS parent_table,
+  --child_ns.nspname AS partition_schema,
+  child.relname AS partition_table,
+  pg_partitioned_table.partstrat AS partition_strategy,
+  pg_partitioned_table.partnatts AS partition_key_columns_count
+FROM pg_partitioned_table
+JOIN pg_class parent ON pg_partitioned_table.partrelid = parent.oid
+JOIN pg_namespace parent_ns ON parent.relnamespace = parent_ns.oid
+LEFT JOIN pg_inherits ON pg_inherits.inhparent = parent.oid
+LEFT JOIN pg_class child ON pg_inherits.inhrelid = child.oid
+LEFT JOIN pg_namespace child_ns ON child.relnamespace = child_ns.oid
+ORDER BY parent_schema, parent_table, partition_table;
+--ORDER BY parent_schema, parent_table, partition_schema, partition_table;
+
+
+
+
+
+
 SELECT inhrelid::regclass FROM pg_inherits WHERE inhparent ='dur_p'::regclass;
 
 select distinct relkind from pg_class;

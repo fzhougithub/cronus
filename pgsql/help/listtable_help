@@ -1,0 +1,34 @@
+WITH RECURSIVE partition_tree AS (
+  -- Level 1: start from your parent tables
+  SELECT
+      p.oid AS parent_oid,
+      p.oid AS root_oid,
+      n.nspname AS schema_name,
+      p.relname AS table_name
+  FROM pg_class p
+  JOIN pg_namespace n ON n.oid = p.relnamespace
+  WHERE n.nspname = 'claimsprocess_humana'
+    AND p.relname IN ('claim_component_block_information', 'claim_extension_1', 'claim_error', 'claim_core', 'error_configuration', 'ncpdp_error_configuration', 'transition_error_override', 'claim_module_flow', 'cip_claims_table_catalog', 'databasechangelog', 'cip_claims_table_catalog_bak')
+
+  UNION ALL
+
+  -- Recursive step: find children of any parent in previous level
+  SELECT
+      c.oid AS parent_oid,
+      t.root_oid,
+      n.nspname AS schema_name,
+      c.relname AS table_name
+  FROM pg_inherits i
+  JOIN pg_class c ON i.inhrelid = c.oid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN partition_tree t ON t.parent_oid = i.inhparent
+)
+SELECT
+    schema_name,
+    table_name,
+    pg_total_relation_size(parent_oid) AS total_bytes,
+    pg_size_pretty(pg_total_relation_size(parent_oid)) AS total_size
+FROM partition_tree
+ORDER BY total_bytes DESC;
+
+

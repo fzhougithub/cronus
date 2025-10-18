@@ -3,8 +3,6 @@ FROM pg_class
 WHERE oid = '2382643138'::regclass;
 
 
-
-
 SELECT
     c.relname AS table_name,
     pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,

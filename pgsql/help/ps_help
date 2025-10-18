@@ -1,0 +1,6 @@
+ps aux --sort=-%mem | head
+
+ps -u postgres -o pid,rss,vsz,command | grep postgres
+
+
+

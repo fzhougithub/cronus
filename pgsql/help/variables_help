@@ -1,0 +1,17 @@
+max_worker_processes = '256'
+max_logical_replication_workers = '200'
+max_sync_workers_per_subscription = '200'
+max_slot_wal_keep_size = '10000MB'
+max_wal_size = 500GB
+checkpoint_completion_target = 0.9
+bgwriter_lru_maxpages = 200;
+idle_in_transaction_session_timeout = ?
+SHOW log_lock_waits;          -- Should be 'on' to log waits > deadlock_timeout
+SHOW deadlock_timeout;        -- Default '5s' – waits longer than this log if enabled
+SHOW log_min_duration_statement;  -- If set (e.g., '10min'), slow queries like yours log
+SHOW log_statement;           -- 'ddl' or 'all' logs DDL like slot creation
+SHOW logging_collector;       -- Should be 'on' for file logs
+SHOW log_directory;           -- e.g., 'log' or '/var/log/postgresql'
+SHOW log_filename;            -- e.g., 'postgresql-%Y-%m-%d_%H%M%S.log'
+
+

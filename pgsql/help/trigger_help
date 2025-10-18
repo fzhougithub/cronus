@@ -1,0 +1,139 @@
+session_replication_role
+
+ALTER TABLE ... ENABLE REPLICA TRIGGER trigger_name;
+ALTER TABLE ... ENABLE ALWAYS TRIGGER trigger_name;
+
+
+SELECT 'drop trigger '||t.tgname||' on '||n.nspname||'.'||c.relname||';'
+FROM pg_trigger t
+JOIN pg_class c ON c.oid = t.tgrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE t.tgname in (select tgname from pg_trigger where not tgisinternal);
+
+DISABLE ALL TRIGGERS
+
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT quote_ident(nsp.nspname) AS schema_name,
+           quote_ident(cls.relname) AS table_name
+    FROM pg_class cls
+    JOIN pg_namespace nsp ON cls.relnamespace = nsp.oid
+    WHERE nsp.nspname = 'finance_global'
+      AND cls.relkind = 'r'  -- ordinary tables
+  LOOP
+    EXECUTE format('ALTER TABLE %s.%s DISABLE TRIGGER ALL;', r.schema_name, r.table_name);
+  END LOOP;
+END $$;
+
+
+
+SELECT
+  t.tgname AS trigger_name,
+  n.nspname AS table_schema,
+  c.relname AS table_name,
+  CASE t.tgenabled
+    WHEN 'O' THEN 'Enabled (origin)'
+    WHEN 'D' THEN 'Disabled'
+    WHEN 'R' THEN 'Replica enabled'
+    WHEN 'A' THEN 'Always enabled'
+    ELSE 'Unknown'
+  END AS enabled_status,
+  pg_get_triggerdef(t.oid) AS trigger_definition
+FROM pg_trigger t
+JOIN pg_class c ON t.tgrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE t.tgname LIKE 'RI_ConstraintTrigger%' and t.tgenabled ='A'
+ORDER BY table_schema, table_name, trigger_name;
+
+
+
+
+
+
+
+SELECT
+  t.tgname AS trigger_name,
+  nsp.nspname AS table_schema,
+  tab.relname AS table_name
+FROM pg_trigger t
+JOIN pg_class tab ON t.tgrelid = tab.oid
+JOIN pg_namespace nsp ON tab.relnamespace = nsp.oid
+WHERE t.tgisinternal = false
+ORDER BY table_schema, table_name, trigger_name;
+
+
+
+SELECT n.nspname AS schema_name,
+       c.relname AS table_name,
+       t.tgname AS trigger_name
+FROM pg_trigger t
+JOIN pg_class c ON t.tgrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE n.nspname = 'finance_other' AND NOT t.tgisinternal
+ORDER BY table_name, trigger_name;
+
+
+
+
+
+SELECT event_object_schema AS schema_name,
+       event_object_table AS table_name,
+       trigger_name
+FROM information_schema.triggers
+WHERE event_object_schema = 'finance_global'
+ORDER BY table_name, trigger_name;
+
+SELECT n.nspname, c.relname
+FROM pg_class c
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE n.nspname = 'finance_global' AND c.relkind = 'r' AND EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgrelid = c.oid
+);
+
+
+SELECT format('ALTER TABLE %I.%I DISABLE TRIGGER ALL;', n.nspname, c.relname)
+FROM pg_class c
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE n.nspname = 'finance_global' AND c.relkind = 'r' AND EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgrelid = c.oid
+);
+
+
+
+SELECT
+  tg.tgname AS trigger_name,
+  tbl.relname AS table_name,
+  ns.nspname AS schema_name,
+  CASE tg.tgtype & 16::integer
+    WHEN 16 THEN 'BEFORE'::text
+    ELSE 'AFTER'::text
+  END AS trigger_timing,
+  array_to_string(
+    array_remove(ARRAY[
+      CASE WHEN (tg.tgtype & 1::integer) = 1 THEN 'INSERT'::text END,
+      CASE WHEN (tg.tgtype & 2::integer) = 2 THEN 'UPDATE'::text END,
+      CASE WHEN (tg.tgtype & 4::integer) = 4 THEN 'DELETE'::text END,
+      CASE WHEN (tg.tgtype & 8::integer) = 8 THEN 'TRUNCATE'::text END
+    ], NULL),  -- Remove NULL values from the array
+    ', '::text
+  ) AS trigger_events,
+  proname AS trigger_function_name,
+  tg.tgdeferrable AS is_deferrable,
+  tg.tginitdeferred AS initially_deferred
+FROM
+  pg_trigger tg
+JOIN
+  pg_class tbl ON tg.tgrelid = tbl.oid
+JOIN
+  pg_namespace ns ON tbl.relnamespace = ns.oid
+JOIN
+  pg_proc p ON tg.tgfoid = p.oid
+WHERE
+  NOT tg.tgisinternal
+  AND ns.nspname = 'finance_other'  -- Target schema
+ORDER BY
+  table_name, trigger_name;
+

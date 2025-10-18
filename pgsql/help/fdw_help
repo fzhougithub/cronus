@@ -1,0 +1,15 @@
+-- Create FDW to another Postgres schema
+CREATE EXTENSION postgres_fdw;
+
+CREATE SERVER sales_server
+  FOREIGN DATA WRAPPER postgres_fdw
+  OPTIONS (host '10.222.79.110', dbname 'salesdb', port '5432');
+
+CREATE USER MAPPING FOR ods_user
+  SERVER sales_server
+  OPTIONS (user 'remote_user', password 'xxxx');
+
+IMPORT FOREIGN SCHEMA public
+  FROM SERVER sales_server
+  INTO ods_sales;
+

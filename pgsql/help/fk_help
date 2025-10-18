@@ -1,0 +1,30 @@
+SELECT
+  n1.nspname AS referenced_schema,
+  c1.relname AS referenced_table,
+  n2.nspname AS referencing_schema,
+  c2.relname AS referencing_table
+FROM
+  pg_constraint AS con
+  JOIN pg_class AS c1 ON con.confrelid = c1.oid
+  JOIN pg_namespace AS n1 ON c1.relnamespace = n1.oid
+  JOIN pg_class AS c2 ON con.conrelid = c2.oid
+  JOIN pg_namespace AS n2 ON c2.relnamespace = n2.oid
+WHERE
+  con.contype = 'f' and n1.nspname in ('drug','drugmgmt','lists','planconfig') order by n1.nspname;
+
+
+
+SELECT
+  n1.nspname AS referenced_schema,
+  c1.relname AS referenced_table,
+  n2.nspname AS referencing_schema,
+  c2.relname AS referencing_table
+FROM
+  pg_constraint AS con
+  JOIN pg_class AS c1 ON con.confrelid = c1.oid
+  JOIN pg_namespace AS n1 ON c1.relnamespace = n1.oid
+  JOIN pg_class AS c2 ON con.conrelid = c2.oid
+  JOIN pg_namespace AS n2 ON c2.relnamespace = n2.oid
+WHERE
+  con.contype = 'f';
+

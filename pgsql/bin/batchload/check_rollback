@@ -1,0 +1,58 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]; then
+  echo "Usage: <logfile> <runsqlfile>"
+  echo "e.g: $0 run_insert_00.log run_insert_00"
+  exit 1
+fi
+
+log=$1
+input=$2
+
+# Extract log events
+grep -n -E 'BEGIN|ROLLBACK' "$log" > log_events.txt
+
+# Extract all chunk start lines (line numbers) from the SQL script
+awk '
+  /^\s*\\set startid/ { start_line=NR }
+  /^\s*\\i insert_prod.sql/ {
+    print start_line
+  }
+' "$input" > chunk_line_numbers.txt
+
+# Count BEGINs and ROLLBACKs
+num_begin=$(grep -c 'BEGIN' "$log")
+num_rollback=$(grep -c 'ROLLBACK' "$log")
+
+echo "Total BEGINs: $num_begin"
+echo "Total ROLLBACKs: $num_rollback"
+
+# Process each ROLLBACK and map it back to the failed chunk
+rollback_lines=$(grep -n 'ROLLBACK' "$log" | cut -d: -f1)
+
+i=0
+while read -r line; do
+  i=$((i+1))
+  rollback_line=$line
+
+  # Find the chunk index corresponding to this rollback
+  chunk_index=$(awk -v rline="$rollback_line" '
+    BEGIN { count=0 }
+    $0 ~ /BEGIN/ {
+      count++
+      if ($1+0 < rline) idx=count
+    }
+    END { print idx }
+  ' log_events.txt)
+
+  # Get the corresponding line number from the SQL file
+  chunk_line=$(sed -n "${chunk_index}p" chunk_line_numbers.txt)
+  startline=$(echo $rollback_line -5|bc)
+
+  echo "=== ROLLBACK at log line $rollback_line (chunk #$chunk_index from $input line $chunk_line) ==="
+  sed -n "$startline,${rollback_line}p" $log
+
+  # Print 3 lines: \set startid, \set endid, \i insert_prod.sql
+  sed -n "${chunk_line},$((chunk_line+2))p" "$input"
+  echo
+done <<< "$rollback_lines"

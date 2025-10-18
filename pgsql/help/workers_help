@@ -1,0 +1,70 @@
+SELECT subname, count(pid) as worker_count
+FROM pg_stat_subscription
+GROUP BY subname
+ORDER BY worker_count DESC;
+
+
+
+-- See the actual breakdown of those 252 connections
+SELECT 
+    backend_type,
+    application_name,
+    state,
+    count(*) as connection_count
+FROM pg_stat_activity 
+WHERE backend_type LIKE '%replication%'
+   OR application_name LIKE '%replication%'
+   OR application_name LIKE '%subscription%'
+GROUP BY backend_type, application_name, state
+ORDER BY connection_count DESC
+LIMIT 20;
+
+-- Compare total connections to background workers
+SELECT 
+    'total_connections' as metric,
+    count(*) as value
+FROM pg_stat_activity
+UNION ALL
+SELECT 
+    'background_workers' as metric,
+    count(*) as value
+FROM pg_stat_activity 
+WHERE backend_type = 'background worker'
+UNION ALL
+SELECT 
+    'replication_related' as metric,
+    count(*) as value
+FROM pg_stat_activity 
+WHERE backend_type LIKE '%replication%'
+   OR application_name LIKE '%replication%'
+   OR application_name LIKE '%subscription%';
+
+
+SELECT
+    subname,
+    COUNT(pid) as active_workers
+FROM pg_stat_subscription
+GROUP BY subname
+ORDER BY active_workers DESC;
+
+-- Check if subscriptions have multiple workers each
+SELECT COUNT(*) as total_subscription_workers FROM pg_stat_subscription WHERE pid IS NOT NULL;
+
+
+
+SELECT count(*) as active_replication_workers 
+FROM pg_stat_activity 
+WHERE backend_type LIKE '%replication%' 
+   OR application_name LIKE '%replication%' 
+   OR application_name LIKE '%subscription%';
+
+-- Check current limits vs actual usage
+SELECT 
+    name,
+    setting as configured_limit,
+    (SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'background worker') as current_usage,
+    context
+FROM pg_settings 
+WHERE name IN ('max_worker_processes', 'max_logical_replication_workers', 'max_parallel_workers');
+
+

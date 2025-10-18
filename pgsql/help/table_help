@@ -1,0 +1,10 @@
+-- Look for large tables or known problematic tables
+SELECT 
+    schemaname,
+    relname,
+    n_live_tup as row_count,
+    pg_size_pretty(pg_total_relation_size(relid)) as total_size
+FROM pg_stat_user_tables 
+WHERE schemaname = 'finance_other'
+ORDER BY n_live_tup DESC
+LIMIT 10;

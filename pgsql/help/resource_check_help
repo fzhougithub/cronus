@@ -1,0 +1,252 @@
+Excellent question! This is the key insight. If the configuration is identical but the problem only occurs in one environment, we need to look at **system-level differences** and **data characteristics**.
+
+## 1. **System Resource Comparisons**
+
+### A. **Memory and CPU Differences**
+```bash
+# Check system resources on both environments
+free -h
+lscpu
+df -h  # Disk space
+ulimit -a  # Process limits
+
+# PostgreSQL memory settings
+psql -c "SELECT name, setting, unit FROM pg_settings WHERE name LIKE '%memory%' OR name LIKE '%buffers%' ORDER BY name;"
+```
+
+### B. **I/O Performance Differences**
+```bash
+# Check disk I/O performance
+iostat -x 1 5
+# Or for simpler check
+dd if=/dev/zero of=/tmp/test bs=1M count=1024 oflag=direct
+```
+
+### C. **Network Differences**
+```bash
+# Check network latency and stability
+ping -c 10 publisher_host
+# Check for packet loss
+mtr --report publisher_host
+```
+
+## 2. **Data Characteristics Comparison**
+
+### A. **Table Sizes and Counts**
+```sql
+-- Compare table counts and sizes between environments
+SELECT 
+    n.nspname as schema,
+    count(*) as table_count,
+    pg_size_pretty(sum(pg_total_relation_size(c.oid))) as total_size,
+    avg(pg_total_relation_size(c.oid)) as avg_table_size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+AND n.nspname NOT LIKE 'pg_%' AND n.nspname != 'information_schema'
+GROUP BY n.nspname
+ORDER BY sum(pg_total_relation_size(c.oid)) DESC;
+```
+
+### B. **Publication-Specific Table Characteristics**
+```sql
+-- Check the specific tables in your problematic publication
+SELECT 
+    pt.schemaname,
+    pt.tablename,
+    pg_size_pretty(pg_total_relation_size(pt.schemaname||'.'||pt.tablename)) as size,
+    (SELECT count(*) FROM pt.schemaname||'.'||pt.tablename) as row_count,
+    (SELECT count(*) FROM pg_constraint WHERE conrelid = (pt.schemaname||'.'||pt.tablename)::regclass AND contype = 'p') as has_pkey
+FROM pg_publication_tables pt
+WHERE pt.pubname = 'qc_finance_other_pub'
+ORDER BY pg_total_relation_size(pt.schemaname||'.'||pt.tablename) DESC
+LIMIT 20;
+```
+
+## 3. **PostgreSQL Configuration Deep Dive**
+
+Even if files are identical, check what's actually loaded:
+
+### A. **Actual Runtime Configuration**
+```sql
+-- Compare running configs (settings that actually took effect)
+SELECT name, setting, source, sourcefile 
+FROM pg_settings 
+WHERE name IN (
+    'max_connections',
+    'max_logical_replication_workers', 
+    'max_sync_workers_per_subscription',
+    'max_worker_processes',
+    'shared_buffers',
+    'work_mem',
+    'maintenance_work_mem',
+    'wal_level',
+    'max_wal_senders',
+    'max_replication_slots'
+)
+ORDER BY name;
+```
+
+### B. **Check for Configuration Overrides**
+```sql
+-- Look for settings that were changed at runtime
+SELECT name, setting, source 
+FROM pg_settings 
+WHERE source IN ('command line', 'session', 'override')
+ORDER BY source, name;
+```
+
+## 4. **Workload and Connection Patterns**
+
+### A. **Current Connection Load**
+```sql
+-- Compare connection patterns
+SELECT 
+    count(*) as total_connections,
+    count(CASE WHEN backend_type LIKE '%logical%' THEN 1 END) as logical_workers,
+    count(CASE WHEN state = 'active' THEN 1 END) as active_connections,
+    count(CASE WHEN state = 'idle' THEN 1 END) as idle_connections
+FROM pg_stat_activity 
+WHERE datname = current_database();
+```
+
+### B. **Replication Slot Status Comparison**
+```sql
+-- Compare replication slot states between environments
+SELECT 
+    slot_name,
+    slot_type,
+    active,
+    database,
+    xmin,
+    pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) as lsn_lag
+FROM pg_replication_slots 
+ORDER BY slot_name;
+```
+
+## 5. **Operating System Level Differences**
+
+### A. **Kernel Parameters**
+```bash
+# Compare kernel settings that affect PostgreSQL
+sysctl -a | grep -E "(shm|max|file|core)" | grep -v "^net"
+```
+
+### B. **File Descriptor Limits**
+```bash
+# Check if file descriptor limits are different
+cat /proc/sys/fs/file-max
+ulimit -n  # Per-process limit
+
+# Check current usage
+lsof | wc -l
+```
+
+### C. **Memory Overcommit Settings**
+```bash
+# This can cause OOM killer to target PostgreSQL
+cat /proc/sys/vm/overcommit_memory
+cat /proc/sys/vm/overcommit_ratio
+```
+
+## 6. **Specific to Your IPC Issue**
+
+### A. **Check for Memory Pressure**
+```bash
+# Check if system is under memory pressure
+cat /proc/meminfo | grep -E "(MemFree|MemAvailable|SwapCached)"
+# Check for OOM killer activity
+dmesg | grep -i "killed process"
+```
+
+### B. **Check IPC Resources**
+```bash
+# Check System V IPC limits
+ipcs -l
+
+# Check current IPC usage
+ipcs -u
+```
+
+### C. **Check for Resource Exhaustion**
+```bash
+# Check various system limits
+cat /proc/sys/kernel/pid_max
+cat /proc/sys/kernel/threads-max
+```
+
+## 7. **Environment-Specific Investigation**
+
+### A. **Check if This is a Larger Database**
+```sql
+-- Compare database sizes
+SELECT 
+    datname,
+    pg_size_pretty(pg_database_size(datname)) as size
+FROM pg_database 
+ORDER BY pg_database_size(datname) DESC;
+```
+
+### B. **Check for Table Bloat**
+```sql
+-- Check if tables are more bloated in the problematic environment
+SELECT
+    schemaname,
+    tablename,
+    n_dead_tup as dead_rows,
+    n_live_tup as live_rows,
+    round(n_dead_tup::numeric / (n_live_tup + n_dead_tup) * 100, 2) as dead_pct
+FROM pg_stat_user_tables
+WHERE n_live_tup > 0
+ORDER BY n_dead_tup DESC
+LIMIT 10;
+```
+
+## 8. **Quick Diagnostic Script**
+
+Run this on both environments and compare:
+
+```bash
+#!/bin/bash
+echo "=== System Resources ==="
+free -h
+echo -e "\n=== Disk Space ==="
+df -h /var/lib/pgsql
+echo -e "\n=== PostgreSQL Connections ==="
+psql -c "SELECT count(*) as total_conns, count(CASE WHEN backend_type LIKE '%logical%' THEN 1 END) as logical_workers FROM pg_stat_activity;"
+echo -e "\n=== Replication Slots ==="
+psql -c "SELECT slot_name, active, database FROM pg_replication_slots;"
+echo -e "\n=== Table Counts in Publication ==="
+psql -c "SELECT pubname, count(*) as table_count FROM pg_publication_tables GROUP BY pubname;"
+```
+
+## Most Likely Differences to Investigate:
+
+1. **Database size and table counts** in the publication
+2. **Actual memory available** vs. configured memory
+3. **Concurrent connection load** from other applications
+4. **I/O subsystem performance** differences
+5. **Network stability** between subscriber and publisher
+6. **Operating system kernel parameters**
+7. **File descriptor limits**
+8. **Current system resource usage** during replication attempt
+
+## Immediate Checks:
+
+Run these on both working and broken environments and compare the outputs:
+
+```sql
+-- Check 1: Actual table counts and sizes in the publication
+SELECT count(*), pg_size_pretty(sum(pg_total_relation_size(schemaname||'.'||tablename))) 
+FROM pg_publication_tables WHERE pubname = 'qc_finance_other_pub';
+
+-- Check 2: Current system resource usage
+SELECT name, setting, unit FROM pg_settings 
+WHERE name IN ('shared_buffers', 'work_mem', 'max_connections', 'max_worker_processes');
+
+-- Check 3: Connection load at time of failure
+SELECT count(*), count(CASE WHEN backend_type LIKE '%logical%' THEN 1 END) 
+FROM pg_stat_activity;
+```
+
+The fact that this only happens in one environment strongly suggests either **data volume differences** or **system resource constraints** that aren't apparent from the PostgreSQL configuration alone.

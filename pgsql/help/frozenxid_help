@@ -1,0 +1,156 @@
+SELECT datname, age(datfrozenxid)
+FROM pg_database;
+
+
+SELECT relname, age(relfrozenxid)
+FROM pg_class
+WHERE relkind = 'r';  -- 'r' stands for ordinary tables
+
+
+vacuumdb --all --freeze --jobs=2 --echo --analyze
+
+-- Step 1: Map TOAST to Parents and Show Details (Verification Query)
+=============================================================================
+-- Run this first to see exact mappings and parents
+WITH high_age_rels AS (
+  SELECT 
+    n.nspname,
+    c.relname,
+    c.oid,
+    c.relkind,
+    age(c.relfrozenxid) AS rel_age,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS rel_size,
+    -- For TOAST: Extract parent OID
+    CASE WHEN n.nspname = 'pg_toast' AND c.relkind = 't' 
+         THEN substring(c.relname FROM 10)::oid 
+         ELSE NULL END AS parent_oid
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relfrozenxid != 0
+    AND c.relkind IN ('r', 'i', 'S', 't', 'm', 'c', 'f', 'p')
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    AND age(c.relfrozenxid) > 100000000  -- Threshold: Focus on high-age (>100M; adjust to 150M or your min_age)
+  ORDER BY age(c.relfrozenxid) DESC
+  LIMIT 100
+),
+toast_with_parents AS (
+  SELECT 
+    h.*,
+    pn.nspname AS parent_schema,
+    pc.relname AS parent_table,
+    age(pc.relfrozenxid) AS parent_age
+  FROM high_age_rels h
+  LEFT JOIN pg_class pc ON h.parent_oid = pc.oid
+  LEFT JOIN pg_namespace pn ON pc.relnamespace = pn.oid
+)
+SELECT 
+  nspname || '.' || relname AS relation,
+  relkind,
+  rel_age,
+  rel_size,
+  COALESCE(parent_schema || '.' || parent_table, 'No Parent (or Non-TOAST)') AS parent_relation,
+  parent_age
+FROM toast_with_parents
+ORDER BY rel_age DESC;
+
+-- Step 2: Generate VACUUM Commands
+=============================================================================
+-- Prioritizes parents for TOAST; direct for others (e.g., tables/indexes).
+-- For indexes ('i'), vacuums the parent table (extracted via pg_index).
+WITH high_age_rels AS (
+  -- Same as above...
+  SELECT 
+    n.nspname,
+    c.relname,
+    c.oid,
+    c.relkind,
+    age(c.relfrozenxid) AS rel_age,
+    CASE WHEN n.nspname = 'pg_toast' AND c.relkind = 't' 
+         THEN substring(c.relname FROM 10)::oid 
+         ELSE NULL END AS parent_oid,
+    -- For indexes: Get parent table OID
+    CASE WHEN c.relkind = 'i' THEN (SELECT indrelid FROM pg_index WHERE indexrelid = c.oid) ELSE NULL END AS index_parent_oid
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relfrozenxid != 0
+    AND c.relkind IN ('r', 'i', 'S', 't', 'm', 'c', 'f', 'p')
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    AND age(c.relfrozenxid) > 100000000
+  ORDER BY age(c.relfrozenxid) DESC
+  LIMIT 100
+),
+targets AS (
+  SELECT DISTINCT
+    COALESCE(
+      -- TOAST parent
+      pn.nspname, 
+      -- Index parent
+      pi.nspname,
+      -- Direct (for tables, etc.)
+      h.nspname
+    ) AS target_schema,
+    COALESCE(
+      pc.relname,  -- TOAST/index parent table
+      pi_rel.relname,  -- Index parent
+      h.relname  -- Direct
+    ) AS target_table,
+    h.rel_age,
+    h.relkind AS original_kind
+  FROM high_age_rels h
+  LEFT JOIN pg_class pc ON h.parent_oid = pc.oid
+  LEFT JOIN pg_namespace pn ON pc.relnamespace = pn.oid
+  LEFT JOIN pg_class pi_rel ON h.index_parent_oid = pi_rel.oid
+  LEFT JOIN pg_namespace pi ON pi_rel.relnamespace = pi.oid
+)
+SELECT 
+  'VACUUM FREEZE VERBOSE ' || quote_ident(target_schema) || '.' || quote_ident(target_table) || ';' AS vacuum_command,
+  original_kind AS fixed_via_parent_for_kind,
+  rel_age
+FROM targets
+ORDER BY rel_age DESC;
+
+-- Step 3: Execution Tips
+-- - Copy the output commands and run them manually (e.g., in psql).
+-- - In psql 14+, run the generate query then \gexec to auto-execute.
+-- - For direct TOAST (if you insist, though not recommended—may error):
+--   Add to the SELECT: IF original_kind = 't' THEN 'VACUUM FREEZE VERBOSE ' || quote_ident('pg_toast') || '.' || quote_ident(h.relname) || ';'
+--   But expect failures; use database-wide instead: VACUUM FREEZE VERBOSE;
+-- - Post-run: Check ages again. If stuck, check for long transactions (SELECT * FROM pg_stat_activity WHERE state = 'idle in transaction';) and kill them.
+
+
+-- TEMPLATE DATABASE XID AGE FIX
+-- This script contains commands you must execute in your PSQL client to reset
+-- the transaction age of template1 and template0.
+
+-- NOTE: You CANNOT execute VACUUM FREEZE from your current database session.
+-- You MUST disconnect and connect directly to each template database.
+
+\echo '------------------------------------------------------------------------------------------------------------------------------------'
+\echo 'STEP 1: Connect to template1 and run VACUUM (FREEZE)'
+\echo '------------------------------------------------------------------------------------------------------------------------------------'
+\echo '1. Exit your current psql session (type \q).'
+\echo '2. Reconnect directly to template1:'
+\echo '   psql -d template1 -U your_user_name'
+\echo '3. Execute the following commands in the template1 session:'
+\echo '   VACUUM FREEZE;'
+\echo '   \q'
+\echo ''
+
+\echo '------------------------------------------------------------------------------------------------------------------------------------'
+\echo 'STEP 2: Connect to template0 and run VACUUM (FREEZE)'
+\echo '------------------------------------------------------------------------------------------------------------------------------------'
+\echo '1. Reconnect directly to template0:'
+\echo '   psql -d template0 -U your_user_name'
+\echo '2. Execute the following commands in the template0 session:'
+\echo 'ALTER DATABASE template0 ALLOW_CONNECTIONS = true;'
+\echo '   VACUUM FREEZE;'
+\echo '   \q'
+\echo ''
+
+\echo '------------------------------------------------------------------------------------------------------------------------------------'
+\echo 'STEP 3: Reconnect to your main database and verify'
+\echo '------------------------------------------------------------------------------------------------------------------------------------'
+\echo '1. Reconnect to claimsprocess:'
+\echo '   psql -d claimsprocess -U your_user_name'
+\echo '2. Verify the age has dropped using your diagnostic query.'
+\echo '------------------------------------------------------------------------------------------------------------------------------------'

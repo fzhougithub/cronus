@@ -1,0 +1,252 @@
+SELECT
+datname AS database_name,
+datfrozenxid AS minimum_frozen_xid,
+age(datfrozenxid) AS database_xid_age,
+(2000000000 - age(datfrozenxid)) AS remaining_xids_before_panic
+FROM
+pg_database
+;
+
+ database_name | minimum_frozen_xid | database_xid_age | remaining_xids_before_panic
+---------------+--------------------+------------------+-----------------------------
+ postgres      |          248757754 |        137400815 |                  1862599185
+ repmgr        |          299067349 |         87091220 |                  1912908780
+ template1     |          197303851 |        188854718 |                  1811145282
+ template0     |          197303851 |        188854718 |                  1811145282
+ claimsprocess |          188446712 |        197711857 |                  1802288143
+(5 rows)
+
+
+SELECT n.nspname || '.' || c.relname AS relation,
+       c.relkind,
+       age(c.relfrozenxid),
+       pg_size_pretty(pg_total_relation_size(c.oid))
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relfrozenxid != 0  -- Skip relations without frozen XIDs (e.g., some system ones)
+  AND c.relkind IN ('r', 'i', 'S', 't', 'm', 'c', 'f', 'p')  -- Include indexes, sequences, etc.
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY age(c.relfrozenxid) DESC
+LIMIT 100;
+
+                           relation                           | relkind |    age    | pg_size_pretty
+--------------------------------------------------------------+---------+-----------+----------------
+ pg_toast.pg_toast_91561                                      | t       | 197712652 | 8192 bytes
+ pg_toast.pg_toast_88055                                      | t       | 197709259 | 8192 bytes
+ pg_toast.pg_toast_93801                                      | t       | 197707386 | 8192 bytes
+ pg_toast.pg_toast_91449                                      | t       | 197705340 | 8192 bytes
+ pg_toast.pg_toast_94921                                      | t       | 197704943 | 8192 bytes
+ pg_toast.pg_toast_93689                                      | t       | 197700936 | 8192 bytes
+ pg_toast.pg_toast_94809                                      | t       | 197700936 | 8192 bytes
+ pg_toast.pg_toast_91337                                      | t       | 197695904 | 8192 bytes
+ pg_toast.pg_toast_95929                                      | t       | 197676571 | 8192 bytes
+
+
+-- This query identifies the most critical tables (the "eldest") by calculating
+-- their individual Transaction ID (XID) age and ordering them from highest to lowest.
+
+SELECT
+n.nspname AS schema_name,
+c.relname AS table_name,
+-- The key metric: Age of the table's oldest transaction ID
+age(c.relfrozenxid) AS table_xid_age,
+-- How many transactions are left for this table before the 2 billion panic limit
+(2000000000 - age(c.relfrozenxid)) AS remaining_xids_until_emergency_freeze,
+pg_size_pretty(pg_relation_size(c.oid)) AS data_size
+FROM
+pg_class c
+JOIN
+pg_namespace n ON n.oid = c.relnamespace
+WHERE
+c.relkind = 'r' -- regular tables
+AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+-- Filter out very small, often unused tables for immediate triage
+AND pg_relation_size(c.oid) > 1024 * 1024 -- only tables larger than 1MB
+ORDER BY
+table_xid_age DESC
+LIMIT 100; -- Show the top 100 oldest tables
+
+          schema_name          |               table_name                | table_xid_age | remaining_xids_until_emergency_freeze | data_size
+-------------------------------+-----------------------------------------+---------------+---------------------------------------+-----------
+ stg_customer_320              | o60                                     |     188854718 |                            1811145282 | 496 GB
+ stg_customer_initial          | ext1_a10_lkp_s2                         |     178281312 |                            1821718688 | 28 MB
+ stg_customer_initial          | ext1_o60_lkp_s2                         |     178279308 |                            1821720692 | 122 MB
+ stg_customer_initial          | ext1_a10_lkp_s3                         |     178273715 |                            1821726285 | 30 MB
+ stg_customer_initial          | ext1_o60_lkp_s3                         |     178273624 |                            1821726376 | 122 MB
+ stg_customer_initial          | ext1_o60_lkp_s4                         |     178273220 |                            1821726780 | 122 MB
+ stg_customer_initial          | ext1_a10_lkp_s4                         |     178273220 |                            1821726780 | 31 MB
+ stg_customer_initial          | ext1_a10_lkp_s6                         |     178268877 |                            1821731123 | 29 MB
+ stg_customer_initial          | ext1_o60_lkp_s6                         |     178268872 |                            1821731128 | 122 MB
+
+
+
+
+-- Run this query to find tables approaching the wraparound limit (default is 200 million).
+-- The output is sorted by 'xid_age', showing the most critical tables first.
+
+SELECT
+n.nspname AS schema_name,
+c.relname AS table_name,
+(2000000000 - age(c.relfrozenxid)) AS remaining_xids_until_panic,
+age(c.relfrozenxid) AS xid_age,
+c.relfrozenxid,
+pg_size_pretty(pg_relation_size(c.oid)) AS data_size
+FROM
+pg_class c
+JOIN
+pg_namespace n ON n.oid = c.relnamespace
+WHERE
+c.relkind = 'r' -- regular tables
+AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+ORDER BY
+xid_age DESC
+LIMIT 10;
+     
+
+     schema_name      |      table_name       | remaining_xids_until_panic |  xid_age  | relfrozenxid | data_size
+----------------------+-----------------------+----------------------------+-----------+--------------+-----------
+ claimsprocess_humana | claim_core_320_202411 |                 1798853079 | 201146921 |    184979012 | 107 GB
+ claimsprocess_humana | claim_error_87        |                 1799990833 | 200009167 |    186116766 | 36 MB
+ claimsprocess_humana | claim_error_97        |                 1799990833 | 200009167 |    186116766 | 44 MB
+ claimsprocess_humana | claim_error_77        |                 1799990833 | 200009167 |    186116766 | 1064 kB
+ claimsprocess_humana | claim_core_320_201912 |                 1799990833 | 200009167 |    186116766 | 6776 kB
+ claimsprocess_humana | claim_core_320_201712 |                 1800429610 | 199570390 |    186555543 | 4592 kB
+ claimsprocess_humana | claim_core_320_201812 |                 1800429610 | 199570390 |    186555543 | 2968 kB
+ claimsprocess_humana | claim_core_320_201709 |                 1803783810 | 196216190 |    189909743 | 993 MB
+ claimsprocess_humana | claim_core_320_201809 |                 1803784042 | 196215958 |    189909975 | 23 MB
+ claimsprocess_humana | claim_core_320_201909 |                 1803784042 | 196215958 |    189909975 | 6472 kB
+(10 rows)
+
+
+ALTER SYSTEM SET autovacuum = off; -- Requires superuser access
+SELECT pg_reload_conf();
+    *(Remember to turn this back on later!)*
+
+in session level, remener
+SET vacuum_cost_delay = 0;
+SET maintenance_work_mem = '2GB';
+
+SELECT
+pg_terminate_backend(pid),
+'Terminated ALL active autovacuum worker' AS termination_status
+FROM pg_stat_activity
+WHERE
+backend_type = 'autovacuum worker';
+
+
+-- INSTRUCTIONS: The following query generates the necessary VACUUM FREEZE commands.
+-- The output rows in the 'manual_fix_command' column are clean and ready to be
+-- copied and run manually in your psql session to finalize the XID freeze.
+
+SELECT
+-- The output here is ONLY the command string, ready to copy/paste.
+format('VACUUM (FREEZE, VERBOSE) %I.%I;', n.nspname, c.relname) AS manual_fix_command
+FROM
+pg_class c
+JOIN
+pg_namespace n ON n.oid = c.relnamespace
+WHERE
+c.relkind = 'r' -- regular tables
+AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+ORDER BY
+age(c.relfrozenxid) DESC -- Still orders by age to ensure top priority tables are first.
+LIMIT 100;
+
+-- Generate using offset
+
+SELECT
+-- The output here is ONLY the command string, ready to copy/paste.
+format('VACUUM (FREEZE, VERBOSE) %I.%I;', n.nspname, c.relname) AS manual_fix_command
+FROM
+pg_class c
+JOIN
+pg_namespace n ON n.oid = c.relnamespace
+WHERE
+c.relkind = 'r' -- regular tables
+AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+ORDER BY
+age(c.relfrozenxid) DESC -- Orders by age to ensure top priority tables are first.
+LIMIT 21 OFFSET 29; -- Get rows 30 through 50 (21 rows total, skipping 29)
+
+
+
+-- After these commands finish, your XID age issue should be resolved for the most critical tables.
+
+
+-- Run this command for the top 3-5 critical tables.
+-- This command reads all data blocks and sets the XID age back to zero.
+VACUUM (FREEZE, VERBOSE) schema_name.table_name;
+
+**Example (using the table identified in Step 0):**
+
+```sql
+VACUUM (FREEZE, VERBOSE) parent_schema_name.parent_table_name;
+
+### Step 4: Verify the Fix and Restore Autovacuum
+
+1.  **Verify Age Drop:** Re-run the `find_high_age_tables.sql` query. The `xid_age` for the tables you just vacuumed should be very close to zero. The "remaining XIDs until panic" column should be near 2 billion.
+
+2.  **Restore Autovacuum:**
+    ```sql
+    ALTER SYSTEM SET autovacuum = on; -- If you turned it off in Step 2
+    SELECT pg_reload_conf();
+    
+3.  **Continue Tuning:** Once the crisis is over, you can re-run your script to deploy the adjusted `autovacuum_vacuum_scale_factor` settings, which will prevent this from happening again in the future by making sure autovacuum runs more frequently on your largest tables.
+
+
+select * from pg_stat_progress_vacuum;
+
+select relname from pg_class where relname like '%progress%';
+
+-- Query to find the session (PID) that is preventing VACUUM FREEZE from completing.
+-- This query identifies sessions holding onto old Transaction IDs (XIDs) by comparing
+-- the session's 'backend_xmin' (the oldest XID it can see) to the current XID.
+-- A high 'xid_age_holding_freeze' means this session is the one blocking the freeze operation.
+
+SELECT
+pid,
+usename,
+client_addr,
+application_name,
+backend_type,
+state,
+-- This is the crucial column: it shows the oldest XID this session requires.
+backend_xmin,
+-- Calculate the age of the XID this session is holding
+age(backend_xmin) AS xid_age_holding_freeze,
+query AS last_query,
+-- Duration since the transaction started
+AGE(NOW(), xact_start) AS xact_duration
+FROM
+pg_stat_activity
+WHERE
+-- Filter out system processes and sessions without an old XID reference
+backend_xmin IS NOT NULL
+ORDER BY
+xid_age_holding_freeze DESC;
+
+-- ACTION: If 'state' is 'idle in transaction' and 'xid_age_holding_freeze' is very high
+-- (e.g., matching the 'oldest xmin' from your VACUUM output), you must terminate this PID:
+-- SELECT pg_terminate_backend(PID);
+
+
+-- Verify success vacuum freeze
+
+-- Replace 'your_schema_name' and 'your_table_name' with the actual table you just vacuumed.
+
+SELECT
+n.nspname AS schema_name,
+c.relname AS table_name,
+-- The key metric: Age of the table's oldest transaction ID.
+-- This should now be a very small number (e.g., < 1,000,000) if VACUUM FREEZE succeeded.
+age(c.relfrozenxid) AS table_xid_age,
+-- How many transactions are left for this table before the 2 billion panic limit.
+(2000000000 - age(c.relfrozenxid)) AS remaining_xids_before_panic
+FROM
+pg_class c
+JOIN
+pg_namespace n ON n.oid = c.relnamespace
+WHERE
+c.relkind = 'r'
+-- AND n.nspname = 'your_schema_name' -- !!! REPLACE SCHEMA NAME HERE !!!
+-- AND c.relname = 'your_table_name';  -- !!! REPLACE TABLE NAME HERE !!!

@@ -1,0 +1,24 @@
+-- Partition parents
+SELECT
+  ns.nspname AS parent_schema,
+  c.relname AS parent_table,
+  p.partstrat AS partition_strategy,
+  p.partnatts AS partition_key_columns_count
+FROM pg_partitioned_table p
+JOIN pg_class c ON c.oid = p.partrelid
+JOIN pg_namespace ns ON ns.oid = c.relnamespace
+ORDER BY ns.nspname, c.relname;
+
+
+-- Partition children
+SELECT n.nspname   AS schema_name,
+       c.relname   AS child_table,
+       pg_get_expr(c.relpartbound, c.oid) AS partition_bound,
+       p_parent.relname AS parent_table
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_inherits i ON i.inhrelid = c.oid
+JOIN pg_class p_parent ON p_parent.oid = i.inhparent
+ORDER BY n.nspname, p_parent.relname, c.relname;
+
+

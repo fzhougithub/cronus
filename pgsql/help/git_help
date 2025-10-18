@@ -1,3 +1,74 @@
+git pull origin main --rebase
+
+git diff --staged
+
+
+BTW, if you by mistake did this command git commit --amend --no-edit before you did your git commit -m "xxxx" you can fix it by git reset --soft HEAD@{1}
+
+
+finally
+after delete branch from Github using GUI
+Per local branch
+
+git reset --hard
+git clean -fd
+git branch
+git branch -D DEVOPS-10708-add-space-to-huat-db-kc
+
+Now, done
+
+
+
+git clone git@code.ssnc.dev:pharmacy/domanirx-infra.git
+git checkout -b  DEVOPS-9839-add-space-to-uatpls-db-kc
+git add .
+git commit -m 'DEVOPS-9389 add space for apps in ualpls db'
+git push origin <branch name>
+git commit --amend
+git push origin DEVOPS-10708-add-space-to-huat-db-kc -f
+git push origin --delete DEVOPS-10835-change-logrotate-pgbackrest-conf-for-all-db
+
+Already submit pull request, but remove one file
+git commit --amend --no-edit
+git push origin DEVOPS-10830-Change-Two-postgresql.conf-parameters -f
+
+ git add .
+ git commit --amend --no-edit
+git push origin DEVOPS-10830-Change-Two-postgresql.conf-parameters -f
+cd ~
+cd work1
+grep -ri cron *
+cd domanirx-infra
+git diff
+git restore .
+git status
+git switch main
+git pull origin main --rebase
+git branch -d DEVOPS-10830-Change-Two-postgresql.conf-parameters
+git branch
+
+
+In case two commits, need to merge them, squash, and then, force commit
+
+git rebase -i HEAD~2
+# change second from pick to squash
+# save
+Then, in second prompt
+remove one of the definition
+save
+
+git log -1
+git log --oneline -2
+
+
+git push origin DEVOPS-10830-Change-Two-postgresql.conf-parameters --force
+
+
+what is this one? 
+
+git commit --amend --no-edit
+
+
 No, **Git itself won't modify your code** in a way that would make it "dirty" or non-runnable when you push it. However, there are a few scenarios where code might break after `git push` → `git pull`/`git clone`:
 
 ---

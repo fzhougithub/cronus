@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# PostgreSQL Autovacuum Tuning Script
+# This script reads table status data from Standard Input (STDIN) 
+# and generates ALTER TABLE commands to set the per-table autovacuum_vacuum_scale_factor
+# based on row count.
+#
+# USAGE: cat /path/to/check_size.log | ./tune_autovacuum.sh
+
+# Get current date/time using the shell's 'date' command for maximum compatibility.
+# This avoids the non-standard 'strftime' function in awk.
+CURRENT_DATE=$(date "+%Y-%m-%d %H:%M:%S")
+
+# AWK Script to parse data and apply logic
+# The AWK command now implicitly reads from STDIN and receives the date via -v flag.
+GENERATED_SQL=$(awk -v DATE_VAR="$CURRENT_DATE" '
+# Set field separator to the pipe character
+BEGIN { 
+    FS = "|"; 
+    
+    # Print a header for the generated SQL using the variable passed from the shell
+    print "-- SQL generated on " DATE_VAR 
+    print "-- Reading input from STDIN (e.g., \"cat logfile | this_script\")"
+    print "-- Note: Setting autovacuum_analyze_scale_factor to half the vacuum factor is a common aggressive practice for large tables."
+}
+
+# Function to trim leading and trailing whitespace
+function trim(s) {
+    # Remove leading space/tab
+    sub(/^[[:space:]]+/, "", s);
+    # Remove trailing space/tab
+    sub(/[[:space:]]+$/, "", s);
+    return s;
+}
+
+# Skip the first three lines (header, separator, and potentially a blank line)
+NR <= 3 { next }
+
+{
+    # 1. Read fields from the pipe-delimited input
+    # Fields based on your log structure:
+    # $1 (schema), $2 (table), $5 (row_count)
+    schema = trim($1);
+    table = trim($2);
+    
+    # 2. Extract row_count and force numeric conversion (awk handles scientific notation)
+    row_count = trim($5) + 0;
+
+    # 3. Case the row_count to determine the autovacuum_vacuum_scale_factor
+    if (row_count >= 1000000000) {
+        # > 1 Billion rows: 0.1% scale factor
+        scale_factor = 0.001;
+    } else if (row_count >= 100000000) {
+        # > 100 Million rows: 0.5% scale factor
+        scale_factor = 0.005;
+    } else if (row_count >= 10000000) {
+        # > 10 Million rows: 1% scale factor
+        scale_factor = 0.01;
+    } else if (row_count > 0) {
+        # < 10 Million rows: 5% scale factor (more aggressive than default 20%)
+        scale_factor = 0.05;
+    } else {
+        # Handle 0 row count or other unexpected scenarios (fall back to default)
+        scale_factor = 0.2;
+    }
+    
+    # Calculate an aggressive analyze factor (typically half of the vacuum factor)
+    analyze_factor = scale_factor / 2.0;
+
+    # Generate the SQL command. We use dquotes around names for safety.
+    # Correct output format: ALTER TABLE "schema"."table" SET (...)
+    printf "ALTER TABLE \"%s\".\"%s\" SET (autovacuum_vacuum_scale_factor = %.3f, autovacuum_analyze_scale_factor = %.3f);\n", 
+           schema, table, scale_factor, analyze_factor;
+}
+'
+)
+
+# Print the generated SQL
+echo "$GENERATED_SQL"
+

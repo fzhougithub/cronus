@@ -1,0 +1,16 @@
+/usr/pgsql-14/bin/pg_basebackup -Xs -c fast -R -v -D /apps/lib/pgsql/14/data -h 10.222.200.6
+
+/usr/pgsql-14/bin/pg_basebackup \
+  -Xs \          # Stream WAL files during backup
+  -c fast \      # Use fast checkpoint  
+  -R \           # Set up replication configuration
+  -v \           # Verbose output
+  -D /apps/lib/pgsql/14/data \  # Target data directory
+  -h 10.222.200.6              # Primary server host
+
+OK, same thing
+shutdown server
+rm -rf /apps/lib/pgsql/14/data/*
+screen, run basebackup as postgresql
+then, start server. 
+

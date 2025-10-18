@@ -1,0 +1,10 @@
+SELECT
+    m.rolname AS member_name
+FROM
+    pg_auth_members am
+JOIN
+    pg_roles m ON m.oid = am.member
+JOIN
+    pg_roles g ON g.oid = am.roleid
+WHERE
+    g.rolname = 'finance_other_rw';

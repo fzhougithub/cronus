@@ -1,0 +1,91 @@
+ods_domani=# -- Run this repeatedly to see progress
+SELECT
+    NOW() as check_time,
+    COUNT(*) as total_tables,
+    COUNT(*) FILTER (WHERE srsubstate = 'r') as ready_tables,
+    COUNT(*) FILTER (WHERE srsubstate = 'd') as copying_tables,
+    COUNT(*) FILTER (WHERE srsubstate = 'i') as initializing_tables,
+    COUNT(*) FILTER (WHERE srsubstate = 'f') as failed_tables
+FROM pg_subscription_rel
+WHERE srsubid = (SELECT oid FROM pg_subscription WHERE subname = 'prod_claimsprocess_humana_sub');
+
+          check_time           | total_tables | ready_tables | copying_tables | initializing_tables
+-------------------------------+--------------+--------------+----------------+---------------------
+ 2025-10-16 05:02:30.814832-05 |         4071 |         1401 |            159 |                2511
+(1 row)
+
+SELECT
+    sum(pg_total_relation_size(schemaname||'.'||relname))/1024/1024/1024 as sizeGB
+FROM pg_stat_user_tables
+WHERE schemaname = 'claimsprocess_humana';
+
+SELECT
+    COUNT(*) as table_count,
+    srsubstate,
+    CASE srsubstate
+        WHEN 'i' THEN 'initialize'
+        WHEN 'd' THEN 'data copy'
+        WHEN 'f' THEN 'failed'
+        WHEN 's' THEN 'synchronized'
+        WHEN 'r' THEN 'ready'
+    END as state_description
+FROM pg_subscription_rel
+WHERE srsubid = (SELECT oid FROM pg_subscription WHERE subname = 'prod_claimsprocess_humana_sub')
+GROUP BY srsubstate
+ORDER BY srsubstate;
+
+ table_count | srsubstate | state_description
+-------------+------------+-------------------
+         178 | d          | data copy
+        2084 | i          | initialize
+        1809 | r          | ready
+(3 rows)
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS relation_name,
+    c.relkind,
+    CASE c.relkind
+        WHEN 'r' THEN 'table'
+        WHEN 'i' THEN 'index'
+        WHEN 'S' THEN 'sequence'
+        WHEN 't' THEN 'toast table'
+        WHEN 'm' THEN 'materialized view'
+        WHEN 'v' THEN 'view'
+        WHEN 'f' THEN 'foreign table'
+        ELSE c.relkind::text
+    END AS relation_type,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    pg_size_pretty(pg_relation_size(c.oid)) AS main_size,
+    pg_total_relation_size(c.oid) AS total_size_bytes
+FROM
+    pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname = 'claimsprocess_humana'
+ORDER BY
+    pg_total_relation_size(c.oid) DESC
+LIMIT 200;
+
+
+
+
+
+get the session pid, ps -ef|grep pid, you can get the value like
+postgres 3183204 2838297  0 08:09 ?        00:00:00 postgres: 14/main: logical replication worker for subscription 523350909 sync 513545708
+
+Then, can get the running subscription and the relevant tables. 
+
+SELECT pid, relid, r.relname, r.relnamespace::regnamespace AS schema, s.subname
+FROM pg_stat_subscription ss
+JOIN pg_subscription s ON ss.subid = s.oid
+LEFT JOIN pg_class r ON ss.relid = r.oid
+WHERE s.oid = 523350909 and relid = 513545708;
+
+   pid   |   relid   |     relname      |     schema     |        subname
+---------+-----------+------------------+----------------+-----------------------
+ 3183204 | 513545708 | holiday_calendar | finance_global | qc_finance_global_sub
+
+CREATE PUBLICATION mypub FOR ALL TABLES IN SCHEMA finance_global;
+
+

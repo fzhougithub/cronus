@@ -1,0 +1,3 @@
+netstat -tulnap | grep CLOSE_WAIT | grep postgres
+
+

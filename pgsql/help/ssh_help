@@ -1,1 +1,3 @@
 ssh-copy-id -i ~/.ssh/id_rsa.pub username@remote_host
+
+openssl rand -base64 45

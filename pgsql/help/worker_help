@@ -1,0 +1,161 @@
+netstat -tulnap | grep 3
+
+SELECT a.pid, a.wait_event_type, a.wait_event, a.query, a.state
+FROM pg_stat_activity a
+WHERE a.backend_type LIKE '%logical%'
+AND a.wait_event IS NOT NULL;
+
+SELECT a.pid, a.wait_event_type, a.wait_event, a.query, a.state,now()-state_change
+FROM pg_stat_activity a
+WHERE a.backend_type LIKE '%logical%'
+AND a.wait_event IS NOT NULL;
+
+netstat -tulnap | grep CLOSE_WAIT | grep postgres
+
+-- Kill all of the workers session which wait_event_type = 'IPC' and wait_event= 'LogicalSyncStateChange' and state='idle'
+SELECT pid, pg_terminate_backend(pid) as killed,
+       age(now(), state_change) as idle_time
+FROM pg_stat_activity
+WHERE backend_type LIKE '%logical%'
+AND wait_event_type = 'IPC'
+AND wait_event = 'LogicalSyncStateChange'
+AND state = 'idle';
+
+-- Kill all of the workers session which wait_event_type = 'IPC' and wait_event= 'LogicalSyncStateChange'
+SELECT pid, pg_terminate_backend(pid) as killed,
+       age(now(), state_change) as idle_time
+FROM pg_stat_activity
+WHERE backend_type LIKE '%logical%'
+AND wait_event_type = 'IPC'
+AND wait_event = 'LogicalSyncStateChange';
+
+
+-- Kill workers with IPC wait event TYPE state is null > 5minutes;
+SELECT pid, pg_terminate_backend(pid) as killed, 
+       age(now(), state_change) as idle_time
+FROM pg_stat_activity 
+WHERE backend_type LIKE '%logical%'
+AND wait_event_type = 'IPC'
+AND state is null
+AND age(now(), state_change) > interval '5 minutes';
+
+-- Kill workers idle for more than 5 minutes
+SELECT pid, pg_terminate_backend(pid) as killed, 
+       age(now(), state_change) as idle_time
+FROM pg_stat_activity 
+WHERE backend_type LIKE '%logical%'
+AND state = 'idle'
+AND age(now(), state_change) > interval '5 minutes';
+
+SELECT pid, pg_terminate_backend(pid) as killed,
+       age(now(), state_change) as idle_time
+FROM pg_stat_activity
+WHERE backend_type LIKE '%logical%'
+AND state = 'idle'
+AND wait_event='LogicalSyncStateChange'
+AND age(now(), state_change) > interval '5 minutes';
+
+
+-- See which subscriptions are creating all these workers
+SELECT 
+    s.subname,
+    count(*) as worker_count,
+    count(CASE WHEN a.state = 'idle' THEN 1 END) as idle_workers,
+    count(CASE WHEN a.state = 'active' THEN 1 END) as active_workers
+FROM pg_stat_activity a
+CROSS JOIN pg_subscription s
+WHERE a.backend_type LIKE '%logical%'
+AND a.query LIKE '%' || s.subname || '%'
+GROUP BY s.subname
+ORDER BY worker_count DESC;
+
+-- Get overview of all subscription table status
+SELECT 
+    s.subname,
+    count(*) as total_tables,
+    count(CASE WHEN sr.srsubstate = 'r' THEN 1 END) as ready_tables,
+    count(CASE WHEN sr.srsubstate = 'i' THEN 1 END) as initializing_tables,
+    count(CASE WHEN sr.srsubstate = 'd' THEN 1 END) as copying_tables,
+    count(CASE WHEN sr.srsubstate = 'f' THEN 1 END) as failed_tables
+FROM pg_subscription s
+LEFT JOIN pg_subscription_rel sr ON s.oid = sr.srsubid
+GROUP BY s.subname
+ORDER BY failed_tables DESC, total_tables DESC;
+
+
+
+-- Check your limits vs current usage
+SELECT 
+    name,
+    setting::int as configured,
+    (SELECT count(*) FROM pg_stat_activity WHERE backend_type LIKE '%logical%') as current_usage,
+    round((SELECT count(*) FROM pg_stat_activity WHERE backend_type LIKE '%logical%') * 100.0 / setting::int, 2) as percent_used
+FROM pg_settings 
+WHERE name IN ('max_logical_replication_workers', 'max_connections');
+
+-- Find subscriptions with too many concurrent table syncs
+SELECT 
+    s.subname,
+    (SELECT count(*) FROM pg_subscription_rel WHERE srsubid = s.oid) as table_count,
+    current_setting('max_sync_workers_per_subscription')::int as max_workers_per_sub,
+    (SELECT count(*) FROM pg_stat_activity 
+     WHERE backend_type LIKE '%logical%' 
+     AND query LIKE '%' || s.subname || '%') as current_workers
+FROM pg_subscription s
+ORDER BY current_workers DESC
+LIMIT 10;
+
+
+-- Check which tables are currently being synchronized
+SELECT 
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    sr.srsubstate,
+    sr.srsublsn
+FROM pg_subscription_rel sr
+JOIN pg_class c ON c.oid = sr.srrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE sr.srsubstate IN ('f', 'i', 'd')
+ORDER BY sr.srsubstate, n.nspname, c.relname;
+
+
+ods_domani=# -- Check current worker limits vs actual usage
+SELECT
+    name,
+    setting::int as configured,
+    (SELECT count(*) FROM pg_stat_activity WHERE backend_type LIKE '%logical%') as actual_workers
+FROM pg_settings
+WHERE name IN ('max_logical_replication_workers', 'max_sync_workers_per_subscription');
+               name                | configured | actual_workers
+-----------------------------------+------------+----------------
+ max_logical_replication_workers   |        256 |            147
+ max_sync_workers_per_subscription |        128 |            147
+(2 rows)
+
+ods_domani=# -- Count workers specifically for your subscription
+SELECT
+    count(*) as workers_for_this_sub,
+    sum(case when state = 'active' then 1 else 0 end) as active_workers,
+    sum(case when state is null then 1 else 0 end) as starting_workers
+FROM pg_stat_activity
+WHERE backend_type LIKE '%logical%'
+AND query LIKE '%qc_finance_other_sub%';
+ workers_for_this_sub | active_workers | starting_workers
+----------------------+----------------+------------------
+                    0 |                |
+(1 row)
+
+-- Find table synchronization workers for your subscription
+SELECT 
+    pid,
+    application_name,
+    backend_type,
+    state,
+    query,
+    query_start
+FROM pg_stat_activity 
+WHERE backend_type = 'logical replication worker'
+AND query LIKE '%qc_finance_other_sub%'
+ORDER BY state, query_start;
+
+

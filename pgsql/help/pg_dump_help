@@ -1,3 +1,35 @@
+Dump partitiontable 
+
+pg_dump -p 5433 -Fd --table=claimsprocess_humana.claim_extension_2 --table=claimsprocess_humana.claim_extension_2_* -a -f p_claimsprocess_humana.claim_extension_2 -d claimsprocess -v -j 6
+
+
+1. -Fc, one file. 2. could not use -j (very fast)
+pg_dump -h claims-db-01-alma8-huat-drx-kc -Fc --table=claimsprocess_humana.claim_extension_2 --table=claimsprocess_humana.claim_extension_2_* -a -f ./p_claimsprocess_humana.claim_extension_2.dmp -U fzhou -d claimsprocess -v
+
+2. -Fd, many files, could use -j, if use -j, it will not download just table by table gz file, it will just dump n files as -j n. 
+pg_dump -h claims-db-01-alma8-huat-drx-kc -Fd --table=claimsprocess_humana.claim_extension_2 --table=claimsprocess_humana.claim_extension_2_* -a -f ./p_claimsprocess_humana.claim_extension_2 -U fzhou -d claimsprocess -v -j 5
+
+pg_restore -h claims-db-01-alma8-rtl-drx-kc.ssnc-corp.cloud -d claimsprocess -Fd /pg_backups/devops-10862 -U fzhou
+
+
+
+Case 1: Recreate the schema and load the datafile
+1. pg_dump -d fdb -n fdb45 > /pg_backups/08132025_fdb45.sql
+2. awk '$1 == "GRANT"' 08132025_fdb45.sql > fdb45grant.sql
+3. \c fdb
+4. SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'fdb'
+  AND pid <> pg_backend_pid();
+4. drop schema fdb45 cascade;
+5. create schema fdb45;
+6. set search_path to fdb45 ;
+\i /apps/tilldump/till13AugDump.sql
+7. \i /pg_backups/fdb45grant.sql
+
+----------
+
+
 grep -Eo 'TO [a-zA-Z0-9_]+' datamart_other.sql | awk '{print $2}' | sort -u
 
 datamart_other_ro
