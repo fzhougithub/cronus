@@ -1,0 +1,23 @@
+-- current log position at the moment you want CDC to start
+SELECT pg_current_wal_lsn();   -- note the result, e.g. 'C1/22539BC0'
+
+
+# List connections (optional; helps confirm IDs)
+curl -s 'http://localhost:8000/api/public/v1/connections' \
+  -H 'accept: application/json' \
+  -H 'authorization: Bearer <YOUR_ACCESS_TOKEN>' | jq
+
+
+
+# Read the connection's state
+curl -s -X POST 'http://localhost:8000/api/public/v1/state/get' \
+  -H 'accept: application/json' \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer <YOUR_ACCESS_TOKEN>' \
+  -d '{"connectionId":"b9c968db-8aa8-4dab-b825-acd3489c1a93"}' | jq
+
+
+
+
+
+

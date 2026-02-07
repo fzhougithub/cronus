@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ $# -ne 4 ];then
+	echo "Usage: $0 <feature> <platform> <dbname> <schema>"
+	exit 1
+else
+	feature=$1
+	platform=$2
+	db=$2
+	schema=$3
+fi
+
+dbIP=$feature-db-01-alma8-$platform-drx-kc.ssnc-corp.cloud
+echo "=== PGOPTIONS=\"--search_path=$schema\" psql -h $dbIP -d $db ===="
+
+PGOPTIONS="--search_path=$schema" psql -h $dbIP -d $db 
+

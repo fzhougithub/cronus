@@ -1,0 +1,20 @@
+https://ssctech.service-now.com/ssc?id=ec_dashboard
+Go to incident tab to create new incidence, 
+DomaniRx Reporting, Humana
+
+Then, after submit the incident, post it in channel 
+https://teams.microsoft.com/l/message/19:meeting_ZTM4YjIyNWEtNDRiMy00MzFhLTkxNmYtYjhmNzQyMGExNTYw@thread.v2/1770147662548?context=%7B%22contextType%22%3A%22chat%22%7D
+
+This is for the incident for ticket devops-13928
+
+
+Looks like the PCT volume expansion issue has been solved: INC2394995 but there is an active bug that may result in the same case. If you notice that there is an issue where your terraform fails to bump up the volume capacity, please open an incident and tag Chris Gaikwad
+
+https://ssctech.service-now.com/ssc?id=ticket&table=incident&sys_id=3ed948d447caf210e552e52f016d4307
+
+PR for review: https://code.ssnc.dev/pharmacy/domanirx-infra/pull/2305 - PCT backup volume expansion
+
+
+
+
+

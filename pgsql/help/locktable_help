@@ -1,0 +1,23 @@
+WITH target_table AS (
+  SELECT oid
+  FROM pg_class
+  WHERE relname = 'claim_core_320_20220211'         -- Replace with your table
+    AND relnamespace = (
+      SELECT oid FROM pg_namespace WHERE nspname = 'claimsprocess_humana' -- Replace with your schema
+    )
+)
+SELECT
+  l.locktype,
+  l.mode,
+  l.granted,
+  a.pid,
+  a.usename,
+  a.query,
+  a.state,
+  a.query_start,
+  a.wait_event_type,
+  a.wait_event
+FROM pg_locks l
+JOIN pg_stat_activity a ON l.pid = a.pid
+WHERE l.relation IN (SELECT oid FROM target_table)
+ORDER BY a.query_start;

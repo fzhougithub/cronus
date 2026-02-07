@@ -1,3 +1,4 @@
+
 ALTER TABLE mytable SET (
   autovacuum_enabled = true,                   -- on/off for autovacuum
   autovacuum_vacuum_threshold = 50,            -- min # of dead tuples before vacuum
@@ -13,6 +14,17 @@ ALTER TABLE mytable SET (
   autovacuum_multixact_freeze_max_age = 400000000, -- max multixact age before forced vacuum
   autovacuum_multixact_freeze_table_age = 350000000 -- age at which to vacuum whole table for multixacts
 );
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_catalog.array_to_string(c.reloptions, ', ') AS autovacuum_settings
+FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'  -- only regular tables
+  AND c.reloptions IS NOT NULL
+ORDER BY schema_name, table_name;
+
 
 
 alter table public.one set(autovacuum_enabled=true,autovacuum_vacuum_threshold=1,autovacuum_vacuum_scale_factor=0.1);

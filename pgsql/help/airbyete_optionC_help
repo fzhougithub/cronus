@@ -1,0 +1,135 @@
+Great question — this is the crux of making **Option C** work without letting Airbyte run the baseline snapshot.
+
+### TL;DR
+
+Don’t click **Finish & Sync** in the UI. Instead, **create the connection without starting a job**, **set the state to your LSN**, and only then **trigger the first sync**. You can do this reliably via the **public API** (token + `http://localhost:8000/api/public/v1/`). [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/troubleshoot/azure/api-mgmt/availability/unauthorized-errors-invoke-apis)
+
+Below are two ways to do it:
+
+***
+
+## Way A — **UI + public API** (pause first, then set state)
+
+1.  **Create the connection in the UI**, but:
+    *   Set **Replication Frequency** = **Manual** (no schedule).
+    *   When you reach the last step, **do not** click **Finish & Sync**.
+    *   If your UI forces the “Finish & Sync” button, click it and **immediately cancel** the job (see step 4).  
+        (Airbyte’s CDC docs emphasize that first run normally snapshots; we’re avoiding that by setting state first.) [\[linen.dev\]](https://www.linen.dev/s/airbytehq/t/29883286/u04s8pljwmt-when-i-first-enter-into-airbyte-domain-there-s-a)
+
+2.  **Get an API token** in **Workspace Settings → API access** (or Access Tokens).  
+    Use it as `Authorization: Bearer <TOKEN>` for all requests and the **public API base URL**:  
+    `http://localhost:8000/api/public/v1/` [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/troubleshoot/azure/api-mgmt/availability/unauthorized-errors-invoke-apis)
+
+3.  **Set the connection’s state** to your **starting WAL LSN** *before* running any job:
+    *   First, capture LSN on the source:
+        ```sql
+        SELECT pg_current_wal_lsn();
+        -- e.g., C1/22539BC0
+        ```
+    *   Read the current state (likely empty):
+        ```bash
+        curl -s -X POST 'http://localhost:8000/api/public/v1/state/get' \
+          -H 'accept: application/json' \
+          -H 'content-type: application/json' \
+          -H 'authorization: Bearer <TOKEN>' \
+          -d '{"connectionId":"<CONNECTION_ID>"}' | jq
+        ```
+        (This shows the **shape** Airbyte expects; we’ll set **per‑stream** state.) [\[linen.dev\]](https://www.linen.dev/s/airbytehq/t/28535990/u04s8pljwmt-i-m-using-airbyte-version-1-4-1-sometimes-i-m-ge)
+    *   **Set** the state **to your LSN** (adjust `namespace`/extra fields to match your connector’s state shape):
+        ```bash
+        curl -s -X POST 'http://localhost:8000/api/public/v1/connections/set_state' \
+          -H 'accept: application/json' \
+          -H 'content-type: application/json' \
+          -H 'authorization: Bearer <TOKEN>' \
+          -d '{
+            "connectionId": "<CONNECTION_ID>",
+            "connectionState": {
+              "stateType": "stream",
+              "streamState": [
+                {
+                  "streamDescriptor": {
+                    "name": "claim_core",
+                    "namespace": "claimsprocess_humana_shard1"
+                  },
+                  "streamState": {
+                    "lsn": "C1/22539BC0"
+                    /* include txId / ts_usec if your state/get shows those keys */
+                  }
+                }
+              ]
+            }
+          }'
+        ```
+        (Airbyte supports **modifying connection state** via UI/API; use the **public API** + token.) [\[linen.dev\]](https://www.linen.dev/s/airbytehq/t/26882787/u04s8pljwmt-source-connector-logs-using-airbyte-v1-0-0-io-ai), [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/troubleshoot/azure/api-mgmt/availability/unauthorized-errors-invoke-apis)
+
+4.  **If a first job already started**, **cancel it immediately**:
+    *   List jobs for the connection:
+        ```bash
+        curl -s 'http://localhost:8000/api/public/v1/jobs?connectionId=<CONNECTION_ID>' \
+          -H 'accept: application/json' \
+          -H 'authorization: Bearer <TOKEN>' | jq
+        ```
+    *   Cancel the job (replace `<JOB_ID>`):
+        ```bash
+        curl -s -X POST 'http://localhost:8000/api/public/v1/jobs/<JOB_ID>/cancel' \
+          -H 'accept: application/json' \
+          -H 'authorization: Bearer <TOKEN>'
+        ```
+    *(Endpoints are listed in the public API docs; the key is using `/api/public/v1` and a token.)* [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/troubleshoot/azure/api-mgmt/availability/unauthorized-errors-invoke-apis)
+
+5.  **Trigger the first job** — now it should **use CDC from your LSN** (no snapshot):
+    ```bash
+    curl -s -X POST 'http://localhost:8000/api/public/v1/connections/sync' \
+      -H 'accept: application/json' \
+      -H 'authorization: Bearer <TOKEN>' \
+      -d '{"connectionId":"<CONNECTION_ID>"}' | jq
+    ```
+
+6.  **Verify state advanced**:
+    ```bash
+    curl -s -X POST 'http://localhost:8000/api/public/v1/state/get' \
+      -H 'accept: application/json' \
+      -H 'content-type: application/json' \
+      -H 'authorization: Bearer <TOKEN>' \
+      -d '{"connectionId":"<CONNECTION_ID>"}' | jq
+    ```
+    You should see the **LSN** move forward. If Airbyte logs **“invalid CDC position”**, it means the LSN you set was **behind** the slot’s `confirmed_flush_lsn` or WAL expired; pick a **current** LSN and ensure WAL retention until the job starts. Community threads document this failure mode. [\[discuss.airbyte.io\]](https://discuss.airbyte.io/t/unauthorized-error-when-using-airbyte-with-helm-chart/7114), [\[github.com\]](https://github.com/airbytehq/airbyte/issues/48797)
+
+***
+
+## Way B — **Create the connection entirely via public API** (no auto‑sync at creation)
+
+This avoids the UI’s “Finish & Sync” altogether.
+
+1.  **Create source/destination** (public API).
+2.  **Create the connection** (`/connections`) with:
+    *   **Sync mode** per stream = **`incremental`**,
+    *   **Destination sync mode** per stream = **`append_deduped`**,
+    *   **Schedule** = **manual** (no auto‑run).  
+        (See the **Create a connection** reference; default behavior is full\_refresh unless you set stream configs. Ensure PK is set for dedup.) [\[discuss.airbyte.io\]](https://discuss.airbyte.io/t/helm-chart-unauthorized-error/9655)
+3.  **Set state** to your LSN as above.
+4.  **Trigger sync** only after state is set.
+
+***
+
+## Do you need to “kick out and immediately cancel” the first sync?
+
+*   **Ideal path:** **Don’t start** the sync at all — use the **public API** path and set state **before** the first job.
+*   **If the UI forces a sync:** Yes, click **Finish & Sync**, then **cancel immediately** via the **jobs API**, set **state**, and then start the job yourself. The net effect is the same: your **first effective run** will consume **CDC from your LSN**.
+
+***
+
+## Why this works (and why we cite docs)
+
+*   Airbyte CDC design: first run = snapshot; later runs use **log position**. We’re **pre‑setting** that **position** so the first effective run behaves like “CDC from now.” [\[linen.dev\]](https://www.linen.dev/s/airbytehq/t/29883286/u04s8pljwmt-when-i-first-enter-into-airbyte-domain-there-s-a)
+*   Airbyte supports **modifying connection state** via UI and API (public API with token and correct base URL). That’s the supported way to override cursors/offsets. [\[linen.dev\]](https://www.linen.dev/s/airbytehq/t/26882787/u04s8pljwmt-source-connector-logs-using-airbyte-v1-0-0-io-ai), [\[learn.microsoft.com\]](https://learn.microsoft.com/en-us/troubleshoot/azure/api-mgmt/availability/unauthorized-errors-invoke-apis)
+
+***
+
+If you’d like, send me:
+
+*   Your **connectionId** and the **`state/get`** JSON (so I see the exact shape),
+*   Your **captured LSN** (`SELECT pg_current_wal_lsn()`),
+
+and I’ll craft the **exact `set_state` body** matching your connector version so you can paste it and run.
+

@@ -1,3 +1,14 @@
+SELECT 
+    schemaname,
+    tablename,
+    pg_relation_filepath(schemaname||'.'||tablename) as filepath,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
+FROM pg_tables 
+WHERE schemaname = 'claimsprocess_humana' 
+AND tablename = 'claim_extension_1_24';
+
+
+
 SELECT
     c.relname,
     n.nspname AS schema_name,

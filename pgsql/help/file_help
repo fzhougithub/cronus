@@ -1,0 +1,18 @@
+SELECT
+    pg_relation_filepath('stg_customer_humana.a10') AS file_path,
+    pg_relation_filenode('stg_customer_humana.a10') AS relfilenode,
+    c.reltablespace AS tablespace_oid
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON c.relnamespace = n.oid
+WHERE
+    c.relname = 'a10'
+    AND n.nspname = 'stg_customer_humana';
+
+                  file_path                   | relfilenode | tablespace_oid
+----------------------------------------------+-------------+----------------
+ pg_tblspc/16387/PG_14_202107181/16386/174549 |      174549 |          16387
+(1 row)
+
+

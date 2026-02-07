@@ -1,0 +1,27 @@
+1. To citus cluster logical replication
+claimsprocess=# CREATE PUBLICATION  citus_claim_core_pub FOR TABLE claim_core WITH  (publish_via_partition_root = true);
+CREATE PUBLICATION
+
+ods_domani=# create subscription citus_claim_core_sub connection 'host=10.222.250.34 dbname=claimsprocess port=5432' publication citus_claim_core_pub;
+NOTICE:  created replication slot "citus_claim_core_sub" on publisher
+CREATE SUBSCRIPTION
+
+It works!
+
+So, different table structure, works together through logical replication. 
+
+2. From citus cluster to other DB replication
+
+wal_level = logical,
+max_replication_slots = 10
+citus.enable_change_data_capture = 'on'
+
+ods_domani=# create publication fromcitus_claim_core_pub for table claimsprocess_humana.claim_core WITH  (publish_via_partition_root = true);
+CREATE PUBLICATION
+
+
+SELECT * FROM run_command_on_all_nodes('SELECT pg_create_logical_replication_slot(''cdc_slot'', ''pgoutput'')');
+
+CREATE SUBSCRIPTION my_sub CONNECTION 'host=coordinator_host dbname=ods_domani' PUBLICATION claim_core_pub;
+
+

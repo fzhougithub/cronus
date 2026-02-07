@@ -1,0 +1,20 @@
+ods_domani=# select pid, query from pg_stat_activity where pid=1483092;
+   pid   |                                        query
+---------+--------------------------------------------------------------------------------------
+ 1483092 | CALL datamart.skeleton_tables_cdc0001_process_records_sp( $1, $2, $3, $4 , $5 , $6)
+(1 row)
+
+ods_domani=# select pg_terminate_backend(1483092);
+ pg_terminate_backend
+----------------------
+ t
+(1 row)
+
+ods_domani=# select pid, query from pg_stat_activity where state='active' and query like 'ALTER%';
+   pid   |                       query
+---------+----------------------------------------------------
+ 1483768 | ALTER TABLE customer.b51 SET TABLESPACE tblspc_1 ;
+(1 row)
+
+
+Now, just datamart jobs got blocked, our alter statement keep going

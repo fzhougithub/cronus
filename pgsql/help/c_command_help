@@ -1,0 +1,81 @@
+SET citus.explain_all_tasks TO on;
+analyze claimsprocess_humana.claim_core(fill_dt);
+
+vacuum(freeze,verbose,analyze) claimsprocess_humana.claim_core_filldt
+
+SELECT
+    n.nspname AS table_schema,
+    c.relname AS table_name
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname = 'claimsprocess_humana'
+    AND c.relkind IN ('r', 'p') -- r: regular table, p: partitioned table
+    AND NOT c.relispartition     -- Exclude children (partitions/shards)
+    AND EXISTS (
+        SELECT 1
+        FROM pg_attribute a
+        WHERE a.attrelid = c.oid
+          AND a.attname = 'fill_dt'
+          AND NOT a.attisdropped
+    )
+ORDER BY
+    table_name;
+
+
+select * from citus_stat_activity;
+SELECT
+    csa.pid,
+    csa.query,
+    csa.state,
+    pdn.nodename AS worker_host,
+    pdn.nodeport
+FROM
+    citus_stat_activity csa
+JOIN
+    pg_dist_node pdn ON csa.nodeid = pdn.nodeid
+WHERE
+    csa.query ILIKE '%claim_core_claimid_99%'
+    AND csa.state = 'active';
+
+ods_domani=# SELECT
+    t.blocking_pid,
+    pg_stat_activity.usename AS blocking_user,
+    pg_stat_activity.query AS blocking_query,
+    pg_stat_activity.client_addr AS blocking_client,
+    pg_stat_activity.application_name AS blocking_app
+FROM
+    unnest(pg_blocking_pids(727212)) AS t(blocking_pid)
+JOIN
+    pg_stat_activity ON pg_stat_activity.pid = t.blocking_pid;
+
+SELECT
+    pid,
+    usename,
+    client_addr,
+    application_name,
+    state,
+    query,
+    xact_start,
+    state_change
+FROM
+    pg_stat_activity
+WHERE
+    state IN ('active', 'idle in transaction')
+    AND datname = 'ods_domani'
+ORDER BY
+    xact_start;
+
+SELECT
+    relname,
+    last_analyze,
+    last_vacuum
+FROM
+    pg_stat_all_tables
+WHERE
+    relname = 'claim_core';
+
+seq_page_cost
+random_page_cost

@@ -1,0 +1,62 @@
+Turn on coredump
+/etc/systemd/coredump.conf
+[Coredump]
+Storage=external
+Compress=yes
+ProcessSizeMax=2G
+ExternalSizeMax=10G
+
+systemctl daemon-reload
+
+[root@ods-db-01 ~]$ cat /proc/sys/kernel/core_pattern
+|/usr/lib/systemd/systemd-coredump %P %u %g %s %t %c %h %e
+
+You can force a "fake" crash on a simple command (like sleep) to see if it saves:
+
+Open a terminal and run: sleep 100 &
+Kill it with a "QUIT" signal: kill -SIGQUIT $!
+Check the list: coredumpctl list
+
+
+coredumpctl list postgres
+TIME                            PID   UID   GID SIG COREFILE  EXE
+Sun 2026-01-25 15:25:02 UTC  135252    26 567580   6 none      /usr/pgsql-14/bin/postgres
+
+coredumpctl info 135252
+           PID: 135252 (postgres)
+           UID: 26 (postgres)
+           GID: 567580 (postgres)
+        Signal: 6 (ABRT)
+     Timestamp: Sun 2026-01-25 15:25:02 UTC (1 day 2h ago)
+  Command Line: postgres: prod_ods-db-01: postgres ods_domani [local] startup
+    Executable: /usr/pgsql-14/bin/postgres
+ Control Group: /user.slice/user-234930.slice/session-1.scope
+          Unit: session-1.scope
+         Slice: user-234930.slice
+       Session: 1
+     Owner UID: 234930 (dt234930)
+       Boot ID: 57c8ad6c999a4eeb8c6270b0f63a7a9e
+    Machine ID: 89f44590f9bd4d439b88eba038b71028
+      Hostname: 10-222-173-209.ssnc-corp.cloud
+       Storage: none
+       Message: Process 135252 (postgres) of user 26 dumped core.
+
+If the pid present, dump it
+coredumpctl dump <PID> > /var/tmp/pg-core-PID.core
+coredumpctl dump PID -o /var/tmp/pg-core-PID.core
+
+dnf install gdb
+gdb /usr/pgsql-14/bin/postgres /var/tmp/pg-core-1981601.core
+Analyze core dump file
+
+(gdb) bt
+
+
+
+btree
+mdread(), mdopen()
+smgrextend
+visibilitymap
+heap_xlog_visible
+
+

@@ -1,0 +1,60 @@
+SELECT
+    now(),
+    schemaname AS schema_name,
+    pg_size_pretty(sum(total_size)::bigint) AS total_size,
+    sum(total_size) AS bytes
+FROM (
+    SELECT
+        schemaname,
+        tablename,
+        pg_total_relation_size(schemaname || '.' || tablename) AS total_size
+    FROM pg_tables
+    WHERE schemaname IN ('claimsprocess_humana','claimsprocess_other','customer','drug','drugmgmt','fdb_medknowledge_enhanced','lists','pharmacy','planconfi
+g','program_mandate')) t
+GROUP BY schemaname
+ORDER BY bytes DESC;
+ 2025-11-30 06:13:18.993817-06 | claimsprocess_humana | 34 GB      | 36550418432
+
+SELECT
+    schemaname AS schema_name,
+    pg_size_pretty(sum(total_size)::bigint) AS total_size,
+    sum(total_size) AS bytes
+FROM (
+    SELECT
+        schemaname,
+        tablename,
+        pg_total_relation_size(schemaname || '.' || tablename) AS total_size
+    FROM pg_tables
+    WHERE schemaname IN ('claimsprocess_humana','claimsprocess_other','customer','drug','drugmgmt','fdb_medknowledge_enhanced','lists','pharmacy','planconfig','program_mandate')) t
+GROUP BY schemaname
+ORDER BY bytes DESC;
+        schema_name        | total_size |    bytes
+---------------------------+------------+--------------
+ claimsprocess_humana      | 371 GB     | 397968859136
+ customer                  | 228 GB     | 245224292352
+ pharmacy                  | 3682 MB    |   3861217280
+ claimsprocess_other       | 1216 MB    |   1275265024
+ drugmgmt                  | 72 MB      |     75464704
+ fdb_medknowledge_enhanced | 18 MB      |     19144704
+ planconfig                | 6440 kB    |      6594560
+ lists                     | 4256 kB    |      4358144
+ program_mandate           | 3024 kB    |      3096576
+ drug                      | 56 kB      |        57344
+(10 rows)
+
+
+
+SELECT
+    n.nspname AS schema_name,
+    pg_size_pretty(SUM(pg_relation_size(c.oid))::bigint) AS total_size
+FROM
+    pg_class c
+LEFT JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname NOT IN ('pg_catalog', 'information_schema', 'public', 'audit', 'pg_toast')
+    AND c.relkind = ANY (ARRAY['r', 'i', 't', 'm', 'p']) -- r: regular table, i: index, t: toast, m: materialized view, p: partitioned table
+GROUP BY
+    schema_name
+ORDER BY
+    SUM(pg_relation_size(c.oid)) DESC;

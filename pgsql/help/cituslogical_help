@@ -1,0 +1,18 @@
+
+-- Run on the SUBSCRIBER database
+
+-- 1. Subscribe to the COORDINATOR
+CREATE SUBSCRIPTION sub_coordinator
+CONNECTION 'host=<coordinator_host> port=<coordinator_port> dbname=<dbname> user=<user>'
+PUBLICATION sales_pub
+WITH (copy_data = true); -- Get initial data copy
+
+-- 2. Subscribe to each WORKER NODE (Example for worker1)
+CREATE SUBSCRIPTION sub_worker_1
+CONNECTION 'host=<worker1_host> port=<worker1_port> dbname=<dbname> user=<user>'
+PUBLICATION sales_pub
+WITH (copy_data = false); -- NO initial data copy
+
+-- 3. Subscribe to worker2, worker3, etc., following the same pattern...
+
+

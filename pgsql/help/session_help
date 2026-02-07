@@ -1,0 +1,2 @@
+select pid, usename,now()-xact_start,client_addr,substr(query,1,80) from pg_stat_activity where stat='active' order by 3 desc;
+select pid, usename,now()-xact_start,state,client_addr,substr(query,1,80) from pg_stat_activity where pid=;

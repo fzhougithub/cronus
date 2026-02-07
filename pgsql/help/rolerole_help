@@ -1,0 +1,14 @@
+SELECT
+    member.rolname AS username_or_role,
+    role.rolname AS granted_role,
+    admin_option
+FROM
+    pg_auth_members m
+JOIN
+    pg_roles member ON m.member = member.oid
+JOIN
+    pg_roles role ON m.roleid = role.oid
+WHERE
+    role.rolname = 'finance_global_rw';
+
+

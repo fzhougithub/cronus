@@ -1,0 +1,328 @@
+#!/bin/bash
+
+#BEGIN;
+#SET TRANSACTION SNAPSHOT '00000004-000003B9-1';
+#COPY (SELECT * FROM big_table WHERE id BETWEEN X AND Y) TO STDOUT WITH CSV;
+#COMMIT;
+# \copy vs copy, different
+# psql -h remotehost -d sourcedb -c "BEGIN; SET TRANSACTION SNAPSHOT '00000004-000003B9-1'; \copy (SELECT * FROM big_table WHERE id BETWEEN X AND Y) TO 'chunkX.csv' WITH CSV HEADER; COMMIT;"
+
+#pg_dump -h 10.222.254.104 --data-only --schema=claimsprocess -Fd -f /pg_backups/claimsprocess_pub_dump -j 4 --no-publications --no-subscriptions --snapshot=0000004F-000497C7-1 --compress=9 -v claimsprocess
+
+if [ $# -ne 9 ]
+then
+	echo
+	echo "Usage:  $0 [pub_name] [sub_name] [pub_host] [pub_db] [sub_db] [pub_port] [sub_port] [tablist_file] [schema]"
+	echo "    publication_name   = name of the new publication"
+	echo "    subscription_name  = name of the new subscription"
+	echo "    publisher_host     = hostname or IP address of the publisher (source)"
+	echo "    publisher_db       = publisher (source) database"
+	echo "    subscriber_db      = subscriber (target) database"
+	echo "    publisher_port     = publister (source) db port"
+	echo "    subscriber_port    = subscriber (target) db port"
+	echo "    tablist_file       = local file with a list of tables in the format schema.table"
+	echo "    schema             = remote schema pub addressed"
+	echo
+	echo "Note: This script is designed to be run from the subscriber (target)"
+	echo
+	exit
+else
+	pubname="$1"
+	subname="$2"
+	publisher="$3"
+	pub_db="$4"
+	sub_db="$5"
+	pub_port=$6
+	sub_port=$7
+	tablist="$8"
+	sch=$9
+	location=''
+	screen_session="${sch}_tricky_slot_session"
+	outputfile=${pubname}_tricky_slot
+	consistent_point=''
+	snapshot=''
+fi
+
+toastsize=50
+PSQL=/usr/pgsql-14/bin/psql
+
+check_db_connectivity() {
+echo "--| Check db connectivity"
+checkSql="select count(*) from pg_stat_database"
+echo "$checkSql" | psql -h ${publisher} -p ${pub_port} -t ${pub_db} > /dev/null
+if [ $? -ne 0 ]
+then
+	echo
+	echo "ERROR: Cannot connect to publisher [$publisher] via psql, aborting"
+	echo
+	exit
+else
+	echo "--| db connectivity check success!"
+	echo
+	echo
+fi
+}
+
+
+check_killer_table() {
+result=$($PSQL "postgresql://postgres@$publisher:5432/$pub_db" -t -A  -c "
+set search_path to $sch;
+SELECT
+    c.relname AS table_name,
+    pg_total_relation_size(c.oid)/1024/1024/1024 AS total_size,
+    pg_relation_size(c.oid)/1024/1024/1024 AS table_data_size,
+    pg_indexes_size(c.oid)/1024/1024/1024 AS indexes_size,
+    pg_total_relation_size(c.reltoastrelid)/1024/1024/1024 AS toast_size
+FROM
+    pg_class c
+LEFT JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    c.relkind = 'r' -- 'r' for regular tables
+    AND n.nspname = current_schema() -- Limits to the current schema of your session
+ORDER BY
+    pg_total_relation_size(c.oid) DESC
+LIMIT 10;
+")
+
+while read line
+do
+IFS='|'
+set -- $line
+#echo $1 $2 $3 $4 $5
+if [ -n "$5" ] && [ "$5" -gt $toastsize ]; then
+        #echo $2
+        special=1
+fi
+done <<< $result
+
+}
+
+check_publisher_size() {
+result=$($PSQL "postgresql://postgres@$publisher:5432/$pub_db" -t -A  -c "
+SELECT
+    SUM(pg_total_relation_size(c.oid))/1024/1024/1024 AS total_schema_size
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname = '$sch' -- Exclude internal pg_ schemas
+    AND c.relkind IN ('r', 'i', 'm', 't', 'S')
+")
+
+echo $result
+}
+
+create_publication() {
+echo "--| Create Publication"
+
+if [ ! -f "$tablist" ]
+then
+        echo
+        echo "ERROR: tablist_file [$tablist] does not exist, or is not readable, aborting"
+        echo
+        exit
+fi
+
+# eliminate blank lines
+runTablist="tmp_${tablist}"
+cat "$tablist" | sed '/^[[:space:]]*$/d' > $runTablist
+
+#get num rows in runTablist file
+tablistCntStr=$( cat $runTablist | wc -l )
+set - $tablistCntStr
+tablistCnt=$1
+
+echo linecount: $tablistCnt
+
+lineCntr=0
+
+outfile="crt_pub_list_tmp.sql"
+echo "CREATE PUBLICATION  ${pubname} FOR TABLE " > $outfile
+while IFS= read -r line; do
+	lineCntr=$(( $lineCntr + 1 ))
+        if [ $lineCntr -lt $tablistCnt ]
+        then
+            echo "${line}, " >> $outfile
+        else
+            echo "${line};" >> $outfile
+	fi
+done < $runTablist
+
+psql -h ${publisher} -f $outfile -p ${pub_port} -t ${pub_db}
+if [ $? -ne 0 ]
+then
+        echo
+        echo "ERROR:  Create Publication failed, aborting"
+        echo
+        exit
+else
+        echo "--| create publication success!"
+        echo
+        echo
+fi
+}
+
+truncate_sub_tables() {
+echo "--| TRUNCATE Subscriber Tables"
+
+if [ ! -f "$tablist" ]
+then
+	echo
+	echo "ERROR: tablist_file [$tablist] does not exist, or is not readable, aborting"
+	echo
+	exit
+fi
+
+echo "[clean_tables.sh  ${sub_db}  ${tablist}]"
+./clean_tables.sh  ${sub_db}  ${tablist}
+}
+
+create_subscription(){
+echo "--| Create Subscription"
+crt_sub="CREATE SUBSCRIPTION ${subname} connection 'host=${publisher} dbname=${pub_db} port=${pub_port}' PUBLICATION ${pubname} ;"
+echo "[$crt_sub]"
+
+
+echo "$crt_sub" | psql -p ${sub_port} -t ${sub_db}
+if [ $? -ne 0 ]
+then
+	echo
+	echo "ERROR:  Create Subscription failed, aborting"
+	echo
+	exit
+else
+	echo "--| create Subscription success!"
+	echo
+	echo
+fi
+}
+
+create_tricky_slot() {
+
+> $outputfile
+
+screen -dmS "$screen_session" bash -c "
+psql -h $publisher -d \"$pub_db\" -t -A <<'EOF' > \"$outputfile\" 2>&1
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+SELECT pg_export_snapshot() AS snap_id, pg_current_wal_lsn() AS lsn;
+SELECT pg_sleep(2000000);
+EOF
+"
+
+  echo "Replication slot creation started in screen session $screen_session."
+  echo "Waiting a few seconds for the slot to be created..."
+  sleep 5
+
+  if [[ -f $outputfile ]]; then
+    snapshot=$(tail -1 $outputfile|awk -F'|' '{print $1}' | tr -d ' ')
+    consistent_point=$(tail -1 $outputfile|awk -F'|' '{print $2}' | tr -d ' ')
+    echo "snapshot: $snapshot"
+    echo "consistent_point: $consistent_point"
+  else
+    echo "Error: Slot creation output file not found!"
+    exit 1
+  fi
+}
+
+pg_dump_restore() {
+  echo "Starting pg_dump backup..."
+  echo 
+  echo "pg_dump -h ${publisher} --data-only --schema=$sch -Fd -f ${location}/${sch}_pub_dump -j 4 --no-publications --no-subscriptions --snapshot=${snapshot} --compress=9 -v ${pub_db}"
+  cd ${location}
+  rm -rf ${sch}_pub_dump
+
+  pg_dump -h ${publisher} --data-only --schema=$sch -Fd -f ${location}/${sch}_pub_dump -j 4 --no-publications --no-subscriptions --snapshot=${snapshot} --compress=0 -v ${pub_db}
+  
+  echo "Restoring backup on $sub_db..."
+  echo "pg_restore -d $sub_db -Fd -j 4 -v ${location}/${sch}_pub_dump"
+  echo
+  pg_restore -d $sub_db -Fd -j 4 -v ${location}/${sch}_pub_dump
+}
+
+create_special_sub() {
+echo "--| Create Special Subscription"
+crt_sub="DROP SUBSCRIPTION IF EXISTS $subname; CREATE SUBSCRIPTION $subname CONNECTION 'host=${publisher} dbname=${pub_db} port=${pub_port}' PUBLICATION ${pubname} WITH (copy_data = false, create_slot = false, enabled = false, slot_name = '${pubname}_tricky_slot');"
+echo "[$crt_sub]"
+
+
+echo "$crt_sub" | psql -p ${sub_port} -t ${sub_db}
+if [ $? -ne 0 ]
+then
+        echo
+        echo "ERROR:  Create Subscription failed, aborting"
+        echo
+        exit
+else
+        echo "--| create Subscription success!"
+        echo
+        echo
+fi
+
+external_id=$(psql -d $sub_db -t -A -c "SELECT 'pg_'||oid::text FROM pg_subscription WHERE subname = '${subname}';")
+
+psql -d $sub_db -c "SELECT pg_replication_origin_advance('$external_id', '$consistent_point');"
+
+#psql -d $sub_db -c "ALTER SUBSCRIPTION ${subname} ENABLE;"
+
+echo "Logical replication subscription created and enabled."
+}
+
+drop_tricky_slot() {
+echo "====================================================================================="
+read -p "Press Enter to terminate the slot holding session and drop the replication slot..."
+
+screen -S $screen_session -X quit
+
+psql -h $publisher "dbname=$pub_db" -c "SELECT pg_drop_replication_slot('${pubname}_tricky_slot');"
+myip=$(hostname -I | awk '{print $1}')
+psql -h $publisher "dbname=$pub_db" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query LIKE 'SELECT pg_sleep%' AND client_addr = '$myip';"
+
+echo "Tricky slot dropped and screen session terminated."
+}
+
+use_pgdump() {
+  echo "Using special pg_dump procedure"
+  truncate_sub_tables
+  create_publication
+
+  maxsize=$(check_publisher_size)
+  echo "The maxsize of dump file will be ${maxsize}GB, where do you want to put:"
+  df -h | egrep "pg_backups|pg_logs"
+  read -p "Please type your target location (Ctrl+C to quit): " location
+  echo "You chose: $location"
+
+  create_tricky_slot
+
+  pg_dump_restore
+
+  create_special_sub
+
+  drop_tricky_slot
+}
+
+use_normal() {
+echo
+echo "================================"
+echo "Using normal pg-pg replication setup"
+truncate_sub_tables
+create_publication
+create_subscription
+}
+
+
+
+# Main
+special=0
+check_db_connectivity
+check_killer_table
+
+if [ $special -eq 1 ]; then
+	use_pgdump
+else
+	use_normal
+fi
+
+exit 0
+

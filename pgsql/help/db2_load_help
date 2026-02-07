@@ -1,0 +1,29 @@
+#!/bin/bash
+SOURCE_TABLE="$1"
+TARGET_TABLE="$2"
+TEMP_CSV="temp_${SOURCE_TABLE}.csv"
+CLEAN_CSV="clean_${SOURCE_TABLE}.csv"
+
+echo "Step 1: Export from DB2 (Latin1)"
+db2 "EXPORT TO $TEMP_CSV OF DEL MODIFIED BY CODEPAGE=1208 SELECT * FROM $SOURCE_TABLE"
+
+echo "Step 2: Validate source encoding"
+SOURCE_ENCODING=$(file -bi "$TEMP_CSV" | cut -d'=' -f2)
+echo "Source encoding: $SOURCE_ENCODING"
+
+echo "Step 3: Convert to UTF-8"
+iconv -f LATIN1 -t UTF-8//TRANSLIT "$TEMP_CSV" > "$CLEAN_CSV"
+
+echo "Step 4: Validate UTF-8 encoding"
+if isutf8 "$CLEAN_CSV"; then
+    echo "✓ File is valid UTF-8"
+else
+    echo "✗ UTF-8 validation failed"
+    exit 1
+fi
+
+echo "Step 5: Load to PostgreSQL"
+pg_bulkload -d target_db -i "$CLEAN_CSV" -o "ENCODING=UTF8" -O load_control.ctl
+
+echo "Step 6: Cleanup"
+rm "$TEMP_CSV" "$CLEAN_CSV"

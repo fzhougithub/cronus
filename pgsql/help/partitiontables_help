@@ -1,3 +1,15 @@
+SELECT
+  child_ns.nspname||'.'|| child.relname
+FROM pg_inherits inh
+JOIN pg_class   parent    ON parent.oid = inh.inhparent
+JOIN pg_class   child     ON child.oid  = inh.inhrelid
+JOIN pg_namespace parent_ns ON parent_ns.oid = parent.relnamespace
+JOIN pg_namespace child_ns  ON child_ns.oid  = child.relnamespace
+WHERE parent.relname = 'claim_core'
+  AND parent_ns.nspname = 'claimsprocess_humana'
+ORDER BY child_ns.nspname, child.relname;
+
+
 -- Partition parents
 SELECT
   ns.nspname AS parent_schema,

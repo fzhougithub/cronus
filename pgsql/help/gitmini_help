@@ -1,0 +1,5 @@
+# 1. This wipes out your local changes and makes you match the server's main exactly
+git fetch origin
+git reset --hard origin/main
+
+

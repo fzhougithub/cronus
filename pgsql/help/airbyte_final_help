@@ -1,0 +1,232 @@
+export KUBECONFIG=/root/.airbyte/abctl/abctl.kubeconfig
+
+kubectl get deployments -n airbyte-abctl
+NAME                                     READY   UP-TO-DATE   AVAILABLE   AGE
+airbyte-abctl-connector-builder-server   1/1     1            1           5d20h
+airbyte-abctl-cron                       1/1     1            1           5d20h
+airbyte-abctl-server                     1/1     1            1           5d20h
+airbyte-abctl-temporal                   1/1     1            1           5d20h
+airbyte-abctl-worker                     1/1     1            1           5d20h
+airbyte-abctl-workload-api-server        1/1     1            1           5d20h
+airbyte-abctl-workload-launcher          1/1     1            1           5d20h
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl
+NAME                                                      READY   STATUS      RESTARTS      AGE
+airbyte-abctl-bootloader                                  0/1     Completed   0             5d20h
+airbyte-abctl-connector-builder-server-774997f95d-d4rxq   1/1     Running     4 (90m ago)   5d20h
+airbyte-abctl-cron-bdddc55f-864l9                         1/1     Running     4 (90m ago)   5d20h
+airbyte-abctl-server-7544b7ccdf-c42np                     1/1     Running     3 (90m ago)   4d18h
+airbyte-abctl-temporal-995d6c5cd-ffwd2                    1/1     Running     4 (90m ago)   5d20h
+airbyte-abctl-worker-fb9c7d4b4-6zjvx                      1/1     Running     2 (90m ago)   4d19h
+airbyte-abctl-workload-api-server-78987478b9-8mrjd        1/1     Running     4 (90m ago)   5d20h
+airbyte-abctl-workload-launcher-56d7b66798-fdh98          1/1     Running     6 (90m ago)   4d19h
+airbyte-db-0                                              1/1     Running     4 (90m ago)   5d20h
+debug-sidecar-resources                                   0/1     Completed   0             4d19h
+replication-job-103-attempt-0                             0/3     Pending     0             54m
+replication-job-104-attempt-0                             0/3     Pending     0             16m
+
+# This command automatically finds the deployment that has 'worker' in the name
+kubectl edit deployment $(kubectl get deployments -n airbyte-abctl -o name | grep worker) -n airbyte-abctl
+
+# First, ensure you are using the abctl kubeconfig
+export KUBECONFIG=~/.airbyte/abctl/abctl.kubeconfig
+
+# List all ConfigMaps in the airbyte-abctl namespace
+kubectl get configmaps -n airbyte-abctl
+
+kubectl describe configmap airbyte-abctl-airbyte-env -n airbyte-abctl
+
+# This is the important one, don't know how to got it?
+kubectl edit configmap airbyte-abctl-airbyte-env -n airbyte-abctl
+
+JOB_MAIN_CONTAINER_MEMORY_LIMIT: 16Gi
+JOB_MAIN_CONTAINER_MEMORY_REQUEST: 8Gi
+JOB_MAIN_CONTAINER_CPU_LIMIT: 10
+JOB_MAIN_CONTAINER_CPU_REQUEST: 4
+
+kubectl patch deployment airbyte-abctl-worker -n airbyte-abctl --type='json' -p='[
+  {"op": "add", "path": "/spec/template/spec/containers/0/resources", "value": {"limits": {"memory": "16Gi", "cpu": "10"}, "requests": {"memory": "8Gi", "cpu": "4"}}},
+  {"op": "add", "path": "/spec/template/spec/containers/0/env/-", "value": {"name": "JAVA_OPTS", "value": "-Xmx32g -Xms16g"}}
+]'
+
+kubectl rollout restart deployment airbyte-abctl-worker -n airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl | grep worker
+airbyte-abctl-worker-c66578f57-6j25w                      1/1     Running     0              38s
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl exec -it airbyte-abctl-worker-c66578f57-6j25w -n airbyte-abctl -- env | grep JOB_MAIN
+
+kubectl annotate ingress airbyte-abctl-ingress -n airbyte-abctl nginx.ingress.kubernetes.io/proxy-body-size=500m
+
+kubectl rollout restart deployment airbyte-abctl-server -n airbyte-abctl
+
+kubectl delete pod replication-job-104-attempt-0 -n airbyte-abctl
+
+# Still same, because if you just "saved" the ConfigMap but the Worker pod didn't fully restart, it is still carrying around the "old" 64Gi instructions in its brain.
+
+# Force hard delete worker!
+kubectl delete pod -l app.kubernetes.io/name=worker -n airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ NEW_WORKER=$(kubectl get pods -n airbyte-abctl -l app.kubernetes.io/name=worker -o jsonpath='{.items[0].metadata.name}')
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl exec $NEW_WORKER -n airbyte-abctl -- printenv | grep JOB_MAIN_CONTAINER_MEMORY_LIMIT
+JOB_MAIN_CONTAINER_MEMORY_LIMIT=16Gi
+DISCOVER_JOB_MAIN_CONTAINER_MEMORY_LIMIT=16Gi
+CHECK_JOB_MAIN_CONTAINER_MEMORY_LIMIT=
+
+The Worker pod correctly shows JOB_MAIN_CONTAINER_MEMORY_LIMIT=16Gi. This means your ConfigMap and the Worker are perfectly in sync. However, the Log shows the Workload Launcher is still trying to spawn pods with 64Gi.
+
+In newer versions of Airbyte (which abctl uses), the Worker doesn't always launch the pods directly anymore; the Workload Launcher service does. It is likely that the workload-launcher pod is still holding the old 64Gi configuration in its own memory.
+
+kubectl rollout restart deployment airbyte-abctl-workload-launcher -n airbyte-abctl
+kubectl rollout restart deployment airbyte-abctl-workload-api-server -n airbyte-abctl
+
+LAUNCHER_POD=$(kubectl get pods -n airbyte-abctl -l app.kubernetes.io/name=workload-launcher -o jsonpath='{.items[0].metadata.name}')
+kubectl exec $LAUNCHER_POD -n airbyte-abctl -- printenv | grep JOB_MAIN
+
+# Still has issue!!
+
+THen, need to check DB
+
+Try this to enforce catch mem
+
+cat <<EOF | kubectl apply -n airbyte-abctl -f -
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: airbyte-resource-limits
+spec:
+  limits:
+  - default:
+      memory: 16Gi
+      cpu: 4
+    defaultRequest:
+      memory: 8Gi
+      cpu: 2
+    type: Container
+EOF
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl exec -it airbyte-db-0 -n airbyte-abctl -- psql -U airbyte -l
+                                                        List of databases
+        Name         |  Owner  | Encoding | Locale Provider |  Collate   |   Ctype    | Locale | ICU Rules |  Access privileges
+---------------------+---------+----------+-----------------+------------+------------+--------+-----------+---------------------
+ db-airbyte          | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+ postgres            | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+ template0           | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | =c/airbyte         +
+                     |         |          |                 |            |            |        |           | airbyte=CTc/airbyte
+ template1           | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | =c/airbyte         +
+                     |         |          |                 |            |            |        |           | airbyte=CTc/airbyte
+ temporal            | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+ temporal_visibility | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+(6 rows)
+
+
+Now, delete all and restart
+kubectl delete pods -n airbyte-abctl -l airbyte=job-pod
+kubectl delete pods -n airbyte-abctl --field-selector=status.phase=Pending
+
+# This restarts the workflow engine (Temporal) and the Launcher
+kubectl rollout restart deployment airbyte-abctl-temporal -n airbyte-abctl
+kubectl rollout restart deployment airbyte-abctl-workload-launcher -n airbyte-abctl
+kubectl rollout restart deployment airbyte-abctl-workload-api-server -n airbyte-abctl
+
+
+Why the logs are empty and no pods are appearing
+When you click "Sync" now, the Worker creates a new job entry. However, because you just restarted the entire backend (Temporal, Launcher, API), they might be taking a minute to re-establish their connections to each other.
+
+#wake up the worker launcher
+
+# Get the new launcher pod name
+LAUNCHER_POD=$(kubectl get pods -n airbyte-abctl -l app.kubernetes.io/name=workload-launcher -o jsonpath='{.items[0].metadata.name}')
+
+# Watch the logs for errors
+kubectl logs -f $LAUNCHER_POD -n airbyte-abctl
+
+kubectl get pods -n airbyte-abctl -w | grep replication
+
+kubectl rollout restart deployment airbyte-abctl-server -n airbyte-abctl
+
+API_POD=$(kubectl get pods -n airbyte-abctl -l app.kubernetes.io/name=workload-api-server -o jsonpath='{.items[0].metadata.name}')
+kubectl logs $API_POD -n airbyte-abctl --tail=50
+
+One session: kubectl get pods -n airbyte-abctl -w
+The other session: kubectl exec -it airbyte-db-0 -n airbyte-abctl -- psql -U airbyte -d db-airbyte -c "UPDATE workload SET status = 'cancelled' WHERE status = 'running' OR status = 'pending';"
+UPDATE 1
+
+FINAL WAY
+
+grep -r "64Gi" /root/.airbyte/abctl/
+
+kubectl rollout restart deployment airbyte-abctl-worker -n airbyte-abctl
+
+Scale down the replication
+kubectl scale deployment airbyte-abctl-worker --replicas=0 -n airbyte-abctl
+
+After 10 seconds
+kubectl scale deployment airbyte-abctl-worker --replicas=1 -n airbyte-abctl
+kubectl scale deployment airbyte-abctl-workload-launcher --replicas=1 -n airbyte-abctl
+
+Now, we can see the flow running again!!!
+
+
+Summary:
+
+Summary: What actually fixed the "64GB Ghost"?
+The reason simply changing the ConfigMap didn't work initially is that Airbyte’s Workload Architecture is designed to be extremely resilient—it "remembers" the requirements of a job even if the global settings change.
+
+Here are the critical steps that finally cleaned it up:
+
+Updating the Global Config: Changing the airbyte-abctl-env ConfigMap set the new rule, but the existing jobs didn't care because they were already "baked" with the 64GB requirement.
+
+Database "Zombie" Cleanup: Running the SQL update (UPDATE workload SET status = 'cancelled'...) was the turning point. It cleared the persistent record in the db-airbyte database that was telling the system to keep trying the old 64GB job.
+
+
+Scaling to Zero (The "Hard Reset"): Scaling the worker and workload-launcher to 0 and then back to 1 forced the software to dump its internal cache. When they came back up, they had no choice but to look at the fresh database state and the new 16GB environment variables.
+
+Temporal Refresh: Restarting the temporal deployment cleared the workflow history that was stuck in a "Retry" loop (as seen in your logs with the 10-second backoff).
+
+Now, it is still pending!!
+
+kubectl describe pod replication-job-113-attempt-0 -n airbyte-abctl
+
+kubectl describe pod replication-job-113-attempt-0 -n airbyte-abctl
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  5m25s                default-scheduler  0/1 nodes are available: 1 Insufficient cpu. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+  Warning  FailedScheduling  21s (x2 over 5m24s)  default-scheduler  0/1 nodes are available: 1 Insufficient cpu. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+
+SO, change the CPU request lower down
+
+kubectl edit configmap airbyte-abctl-airbyte-env -n airbyte-abctl
+change to
+JOB_MAIN_CONTAINER_CPU_REQUEST: "2"
+JOB_MAIN_CONTAINER_CPU_LIMIT: "12"
+
+
+force system change
+
+# 1. Delete the stuck pending pods
+kubectl delete pods -n airbyte-abctl -l airbyte=job-pod
+
+# 2. Restart the worker so it generates NEW pods with the 1 CPU request
+kubectl rollout restart deployment airbyte-abctl-worker -n airbyte-abctl
+
+kubectl edit configmap airbyte-abctl-airbyte-env -n airbyte-abctl
+
+Enforce reload
+# 1. Scale down to zero to clear the node's "Reserved" CPU
+kubectl scale deployment airbyte-abctl-worker --replicas=0 -n airbyte-abctl
+kubectl scale deployment airbyte-abctl-workload-launcher --replicas=0 -n airbyte-abctl
+
+# 2. Delete any lingering pending jobs
+kubectl delete pods -n airbyte-abctl -l airbyte=job-pod
+
+# 3. Scale back up
+kubectl scale deployment airbyte-abctl-worker --replicas=1 -n airbyte-abctl
+kubectl scale deployment airbyte-abctl-workload-launcher --replicas=1 -n airbyte-abctl
+
+
+kubectl logs -f replication-job-120-attempt-0 -n airbyte-abctl -c orchestrator
+kubectl logs -f replication-job-120-attempt-0 -n airbyte-abctl -c source
+kubectl logs -f replication-job-120-attempt-0 -n airbyte-abctl -c destination
+
+

@@ -1,0 +1,67 @@
+CREATE TABLE finance_humana.change_log (
+    log_id BIGSERIAL PRIMARY KEY,
+    table_name TEXT NOT NULL,         -- Stores the name of the table that was changed ('t1')
+    operation CHAR(1) NOT NULL,       -- Stores the DML operation ('I', 'U', 'D')
+    old_data JSONB,                   -- Stores the original row data (required for DELETE and UPDATE)
+    new_data JSONB,                   -- Stores the new row data (required for INSERT and UPDATE)
+    change_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    changed_by TEXT DEFAULT current_user
+);
+
+
+CREATE OR REPLACE FUNCTION finance_humana.log_row_changes_func()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        -- Log the new row data
+        INSERT INTO finance_humana.change_log (table_name, operation, new_data)
+        VALUES (TG_TABLE_NAME, 'I', to_jsonb(NEW));
+        RETURN NEW;
+        
+    ELSIF TG_OP = 'UPDATE' THEN
+        -- Log both old and new data
+        INSERT INTO finance_humana.change_log (table_name, operation, old_data, new_data)
+        VALUES (TG_TABLE_NAME, 'U', to_jsonb(OLD), to_jsonb(NEW));
+        RETURN NEW;
+
+    ELSIF TG_OP = 'DELETE' THEN
+        -- Log the deleted row's data
+        INSERT INTO finance_humana.change_log (table_name, operation, old_data)
+        VALUES (TG_TABLE_NAME, 'D', to_jsonb(OLD));
+        RETURN OLD;
+        
+    END IF;
+    -- Note: Row-level triggers must return the row they acted on (NEW or OLD).
+    -- If execution falls outside the IF blocks, return NULL as a fallback.
+    RETURN NULL;
+END;
+$function$
+;
+
+-- Create the single, row-level trigger
+CREATE TRIGGER cdc_logging_row_trigger
+AFTER INSERT OR UPDATE OR DELETE ON finance_humana.t1
+FOR EACH ROW
+EXECUTE FUNCTION finance_humana.log_row_changes_func();
+
+
+Test
+On publisher side
+-- On publisher (financials)
+\timing on
+INSERT INTO finance_humana.t1 (id, name)
+SELECT g, 'name_' || g
+FROM generate_series(1, 10000000) AS g;
+
+update finance_humana.t1 set name='end_marker_' || now() where id=1000001;
+\timing off
+
+On subscriber side
+watch -n 2 "psql -At -d ods_domani -c \"SELECT now() - (substring(name FROM 'end_marker_(.*)')::timestamp) FROM finance_humana.t1 WHERE id = 1000001;\""
+
+ALTER TABLE finance_humana.t1 DISABLE TRIGGER cdc_logging_row_trigger;
+
+ALTER TABLE finance_humana.t1 ENABLE REPLICA TRIGGER cdc_logging_row_trigger;
+

@@ -1,0 +1,39 @@
+A WAL filename​ in PostgreSQL (e.g. 0000000300004B2900000087) has this internal binary/hex structure:
+Part
+	
+Bytes
+	
+Description
+
+
+1–8​
+	
+00000003
+	
+Timeline ID​ (e.g. 3)
+
+
+9–12​
+	
+0000
+	
+usually zeros or part of upper LSN​
+
+
+13–16​
+	
+4B29
+	
+Upper 32 bits of the LSN​ ✅
+
+
+17–20​
+	
+0000
+	
+
+21–24​
+	
+0087
+	
+Lower 32 bits of the LSN​ ✅

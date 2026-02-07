@@ -1,0 +1,2 @@
+yum install postgresql16-contrib-16.10-1PGDG.rhel9.x86_64
+yum install -y postgresql16-16.10-1PGDG.rhel9.x86_64 postgresql16-contrib-16.10-1PGDG.rhel9.x86_64 postgresql16-libs-16.10-1PGDG.rhel9.x86_64 postgresql16-server-16.10-1PGDG.rhel9.x86_64

@@ -1,3 +1,161 @@
+-- List all objects in claimsprocess_humana schema with privileges for the target role
+SELECT
+  n.nspname AS schema_name,
+  c.relname AS object_name,
+  pg_get_userbyid(c.relowner) AS object_owner,
+  c.relkind AS object_type, -- r=table, v=view, s=sequence, f=function
+  c.relacl AS raw_privileges -- Raw ACL privilege string (for debugging)
+FROM
+  pg_class c
+JOIN
+  pg_namespace n ON c.relnamespace = n.oid
+WHERE
+  n.nspname = 'claimsprocess_humana' -- Filter target schema
+  AND c.relacl IS NOT NULL -- Only objects with granted privileges
+  AND c.relacl::TEXT LIKE '%ab_claimsprocess_humana%' -- Match the role
+ORDER BY
+  c.relkind, c.relname;
+
+
+
+WITH RECURSIVE role_hierarchy AS (
+  -- Step 1: Direct role memberships (pg_auth_members)
+  SELECT
+    m.roleid AS role_oid,
+    r.rolname AS granted_role,
+    'direct' AS membership_type
+  FROM
+    pg_catalog.pg_auth_members m
+  JOIN
+    pg_catalog.pg_roles r ON m.roleid = r.oid
+  JOIN
+    pg_catalog.pg_roles mbr ON m.member = mbr.oid
+  WHERE
+    mbr.rolname = 'dt236607'
+  UNION ALL
+  -- Step 2: Inherited roles (recursive lookup)
+  SELECT
+    m.roleid AS role_oid,
+    r.rolname AS granted_role,
+    'inherited' AS membership_type
+  FROM
+    pg_catalog.pg_auth_members m
+  JOIN
+    pg_catalog.pg_roles r ON m.roleid = r.oid
+  JOIN
+    role_hierarchy rh ON m.member = rh.role_oid
+)
+-- Final output: All roles (deduped)
+SELECT DISTINCT
+  granted_role,
+  membership_type
+FROM
+  role_hierarchy
+ORDER BY
+  granted_role;
+
+   granted_role    | membership_type
+-------------------+-----------------
+ finance_ddc_ro    | direct
+ finance_global_ro | direct
+ finance_humana_ro | direct
+ finance_ro        | direct
+ remittance_ro     | direct
+(5 rows)
+
+
+SELECT
+    pg_catalog.has_schema_privilege('your_user', 'claimsprocess_humana', 'USAGE') AS can_see,
+    pg_catalog.has_schema_privilege('your_user', 'claimsprocess_humana', 'CREATE') AS can_create;
+
+SELECT
+    datname,
+    grantee::regrole,
+    privilege_type
+FROM pg_database, aclexplode(datacl)
+WHERE grantee = 'airbyte'::regrole;
+  datname   | grantee | privilege_type
+------------+---------+----------------
+ test       | airbyte | CONNECT
+ ods_domani | airbyte | CREATE
+ ods_domani | airbyte | CONNECT
+(3 rows)
+
+SELECT
+    has_database_privilege(current_database(), 'CREATE') as can_create,
+    has_database_privilege(current_database(), 'TEMP') as can_temp;
+
+SELECT g.rolname AS group_role, m.rolname AS member_role
+FROM pg_auth_members a
+JOIN pg_roles g ON a.roleid = g.oid
+JOIN pg_roles m ON a.member = m.oid
+WHERE m.rolname = 'airbyte';
+
+
+SELECT r.rolname AS role_name
+FROM pg_roles r
+JOIN pg_auth_members m ON m.roleid = r.oid
+JOIN pg_roles u ON u.oid = m.member
+WHERE u.rolname = 'dt77798';
+
+-- Set the username you want to grant roles to
+WITH target_user AS (
+  SELECT 'dt77798'::name AS username  -- ← CHANGE THIS TO YOUR USER
+),
+schemas AS (
+  SELECT schema_name
+  FROM information_schema.schemata
+  WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+    AND schema_owner != 'postgres'
+),
+expected_roles AS (
+  SELECT 
+    schema_name,
+    schema_name || '_ro' AS ro_role,
+    schema_name || '_rw' AS rw_role
+  FROM schemas
+),
+existing_roles AS (
+  SELECT DISTINCT rolname
+  FROM pg_roles
+  WHERE rolname LIKE '%\_ro' OR rolname LIKE '%\_rw'  -- escape underscore
+),
+roles_to_grant AS (
+  SELECT 
+    er.schema_name,
+    er.ro_role,
+    er.rw_role,
+    CASE 
+      WHEN er.ro_role IN (SELECT rolname FROM existing_roles) THEN 1 ELSE 0 
+    END AS has_ro,
+    CASE 
+      WHEN er.rw_role IN (SELECT rolname FROM existing_roles) THEN 1 ELSE 0 
+    END AS has_rw
+  FROM expected_roles er
+)
+-- Generate GRANT statements
+SELECT 
+  'GRANT ' || quote_ident(ro_role) || ' TO ' || quote_ident(username) || ';' AS grant_statement
+FROM roles_to_grant rtg, target_user tu
+WHERE rtg.has_ro = 1
+
+UNION ALL
+
+SELECT 
+  'GRANT ' || quote_ident(rw_role) || ' TO ' || quote_ident(username) || ';' AS grant_statement
+FROM roles_to_grant rtg, target_user tu
+WHERE rtg.has_rw = 1
+
+ORDER BY grant_statement;
+
+
+
+SELECT r.rolname AS granted_role, m.rolname AS member_role
+FROM pg_auth_members am
+JOIN pg_roles r ON r.oid = am.roleid
+JOIN pg_roles m ON m.oid = am.member
+WHERE m.rolname = 'tpdpde';
+
 SELECT
     r.rolname AS user_or_role,
     n.nspname AS schema_name,
@@ -27,6 +185,20 @@ WHERE
     AND has_table_privilege(r.rolname, c.oid, p.privilege_type)
 ORDER BY
     schema_name, table_name, privilege_type;
+
+SELECT
+    r.rolname AS member_role,
+    g.rolname AS granted_role
+FROM
+    pg_auth_members am
+JOIN
+    pg_roles r ON r.oid = am.member
+JOIN
+    pg_roles g ON g.oid = am.roleid
+WHERE
+    g.rolname = 'target_role_name'
+ORDER BY
+    member_role;
 
 
 

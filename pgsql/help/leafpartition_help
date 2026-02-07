@@ -1,3 +1,43 @@
+WITH RECURSIVE partition_tree AS (
+  -- Anchor: start with parent
+  SELECT 
+    c.oid, c.relname, c.relnamespace, c.relkind,
+    NULL::regclass AS parent_oid
+  FROM pg_class c 
+  JOIN pg_namespace n ON c.relnamespace = n.oid
+  WHERE c.relname = 'claim_core' AND n.nspname = 'claimsprocess_humana'
+  
+  UNION ALL
+  
+  -- Recursive: find all children
+  SELECT 
+    c.oid, c.relname, c.relnamespace, c.relkind,
+    pt.oid AS parent_oid
+  FROM pg_class c
+  JOIN pg_inherits i ON c.oid = i.inhrelid
+  JOIN partition_tree pt ON i.inhparent = pt.oid
+  JOIN pg_namespace n ON c.relnamespace = n.oid
+)
+-- Leaves: regular tables (r) with no children of their own
+SELECT schemaname, tablename, parent
+FROM (
+  SELECT 
+    n.nspname AS schemaname,
+    c.relname AS tablename,
+    parent.relname AS parent
+  FROM partition_tree pt
+  JOIN pg_class c ON pt.oid = c.oid
+  JOIN pg_namespace n ON pt.relnamespace = n.oid
+  LEFT JOIN pg_inherits child ON pt.oid = child.inhparent
+  LEFT JOIN pg_class parent ON pt.parent_oid = parent.oid
+  WHERE pt.relkind = 'r'  -- base table
+    AND child.inhrelid IS NULL  -- no children (true leaf)
+) leaves
+ORDER BY tablename;
+
+
+
+
 WITH RECURSIVE partitions AS (
     -- Start from the parent table
     SELECT

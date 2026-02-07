@@ -1,0 +1,14 @@
+Hydra Columnar explicitly added support for PostgreSQL 16 (PG16).
+https://pigsty.io/ext/olap/columnar/
+
+https://pigsty.cc/ext/olap/columnar/
+Get the rpm from the link above
+like
+wget https://repo.pigsty.cc/yum/pgsql/el9.x86_64/hydra_16-1.1.2-1PIGSTY.el9.x86_64.rpm
+
+curl -s https://packagecloud.io/install/repositories/pigsty/pgsql/script.rpm.sh | sudo bash
+yum install hydra_14.x86_64 hydra_14-llvmjit.x86_64
+
+psal -d ods_domani
+create extension columnar;
+CREATE TABLE t1_col (id int primary key, name varchar) USING columnar;

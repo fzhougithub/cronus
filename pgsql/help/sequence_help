@@ -1,3 +1,144 @@
+SELECT 
+    pg_get_serial_sequence('drugmgmt.dur_safety_block_edit', 'dur_safety_block_edit_id') AS sequence_name;
+
+benefits=# SELECT * FROM pg_sequence_parameters(
+    'drugmgmt.dur_safety_block_edit_dur_safety_block_edit_id_seq'::regclass
+);
+-[ RECORD 1 ]-+-----------
+start_value   | 1
+minimum_value | 1
+maximum_value | 2147483647
+increment     | 1
+cycle_option  | f
+cache_size    | 1
+data_type     | 23
+
+SELECT * FROM drugmgmt.dur_safety_block_edit_dur_safety_block_edit_id_seq;
+-[ RECORD 1 ]--
+last_value | 2
+log_cnt    | 31
+is_called  | t
+
+-- Get current value of the sequence
+SELECT last_value FROM drugmgmt.dur_safety_block_edit_dur_safety_block_edit_id_seq;
+
+-- Get sequence metadata (start, increment, etc.)
+SELECT * FROM pg_sequence_parameters(
+    'drugmgmt.dur_safety_block_edit_dur_safety_block_edit_id_seq'::regclass
+);
+
+SELECT 
+    pg_get_serial_sequence(
+        'claimsprocess_humana.claim_submission_clarification_codes_63', 
+        'claim_submission_clarification_sequence_id'
+    ) AS seq_name;
+
+benefits=# SELECT MAX(dur_safety_block_edit_id) FROM drugmgmt.dur_safety_block_edit;
+-[ RECORD 1 ]
+max | 2279
+
+SELECT setval(
+    'drugmgmt.dur_safety_block_edit_dur_safety_block_edit_id_seq', 
+    (SELECT MAX(dur_safety_block_edit_id) FROM drugmgmt.dur_safety_block_edit), 
+    true  -- "true" = nextval() returns the set value + 1 (correct for existing rows)
+);
+
+If the table is empty:
+SELECT setval(
+    'drugmgmt.dur_safety_block_edit_dur_safety_block_edit_id_seq', 
+    1, 
+    false  -- "false" = nextval() returns 1 (starts fresh)
+);
+
+--- Query to detect sequence issue and fix
+
+WITH sequence_info AS (
+    -- Get all sequences linked to table columns (SERIAL/IDENTITY)
+    SELECT 
+        n.nspname AS schema_name,
+        c.relname AS table_name,
+        a.attname AS column_name,
+        pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) AS sequence_name,
+        a.attnum AS column_id
+    FROM pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    JOIN pg_attribute a ON c.oid = a.attrelid
+    WHERE 
+        c.relkind = 'r'  -- Regular tables
+        AND a.attnum > 0  -- Exclude system columns
+        AND pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) IS NOT NULL
+),
+max_column_values AS (
+    -- Calculate max value for each auto-increment column
+    SELECT 
+        si.schema_name,
+        si.table_name,
+        si.column_name,
+        si.sequence_name,
+        -- Dynamically get max(column) using EXECUTE (avoids hardcoding)
+        (SELECT MAX(attval) 
+         FROM (SELECT (row_to_json(t.*)->>si.column_name)::bigint AS attval 
+               FROM (SELECT * FROM pg_catalog.format('%I.%I', si.schema_name, si.table_name)::regclass) t) sub) AS max_col_value
+    FROM sequence_info si
+),
+sequence_current_values AS (
+    -- Get current sequence value
+    SELECT 
+        mcv.schema_name,
+        mcv.table_name,
+        mcv.column_name,
+        mcv.sequence_name,
+        mcv.max_col_value,
+        (SELECT last_value FROM pg_catalog.format('%I', mcv.sequence_name)::regclass) AS current_seq_value
+    FROM max_column_values mcv
+)
+-- Generate fix statements for mismatched sequences
+SELECT 
+    schema_name,
+    table_name,
+    column_name,
+    sequence_name,
+    max_col_value,
+    current_seq_value,
+    -- Generate setval() statement (only if sequence is out of sync)
+    CASE 
+        WHEN max_col_value IS NULL THEN 
+            -- Table is empty: reset sequence to start at 1
+            format('SELECT setval(%L, 1, false);', sequence_name)
+        WHEN current_seq_value < max_col_value THEN 
+            -- Sequence is behind: sync to max_col_value
+            format('SELECT setval(%L, %s, true);', sequence_name, max_col_value)
+        WHEN current_seq_value > max_col_value THEN 
+            -- Sequence is ahead (optional: reset to max_col_value)
+            format('-- WARNING: Sequence is ahead of table! SELECT setval(%L, %s, true);', sequence_name, max_col_value)
+        ELSE 
+            '-- No fix needed (sequence is in sync)'
+    END AS fix_statement
+FROM sequence_current_values
+ORDER BY schema_name, table_name, column_name;
+
+CREATE OR REPLACE FUNCTION temp_get_max_value(schema_name text, table_name text, column_name text)
+RETURNS bigint AS $$
+DECLARE
+    max_val bigint;
+BEGIN
+    EXECUTE format('SELECT MAX(%I) FROM %I.%I', column_name, schema_name, table_name) INTO max_val;
+    RETURN max_val;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION temp_get_seq_value(sequence_name text)
+RETURNS bigint AS $$
+DECLARE
+    seq_val bigint;
+BEGIN
+    EXECUTE format('SELECT last_value FROM %I', sequence_name) INTO seq_val;
+    RETURN seq_val;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
+
+
 SELECT
   n.nspname AS sequence_schema,
   c.relname AS sequence_name,

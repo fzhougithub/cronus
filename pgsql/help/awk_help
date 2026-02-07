@@ -1,0 +1,14 @@
+# Replace 'your_query.sql' with your actual SQL file path, or pipe SQL directly to this command
+awk '
+    # Convert entire line to lowercase for case-insensitive matching
+    {gsub(/[[:upper:]]/, "[[:lower:]]"); line = line $0 " "}
+    END {
+        # Split the full query into tokens, match "from/join + table name" pattern
+        while (match(line, /(from|join)[[:space:]]+([a-zA-Z0-9_]+)/, arr)) {
+            # Print only the table name (second capture group)
+            print arr[2]
+            # Remove the matched part to avoid reprocessing
+            line = substr(line, RSTART + RLENGTH)
+        }
+    }
+' your_query.sql

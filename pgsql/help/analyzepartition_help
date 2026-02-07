@@ -1,0 +1,19 @@
+WITH RECURSIVE partition_hierarchy AS (
+  SELECT inhrelid, inhparent
+  FROM pg_inherits
+  WHERE inhparent = 'datamart_humana.claim_c'::regclass
+  UNION
+  SELECT i.inhrelid, i.inhparent
+  FROM pg_inherits i
+  INNER JOIN partition_hierarchy ph ON i.inhparent = ph.inhrelid
+),
+leaf_partitions AS (
+  SELECT p.inhrelid
+  FROM partition_hierarchy p
+  LEFT JOIN pg_inherits i ON p.inhrelid = i.inhparent
+  WHERE i.inhparent IS NULL
+)
+SELECT
+  'ANALYZE ' || lp.inhrelid::regclass || ';' AS analyze_statement
+FROM leaf_partitions lp
+ORDER BY lp.inhrelid::regclass;

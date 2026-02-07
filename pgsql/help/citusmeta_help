@@ -1,0 +1,11 @@
+| Table               | Purpose                           | Key Columns                                                               |
+| ------------------- | --------------------------------- | ------------------------------------------------------------------------- |
+| pg_dist_node        | Worker nodes in cluster           | nodeid, nodename, nodeport, noderack, isactive, metadatasynced            |
+| pg_dist_shard       | Shards for each distributed table | logicalrelid (table), shardid, shardminvalue, shardmaxvalue, shardmaxsize |
+| pg_dist_placement   | Physical shard locations          | shardid, shardstate, groupid (node), placementid                          |
+| pg_dist_partition   | Distributed table config          | logicalrelid, colocationid, distribution_column                           |
+| pg_dist_colocation  | Co-location groups for JOINs      | colocationid, shardcount, replicationfactor                               |
+| pg_dist_local_group | Coordinator's own group ID        | groupid                                                                   |
+
+
+

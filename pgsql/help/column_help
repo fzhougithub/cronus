@@ -1,3 +1,26 @@
+SELECT
+    n.nspname AS table_schema,
+    c.relname AS table_name
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname = 'claimsprocess_humana' -- Your schema
+    AND c.relkind IN ('r', 'p')      -- 'r' for regular table, 'p' for partitioned table
+    AND NOT c.relispartition         -- <<< THIS IS THE KEY FILTER! Excludes child partitions
+    AND NOT EXISTS (
+        -- Inner check to ensure the table has the 'fill_dt' column
+        SELECT 1
+        FROM pg_attribute a
+        WHERE a.attrelid = c.oid
+          AND a.attname = 'fill_dt'
+          AND NOT a.attisdropped
+    )
+ORDER BY
+    table_name;
+
+
 select 'max('||column_name||'),' from information_schema.columns where table_schema='customer' and table_name='ax8' and column_name like '%dt';
 
 SELECT

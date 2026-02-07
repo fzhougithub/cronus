@@ -1,0 +1,26 @@
+find . -type f -newer 00000001000034F80000006A -exec cp -p {} /pg_backups/for_fail_transfer_wal/ \;
+
+find . -maxdepth 1 -type f -name '[0-9]*' | sort | awk '$0 >= "./00000001000034F80000006A"' | xargs -I{} cp -p {} /pg_backups/for_fail_transfer_wal/
+find . -maxdepth 1 -type f -name '[0-9]*' | sort -V | awk '$0 >= "./000000010000355C000000FE"' | xargs -I{} cp -p {} /pg_backups/for_fail_transfer_wal/
+
+aws s3 rm s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ --recursive \
+  --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 \
+  --profile db-backup-huat \
+  --no-verify-ssl \
+  --dryrun
+
+or no --dryrun to remove the file. 
+
+--- Sum Size
+
+aws s3 ls s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ \
+  --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 \
+  --profile db-backup-huat \
+  --no-verify-ssl \
+  --recursive | \
+  awk '{sum += $3} END {print "Total bytes:", sum; print "Total MB:", sum/1024/1024; print "Total GB:", sum/1024/1024/1024}'
+
+Total bytes: 48330739887
+Total MB: 46091.8
+Total GB: 45.0115
+

@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# --- 1. Source Vault credentials at the very beginning ---
+# This ensures VAULT_ADDR, VAULT_ROLE_ID, VAULT_SECRET_ID, TF_VAR_VAULT_USER are set
+# Ensure this file (~/.prod_vault) is NOT checked into Git!
+source ~/.nonprod_vault
+
+# --- 2. Vault Authentication and Password Retrieval ---
+
+echo "Attempting Vault login using AppRole..."
+
+# Authenticate to Vault using AppRole and capture the token
+# The VAULT_TOKEN will be stored in ~/.vault-token by default if successful
+# We explicitly pass VAULT_ADDR to ensure it's used
+# We also use 'vault write' which is often more robust for AppRole login
+VAULT_LOGIN_RESPONSE=$(vault write -field=token auth/approle/login \
+  role_id="$VAULT_ROLE_ID" \
+  secret_id="$VAULT_SECRET_ID" \
+  VAULT_ADDR="$VAULT_ADDR" 2>&1) # Redirect stderr to stdout for error checking
+
+# Check if Vault login was successful by looking for a token
+if [ -z "$VAULT_LOGIN_RESPONSE" ] || [[ "$VAULT_LOGIN_RESPONSE" == *"error"* ]]; then
+  echo "Vault login failed. Response: $VAULT_LOGIN_RESPONSE"
+  exit 1
+fi
+
+# The token is now implicitly stored by the vault CLI in ~/.vault-token
+# We don't need to explicitly export VAULT_TOKEN unless we want to use it directly.
+
+echo "Vault login successful. Fetching password..."
+
+# Fetch the password from Vault
+# Replace 'secret/terraform/fzhou_creds' with the actual path where your password is stored
+# And 'password' with the actual key name for the password field
+# Ensure you have read permissions on this path for your AppRole
+TF_VAR_VAULT_PASSWORD=$(vault kv get -field=password secret/terraform/fzhou_creds 2>&1)
+
+echo $TF_VAR_VAULT_PASSWORD
+# Check if password retrieval was successful
+if [ -z "$TF_VAR_VAULT_PASSWORD" ] || [[ "$TF_VAR_VAULT_PASSWORD" == *"error"* ]]; then
+  echo "Failed to retrieve VAULT_PASSWORD from Vault. Response: $TF_VAR_VAULT_PASSWORD"
+  exit 1
+fi
+
+# Export the password as the environment variable Terraform expects
+export TF_VAR_VAULT_PASSWORD
+
+# --- 3. Execute your main command (e.g., Terraform) ---
+echo "Vault password successfully loaded. Running Terraform..."
+# Use 'exec' to replace the current shell process with terraform,
+# which can be slightly more efficient and ensures environment variables
+# are correctly inherited.
+exec terraform "$@" # This passes all arguments from run_terraform.sh to terraform
+
+# --- 4. Clean up (this part will only run if 'exec' above fails) ---
+# Unset the sensitive variable from the environment after use
+unset TF_VAR_VAULT_PASSWORD
+# You might also want to revoke the Vault token if it's a short-lived one
+# vault token revoke self
+
+echo "Script finished (this line should only appear if 'exec' failed)."

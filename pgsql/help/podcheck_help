@@ -1,0 +1,7 @@
+# Get the new pod name
+POD_NAME=$(kubectl get pods -n airbyte-abctl -l app.kubernetes.io/name=worker -o jsonpath='{.items[0].metadata.name}')
+
+# Check the actual environment variable inside the running pod
+kubectl exec -it $POD_NAME -n airbyte-abctl -- env | grep JOB_MAIN_CONTAINER_MEMORY_LIMIT
+
+

@@ -1,0 +1,271 @@
+ods_domani=# SELECT shardstate, count(*) FROM pg_dist_placement GROUP BY shardstate;
+ shardstate | count
+------------+-------
+          1 |  2733
+(1 row)
+
+select relname,n_live_tup from pg_stat_user_tables where relname like 'claim_core_claimid_%';
+
+ods_domani=# -- Force a fresh query
+BEGIN;
+SET LOCAL citus.enable_repartition_joins TO false;
+SELECT COUNT(*) FROM claimsprocess_humana.claim_core;
+ROLLBACK;
+BEGIN
+SET
+ERROR:  connection to the remote node postgres@datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud:5432 failed with the following error: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+ROLLBACK
+
+
+Best
+
+ods_domani=# -- Check if Citus has correct parent-child relationships
+SELECT
+    p.logicalrelid::regclass as citus_parent,
+    c.logicalrelid::regclass as citus_child,
+    c.partmethod,
+    c.repmodel
+FROM pg_dist_partition p
+JOIN pg_dist_partition c ON c.logicalrelid::text LIKE p.logicalrelid::text || '_%'
+WHERE p.logicalrelid::text LIKE '%claim_core%'
+AND p.logicalrelid::text NOT LIKE '%_claimid_%';
+-- Before creating distributed partitioned tables, check:
+SELECT logicalrelid::regclass 
+FROM pg_dist_partition 
+WHERE logicalrelid::regclass::text LIKE '%claim_core%';
+
+-- Check for duplicate parent names
+SELECT 
+    logicalrelid::regclass as table_name,
+    COUNT(*) OVER (PARTITION BY logicalrelid::regclass::text) as duplicate_count
+FROM pg_dist_partition 
+WHERE logicalrelid::regclass::text LIKE '%claim_core%';
+
+-- Verify all is clean now
+SELECT 'Total rows in claim_core:' as description, COUNT(*) FROM claimsprocess_humana.claim_core
+UNION ALL
+SELECT 'Sum of partitions:' as description, SUM(n_live_tup) 
+FROM pg_stat_user_tables 
+WHERE schemaname = 'claimsprocess_humana' 
+AND relname LIKE 'claim_core_claimid_%';
+
+        description        |  count
+---------------------------+----------
+ Total rows in claim_core: | 79033821
+ Sum of partitions:        | 79030782
+(2 rows)
+
+-- Celebrate with one more verification
+SELECT 
+    '🎉 SUCCESS! Citus partitioned table working!' as message,
+    COUNT(*) as total_rows,
+    pg_size_pretty(pg_total_relation_size('claimsprocess_humana.claim_core')) as total_size
+FROM claimsprocess_humana.claim_core;
+                   message                    | total_rows | total_size
+----------------------------------------------+------------+------------
+ 🎉 SUCCESS! Citus partitioned table working! |   79033821 | 0 bytes
+(1 row)
+
+-- Check which worker has data
+SELECT 
+    nodename,
+    nodeport,
+    (SELECT result FROM run_command_on_workers(
+        'SELECT pg_size_pretty(pg_total_relation_size(''claimsprocess_humana.claim_core''))'
+    )) as size_on_worker
+FROM pg_dist_node
+WHERE noderole = 'primary';
+
+
+
+
+      SELECT tablename
+FROM pg_tables
+WHERE schemaname = 'claimsprocess_humana'
+AND tablename LIKE 'claim_core_claimid%'
+ORDER BY tablename;
+
+SELECT 
+    c.relname as child,
+    p.relname as parent
+FROM pg_inherits i
+JOIN pg_class c ON i.inhrelid = c.oid
+JOIN pg_class p ON i.inhparent = p.oid
+WHERE p.relname = 'claim_core'
+AND p.relnamespace = 'claimsprocess_humana'::regnamespace;
+
+SELECT 
+    s.shardid,
+    p.nodename,
+    p.nodeport,
+    'claimsprocess_humana.claim_core_' || s.shardid as expected_table,
+    EXISTS(
+        SELECT 1 FROM pg_tables 
+        WHERE schemaname = 'claimsprocess_humana' 
+        AND tablename = 'claim_core_' || s.shardid
+    ) as table_exists
+FROM pg_dist_shard s
+JOIN pg_dist_placement pl ON s.shardid = pl.shardid
+JOIN pg_dist_node n ON pl.groupid = n.groupid
+WHERE s.logicalrelid = 'claimsprocess_humana.claim_core'::regclass;
+
+SELECT run_command_on_workers($$
+    SELECT COUNT(*) FROM pg_tables 
+    WHERE schemaname = 'claimsprocess_humana' 
+    AND tablename LIKE 'claim_core%';
+$$);
+
+SELECT run_command_on_workers($$
+    SELECT 'Shard 162365 exists: ' || 
+        EXISTS(SELECT 1 FROM pg_tables WHERE tablename = 'claim_core_162365') as status
+    UNION ALL
+    SELECT 'Shard 162366 exists: ' || 
+        EXISTS(SELECT 1 FROM pg_tables WHERE tablename = 'claim_core_162366') as status
+    UNION ALL
+    SELECT 'Shard 162367 exists: ' || 
+        EXISTS(SELECT 1 FROM pg_tables WHERE tablename = 'claim_core_162367') as status;
+$$);
+
+SELECT 
+    logicalrelid::regclass as table_name,
+    partmethod,
+    repmodel,
+    (SELECT COUNT(*) FROM pg_dist_shard WHERE logicalrelid = p.logicalrelid) as shard_count
+FROM pg_dist_partition p
+WHERE logicalrelid::text LIKE '%claim_core%'
+ORDER BY table_name;
+
+SELECT
+    s.logicalrelid::regclass as table_name,
+    s.shardid,
+    s.shardminvalue,
+    s.shardmaxvalue
+FROM pg_dist_shard s
+WHERE s.logicalrelid::text LIKE '%claim_core_claimid%'
+ORDER BY table_name, shardid
+LIMIT 20;
+
+SELECT 
+    'parent' as type,
+    COUNT(*) as shard_count
+FROM pg_dist_shard 
+WHERE logicalrelid = 'claimsprocess_humana.claim_core'::regclass
+UNION ALL
+SELECT 
+    'partitions' as type,
+    COUNT(DISTINCT shardid) as shard_count
+FROM pg_dist_shard 
+WHERE logicalrelid::text LIKE 'claimsprocess_humana.claim_core_claimid%';
+
+ods_domani=# SELECT run_command_on_workers($cmd$
+    SELECT schemaname, tablename, n_live_tup
+    FROM pg_stat_user_tables
+    WHERE schemaname = 'claimsprocess_humana'
+    AND tablename = 'claim_core_claimid_22'
+    LIMIT 1;
+$cmd$);
+                                               run_command_on_workers
+--------------------------------------------------------------------------------------------------------------------
+ (datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud,5432,f,"ERROR:  column ""tablename"" does not exist")
+ (datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud,5432,f,"ERROR:  column ""tablename"" does not exist")
+ (datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud,5432,f,"ERROR:  column ""tablename"" does not exist")
+(3 rows)
+
+SELECT *
+FROM public.citus_tables where table_name::text like 'claim_core_claimid%';
+
+ods_domani=# SELECT column_to_column_name(logicalrelid, partkey) as distribution_column
+FROM pg_dist_partition
+WHERE logicalrelid = 'claimsprocess_humana.claim_core'::regclass;
+ distribution_column
+---------------------
+ claim_id
+(1 row)
+
+SET citus.force_max_query_parallelization TO on;
+EXPLAIN (VERBOSE) SELECT COUNT(*) FROM claimsprocess_humana.claim_core;
+RESET citus.force_max_query_parallelization;
+
+WITH partition_counts AS (
+    SELECT COUNT(*) as cnt FROM claimsprocess_humana.claim_core_claimid_22
+    UNION ALL
+    SELECT COUNT(*) FROM claimsprocess_humana.claim_core_claimid_23
+    UNION ALL
+    SELECT COUNT(*) FROM claimsprocess_humana.claim_core_claimid_24
+)
+SELECT SUM(cnt) as total_from_partitions FROM partition_counts;
+
+SELECT child.relname as partition_name,
+       parent.relname as parent_name
+FROM pg_inherits i
+JOIN pg_class child ON i.inhrelid = child.oid
+JOIN pg_class parent ON i.inhparent = parent.oid
+WHERE parent.relname = 'claim_core'
+ORDER BY partition_name;
+
+SELECT run_command_on_placements('claimsprocess_humana.claim_core', $cmd$
+    SELECT schemaname, relname 
+    FROM pg_stat_user_tables 
+    WHERE schemaname = 'claimsprocess_humana' 
+    AND relname LIKE 'claim_core%'
+    ORDER BY relname;
+$cmd$);
+
+SELECT run_command_on_workers($cmd$
+    SELECT 'claim_core_162365 exists: ' || 
+        EXISTS(SELECT 1 FROM pg_tables WHERE tablename = 'claim_core_162365') as status
+    UNION ALL
+    SELECT 'claim_core_claimid_22_162434 exists: ' || 
+        EXISTS(SELECT 1 FROM pg_tables WHERE tablename = 'claim_core_claimid_22_162434') as status;
+$cmd$);
+
+-- Check the parent table's OID and name history
+SELECT 
+    c.oid,
+    c.relname as current_name,
+    c.relfilenode,
+    c.relnamespace::regnamespace as schema,
+    (SELECT relname FROM pg_class WHERE oid = i.inhparent) as inherited_from
+FROM pg_class c
+LEFT JOIN pg_inherits i ON c.oid = i.inhrelid
+WHERE c.relname = 'claim_core'
+AND c.relnamespace = 'claimsprocess_humana'::regnamespace;
+
+-- Check if partitions point to the wrong parent
+SELECT 
+    child.relname as partition_name,
+    parent.relname as parent_name,
+    parent.oid as parent_oid
+FROM pg_inherits i
+JOIN pg_class child ON i.inhrelid = child.oid
+JOIN pg_class parent ON i.inhparent = parent.oid
+WHERE child.relname LIKE 'claim_core_claimid%'
+ORDER BY child.relname;
+
+-- Check if there are any remaining references to old table names
+SELECT 
+    c.oid,
+    c.relname,
+    c.relkind,
+    c.relpersistence,
+    pg_get_userbyid(c.relowner) as owner
+FROM pg_class c
+WHERE c.relnamespace = 'claimsprocess_humana'::regnamespace
+AND c.relname LIKE '%claim_core%'
+ORDER BY c.relname;
+
+-- Check if Citus has correct parent-child relationships
+SELECT 
+    p.logicalrelid::regclass as citus_parent,
+    c.logicalrelid::regclass as citus_child,
+    c.partmethod,
+    c.repmodel
+FROM pg_dist_partition p
+JOIN pg_dist_partition c ON c.logicalrelid::text LIKE p.logicalrelid::text || '_%'
+WHERE p.logicalrelid::text LIKE '%claim_core%'
+AND p.logicalrelid::text NOT LIKE '%_claimid_%';
+
+
+

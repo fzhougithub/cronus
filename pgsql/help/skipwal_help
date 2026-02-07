@@ -1,0 +1,5 @@
+recovery_target_timeline = 'latest'
+recovery_min_apply_delay = 0
+zero_damaged_pages = on  # Dangerous - can cause data loss
+
+

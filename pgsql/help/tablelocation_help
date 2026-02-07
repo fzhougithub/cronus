@@ -1,0 +1,9 @@
+SELECT
+  n.nspname AS schema_name,
+  c.relname AS table_name,
+  t.spcname AS tablespace_name
+FROM pg_class c
+JOIN pg_namespace n ON c.relnamespace = n.oid
+JOIN pg_tablespace t ON c.reltablespace = t.oid
+WHERE n.nspname = 'claimsprocess_humana'   -- replace with your schema
+  AND c.relname = 'claim_core_320_202209';   -- replace with your table name

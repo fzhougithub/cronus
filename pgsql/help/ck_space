@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ $# -ne 2 ];then
+	echo "Example:$0 <node_type> <directoryName>"
+	echo "e.g.:$0 prod apps"
+	exit 1
+else
+	nodetype=$1
+	dir=$2
+fi	
+
+for i in $(cat ~/*nodes|grep "\-$nodetype-"|grep 01|grep -v '#');do echo $i $dir $(ssh $i "df -h|grep $dir" 2>/dev/null|awk '{gsub(/%/, "", $5); if ($5 < 60) print "OK"; else print $5"%"}');done
+

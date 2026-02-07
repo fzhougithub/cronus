@@ -1,0 +1,17 @@
+SELECT
+    s.logicalrelid::regclass AS table_name,
+    p.shardid,
+    n.nodename
+FROM pg_dist_placement p
+JOIN pg_dist_shard s USING (shardid)
+JOIN pg_dist_node n ON p.groupid = n.groupid
+WHERE p.shardstate = 0;
+
+           table_name            | shardid |                          nodename
+---------------------------------+---------+-------------------------------------------------------------
+ claimsprocess_humana.claim_core |  162365 | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud
+ claimsprocess_humana.claim_core |  162366 | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud
+ claimsprocess_humana.claim_core |  162367 | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud
+(3 rows)
+
+

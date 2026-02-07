@@ -1,0 +1,40 @@
+SELECT 'alter publication finance_other_hpls_pub add table '||n.nspname||'.'||c.relname||';'
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname = 'finance_other'
+    AND c.relkind = 'r'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM pg_publication_tables pt
+        WHERE pt.pubname = 'finance_other_hpls_pub'
+          AND pt.schemaname = n.nspname
+          AND pt.tablename = c.relname
+    );
+
+
+
+WITH sub AS (
+  SELECT oid AS subid
+  FROM pg_subscription
+  WHERE subname = 'finance_global_hpls_sub'
+)
+SELECT
+    n.nspname  AS schema_name,
+    c.relname  AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'finance_global'
+  AND c.relkind = 'r'                  -- ordinary tables only
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sub
+    JOIN pg_subscription_rel sr ON sr.srsubid = sub.subid
+    WHERE sr.srrelid = c.oid
+  )
+ORDER BY table_name;
+
+
+

@@ -1,0 +1,7 @@
+[rundeck@ops-ctl-prod-drx-kc ~]$ ps -ef|grep 1844449
+rundeck  1844449 1844446  0 01:53 ?        00:00:00 /usr/local/bin/python3.11 /usr/local/bin/pgbk -c ods-db-01-alma8-prod-drx-kc.ssnc-corp.cloud:5432 -d ods_domani -u backup_svc -p shaDZ6pkvoHNtywZO4EPhUPTeS13c+XK -e https://wdc-ecs-01-dtn.dstcorp.net:9021 -b db-backup-prod -k tj32wfpi@db-backup-prod@domanirx-prod -s r5LSUGmGsOkvjR3jCYC8+eVV7/HibVg2N2x0n+ai -t /apps/rundeck/tmp
+
+
+rundeck  1844452 1844449 99 01:53 ?        06:03:29 pg_dump -Z9 -Fc -h ods-db-01-alma8-prod-drx-kc.ssnc-corp.cloud -p 5432 -U backup_svc -f /apps/rundeck/tmp/ods_domani.20251030015400.backup ods_domani
+
+

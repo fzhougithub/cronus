@@ -1,0 +1,48 @@
+SELECT pg_walfile_name('4B29/87898648');
+0000000300004B2900000087
+SELECT pg_current_wal_lsn() AS current_wal_lsn;
+4C07/941763D8
+select pg_walfile_name('4C07/941763D8');
+0000000300004C0700000094
+
+SELECT
+    pg_wal_lsn_diff('4C07/941763D8'::pg_lsn, '4B29/87898648'::pg_lsn) / 1024 / 1024 /1024 AS diff_gb;
+       diff_gb
+---------------------
+888.1961587816476826
+
+
+
+SELECT
+    (pg_walfile_name_offset('4B29/87000000'::pg_lsn)).file_name,
+    (pg_walfile_name_offset('4B29/87000000'::pg_lsn)).file_offset;
+
+WITH wal_file AS (
+    SELECT '0000000300004B2900000087' AS filename
+)
+SELECT
+    filename,
+    substring(filename from 9 for 4) || '/' || substring(filename from 13 for 8) AS calculated_lsn,
+    (pg_walfile_name_offset((substring(filename from 9 for 4) || '/' || substring(filename from 13 for 8))::pg_lsn)).file_name,
+    (pg_walfile_name_offset((substring(filename from 9 for 4) || '/' || substring(filename from 13 for 8))::pg_lsn)).file_offset
+FROM
+    wal_file;
+
+postgres-#     wal_file;
+         filename         | calculated_lsn |        file_name         | file_offset
+--------------------------+----------------+--------------------------+-------------
+ 0000000300004B2900000087 | 0000/4B290000  | 00000003000000000000004B |     2686976
+(1 row)
+
+WITH wal_file AS (
+    SELECT '0000000300004B2900000087' AS filename
+)
+SELECT
+    filename,
+    substring(filename from 9 for 4) || '/' || substring(filename from 13 for 8) AS calculated_lsn
+FROM
+    wal_file;
+
+
+
+

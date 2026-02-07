@@ -1,0 +1,270 @@
+#!/bin/bash
+
+# Before run this, you must create publication on primary db, and create replication slot using subscription name
+# You also have to use another session to create and keep the snapshot. 
+
+set -m
+
+if [ $# -ne 8 ]; then
+	echo "Usage: $0 <sourceIP> <sourceDB> <pubName> <targetIP> <targetDB> <subName> <jobs> dry/run"
+	echo "example: $0 10.221.152.82 claimsprocess prd_claimsprocess_humana_pub 10.221.129.108 test prd_claimsprocess_humana_sub 10 dry"
+	exit 1
+else
+        s_host=$1
+        s_db=$2
+        s_pub=$3
+        t_host=$4
+        t_db=$5
+        t_sub=$6
+        jobs=$7
+	action=$8
+
+	s_sch=$(psql -h ${s_host} -d ${s_db} -U postgres -t -A -c "select distinct schemaname from pg_publication_tables where pubname='$s_pub'"| xargs)
+	if [[ -z $s_sch ]]; then	
+		echo "Can not find the schema for publication $s_pub in $s_host $s_db"
+		echo "psql -h $s_host -d $s_db -U postgres -t -A -c \"select distinct schemaname from pg_publication_tables where pubname='$s_pub'\""
+		exit 2
+	fi
+	t_sch=$(psql -h ${t_host} -d ${t_db} -U postgres -t -A -c "SELECT nspname FROM pg_namespace WHERE nspname = '$s_sch'")
+	if [[ -z $t_sch ]];then 
+		echo "Can not connect to target DB"
+		echo "psql -h $t_host -d $t_db -U postgres -t -A -c \"SELECT nspname FROM pg_namespace WHERE nspname = '$s_sch'\""
+		exit 3
+	fi
+	tablist=${s_sch}.tablist
+fi
+
+dumpdir=/pg_backups/pg2pg_init
+logdir=/pg_backups/restorelogs
+dump_bkup=/pg_backups/pg2pg_init_$(date +%d%M%Y)
+log_bkup=/pg_backups/restorelogs_$(date +%d%M%Y)
+outputfile=restore_summary.log
+trickysession=keep_alive_tricky_session
+snapshot=''
+consistent_point=''
+
+
+show_vars_and_confirm() {
+    echo ""
+    echo "Current shell variables and their values:"
+    echo "========================================="
+
+    declare -p | egrep -v 'declare -f|declare -A|declare -a'| egrep 's_|t_|dir|tab|file|job|action'|awk '{print $3}'
+    read -r -p "Do you want to continue? (Y/N): " confirm
+    case "$confirm" in
+        [Yy]* )
+            echo "Continuing..."
+            return 0
+            ;;
+        [Nn]* )
+            echo "Terminating..."
+            exit 10
+            ;;
+        * )
+            echo "Invalid input. Please enter Y or N."
+            exit 11
+            ;;
+    esac
+}
+
+get_tablist() {
+
+sqlcmd="SELECT n.nspname || '.' || c.relname AS table_name FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'claimsprocess_humana' AND c.relkind = 'r' AND NOT EXISTS ( SELECT 1 FROM pg_inherits i WHERE i.inhrelid = c.oid) ORDER BY c.relname;"
+
+psql -h $s_host -d $s_db -U postgres -q -t -c "$sqlcmd" > $tablist
+
+sed -i 's/^[ \t]*//; ${/^$/d;}' $tablist
+
+}
+
+get_s_host_size() {
+result=$(psql "postgresql://postgres@$s_host:5432/$s_db" -t -A  -c "
+SELECT
+    SUM(pg_total_relation_size(c.oid))/1024/1024/1024 AS total_schema_size
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+WHERE
+    n.nspname = '$s_sch' -- Exclude internal pg_ schemas
+    AND c.relkind IN ('r', 'i', 'm', 't', 'S')
+")
+echo $result
+}
+
+create_subscription(){
+echo "--| Create Subscription"
+crt_sub="CREATE SUBSCRIPTION ${t_sub} connection 'host=${s_host} dbname=${s_db} port=${5432}' PUBLICATION ${s_pub} ;"
+echo "[$crt_sub]"
+
+
+echo "$crt_sub" | psql -p ${5432} -t ${t_db}
+if [ $? -ne 0 ]
+then
+        echo
+        echo "ERROR:  Create Subscription failed, aborting"
+        echo
+        exit
+else
+        echo "--| create Subscription success!"
+        echo
+        echo
+fi
+}
+
+create_special_sub() {
+echo "--| Create Special Subscription in $t_host:$t_db"
+crt_sub="DROP SUBSCRIPTION IF EXISTS $t_sub; CREATE SUBSCRIPTION $t_sub CONNECTION 'host=${s_host} dbname=${s_db} port=${5432}' PUBLICATION ${s_pub} WITH (copy_data = false, create_slot = false, enabled = false, slot_name = '${s_pub}_tricky_slot');"
+echo "[$crt_sub]"
+
+echo "$crt_sub" | psql -p ${5432} -t ${t_db}
+if [ $? -ne 0 ]
+then
+        echo
+        echo "ERROR:  Create Subscription failed, aborting"
+        echo
+        exit
+else
+        echo "--| create Subscription success!"
+        echo
+        echo
+fi
+
+external_id=$(psql -d $t_db -t -A -c "SELECT 'pg_'||oid::text FROM pg_subscription WHERE t_sub = '${t_sub}';")
+
+psql -d $t_db -c "SELECT pg_replication_origin_advance('$external_id', '$consistent_point');"
+
+#psql -d $t_db -c "ALTER SUBSCRIPTION ${t_sub} ENABLE;"
+
+echo "Logical replication subscription created and enabled."
+}
+
+
+create_tricky_session() {
+info=keyinfo
+> $info
+
+screen -dmS $trickysession bash -c "
+psql -h $s_host -d \"$s_db\" -t -A <<'EOF' >> \"$info\" 2>&1
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+SELECT pg_export_snapshot() AS snap_id, pg_current_wal_lsn() AS lsn;
+SELECT pg_sleep(2000000);
+EOF
+"
+
+echo "Replication slot creation started in screen session $trickysession."
+echo "Waiting a few seconds for the slot to be created..."
+sleep 5
+
+if [[ -f $info ]]; then
+  snapshot=$(tail -1 $info|awk -F'|' '{print $1}' | tr -d ' ')
+  consistent_point=$(tail -1 $info|awk -F'|' '{print $2}' | tr -d ' ')
+  echo "snapshot: $snapshot"
+  echo "consistent_point: $consistent_point"
+else
+  echo "Error: Slot creation output file not found!"
+  exit 1
+fi
+}
+
+drop_tricky_session(){
+screen -S $trickysession -X quit
+}
+
+process_table() {
+local table=$1
+
+if [ $action == 'dry' ];then
+	local log_file="$logdir/${table}.cmd"
+elif [ $action == 'run' ];then
+	local log_file="$logdir/${table}.log"
+else
+	echo "Only Support dry/run options"
+	exit 21
+fi
+
+echo $table $log_file
+
+if [ $action == 'dry' ];then
+echo "pg_dump -E UTF8 -h $s_host -d $s_db -t $table --encoding=UTF8 --data-only --snapshot=$snapshot -Fd -Z 0 -f $dumpdir/$table" >> $log_file
+echo "sed -i -e 's/\xAC//g' -e 's/\xDD\x4D//g' -e 's/\xA8//g' $dumpdir/${table}/*.dat" >> $log_file
+echo "pg_restore -h $t_host -d $t_db --schema=$t_sch --data-only --encoding=UTF8 -j 8 $dumpdir/$table" >> $log_file
+fi
+
+if [ $action == 'run' ];then
+echo "$(date): START processing table: $table" | tee -a $log_file
+echo "pg_dump -E UTF8 -h $s_host -d $s_db -t $table --encoding=UTF8 --data-only --snapshot=$snapshot -Fd -Z 0 -f $dumpdir/$table" >> $log_file
+echo "sed -i -e 's/\xAC//g' -e 's/\xDD\x4D//g' -e 's/\xA8//g' $dumpdir/${table}/*.dat" >> $log_file
+echo "pg_restore -h $t_host -d $t_db --schema=$t_sch --data-only --encoding=UTF8 -j 8 $dumpdir/$table" >> $log_file
+
+if pg_dump -h -E UTF8 "$s_host" -d "$s_db" -t "$table" --encoding=UTF8 --data-only --snapshot="$snapshot" -Fd -Z 0 -j 8 -f $dumpdir/$table 2>>"$log_file" \
+   && \
+   sed -i -e 's/\xAC//g' -e 's/\xDD\x4D//g' -e 's/\xA8//g' $dumpdir/${table}/*.dat \
+   && \
+   pg_restore -h "$t_host" -d "$t_db" --schema=$t_sch --data-only --encoding=UTF8 -j 8 "$dumpdir/$table" 2>>"$log_file"; then
+
+   echo "$(date): SUCCESS completed table: $table" | tee -a "$log_file"
+
+else
+   echo "$(date): FAILED table: $table" | tee -a "$log_file"
+fi
+fi
+}
+
+#============= Main ====================
+
+show_vars_and_confirm
+
+if [ $action == 'run' ];then
+[ -d $dumpdir ] && mv $dumpdir $dump_bkup
+[ -d $logdir ] && mv $logdir $log_bkup
+mkdir -p $logdir
+mkdir -p $dumpdir
+
+echo "$(date) Start parallel restore ......" > $outputfile
+
+get_tablist
+
+create_tricky_session
+
+export -f process_table
+export action s_host s_db s_sch t_host t_db t_sch snapshot logdir dumpdir
+
+echo "Starting parallel restore with $jobs jobs..."
+t_start=$(date)
+#cat $tablist | xargs -I {} -P $jobs bash -c 'process_table "$@"' _ {}
+#parallel -j "$jobs" process_table ::: "$(cat "$tablist")"
+parallel --trim lr -j "$jobs" process_table :::: "$tablist"
+
+total_count=$(ls $logdir/*.log|wc -l)
+success_count=$(grep -r "SUCCESS" $logdir/*.log | wc -l)
+failed_count=$(grep -r "FAILED" $logdir/*.log | wc -l)
+
+t_end=$(date)
+
+echo "=== RESTORE COMPLETED ===" >> $outputfile
+echo "Start: $t_start" >> $outputfile
+echo "End: $t_end" >> $outputfile
+echo "Total tables: $total_count" >> $outputfile
+echo "Successful: $success_count" >> $outputfile
+echo "Failed: $failed_count" >> $outputfile
+
+if [ $failed_count -gt 0 ]; then
+    echo "Failed tables:" >> $outputfile
+    grep -r FAILED $logdir/*.log | cut -d':' -f1 >> $outputfile
+fi
+
+cat $outputfile
+
+#drop_tricky_session
+
+fi
+
+if [ $action == 'dry' ];then
+get_tablist
+echo "total $(wc -l < $tablist) tables"
+export -f process_table
+export action s_host s_db s_sch t_host t_db t_sch snapshot logdir dumpdir
+parallel --trim lr -j "$jobs" process_table :::: "$tablist"
+fi
+

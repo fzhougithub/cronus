@@ -1,0 +1,28 @@
+brew install pg-schema-diff
+
+Don't use this tool, does not support the future usage. 
+
+pg-schema-diff plan --include-schema claimsprocess_humana --from-dsn "postgres://claims-db-01-alma8-dev-drx-kc.ssnc-corp.cloud:5432/claimsprocess" --to-dsn "postgres://ods-db-01-alma8-dev-drx-kc.ssnc-corp.cloud:5432/ods_domani" --temp-db-dsn "postgres://localhost:5432/test" --output-format sql> schema_diff.sql
+
+
+
+
+
+schema % pg-schema-diff dump --dsn "postgres://claims-db-01-alma8-dev-drx-kc.ssnc-corp.cloud:5432/claimsprocess" --include-schema claimsprocess_humana > claimsprocess_humana.sql
+
+schema % pg-schema-diff dump --dsn "postgres://ods-db-01-alma8-dev-drx-kc.ssnc-corp.cloud:5432/ods_domani" --include-schema claimsprocess_humana > ods_claimsprocess_humana.sql
+
+
+1. dump the original schema still use pg_dump
+
+pg_dump -h claims-db-01-alma8-dev-drx-kc.ssnc-corp.cloud \
+  -U fzhou -d claimsprocess \
+  -n claimsprocess_humana \
+  --schema-only --no-privileges --no-owner > dev_claimsprocess_humana.sql
+
+pg_dump -h ods-db-01-alma8-dev-drx-kc.ssnc-corp.cloud \
+  -U fzhou -d claimsprocess \
+  -n claimsprocess_humana \
+  --schema-only --no-privileges --no-owner > ods_dev_claimsprocess_humana.sql
+
+

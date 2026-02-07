@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 <env>"
+	echo "e.g: $0 claim <env>"
+	exit 1
+else
+	env=$1
+fi
+
+ls -1 ~/.kube/*config|grep $env
+
+read -p "Enter the config file you will use:" config
+
+export KUBECONFIG=$config
+kubectl config view
+kubectl get ns
+#kubectl get pod -n finance
+kubectl port-forward svc/kube-prometheus-stack-alertmanager 9093:9093 -n monitoring
+
+echo "Check website https://localhost:9093"

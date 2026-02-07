@@ -1,0 +1,11 @@
+docker pull postgrs
+
+docker volume create pg_data_db1
+docker volume create pg_data_db2
+docker volume create pg_data_db3
+
+docker run --name postgres_db1 -e POSTGRES_PASSWORD=jgmjxdd -d -p 5432:5432 -v pg_data_db1:/var/lib/postgresql/data postgres
+docker run --name postgres_db2 -e POSTGRES_PASSWORD=jgmjxdd -d -p 5432:5432 -v pg_data_db2:/var/lib/postgresql/data postgres
+docker run --name postgres_db3 -e POSTGRES_PASSWORD=jgmjxdd -d -p 5432:5432 -v pg_data_db3:/var/lib/postgresql/data postgres
+
+

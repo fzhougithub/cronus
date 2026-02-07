@@ -1,0 +1,10 @@
+SELECT n.nspname AS schema,
+       p.proname AS function,
+       r.rolname AS owner,
+       p.prosecdef AS is_security_definer,
+       --pg_get_functiondef(p.oid)
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_roles r ON r.oid = p.proowner
+WHERE p.prosrc LIKE '%pg_background%';
+

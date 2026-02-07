@@ -1,0 +1,3 @@
+/usr/pgsql-14/bin/pg_basebackup -D /apps/lib/pgsql/14/data -X s -R -v -c fast -h 10.222.79.110
+
+

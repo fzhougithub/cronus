@@ -1,0 +1,10 @@
+lsblk -d -o NAME,ROTA,SIZE,TYPE,MODEL
+NAME ROTA  SIZE TYPE MODEL
+sda     0 60.8G disk Virtual disk
+sdb     0  300G disk Virtual disk
+sdd     0   20G disk Virtual disk
+sde     0 19.5T disk Virtual disk
+sdf     0   48G disk Virtual disk
+sr0     1   78K rom  VMware IDE CDR00
+
+O means the disk is non-rotational, ssd

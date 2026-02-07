@@ -1,0 +1,86 @@
+Best
+
+SELECT
+    -- 1. PostgreSQL Partition Info
+    pc.relname AS local_partition_name,
+    
+    -- 2. Citus Shard Info
+    psd.shardid AS shard_id,
+    
+    -- 3. Citus Worker Location Info (using the pg_dist_node table)
+    pdn.nodename AS worker_node,
+    pdn.nodeport AS worker_port,
+    CASE pd.shardstate
+        WHEN 1 THEN 'FINALIZED (Active)'
+        WHEN 3 THEN 'Inactive'
+	WHEN 4 THEN 'TO_DELETE'
+        ELSE 'UNKNOWN/OTHER STATE (' || pd.shardstate || ')' -- Show the raw value if it's new/different
+    END AS shard_state, -- NOTE: shardstate is on the placement table (pd)
+    
+    -- 4. Size for verification
+    pg_size_pretty(pg_total_relation_size(pc.oid)) AS total_size
+FROM
+    pg_catalog.pg_class pc  -- All PostgreSQL relations (tables/partitions)
+JOIN
+    pg_catalog.pg_inherits pi ON pc.oid = pi.inhrelid -- Link Child Partition OID to Parent OID
+JOIN
+    pg_dist_shard psd ON pi.inhparent = psd.logicalrelid -- Parent OID -> Logical Rel ID
+JOIN
+    pg_dist_placement pd ON psd.shardid = pd.shardid -- Link Shard ID to Placement
+JOIN
+    pg_dist_node pdn ON pd.groupid = pdn.groupid -- *** THE FINAL JOIN: Link Placement Group ID to Node Info ***
+WHERE
+    pi.inhparent = 'claimsprocess_humana.claim_core'::regclass -- Your Distributed Parent Table OID/Name
+    AND pdn.noderole = 'primary' -- Only show primary placement locations (optional)
+ORDER BY
+    total_size,
+    local_partition_name,
+    worker_node;
+
+SELECT logicalrelid, shardid, shardstate
+FROM pg_dist_shard
+JOIN pg_dist_placement USING (shardid)
+WHERE logicalrelid = 'claimsprocess_humana.claim_core'::regclass;
+
+-- 1. List ALL physical tables with claim_core
+SELECT schemaname, relname, n_tup_ins, n_tup_upd, n_tup_del
+FROM pg_stat_user_tables 
+WHERE schemaname = 'claimsprocess_humana' AND relname LIKE '%claim_core%';
+
+SELECT logicalrelid, partmethod, repmodel
+FROM pg_dist_partition
+WHERE logicalrelid::text LIKE '%claim_core_claimid_%';
+
+SELECT shardid, shardstate, shardlength, nodename, nodeport
+FROM pg_dist_shard NATURAL JOIN pg_dist_placement NATURAL JOIN pg_dist_node
+WHERE logicalrelid = 'claimsprocess_humana.claim_core'::regclass;
+
+
+
+SELECT 
+    proname 
+FROM 
+    pg_proc 
+WHERE 
+    proname LIKE 'citus\_get\_shard\_id%' 
+    OR proname LIKE 'citus\_dist\_partition%';
+
+SELECT
+    relname
+FROM
+    pg_class
+WHERE
+    relname LIKE 'citus\_dist\_partition%'
+    OR relname LIKE 'citus\_shard%';
+
+SELECT rebalance_table_shards('test1');
+
+
+SELECT logicalrelid::regclass AS table_name, count(*) AS shard_count
+FROM pg_dist_shard
+GROUP BY logicalrelid
+ORDER BY shard_count DESC;
+
+
+
+

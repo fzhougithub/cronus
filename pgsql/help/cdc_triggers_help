@@ -1,0 +1,24 @@
+-- For claimsprocess_humana
+create trigger trig_claim_core_d before
+delete
+    on
+    claimsprocess_humana.claim_core for each row execute function datamart.trigger_on_claim_core_fn();
+create trigger trig_claim_core_iu after
+insert
+    or
+update
+    on
+    claimsprocess_humana.claim_core for each row execute function datamart.trigger_on_claim_core_fn();
+
+
+-- For claimsprocess_other
+create trigger trig_claim_core_d before
+delete
+    on
+    claimsprocess_other.claim_core for each row execute function datamart.trigger_on_claim_core_fn();
+create trigger trig_claim_core_iu after
+insert
+    or
+update
+    on
+    claimsprocess_other.claim_core for each row execute function datamart.trigger_on_claim_core_fn();

@@ -1,0 +1,82 @@
+ yum install pglogical_17.x86_64 pglogical_17-llvmjit.x86_64
+
+add the pglogical into shared_preload_libraries, on all of the nodes, and restart all of them
+
+On coordinator
+create extension pglogical;
+
+on test db
+create extension pglogical;
+
+CREATE ROLE repuser WITH LOGIN REPLICATION PASSWORD 'secret';
+
+test=# GRANT CONNECT ON DATABASE test TO repuser;
+GRANT
+
+-- Allow entering the schema
+GRANT USAGE ON SCHEMA pglogical TO repuser;
+
+-- Allow reading current pglogical tables/views
+GRANT SELECT ON ALL TABLES IN SCHEMA pglogical TO repuser;
+
+
+-- Keep future pglogical objects readable too (default privileges)
+ALTER DEFAULT PRIVILEGES IN SCHEMA pglogical
+GRANT SELECT ON TABLES TO repuser;
+
+
+
+SELECT pglogical.create_node(
+    node_name := 'pglogical_test',
+    dsn := 'host=10.221.139.162 dbname=test user=repuser password=secret'
+);
+
+ create_node
+-------------
+  1365286793
+(1 row)
+
+Then, create node on target, the ods_domani
+
+
+SELECT pglogical.create_node(
+    node_name := 'pglogical_subscriber',
+    dsn := 'host=10.221.139.162 dbname=ods_domani user=repuser password=secret'
+);
+ create_node
+-------------
+  1266787447
+(1 row)
+
+Then, create subscription on target
+
+
+SELECT pglogical.create_subscription(
+    subscription_name := 'pglogical_sub1',
+    provider_dsn := 'host=10.221.139.162 dbname=test user=repuser password=secret'
+);
+
+ create_subscription
+---------------------
+          2086265492
+(1 row)
+
+
+SELECT * FROM pglogical.show_subscription_status();
+ subscription_name | status | provider_node  |                         provider_dsn                         |                  slot_name                   |
+           replication_sets            | forward_origins
+-------------------+--------+----------------+--------------------------------------------------------------+----------------------------------------------+
+---------------------------------------+-----------------
+ pglogical_sub1    | down   | pglogical_test | host=10.221.139.162 dbname=test user=repuser password=secret | pgl_ods_domani_pglogical_test_pglogical_sub1 |
+ {default,default_insert_only,ddl_sql} | {all}
+(1 row)
+
+
+ods_domani=# SELECT pglogical.alter_subscription_disable('pglogical_sub1');
+ alter_subscription_disable
+----------------------------
+ t
+(1 row)
+
+
+

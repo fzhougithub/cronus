@@ -1,0 +1,3 @@
+select now() - '2026-01-02 13:41:02.681348-06'::timestamptz as time_elapsed,count(1) from claimspra_shard1claim_core500ca40c03f761af438d2285f9007b7b;
+
+

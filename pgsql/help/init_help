@@ -1,3 +1,20 @@
+chown -R postgres.postgres /apps/lib/pgsql/17/data
+rm -rf /apps/lib/pgsql/17/data/*
+/usr/pgsql-17/bin/initdb -D /apps/lib/pgsql/17/data
+
+-- 2. Apply the nuclear-speed settings (these are the 2025 production defaults)
+ALTER SYSTEM SET max_logical_replication_workers = 32;
+ALTER SYSTEM SET max_sync_workers_per_subscription = 16;     -- this one alone usually gives 10–30× speed
+ALTER SYSTEM SET max_parallel_apply_workers_per_transaction = 16;
+ALTER SYSTEM SET logical_decoding_work_mem = '4GB';          -- prevents tiny spills
+ALTER SYSTEM SET max_worker_processes = 64;                  -- make sure you have enough slots
+ALTER SYSTEM SET max_parallel_workers = 32;
+
+SELECT pg_reload_conf();
+
+
+
+
 SELECT subname, srrelid::regclass AS table, srsubstate, srsublsn
 FROM pg_subscription_rel
 JOIN pg_stat_subscription ON subid = subid

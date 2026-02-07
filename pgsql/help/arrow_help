@@ -1,0 +1,5 @@
+conda config --set ssl_verify no
+
+conda install -c conda-forge arrow-cpp
+conda install -c conda-forge arrow-cpp pyarrow pandas
+

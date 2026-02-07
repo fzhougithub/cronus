@@ -1,0 +1,2 @@
+groupadd -g 567580 postgres
+useradd -r -u 26 -g 567580 -c "PostgreSQL Server" -d /var/lib/pgsql -s /bin/bash postgres

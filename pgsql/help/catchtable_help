@@ -1,0 +1,27 @@
+awk '
+    # Merge all lines into one string (handle multi-line SQL)
+    { line = line $0 " " }
+    END {
+        # Loop to find ALL case-insensitive from/join keywords
+        while (match(line, /[Ff][Rr][Oo][Mm]|[Jj][Oo][Ii][Nn]/)) {
+            # Skip past the matched from/join keyword
+            line = substr(line, RSTART + RLENGTH)
+            
+            # Step 1: Skip all leading whitespace (spaces/tabs/newlines)
+            if (match(line, /^[[:space:]]+/)) {
+                line = substr(line, RLENGTH + 1)
+            }
+            
+            # Step 2: Extract ONLY the table name (stop at non-table characters)
+            if (match(line, /^[a-zA-Z0-9_.]+/)) {
+                # Capture the table name (only valid chars: letters/numbers/_/.)
+                table = substr(line, RSTART, RLENGTH)
+                print table
+                # Skip past the table name to avoid reprocessing
+                line = substr(line, RLENGTH + 1)
+            }
+        }
+    }
+' datamart.datamart_claim_build_query2_fn
+
+

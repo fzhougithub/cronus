@@ -1,0 +1,29 @@
+#!/bin/bash
+INSTANCE=iidr_admin
+PG_HOST=localhost
+PG_PORT=5432
+
+# Check PostgreSQL is up
+pg_isready -h $PG_HOST -p $PG_PORT || exit 1
+
+# Check IIDR is running
+/opt/ibm/cdc/bin/dmctl -I $INSTANCE status | grep -q "RUNNING"
+if [ $? -ne 0 ]; then
+  echo "IIDR not running — restarting..."
+  /opt/ibm/cdc/bin/dmctl -I $INSTANCE restart
+fi
+
+
+
+
+
+
+It will probably take 10-15 minutes
+Here is the plan:
+Stop IIDR subs for claimshumana, stop IIDR flex service
+Stop postgresql service on 01 instance
+Move claimshumana-db-01-prod-drx-kc.ssnc-corp.cloud to 02 instance
+Promote 02 to primary
+Start IIDR flex service, start subs
+
+

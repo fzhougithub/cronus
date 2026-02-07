@@ -1,0 +1,176 @@
+update pg_database set encoding = pg_char_to_encoding('SQL_ASCII') where datname = 'mytable' 
+SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname = 'test';
+
+-- Run on the **source** DB (claimsprocess)
+DO $$
+DECLARE
+    r    RECORD;
+    has  BOOLEAN;
+    sample_ctid  TEXT;
+    sample_val   TEXT;
+BEGIN
+    FOR r IN
+        SELECT n.nspname, c.relname, a.attname,
+               pg_catalog.format_type(a.atttypid, a.atttypmod) AS typ
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_attribute a ON a.attrelid = c.oid
+        WHERE c.relname = 'claim_extension_1_45'
+          AND n.nspname = 'claimsprocess_humana'
+          AND a.attnum > 0 AND NOT a.attisdropped
+          AND pg_catalog.format_type(a.atttypid, a.atttypmod) ~ 'text|char|json|bytea'
+        ORDER BY a.attnum
+    LOOP
+        -- Look for the byte 0xac (and 0xdd if you want)
+        EXECUTE format(
+            $q$ SELECT EXISTS (
+                    SELECT 1 FROM %I.%I
+                    WHERE convert_to(%I, 'LATIN1') LIKE '%%cac%%'   -- 0xac
+                       OR convert_to(%I, 'LATIN1') LIKE '%%dd%%'   -- 0xdd
+                ) $q$,
+            r.nspname, r.relname, r.attname, r.attname
+        ) INTO has;
+
+        IF has THEN
+            RAISE NOTICE 'BAD BYTE in %.%.% (type %)', r.nspname, r.relname, r.attname, r.typ;
+
+            -- Show one offending row
+            EXECUTE format(
+                $q$ SELECT ctid::text,
+                           left(convert_to(%I, 'LATIN1'), 120)
+                    FROM %I.%I
+                    WHERE convert_to(%I, 'LATIN1') LIKE '%%cac%%'
+                       OR convert_to(%I, 'LATIN1') LIKE '%%dd%%'
+                    LIMIT 1 $q$,
+                r.attname, r.nspname, r.relname, r.attname, r.attname
+            ) INTO sample_ctid, sample_val;
+
+            RAISE NOTICE '   sample ctid = %, value = %', sample_ctid, sample_val;
+        END IF;
+    END LOOP;
+END;
+$$;
+will see below type of message like
+
+NOTICE:  BAD BYTE in claimsprocess_humana.claim_extension_1_45.provider_note (type text)
+NOTICE:    sample ctid = (123,4), value = Patient refused treatment...
+NOTICE:  BAD BYTE in claimsprocess_humana.claim_extension_1_45.diagnosis_json (type jsonb)
+...
+
+
+SELECT 
+    datname                               AS database_name,
+    pg_encoding_to_char(d.encoding)       AS encoding,
+    d.datcollate                          AS lc_collate,
+    d.datctype                            AS lc_ctype
+FROM pg_database d
+WHERE datname = 'claimsprocess';   -- replace with your DB name
+
+-- 1. List every text-ish column in the table (including schema)
+SELECT n.nspname  AS schema_name,
+       c.relname  AS table_name,
+       a.attname  AS column_name,
+       pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type
+FROM   pg_class     c
+JOIN   pg_namespace n ON n.oid = c.relnamespace
+JOIN   pg_attribute a ON a.attrelid = c.oid
+WHERE  c.relname = 'claim_extension_1_45'
+  AND  n.nspname = 'claimsprocess_humana'          -- <<< replace!
+  AND  a.attnum > 0
+  AND  NOT a.attisdropped
+  AND  pg_catalog.format_type(a.atttypid, a.atttypmod) ~ 'text|char|json'
+ORDER BY a.attnum;
+
+2. find all of these columns to see whether contains 0xac data
+
+WITH cols AS (
+    SELECT n.nspname AS schema_name,
+           c.relname AS table_name,
+           a.attname AS column_name
+    FROM   pg_class c
+    JOIN   pg_namespace n ON n.oid = c.relnamespace
+    JOIN   pg_attribute a ON a.attrelid = c.oid
+    WHERE  c.relname = 'claim_extension_1_45'
+      AND  n.nspname = 'your_schema'          -- <<< replace!
+      AND  a.attnum > 0 AND NOT a.attisdropped
+      AND  pg_catalog.format_type(a.atttypid,a.atttypmod) ~ 'text|char|json'
+),
+data AS (
+    SELECT schema_name, table_name, column_name,
+           format('%I.%I', schema_name, table_name)               AS tbl,
+           format('%I', column_name)                              AS col,
+           'SELECT ctid, %L::text AS col, %I AS val FROM %I.%I WHERE %I::text ~ ''\xac'''
+               AS stmt
+    FROM cols
+)
+SELECT
+    format('%I.%I.%I', schema_name, table_name, column_name) AS full_path,
+    (xpath('/row/ctid/text()', query_to_xml(stmt, true, true, '')))[1]::text AS ctid,
+    (xpath('/row/col/text()' , query_to_xml(stmt, true, true, '')))[1]::text AS bad_value
+FROM data
+WHERE xpath_exists('/row', query_to_xml(stmt, true, true, ''));
+ -- nothing show up, but it is in claimsprocess_humana | claim_extension_1_45, (156 rows) maybe contains issues. 
+
+DO $$
+DECLARE
+    r RECORD;
+    col text;
+    found boolean := false;
+BEGIN
+    FOR r IN
+        SELECT n.nspname, c.relname, a.attname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_attribute a ON a.attrelid = c.oid
+        WHERE c.relname = 'claim_extension_1_45'
+          AND n.nspname = 'claimsprocess_humana'
+          AND a.attnum > 0 AND NOT a.attisdropped
+          AND pg_catalog.format_type(a.atttypid, a.atttypmod) ~ 'text|char|json|bytea'
+    LOOP
+        EXECUTE format(
+            $q$ SELECT EXISTS (SELECT 1 FROM %I.%I WHERE convert_to(%I, 'LATIN1') LIKE '%%ac%%') $q$,
+            r.nspname, r.relname, r.attname
+        ) INTO found;
+
+        IF found THEN
+            RAISE NOTICE 'Bad byte 0xac found in %.%.%', r.nspname, r.relname, r.attname;
+            -- Show one bad row
+            EXECUTE format(
+                $q$ SELECT ctid, left(%I::text, 100) FROM %I.%I WHERE convert_to(%I, 'LATIN1') LIKE '%%ac%%' LIMIT 1 $q$,
+                r.attname, r.nspname, r.relname, r.attname
+            ) INTO col;
+            RAISE NOTICE 'Sample ctid = %, value = %', col.ctid, col.left;
+        END IF;
+    END LOOP;
+
+    IF NOT found THEN
+        RAISE NOTICE 'No 0xac byte found in any text/bytea column';
+    END IF;
+END;
+$$;
+
+NOTICE:  Bad byte 0xac found in claimsprocess_humana.claim_extension_1_45.provider_note
+NOTICE:  Sample ctid = (123,4), value = "Patient refused ¬ treatment..."
+
+
+--source:
+SELECT datname, pg_encoding_to_char(encoding)
+FROM pg_database WHERE datname = current_database();
+
+    datname    | pg_encoding_to_char
+---------------+---------------------
+ claimsprocess | UTF8
+
+SHOW server_encoding;
+
+--target
+show server_encoding;
+show client_encoding;
+
+iconv -f WINDOWS-1252 -t UTF-8 backup.sql > backup_utf8.sql
+
+pg_dump --encoding=UTF8
+
+
+
+

@@ -1,0 +1,90 @@
+WITH RECURSIVE partition_hierarchy AS (
+  SELECT inhrelid, inhparent
+  FROM pg_inherits
+  WHERE inhparent = 'datamart_humana.claim_c'::regclass
+  UNION
+  SELECT i.inhrelid, i.inhparent
+  FROM pg_inherits i
+  INNER JOIN partition_hierarchy ph ON i.inhparent = ph.inhrelid
+),
+leaf_partitions AS (
+  SELECT p.inhrelid
+  FROM partition_hierarchy p
+  LEFT JOIN pg_inherits i ON p.inhrelid = i.inhparent
+  WHERE i.inhparent IS NULL
+)
+SELECT
+  pg_size_pretty(SUM(pg_total_relation_size(lp.inhrelid))) AS total_size,
+  COUNT(lp.inhrelid) AS partition_count
+FROM leaf_partitions lp;
+
+
+
+WITH RECURSIVE partition_hierarchy AS (
+  -- Start with the parent table
+  SELECT inhrelid, inhparent
+  FROM pg_inherits
+  WHERE inhparent = 'datamart_humana.claim_c'::regclass
+  UNION
+  -- Recursively find child partitions (sub-partitions)
+  SELECT i.inhrelid, i.inhparent
+  FROM pg_inherits i
+  INNER JOIN partition_hierarchy ph ON i.inhparent = ph.inhrelid
+),
+leaf_partitions AS (
+  -- Identify leaf partitions (tables with no children)
+  SELECT p.inhrelid
+  FROM partition_hierarchy p
+  LEFT JOIN pg_inherits i ON p.inhrelid = i.inhparent
+  WHERE i.inhparent IS NULL
+)
+SELECT
+  pg_size_pretty(SUM(pg_table_size(lp.inhrelid))) AS total_size,
+  COUNT(lp.inhrelid) AS partition_count
+FROM leaf_partitions lp;
+
+
+WITH RECURSIVE partition_hierarchy AS (
+  SELECT inhrelid, inhparent
+  FROM pg_inherits
+  WHERE inhparent = 'datamart_humana.claim_c'::regclass
+  UNION
+  SELECT i.inhrelid, i.inhparent
+  FROM pg_inherits i
+  INNER JOIN partition_hierarchy ph ON i.inhparent = ph.inhrelid
+),
+leaf_partitions AS (
+  SELECT p.inhrelid
+  FROM partition_hierarchy p
+  LEFT JOIN pg_inherits i ON p.inhrelid = i.inhparent
+  WHERE i.inhparent IS NULL
+)
+SELECT
+  lp.inhrelid::regclass AS partition_name,
+  pg_size_pretty(pg_table_size(lp.inhrelid)) AS table_size,
+  pg_size_pretty(pg_indexes_size(lp.inhrelid)) AS index_size,
+  pg_size_pretty(pg_total_relation_size(lp.inhrelid)) AS total_relation_size
+FROM leaf_partitions lp
+ORDER BY pg_table_size(lp.inhrelid) DESC;
+
+WITH RECURSIVE partition_hierarchy AS (
+  SELECT inhrelid, inhparent
+  FROM pg_inherits
+  WHERE inhparent = 'datamart_humana.claim_c'::regclass
+  UNION
+  SELECT i.inhrelid, i.inhparent
+  FROM pg_inherits i
+  INNER JOIN partition_hierarchy ph ON i.inhparent = ph.inhrelid
+),
+leaf_partitions AS (
+  SELECT p.inhrelid
+  FROM partition_hierarchy p
+  LEFT JOIN pg_inherits i ON p.inhrelid = i.inhparent
+  WHERE i.inhparent IS NULL
+)
+SELECT
+  'ANALYZE ' || lp.inhrelid::regclass || ';' AS analyze_statement
+FROM leaf_partitions lp
+ORDER BY lp.inhrelid::regclass;
+
+

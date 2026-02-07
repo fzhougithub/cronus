@@ -1,0 +1,54 @@
+awk '
+/^--$/ {
+    if (section != "") {
+        if (match_section) {
+            print "--"
+            print section
+        }
+        section = ""
+        match_section = 0
+    }
+    next
+}
+{
+    if (section == "") {
+        # First line of section = comment header
+        section = $0
+        
+        # MATCH TABLE NAMES in section headers:
+        #   claim_core
+        #   claim_core_default
+        #   claim_core_<digits>
+        #   claim_core_<digits>_default
+        #   claim_core_<digits>_<YYYYMM>
+        if ($0 ~ /^-- Name: claim_core;/ || 
+            $0 ~ /^-- Name: claim_core_default;/ || 
+            $0 ~ /^-- Name: claim_core_[0-9]+;/ || 
+            $0 ~ /^-- Name: claim_core_[0-9]+_default;/ || 
+            $0 ~ /^-- Name: claim_core_[0-9]+_[0-9]{6};/) {
+            match_section = 1
+        }
+    } else {
+        section = section "\n" $0
+        
+        # MATCH SQL REFERENCES (indexes/constraints/triggers/ownership):
+        # Pattern: claimsprocess_humana.claim_core followed by:
+        #   - end of identifier (; or space)
+        #   - _<digits>
+        #   - _<digits>_default
+        #   - _<digits>_<6digits>
+        #   - _default
+        # ...but NOT followed by letters (to avoid claim_core_backup)
+        if ($0 ~ /claimsprocess_humana\.claim_core(_[0-9]+(_[0-9]{6}|_default)?|_default)?[^a-zA-Z0-9_]/) {
+            match_section = 1
+        }
+    }
+}
+END {
+    if (section != "" && match_section) {
+        print "--"
+        print section
+        print "--"
+    }
+}
+' claimsprocess_humana.sql > claim_core_full_setup.sql

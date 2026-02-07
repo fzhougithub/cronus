@@ -1,0 +1,52 @@
+SELECT format('
+    SELECT
+        %L AS column_name,
+        COUNT(*) AS total_rows,
+        COUNT(CASE WHEN NOT validate_utf8(%I) THEN 1 END) AS bad_encoding_rows
+    FROM claimsprocess_humana.claim_extension_1_65;
+', column_name, column_name)
+FROM information_schema.columns
+WHERE table_schema = 'claimsprocess_humana'
+  AND table_name = 'claim_extension_1_65'
+  AND data_type IN ('text', 'character varying')
+
+-[ RECORD 1 ]-----------------------------------------------------------------------------------------------------------------
+format |                                                                                                                      +
+       |     SELECT                                                                                                           +
+       |         'claim_id' AS column_name,                                                                                   +
+       |         COUNT(*) AS total_rows,                                                                                      +
+       |         COUNT(CASE WHEN NOT validate_utf8(claim_id) THEN 1 END) AS bad_encoding_rows                                 +
+       |     FROM claimsprocess_humana.claim_extension_1_65;                                                                  +
+       |
+-[ RECORD 2 ]-----------------------------------------------------------------------------------------------------------------
+format |                                                                                                                      +
+       |     SELECT                                                                                                           +
+       |         'process_create_by_user_id' AS column_name,                                                                  +
+       |         COUNT(*) AS total_rows,                                                                                      +
+       |         COUNT(CASE WHEN NOT validate_utf8(process_create_by_user_id) THEN 1 END) AS bad_encoding_rows                +
+       |     FROM claimsprocess_humana.claim_extension_1_65;                                                                  +
+       |
+-[ RECORD 3 ]-----------------------------------------------------------------------------------------------------------------
+format |                                                                                                                      +
+       |     SELECT                                                                                                           +
+       |         'process_create_by_program_id' AS column_name,                                                               +
+       |         COUNT(*) AS total_rows,                                                                                      +
+       |         COUNT(CASE WHEN NOT validate_utf8(process_create_by_program_id) THEN 1 END) AS bad_encoding_rows             +
+       |     FROM claimsprocess_humana.claim_extension_1_65;                                                                  +
+
+
+Then, the magic thing, using \gexec, you can directly run it
+
+SELECT format('
+    SELECT
+        %L AS column_name,
+        COUNT(*) AS total_rows,
+        COUNT(CASE WHEN NOT validate_utf8(%I) THEN 1 END) AS bad_encoding_rows
+    FROM claimsprocess_humana.claim_extension_1_65;
+', column_name, column_name)
+FROM information_schema.columns
+WHERE table_schema = 'claimsprocess_humana'
+  AND table_name = 'claim_extension_1_65'
+  AND data_type IN ('text', 'character varying')
+\gexec
+

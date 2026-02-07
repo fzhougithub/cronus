@@ -1,0 +1,29 @@
+In error log, get the restore error 
+pg_restore: error: COPY failed for table "claim_core_320_202505": ERROR:  invalid byte sequence for encoding "UTF8": 0xa8
+CONTEXT:  COPY claim_core_320_202505, line 51075231
+
+Then, similar like below command to get the bad character. 
+
+sed -n '9760729p' /pg_backups/pg2pg_init_23232025/claimsprocess_humana.claim_core_320_202305/*|isutf8
+sed -n '9760729p' /pg_backups/pg2pg_init_23232025/claimsprocess_humana.claim_core_320_202305/*|cut -c 2120-2130
+
+
+grep -r invalid /pg_backups/restorelogs.keep/*|cut -d: -f7|sort|uniq -c|sort -nr
+    121  0xac
+     32  0xc2 0x3f
+      5  0xdd 0x50
+      4  0xa8
+      3  0xdd 0x45
+      3  0xdd 0x44
+      2  0xdd 0x48
+      2  0xdd 0x34
+      2  0xdd 0x20
+      2  0xae
+      1  0xdd 0x4d
+      1  0xdd 0x47
+      1  0xd1 0x45
+      1  0xc2 0x20
+      1  0xad
+      1  0xa6
+
+

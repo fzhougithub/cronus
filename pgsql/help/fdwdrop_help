@@ -1,0 +1,48 @@
+
+
+SELECT DISTINCT
+       'DROP VIEW IF EXISTS '
+       || quote_ident(n.nspname) || '.' || quote_ident(c.relname)
+       || ' CASCADE;' AS drop_statement
+FROM pg_depend d
+JOIN pg_rewrite rw ON d.objid = rw.oid
+JOIN pg_class c ON rw.ev_class = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE d.refobjsubid = 0
+  AND d.refobjid IN (SELECT ftrelid FROM pg_foreign_table)
+  AND c.relkind = 'v';
+
+
+
+SELECT
+       'DROP FOREIGN TABLE IF EXISTS '
+       || quote_ident(ns.nspname) || '.' || quote_ident(ft.relname)
+       || ' CASCADE;' AS drop_statement
+FROM pg_foreign_table f
+JOIN pg_class ft ON f.ftrelid = ft.oid
+JOIN pg_namespace ns ON ft.relnamespace = ns.oid;
+
+
+SELECT
+       'DROP USER MAPPING IF EXISTS FOR '
+       || quote_ident(r.rolname)
+       || ' SERVER ' || quote_ident(srv.srvname)
+       || ';' AS drop_statement
+FROM pg_user_mappings um
+JOIN pg_foreign_server srv ON srv.oid = um.srvid
+JOIN pg_roles r ON r.oid = um.umuser;
+
+SELECT
+       'DROP EXTENSION IF EXISTS '
+       || quote_ident(extname)
+       || ' CASCADE;' AS drop_statement
+FROM pg_extension
+WHERE extname IN (
+    'postgres_fdw',
+    'duckdb_fdw',
+    'mysql_fdw',
+    'oracle_fdw',
+    'sqlite_fdw'
+);
+
+

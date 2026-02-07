@@ -1,0 +1,26 @@
+SELECT
+    slot_name,
+    active,
+    wal_status,
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_wal_size,
+    pg_size_pretty(pg_total_relation_size(database) + pg_database_size(database)) as db_size
+FROM pg_replication_slots;
+
+SELECT
+    s.slot_name,
+    s.active,
+    s.wal_status,
+    s.restart_lsn,
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), s.restart_lsn)) AS retained_wal_size,
+    sub.subname,
+    sub.subconninfo
+FROM pg_replication_slots s
+LEFT JOIN pg_subscription sub ON s.slot_name = sub.subslotname
+WHERE s.slot_name IN ('qc_encounters_global_sub', 'qc_encounters_other_sub');
+
+        slot_name         | active | wal_status | restart_lsn | retained_wal_size | subname | subconninfo
+--------------------------+--------+------------+-------------+-------------------+---------+-------------
+ qc_encounters_global_sub | f      | lost       |             |                   |         |
+ qc_encounters_other_sub  | f      | lost       |             |                   |         |
+(2 rows)
+

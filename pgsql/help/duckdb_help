@@ -1,0 +1,94 @@
+alias duck='~/.duckdb/cli/1.4.1/duckdb /apps/lib/pgsql/duckdb_data/datamart_humana'
+
+
+finance-db-02-alma9-olly-drx-kc
+
+test=# SELECT proname FROM pg_proc WHERE proname LIKE 'duckdb%';
+          proname
+----------------------------
+ duckdb_execute
+ duckdb_fdw_disconnect
+ duckdb_fdw_disconnect_all
+ duckdb_fdw_get_connections
+ duckdb_fdw_handler
+ duckdb_fdw_validator
+ duckdb_fdw_version
+(7 rows)
+
+
+duckdb /apps/lib/pgsql/duckdb
+
+-- Create a new schema
+CREATE SCHEMA my_schema;
+
+-- Create a table in the new schema
+CREATE TABLE my_schema.customers (id INTEGER, name VARCHAR);
+
+-- in duckdb
+
+create table sales(
+    id INTEGER primary key,
+    customer_name TEXT,
+    product TEXT,
+    quantity INTEGER,
+    price DECIMAL,
+    sale_date DATE,
+    region TEXT,
+    discount FLOAT,
+    salesperson TEXT
+);
+
+-- in postgres
+CREATE FOREIGN TABLE
+test=# CREATE FOREIGN TABLE duckdb_sales (
+    id INTEGER OPTIONS (key 'true'),
+    customer_name TEXT,
+    product TEXT,
+    quantity INTEGER,
+    price DECIMAL,
+    sale_date DATE,
+    region TEXT,
+    discount FLOAT,
+    salesperson TEXT
+)
+SERVER duckdb_local
+OPTIONS (
+    table 'sales'
+);
+
+
+-- Switch to the schema
+USE my_schema;
+
+-- List all schemas
+SHOW SCHEMAS;
+
+-- Show tables in a specific schema
+SHOW TABLES FROM my_schema;
+
+-- 1. Create schema and tables via duckdb_execute
+SELECT duckdb_execute('duckdb_local', 'CREATE SCHEMA IF NOT EXISTS analytics');
+SELECT duckdb_execute('duckdb_local', 'CREATE TABLE analytics.sales (id INTEGER, amount DECIMAL(10,2), sale_date DATE)');
+
+-- 2. Create foreign table in PostgreSQL
+CREATE FOREIGN TABLE analytics_sales (
+    id INTEGER,
+    amount NUMERIC,
+    sale_date DATE
+)
+SERVER duckdb_local 
+OPTIONS (table 'analytics.sales');
+
+-- 3. Insert data through PostgreSQL
+INSERT INTO analytics_sales VALUES (1, 100.50, CURRENT_DATE);
+
+-- 4. Verify in DuckDB directly
+-- duckdb /apps/lib/pgsql/duckdb "SELECT * FROM analytics.sales;"
+
+-- Create multiple tables at once
+SELECT duckdb_execute('duckdb_local', '
+    CREATE TABLE datamart_humana.products (product_id INTEGER, product_name VARCHAR, price DECIMAL(10,2));
+    CREATE TABLE datamart_humana.orders (order_id INTEGER, product_id INTEGER, quantity INTEGER);
+');
+
+

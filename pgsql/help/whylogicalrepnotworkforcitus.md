@@ -1,0 +1,15 @@
+Logical replication in PostgreSQL works by decoding changes from the publisher's WAL (Write-Ahead Log) and applying them on the subscriber via a background worker process (wal_apply). This apply process inserts, updates, or deletes rows directly into the target table using low-level PostgreSQL mechanisms (e.g., heap_insert for tuples), rather than executing full SQL statements through the standard query pipeline.
+
+In contrast, regular DML statements (INSERT/UPDATE/DELETE) executed on a Citus cluster go through PostgreSQL's full query parser, planner, and executor stages. This is where Citus's extension hooks in: it intercepts the query, analyzes the distribution key, rewrites it if needed, and routes the operation to the appropriate worker shards via the coordinator. Even if you execute DML directly on a worker node, Citus can detect if it affects multiple shards and proxy the query back to the coordinator for proper distribution (though direct worker connections are generally not recommended for distributed tables to avoid inconsistencies).
+
+The logical replication apply process, however, **bypasses this entire query pipeline**. It doesn't trigger Citus's hooks or routing logic because it's not treated as a "query"—it's a direct, internal application of changes to the local relation (table). As a result:
+
+- If you try to set up the subscription on the **coordinator**, the distributed table has no local storage (it's just metadata), so the apply process has no physical table to write to directly. Changes would fail or be ignored.
+- If on a **worker**, the apply process would only affect that node's local shards, ignoring the distribution rules. This leads to data skew, incomplete replication, constraint violations (e.g., unique keys not enforced cluster-wide), or colocation breaks for joins.
+
+Citus *does* use logical replication internally (e.g., for shard rebalancing or splits, where it customizes the process to handle sharding), but user-created subscriptions on distributed tables aren't supported because integrating the apply worker with Citus's distributed logic would require deep modifications to PostgreSQL's core replication code—something not implemented in the open-source Citus as of 2025.
+
+A proposed workaround (from an open 2019 GitHub issue) involves creating the subscription on a local (non-distributed) table first, then using BEFORE/AFTER triggers on that table to capture replicated changes and manually route them as DML to the distributed table via the coordinator. However, this isn't natively built into Citus, requires custom trigger functions (handling INSERT/UPDATE/DELETE/TRUNCATE), and has limitations (e.g., performance overhead, handling large tables). It's not a drop-in solution and remains a feature request without official implementation.
+
+For production, stick to CDC tools like Airbyte or Hevo (as discussed earlier), which apply changes as routed DML through the coordinator. If you're interested in experimenting with the trigger approach, I can outline a basic proof-of-concept based on public discussions.
+

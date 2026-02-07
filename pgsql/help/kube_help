@@ -1,0 +1,16 @@
+kubectl config set-context --current --namespace=airbyte
+
+
+# List all namespaces
+kubectl get ns
+
+# Switch to a different namespace temporarily
+kubectl get pods -n monitoring
+
+# Make 'monitoring' your default namespace
+kubectl config set-context --current --namespace=monitoring
+
+# Verify
+kubectl config view --minify | grep namespace
+
+

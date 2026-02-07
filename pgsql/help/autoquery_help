@@ -1,0 +1,13 @@
+SELECT format('
+    SELECT
+        %L AS column_name,
+        COUNT(*) AS total_rows,
+        COUNT(CASE WHEN NOT validate_utf8(%I) THEN 1 END) AS bad_encoding_rows
+    FROM claimsprocess_humana.claim_extension_1_65;
+', column_name, column_name)
+FROM information_schema.columns
+WHERE table_schema = 'claimsprocess_humana'
+  AND table_name = 'claim_extension_1_65'
+  AND data_type IN ('text', 'character varying');
+
+

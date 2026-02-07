@@ -1,0 +1,31 @@
+
+SELECT
+    COALESCE(t.spcname, 'pg_default') AS tablespace,
+    pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind IN ('r','i','t')  -- tables, indexes, TOAST
+GROUP BY COALESCE(t.spcname, 'pg_default')
+ORDER BY SUM(pg_total_relation_size(c.oid)) DESC;
+
+
+
+SELECT
+    COALESCE(tablespace, 'pg_default') AS tablespace,
+    pg_size_pretty(SUM(size)) AS total_size
+FROM (
+    SELECT
+        n.nspname AS schema,
+        t.spcname AS tablespace,
+        pg_total_relation_size(c.oid) AS size
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
+    WHERE n.nspname = 'claimsprocess_humana'
+      AND c.relkind IN ('r','i','t')  -- tables, indexes, TOAST
+) sub
+GROUP BY tablespace
+ORDER BY SUM(size) DESC;
+

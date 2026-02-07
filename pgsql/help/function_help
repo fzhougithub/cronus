@@ -1,3 +1,32 @@
+SELECT n.nspname AS schema_name,
+       p.proname AS procedure_name,
+       r.rolname AS role_name
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_roles r ON r.rolname = 'tpdodsfinance'  -- replace with role name
+WHERE has_function_privilege(r.rolname, p.oid, 'EXECUTE');
+
+
+
+SELECT n.nspname AS schema,
+       p.proname AS function_name,
+       pg_catalog.pg_get_function_result(p.oid) AS return_type,
+       pg_catalog.pg_get_function_arguments(p.oid) AS arguments,
+       p.prokind,
+       CASE p.prokind
+            WHEN 'f' THEN 'function'
+            WHEN 'p' THEN 'procedure'
+            WHEN 'a' THEN 'aggregate'
+            WHEN 'w' THEN 'window'
+       END AS kind,
+       pg_get_userbyid(p.proowner) AS owner
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+where n.nspname='finance_humana'
+ORDER BY n.nspname, p.proname;
+
+
+
 SELECT 
   'ALTER FUNCTION ' || 
   quote_ident(nsp.nspname) || '.' || 

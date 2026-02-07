@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 hostname"
+	echo "e.g.: $0 odshumana-db-01-alma8-prod-drx-kc.ssnc-corp.cloud"
+	exit 1
+else
+        ssh-copy-id -i ~/.ssh/id_rsa.pub ${1}
+fi
+
+exit 0

@@ -1,4 +1,16 @@
+create index greatly lower down the CPU usage. 
+
 REINDEX INDEX CONCURRENTLY your_index_name_on_parent_table;
+
+SELECT c.oid::regclass AS index_name,
+       c.relname,
+       c.relkind,
+       i.indisvalid,
+       i.indisready
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+WHERE NOT i.indisvalid OR NOT i.indisready;
+
 
 
 CREATE EXTENSION IF NOT EXISTS pageinspect;

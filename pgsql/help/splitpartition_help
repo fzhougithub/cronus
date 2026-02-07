@@ -1,0 +1,40 @@
+WITH partitioned_tables AS (
+    SELECT
+        nmsp_parent.nspname AS parent_schema,
+        parent.relname AS parent_table,
+        parent.oid AS parent_oid
+    FROM
+        pg_class parent
+        JOIN pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+        JOIN pg_inherits ON pg_inherits.inhparent = parent.oid
+),
+leaf_partitions AS (
+    SELECT
+        pt.parent_schema,
+        pt.parent_table,
+        ch_nsp.nspname AS partition_schema,
+        ch.relname AS partition_name,
+        ch.oid AS partition_oid
+    FROM
+        pg_class ch
+        JOIN pg_namespace ch_nsp ON ch_nsp.oid = ch.relnamespace
+        JOIN pg_inherits ON pg_inherits.inhrelid = ch.oid
+        JOIN partitioned_tables pt ON pg_inherits.inhparent = pt.parent_oid
+    WHERE
+        NOT EXISTS (
+            SELECT 1
+            FROM pg_inherits child_inh
+            WHERE child_inh.inhparent = ch.oid
+        )  -- Only leaf nodes (no children)
+)
+SELECT
+    lp.parent_schema,
+    lp.parent_table,
+    lp.partition_schema,
+    lp.partition_name,
+    pg_size_pretty(pg_total_relation_size(lp.partition_oid)) AS size_pretty,
+    pg_total_relation_size(lp.partition_oid) AS size_bytes
+FROM
+    leaf_partitions lp
+ORDER BY
+    pg_total_relation_size(lp.partition_oid) DESC;

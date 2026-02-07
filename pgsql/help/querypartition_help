@@ -1,0 +1,107 @@
+WITH RECURSIVE partition_tree AS (
+  -- Level 0: Parent table
+  SELECT 
+    c.oid,
+    c.relname AS table_name,
+    n.nspname AS schema_name,
+    NULL::name AS parent_table,
+    0 AS level,
+    pg_get_expr(c.relpartbound, c.oid) AS partition_bound,
+    c.relkind
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relname = 'claim_core' 
+    AND n.nspname = 'claimsprocess_humana'
+    AND c.relkind = 'p'  -- partitioned table
+  
+  UNION ALL
+  
+  -- Levels 1+: Partitions (recursive)
+  SELECT 
+    c.oid,
+    c.relname AS table_name,
+    n.nspname AS schema_name,
+    pt.table_name AS parent_table,
+    pt.level + 1 AS level,
+    pg_get_expr(c.relpartbound, c.oid) AS partition_bound,
+    c.relkind
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_inherits i ON i.inhrelid = c.oid
+  JOIN partition_tree pt ON pt.oid = i.inhparent
+  WHERE c.relispartition = true
+),
+-- Get partitioning key definition for tables that are themselves partitioned (relkind = 'p')
+partition_keys AS (
+  SELECT 
+    pt.oid,
+    format('PARTITION BY %s (%s)',
+      CASE p.partstrat
+        WHEN 'l' THEN 'LIST'
+        WHEN 'r' THEN 'RANGE'
+        WHEN 'h' THEN 'HASH'
+        ELSE 'UNKNOWN'
+      END,
+      string_agg(quote_ident(a.attname), ', ' ORDER BY ord)
+    ) AS partition_by_clause
+  FROM partition_tree pt
+  JOIN pg_partitioned_table p ON p.partrelid = pt.oid
+  JOIN LATERAL unnest(p.partattrs::int2vector::int2[]) WITH ORDINALITY AS u(attnum, ord) ON true
+  JOIN pg_attribute a ON a.attrelid = pt.oid AND a.attnum = u.attnum
+  WHERE pt.relkind = 'p'  -- Only partitioned tables need PARTITION BY clause
+  GROUP BY pt.oid, p.partstrat
+),
+-- Get ONLY columns that are NOT inherited (partition-specific columns only)
+partition_specific_columns AS (
+  SELECT 
+    a.attrelid,
+    a.attname,
+    pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+    a.attnotnull,
+    pg_catalog.pg_get_expr(d.adbin, d.adrelid) AS default_expr
+  FROM pg_attribute a
+  LEFT JOIN pg_attrdef d ON (a.attrelid = d.adrelid AND a.attnum = d.adnum)
+  WHERE a.attnum > 0 
+    AND NOT a.attisdropped
+    AND a.attinhcount = 0  -- NOT inherited from parent
+)
+-- Generate PERFECT DDL (no empty parentheses!)
+SELECT 
+  level,
+  table_name,
+  parent_table,
+  CASE 
+    WHEN level = 0 THEN
+      format(E'-- Parent partitioned table (use pg_dump for full definition)\nCREATE TABLE %I.%I (...);\n\n',
+        schema_name, table_name)
+    ELSE
+      format(
+        E'CREATE TABLE %I.%I%s PARTITION OF %I.%I %s%s;\n',
+        schema_name,
+        table_name,
+        -- Column list: ONLY include if partition has specific columns
+        CASE 
+          WHEN EXISTS (SELECT 1 FROM partition_specific_columns WHERE attrelid = pt.oid) THEN
+            E'\n(\n    ' || string_agg(
+              format('%I %s%s%s',
+                attname,
+                data_type,
+                CASE WHEN attnotnull THEN ' NOT NULL' ELSE '' END,
+                COALESCE(' DEFAULT ' || default_expr, '')
+              ),
+              E',\n    '
+            ) FILTER (WHERE attrelid = pt.oid) || E'\n)'
+          ELSE ''
+        END,
+        schema_name,
+        parent_table,
+        partition_bound,
+        -- Append PARTITION BY clause if this partition is itself partitioned
+        COALESCE(' ' || pk.partition_by_clause, '')
+      )
+  END AS clean_ddl
+FROM partition_tree pt
+LEFT JOIN partition_keys pk ON pk.oid = pt.oid
+LEFT JOIN partition_specific_columns pc ON pc.attrelid = pt.oid
+GROUP BY level, table_name, parent_table, schema_name, partition_bound, pt.oid, pk.partition_by_clause
+ORDER BY level, table_name;

@@ -1,0 +1,20 @@
+SELECT
+    table_name::text AS table_name,
+    shardid,
+    shard_name,
+    pg_size_pretty(shard_size) AS shard_size,
+    nodename AS worker_node
+FROM citus_shards
+WHERE table_name::text LIKE 'claim_core_claimid_%'
+ORDER BY SUM(shard_size) OVER (PARTITION BY table_name) DESC,
+         table_name,
+         shardid
+limit 20;
+
+      table_name       | shardid |                    shard_name                     | shard_size |                         worker_node
+-----------------------+---------+---------------------------------------------------+------------+-------------------------------------------------------------
+ claim_core_claimid_24 |  162440 | claimsprocess_humana.claim_core_claimid_24_162440 | 6387 MB    | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud
+ claim_core_claimid_24 |  162441 | claimsprocess_humana.claim_core_claimid_24_162441 | 6388 MB    | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud
+ claim_core_claimid_24 |  162442 | claimsprocess_humana.claim_core_claimid_24_162442 | 6390 MB    | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud
+ claim_core_claimid_25 |  162443 | claimsprocess_humana.claim_core_claimid_25_162443 | 5019 MB    | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud
+

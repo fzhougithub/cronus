@@ -1,0 +1,44 @@
+SELECT
+  CASE relreplident
+    WHEN 'd' THEN 'default'
+    WHEN 'n' THEN 'nothing'
+    WHEN 'f' THEN 'full'
+    WHEN 'i' THEN 'using index'
+  END AS replica_identity ,
+  count(1)
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE nspname = 'claimsprocess_humana' and relkind='r'
+group by replica_identity;
+
+SELECT
+  n.nspname AS schema,
+  c.relname AS table,
+  CASE c.relreplident
+    WHEN 'd' THEN 'default'
+    WHEN 'n' THEN 'nothing'
+    WHEN 'f' THEN 'full'
+    WHEN 'i' THEN 'using index'
+    ELSE 'unknown'
+  END AS replica_identity
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relreplident = 'f';  -- filter for FULL identity
+
+
+SELECT 
+  nspname, 
+  relname, 
+  CASE relreplident 
+    WHEN 'd' THEN 'default' 
+    WHEN 'n' THEN 'nothing' 
+    WHEN 'f' THEN 'full' 
+    WHEN 'i' THEN 'index' 
+  END AS replica_identity 
+FROM pg_class c 
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE nspname = 'claimsprocess_humana';
+
+
+

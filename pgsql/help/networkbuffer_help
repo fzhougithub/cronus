@@ -1,0 +1,47 @@
+-- Check if network buffers are adequate
+SELECT name, setting, unit, context 
+FROM pg_settings 
+WHERE name LIKE '%buff%' 
+   OR name LIKE '%wal%'
+   OR name LIKE '%network%'
+   OR name LIKE '%delay%';
+
+             name              |  setting  | unit |  context
+-------------------------------+-----------+------+------------
+ autovacuum_vacuum_cost_delay  | 2         | ms   | sighup
+ bgwriter_delay                | 200       | ms   | sighup
+ commit_delay                  | 0         |      | superuser
+ max_slot_wal_keep_size        | 10000     | MB   | sighup
+ max_standby_archive_delay     | 30000     | ms   | sighup
+ max_standby_streaming_delay   | 30000     | ms   | sighup
+ max_wal_senders               | 2500      |      | postmaster
+ max_wal_size                  | 4096      | MB   | sighup
+ min_wal_size                  | 1024      | MB   | sighup
+ post_auth_delay               | 0         | s    | backend
+ pre_auth_delay                | 0         | s    | sighup
+ recovery_min_apply_delay      | 0         | ms   | sighup
+ shared_buffers                | 6291456   | 8kB  | postmaster
+ temp_buffers                  | 1024      | 8kB  | user
+ track_wal_io_timing           | off       |      | superuser
+ vacuum_cost_delay             | 0         | ms   | user
+ wal_block_size                | 8192      |      | internal
+ wal_buffers                   | 2048      | 8kB  | postmaster
+ wal_compression               | off       |      | superuser
+ wal_consistency_checking      |           |      | superuser
+ wal_init_zero                 | on        |      | superuser
+ wal_keep_size                 | 256       | MB   | sighup
+ wal_level                     | logical   |      | postmaster
+ wal_log_hints                 | off       |      | postmaster
+ wal_receiver_create_temp_slot | off       |      | sighup
+ wal_receiver_status_interval  | 10        | s    | sighup
+ wal_receiver_timeout          | 60000     | ms   | sighup
+ wal_recycle                   | on        |      | superuser
+ wal_retrieve_retry_interval   | 5000      | ms   | sighup
+ wal_segment_size              | 16777216  | B    | internal
+ wal_sender_timeout            | 60000     | ms   | user
+ wal_skip_threshold            | 2048      | kB   | user
+ wal_sync_method               | fdatasync |      | sighup
+ wal_writer_delay              | 200       | ms   | sighup
+ wal_writer_flush_after        | 128       | 8kB  | sighup
+(35 rows)
+

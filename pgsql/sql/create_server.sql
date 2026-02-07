@@ -1,0 +1,1 @@
+CREATE SERVER duckdb_local FOREIGN DATA WRAPPER duckdb_fdw OPTIONS (database '/apps/lib/pgsql/duckdb_data/datamart_humana',keep_connections 'false', temp_directory '/apps/lib/pgsql/duckdb_data/temp');

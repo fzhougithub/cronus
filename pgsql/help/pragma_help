@@ -1,0 +1,23 @@
+-- Use multiple threads for parallel execution
+PRAGMA threads = 8;
+
+-- Limit memory usage to avoid crashes or system overload
+PRAGMA memory_limit = '4GB';
+
+-- Use a dedicated temp directory for intermediate data
+PRAGMA temp_directory = '/var/tmp/duckdb_temp';
+
+-- Disable optimizer if you suspect it causes instability
+PRAGMA disable_optimizer;
+
+-- Enable query profiling to analyze performance
+PRAGMA enable_profiling;
+PRAGMA profiling_output = 'json';
+
+-- Control NULL ordering for consistent sorting behavior
+PRAGMA default_null_order = 'nulls_last';
+
+-- Optional: preserve insertion order if needed for analytics
+PRAGMA preserve_insertion_order = true;
+
+

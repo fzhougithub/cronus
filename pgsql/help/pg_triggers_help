@@ -1,0 +1,17 @@
+SELECT
+  n.nspname AS schema_name,
+  c.relname AS table_name,
+  t.tgname  AS trigger_name,
+  t.tgenabled AS enabled_state,
+  CASE t.tgenabled
+       WHEN 'O' THEN 'ENABLED (normal)'
+       WHEN 'D' THEN 'DISABLED'
+       WHEN 'R' THEN 'ENABLED (replica only)'
+       WHEN 'A' THEN 'ENABLED (always fires)'
+  END AS human_readable_status
+FROM pg_trigger t
+JOIN pg_class c ON c.oid = t.tgrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'finance_humana'
+  AND c.relname = 't1';
+

@@ -1,0 +1,18 @@
+SELECT 
+  CASE relkind
+    WHEN 'r' THEN 'ALTER TABLE '
+    WHEN 'p' THEN 'ALTER TABLE '
+    WHEN 'v' THEN 'ALTER VIEW '
+    WHEN 'm' THEN 'ALTER MATERIALIZED VIEW '
+  END 
+  || quote_ident(nspname) || '.' || quote_ident(relname) 
+  || ' OWNER TO datamart;'
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_roles r ON r.oid = c.relowner
+WHERE nspname = 'misc'
+  AND r.rolname = 'postgres'
+  AND relkind IN ('r', 'p', 'v', 'm')  -- tables, partitions, views, matviews
+  AND NOT relispartition;             -- skip child partitions (handled via parent)
+
+

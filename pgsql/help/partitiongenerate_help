@@ -1,0 +1,81 @@
+WITH RECURSIVE partition_tree AS (
+  -- Level 0: Parent table
+  SELECT 
+    c.oid,
+    c.relname AS table_name,
+    n.nspname AS schema_name,
+    NULL::name AS parent_table,
+    0 AS level,
+    pg_get_expr(c.relpartbound, c.oid) AS partition_bound
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relname = 'claim_core' 
+    AND n.nspname = 'claimsprocess_humana'
+    AND c.relkind = 'p'  -- partitioned table
+  
+  UNION ALL
+  
+  -- Levels 1+: Partitions (recursive)
+  SELECT 
+    c.oid,
+    c.relname AS table_name,
+    n.nspname AS schema_name,
+    pt.table_name AS parent_table,
+    pt.level + 1 AS level,
+    pg_get_expr(c.relpartbound, c.oid) AS partition_bound
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_inherits i ON i.inhrelid = c.oid
+  JOIN partition_tree pt ON pt.oid = i.inhparent
+  WHERE c.relispartition = true
+),
+-- Get ONLY columns that are NOT inherited (partition-specific columns only)
+partition_specific_columns AS (
+  SELECT 
+    a.attrelid,
+    a.attname,
+    pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+    a.attnotnull,
+    pg_catalog.pg_get_expr(d.adbin, d.adrelid) AS default_expr
+  FROM pg_attribute a
+  LEFT JOIN pg_attrdef d ON (a.attrelid = d.adrelid AND a.attnum = d.adnum)
+  WHERE a.attnum > 0 
+    AND NOT a.attisdropped
+    AND a.attinhcount = 0  -- NOT inherited from parent
+)
+-- Generate clean DDL
+SELECT 
+  level,
+  table_name,
+  parent_table,
+  CASE 
+    WHEN level = 0 THEN
+      format(E'-- Parent partitioned table\nCREATE TABLE %I.%I (...); -- Full definition from pg_dump\n',
+        schema_name, table_name)
+    ELSE
+      format(
+        E'CREATE TABLE %I.%I (\n%s) PARTITION OF %I.%I %s;\n',
+        schema_name,
+        table_name,
+        CASE 
+          WHEN EXISTS (SELECT 1 FROM partition_specific_columns WHERE attrelid = pt.oid) THEN
+            '    ' || string_agg(
+              format('%I %s%s%s',
+                attname,
+                data_type,
+                CASE WHEN attnotnull THEN ' NOT NULL' ELSE '' END,
+                COALESCE(' DEFAULT ' || default_expr, '')
+              ),
+              E',\n    '
+            ) FILTER (WHERE attrelid = pt.oid) || E'\n'
+          ELSE ''
+        END,
+        schema_name,
+        parent_table,
+        partition_bound
+      )
+  END AS clean_ddl
+FROM partition_tree pt
+LEFT JOIN partition_specific_columns pc ON pc.attrelid = pt.oid
+GROUP BY level, table_name, parent_table, schema_name, partition_bound, pt.oid
+ORDER BY level, table_name;

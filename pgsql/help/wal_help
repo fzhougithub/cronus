@@ -1,3 +1,130 @@
+ignore_invalid_pages = on
+
+SELECT pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS log_lag
+FROM pg_replication_slots WHERE slot_name = 'airbyte_huat_slot';
+
+#lag
+SELECT 
+  slot_name, 
+  active, 
+  pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS log_lag,
+  pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) AS lag_bytes
+FROM pg_replication_slots 
+WHERE slot_name = 'airbyte_huat_slot';
+
+ods_domani=# SELECT
+ods_domani-#   slot_name,
+ods_domani-#   pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) AS lag_bytes
+ods_domani-# FROM pg_replication_slots
+ods_domani-# WHERE slot_name = 'airbyte_huat_slot';
+     slot_name     |  lag_bytes
+-------------------+--------------
+ airbyte_huat_slot | 212970875176
+(1 row)
+
+ods_domani=# SELECT
+  slot_name,
+  pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) AS lag_bytes
+FROM pg_replication_slots
+WHERE slot_name = 'airbyte_huat_slot';
+     slot_name     |  lag_bytes
+-------------------+--------------
+ airbyte_huat_slot | 212971877760
+
+
+SELECT 
+    slot_name, 
+    active, 
+    restart_lsn, 
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_insert_lsn(), restart_lsn)) AS data_retention_size
+FROM pg_replication_slots
+WHERE slot_name = 'airbyte_huat_slot';
+
+ALTER SYSTEM SET max_slot_wal_keep_size = -1;
+SELECT pg_reload_conf();
+
+
+aws s3 sync /pg_backups/archive/10-222-200-6/14-1/00000001000030BD/ s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl
+
+aws s3 rm s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ --recursive --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl
+
+# Check what files will be deleted
+find /pg_backups/archive/10-222-200-6/14-1/ -type f -not -newermt "Dec 10" -ls
+
+# Then delete if it looks correct
+find /pg_backups/archive/10-222-200-6/14-1/ -type f -not -newermt "Dec 10" -delete
+
+# Remove empty directories
+find /pg_backups/archive/10-222-200-6/14-1/ -type d -empty -delete
+
+# This one,does not include the newer file itself!!
+
+find /pg_backups/archive/10-222-200-6/14-1/ -newer /pg_backups/archive/10-222-200-6/14-1/00000001000030BD/00000001000030BD0000009D-508f0a0ee43baf0c4dd3697a24afe56143b80087.lz4 -name "*.lz4" | sort | sed "s|/pg_backups/archive/10-222-200-6/14-1/||" | sed "s|.*|aws s3 cp '/pg_backups/archive/10-222-200-6/14-1/'& 's3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/'& --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl|" > wal_tasks_clean.txt
+
+# Generate correct download+decompress tasks
+
+aws s3 ls s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl --recursive | awk '{print $4}' | sort | while read filename; do
+  clean_filename=$(echo "$filename" | sed 's|^wal-recovery/2025-12-23-replica-fix/||')
+  basename_file=$(basename "$clean_filename")
+  raw_wal_name=$(echo ${basename_file}|cut -d- -f1)  # Remove .lz4 extension
+  echo "aws s3 cp \"s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/$clean_filename\" /pg_backups/restore/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl && /usr/bin/lz4 -d \"/pg_backups/restore/$basename_file\" \"/pg_backups/restore/$raw_wal_name\""
+done > download_decompress_tasks_clean.txt
+
+parallel -j8 --joblog download_joblog.txt < download_decompress_tasks_clean.txt
+
+
+
+
+find /pg_backups/restore/ -name "*.lz4" | while read file; do
+  raw_name=$(basename "$file" | sed 's/-[a-f0-9]\{40\}\.lz4$//')
+  /usr/bin/lz4 -d "$file" "/pg_backups/restore/$raw_name"
+done
+
+restore_command = 'pgbackrest archive-get %f %p'
+restore_command = 'cp /pg_backups/restore/%f %p'
+# Convert task file to executable script
+cp download_decompress_tasks.txt download_script.sh
+chmod +x download_script.sh
+
+# Edit first line to add shebang and remove any weird characters
+sed -i '1i#!/bin/bash' download_script.sh
+# Remove extra quotes at end of lines
+sed -i 's/""$//' download_script.sh
+
+# Run the script
+./download_script.se
+
+==========Or just download normally, then, manually extract =======
+
+# Download files normally (not streamed)
+aws s3 sync s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ /tmp/wal_download/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl
+
+# Then decompress with parallel
+mkdir -p /pg_backups/restore
+find /tmp/wal_download -name "*.lz4" | sort | parallel -j8 '/usr/bin/lz4 -d {} /pg_backups/restore/{.}'
+
+# Clean up
+rm -rf /tmp/wal_download
+
+==================
+
+# uncompress code: 
+find /pg_backups/restore -name "*.lz4" | sort | awk '{print "/usr/bin/lz4 -d \""$1"\" \"/pg_backups/restore/\"$(basename " $1" .lz4)"}' > decompress_tasks.txt
+
+# List top level of recovery folder
+aws s3 ls s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl
+
+# List recursively (shows all subdirectories and files)
+aws s3 ls s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl --recursive
+
+# Show file details including size
+aws s3 ls s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/00000001000030BD/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl
+
+parallel -j8 --progress --joblog upload_joblog.txt < wal_tasks_clean.txt
+
+
+
+
 for wal in /apps/lib/pgsql/14/data/pg_wal/000*; do
   pgbackrest --stanza=10-222-200-6 archive-push $wal
 done

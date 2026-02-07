@@ -1,0 +1,24 @@
+SELECT
+  a.pid,
+  a.usename,
+  a.application_name,
+  a.state,
+  a.query_start,
+  a.backend_start,
+  a.query,
+  c.relid,
+  n.nspname AS schema_name,
+  rel.relname AS table_name,
+  c.bytes_processed,
+  c.bytes_total,
+  c.tuples_processed,
+  c.tuples_excluded
+FROM pg_stat_progress_copy c
+JOIN pg_stat_activity a ON a.pid = c.pid
+LEFT JOIN pg_class rel ON rel.oid = c.relid
+LEFT JOIN pg_namespace n ON n.oid = rel.relnamespace
+WHERE a.application_name LIKE '%logical%'
+ORDER BY a.backend_start DESC;
+
+
+

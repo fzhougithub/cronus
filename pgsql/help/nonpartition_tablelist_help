@@ -1,0 +1,12 @@
+SELECT 
+    n.nspname AS schema_name,
+    c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'            -- 'r' = ordinary table
+  AND c.relispartition = false  -- Exclude child partitions
+  AND NOT EXISTS (              -- Exclude parent tables
+      SELECT 1 FROM pg_inherits i WHERE i.inhparent = c.oid
+  )
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema') -- Exclude system tables
+ORDER BY schema_name, table_name;

@@ -1,1 +1,4 @@
 watch -n 10 "ls -lh /pg_backups/claimsprocess_pub_dump | wc -l"
+
+watch -n 2 "psql -At -d ods_domani -c \"SELECT now() - (substring(name FROM 'end_marker_(.*)')::timestamp) FROM finance_humana.t1 WHERE id = 1000001;\""
+

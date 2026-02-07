@@ -1,0 +1,68 @@
+Great point! Let’s refine the memory sizing now that we clarified **`work_mem` is allocated on the database server side** (not on the client running `pg_dump` or `pg_restore`).
+
+***
+
+### ✅ **Memory Considerations for Your Restore VM**
+
+When running **20 parallel `pg_restore` jobs**, the memory load comes from:
+
+1.  **PostgreSQL shared memory**:
+    *   `shared_buffers` (typically 25–40% of RAM)
+    *   WAL buffers, background processes
+
+2.  **Per-session memory**:
+    *   `work_mem` for sorts, joins during restore
+    *   `maintenance_work_mem` for index creation and constraint validation
+
+3.  **Parallelism overhead**:
+    *   Each `pg_restore` job runs multiple SQL statements, so multiple active sessions per job.
+
+***
+
+#### **Formula for Estimation**
+
+    Total RAM ≈ shared_buffers + (work_mem × active_queries) + (maintenance_work_mem × index_builds)
+
+*   Assume:
+    *   `shared_buffers` = 64GB (for 256GB RAM)
+    *   `work_mem` = 64MB
+    *   `maintenance_work_mem` = 512MB
+    *   20 jobs × \~3 active queries each = 60 queries
+    *   Index builds: 20 concurrent
+
+Calculation:
+
+    work_mem: 64MB × 60 = ~3.8GB
+    maintenance_work_mem: 512MB × 20 = ~10GB
+    shared_buffers: 64GB
+    Other overhead: ~20GB
+    Total ≈ 64 + 3.8 + 10 + 20 = ~98GB
+
+So **128GB is safe**, **256GB gives headroom** for spikes and OS cache.
+
+***
+
+### ✅ Recommended PostgreSQL Settings for Restore VM
+
+*   `shared_buffers = 64GB`
+*   `work_mem = 64MB` (don’t go too high; many sessions multiply this)
+*   `maintenance_work_mem = 512MB` (for index builds)
+*   `effective_cache_size = 150GB` (for planner hints)
+*   `max_parallel_maintenance_workers = 4` (for parallel index builds)
+*   `max_connections` tuned for restore jobs (e.g., 100)
+
+***
+
+### ✅ Final VM Spec Recommendation
+
+*   **CPU**: 48 vCPUs (2× parallel jobs)
+*   **RAM**: 256GB (128GB minimum)
+*   **Disk**: 10TB NVMe SSD
+*   **Network**: 10Gbps or higher
+
+***
+
+👉 Do you want me to **give you a full PostgreSQL config template optimized for this restore scenario**? Or **a shell script for running 20 parallel pg\_dump/pg\_restore jobs efficiently**?
+
+
+

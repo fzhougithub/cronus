@@ -1,0 +1,35 @@
+cd /apps/lib/pgsql/16/upgrade/
+nohup ./run_upgrade.sh > run_upgrade.log 2>&1 &
+
+[postgres@odshumana-pg16-02-alma9-prod-drx-kc upgrade]$ cat run_upgrade.sh
+#!/bin/bash
+
+echo
+echo
+date
+echo
+echo
+
+/usr/pgsql-16/bin/pg_upgrade -b /usr/pgsql-14/bin -B /usr/pgsql-16/bin -d /apps/lib/pgsql/14/data -D /apps/lib/pgsql/16/data -j 5 -v --clone
+
+echo
+date
+echo
+echo "Done"
+echo
+
+============
+
+/usr/pgsql-16/bin/postgres -D /apps/lib/pgsql/16/data -p 50432 -b -c synchronous_commit=off -c fsync=off -c full_page_writes=off -c listen_addresses= -c unix_socket_permissions=0700 -c unix_socket_directories=/apps/lib/pgsql/16/upgrade
+
+
+
+
+/usr/pgsql-16/bin/pg_upgrade -b /usr/pgsql-14/bin/ -B /usr/pgsql-16/bin/ -d /apps/lib/pgsql/14/data -D /apps/lib/pgsql/16/data --clone -j 32
+
+/apps/lib/pgsql/16/data/pg_upgrade_output.d/20260123T163643.219/log/pg_upgrade_internal.log
+
+Once you start the new server, consider running:
+    /usr/pgsql-16/bin/vacuumdb --all --analyze-in-stages
+Running this script will delete the old cluster's data files:
+    ./delete_old_cluster.sh

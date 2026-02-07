@@ -1,0 +1,51 @@
+1. EnterpriseDB (EDB)
+ 
+EDB provides 24×7 global PostgreSQL support, with a dedicated support team experienced in Postgres deployments across major cloud platforms and extensions. 
+EDB
+ 
+They are one of the largest commercial Postgres companies (also acquired/merged the firm 2ndQuadrant) and contribute back to the community. 
+Wikipedia
++1
+ 
+Good fit if you have enterprise-scale workloads, many instances, need global support coverage across time-zones.
+ 
+2. Crunchy Data
+ 
+Their offering: “Enterprise PostgreSQL Support” includes certified software packages, updates, bug fixes, security patches + 24×7×365 technical support from Postgres experts. 
+Crunchy Data
+ 
+Emphasis on staying purely open source (“100% open source native PostgreSQL – no proprietary licensing fees”). 
+Crunchy Data
+ 
+Good fit if you want full open-source fidelity, minimal vendor lock-in and high support level.
+ 
+3. Percona
+ 
+Known for open-source database support (MySQL/Mongo etc). Their Postgres offering includes 24×7×365 support, managed services, consulting and training. 
+Percona
+ 
+They also support a wide variety of extensions (PostGIS, pgvector, etc) and vertical/horizontal scaling issues. 
+Percona
+ 
+Good fit if you have a heterogeneous environment or want a vendor experienced across multiple open-source DBs.
+ 
+4. Postgres Professional
+ 
+Offers Tier-2 & Tier-3 expert support for PostgreSQL, 24×7×365. They also handle migrations, performance audits, HA deployments. 
+Postgres Professional
+ 
+Might be more niche / region-specific (e.g., Russia/CIS), so check fit for your geography/time-zone/licensing etc.
+ 
+5. Persistent Systems (via their “Extended Support Services”)
+ 
+They present as specialists in supporting open-source Postgres databases: design, architecture, 24×7 support, migrations, upgrades. 
+Persistent Systems
+ 
+Good fit if you are doing a major migration and want a “big consulting + support” partner rather than purely break-fix.
+ 
+6. NEXTGRES
+ 
+Tailored Postgres support and services: installation/configuration, migration, HA/replication, tuning, etc. 
+nextgres.com
+ 
+If your footprint is large but you want maybe a more flexible/custom pricing model (e.g., per-vCPU), vendor like this may give more tailored deals.

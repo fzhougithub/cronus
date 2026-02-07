@@ -1,3 +1,5 @@
+/usr/pgsql-14/bin/pg_basebackup -Xs -c fast -R -v -D /apps/lib/pgsql/14/data -h 10.222.79.110 -T /pg_tablespace_2=/pg_tablespace_1 -T /pg_tablespace_3=/pg_tablespace_1 --progress
+
 /usr/pgsql-14/bin/pg_basebackup -Xs -c fast -R -v -D /apps/lib/pgsql/14/data -h 10.222.200.6
 
 /usr/pgsql-14/bin/pg_basebackup \

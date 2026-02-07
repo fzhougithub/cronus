@@ -1,0 +1,20 @@
+Command,Action
+git stash or git stash push,Saves the current modified state of the working directory and the staging area onto the stash stack.
+git stash list,Shows all the stashes you have saved.
+git stash pop,Applies the most recently stashed changes and removes that stash entry from the stack. (Use this most often).
+git stash apply,Applies the most recently stashed changes but leaves the entry on the stash stack (useful if you want to apply the same change to multiple branches).
+git stash drop,Deletes a specific stash from the stack.
+
+for example
+# You are currently on 'main'
+git stash
+# moved to the branch got stashed
+git checkout DEVOPS-11086-Change-TimeZone-To-CST
+# Use git stash pop to apply the most recent stash onto your feature branch.
+git stash pop
+# Now that the changes are in the correct branch's working directory, you can continue your unfinished work and commit it.
+# Continue editing...
+git add .
+git commit -m "DEVOPS-11086: Implemented US Central Time zone configuration."
+
+

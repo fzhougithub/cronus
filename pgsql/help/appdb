@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ $# -ne 3 ];then
+	echo "Usage: $0 <dbIP> <dbname> <schema>"
+	exit 1
+else
+	dbIP=$1
+	db=$2
+	schema=$3
+fi
+
+PGOPTIONS="--search_path=$schema" psql -h $dbIP -d $db 
+

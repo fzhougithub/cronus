@@ -1,0 +1,18 @@
+this is the funny example from deepseek!!!
+
+
+-- On subscriber, stop applying changes for JUST this table
+ALTER SUBSCRIPTION prod_pharmacy_sub DISABLE;
+ALTER SUBSCRIPTION prod_pharmacy_sub SKIP (lsn = '0/0');  -- Skip all pending changes
+
+-- On subscriber, reset the replication origin for JUST this table
+SELECT pg_replication_origin_advance(
+    (SELECT oid FROM pg_replication_origin WHERE roname = 'prod_pharmacy_sub'),
+    '0/0'
+);
+
+-- Truncate the out-of-sync table
+TRUNCATE drugmgmt.drug_label_association_report;
+
+-- Re-enable the subscription to trigger re-initialization of just this table
+ALTER SUBSCRIPTION prod_pharmacy_sub ENABLE;

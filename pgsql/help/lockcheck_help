@@ -1,0 +1,7 @@
+SELECT 
+    a.pid, a.state, a.query, a.wait_event_type, a.wait_event,
+    l.relation::regclass as locked_table
+FROM pg_stat_activity a
+LEFT JOIN pg_locks l ON a.pid = l.pid
+WHERE a.query LIKE '%drug_label_association_report%' 
+   OR l.relation = 'drugmgmt.drug_label_association_report'::regclass;

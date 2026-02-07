@@ -1,0 +1,126 @@
+-- Check all node statuses
+SELECT nodeid, nodename, nodeport, noderole, shouldhaveshards, isactive 
+FROM pg_dist_node 
+ORDER BY nodeid;
+
+
+ nodeid |                          nodename                           | nodeport | noderole | shouldhaveshards | isactive
+--------+-------------------------------------------------------------+----------+----------+------------------+----------
+      1 | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 | primary  | t                | t
+      2 | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 | primary  | t                | t
+      3 | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 | primary  | t                | t
+      4 | datamartcitushumana-db-01-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 | primary  | f                | t
+(4 rows)
+
+-- Check shard placements
+SELECT 
+    s.shardid,
+    p.shardstate,
+    p.shardlength,
+    n.nodename,
+    n.nodeport,
+    n.isactive
+FROM pg_dist_shard s
+JOIN pg_dist_placement p ON s.shardid = p.shardid
+JOIN pg_dist_node n ON p.groupid = n.groupid
+WHERE s.logicalrelid = 'claimsprocess_humana.claim_core'::regclass
+ORDER BY s.shardid, n.nodeid;
+
+-- Or use the Citus function to recheck
+SELECT * FROM citus_activate_node('datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud', 5432);
+
+-- Sometimes you need to clear Citus' connection cache
+SELECT pg_reload_conf();  -- On coordinator
+
+-- Test connection to each worker
+SELECT * FROM run_command_on_workers('SELECT 1 as test');
+
+-- Test query on each worker individually
+SELECT run_command_on_workers($$
+    SELECT 'Query on ' || inet_server_addr() || ': ' || 
+           COUNT(*)::text || ' rows in claim_core'
+    FROM claimsprocess_humana.claim_core;
+$$);
+
+
+-- Check specific partition on workers
+SELECT run_command_on_workers($$
+    SELECT 'Rows in claim_core_claimid_22: ' || 
+           COUNT(*)::text 
+    FROM claimsprocess_humana.claim_core_claimid_22;
+$$);
+
+-- Check if shard tables exist on workers
+SELECT run_command_on_workers($$
+    SELECT 'claim_core_162365 exists: ' || 
+           EXISTS(SELECT 1 FROM pg_tables 
+                  WHERE schemaname = 'claimsprocess_humana' 
+                  AND tablename = 'claim_core_162365')::text
+    UNION ALL
+    SELECT 'claim_core_claimid_22_162434 exists: ' || 
+           EXISTS(SELECT 1 FROM pg_tables 
+                  WHERE schemaname = 'claimsprocess_humana' 
+                  AND tablename = 'claim_core_claimid_22_162434')::text;
+$$);
+
+-- Check physical shard tables on coordinator (they shouldn't exist here)
+SELECT tablename 
+FROM pg_tables 
+WHERE schemaname = 'claimsprocess_humana' 
+AND tablename LIKE 'claim_core_162%';
+
+-- Check on workers what tables actually exist
+SELECT run_command_on_workers($$
+    SELECT tablename 
+    FROM pg_tables 
+    WHERE schemaname = 'claimsprocess_humana' 
+    AND tablename LIKE 'claim_core%'
+    ORDER BY tablename
+    LIMIT 10;
+$$);
+
+-- Check shard placements vs actual tables
+SELECT 
+    s.shardid,
+    s.logicalrelid::regclass as logical_table,
+    'claimsprocess_humana.claim_core_' || s.shardid as expected_shard_table,
+    n.nodename,
+    (SELECT result FROM run_command_on_shard(s.shardid,
+        'SELECT EXISTS(SELECT 1 FROM pg_tables WHERE schemaname = ''claimsprocess_humana'' AND tablename = ''claim_core_' || s.shardid || ''')'
+    )) as shard_table_exists
+FROM pg_dist_shard s
+JOIN pg_dist_placement p ON s.shardid = p.shardid
+JOIN pg_dist_node n ON p.groupid = n.groupid
+WHERE s.logicalrelid = 'claimsprocess_humana.claim_core'::regclass;
+
+-- Check if partitions are properly attached on workers
+SELECT run_command_on_workers($$
+    SELECT 'Inheritance check on worker ' || inet_server_addr() || ':';
+    
+    SELECT child.relname as partition,
+           parent.relname as parent,
+           CASE WHEN parent.relname = 'claim_core' THEN 'OK' ELSE 'WRONG' END as status
+    FROM pg_inherits i
+    JOIN pg_class child ON i.inhrelid = child.oid
+    JOIN pg_class parent ON i.inhparent = parent.oid
+    WHERE child.relname LIKE 'claim_core_claimid%'
+    LIMIT 5;
+$$);
+
+-- Most important: Check if ANY data exists anywhere
+SELECT run_command_on_workers($$
+    SELECT 
+        'Total rows in all partitions: ' || 
+        SUM(cnt)::text as result
+    FROM (
+        SELECT COUNT(*) as cnt 
+        FROM claimsprocess_humana.claim_core_claimid_22
+        UNION ALL
+        SELECT COUNT(*) 
+        FROM claimsprocess_humana.claim_core_claimid_23
+        UNION ALL
+        SELECT COUNT(*) 
+        FROM claimsprocess_humana.claim_core_claimid_24
+    ) t;
+$$);
+

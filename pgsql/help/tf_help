@@ -1,0 +1,6 @@
+
+
+
+terraform plan -out=tfplan
+terraform show -no-color tfplan > ~/Downloads/devops-12711-tfplan.txt
+

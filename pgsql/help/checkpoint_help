@@ -1,2 +1,45 @@
+checkpoint_completion_target=0 + CHECKPOINT; -- = pg_basebackup -c fast
+
 SELECT checkpoints_timed, checkpoints_req, buffers_checkpoint, buffers_clean, buffers_backend, stats_reset FROM pg_stat_bgwriter;
+
+SELECT
+  checkpoints_timed,
+  checkpoints_req,
+  checkpoint_write_time/1000 AS write_seconds,
+  checkpoint_sync_time/1000  AS sync_seconds,
+  buffers_checkpoint,
+  buffers_clean,
+  buffers_backend
+FROM pg_stat_bgwriter;
+ checkpoints_timed | checkpoints_req | write_seconds | sync_seconds | buffers_checkpoint | buffers_clean | buffers_backend
+-------------------+-----------------+---------------+--------------+--------------------+---------------+-----------------
+               217 |             140 |    2540453.22 |    10404.456 |          768095873 |     560165709 |     12481792107
+(1 row)
+
+claimsprocess=#
+claimsprocess=# SELECT
+claimsprocess-#   now() AS sample_time,
+claimsprocess-#   checkpoints_timed,
+claimsprocess-#   checkpoints_req,
+claimsprocess-#   buffers_checkpoint,
+claimsprocess-#   checkpoint_write_time/1000 AS write_seconds,
+claimsprocess-#   checkpoint_sync_time/1000 AS sync_seconds
+claimsprocess-# FROM pg_stat_bgwriter;
+          sample_time          | checkpoints_timed | checkpoints_req | buffers_checkpoint | write_seconds | sync_seconds
+-------------------------------+-------------------+-----------------+--------------------+---------------+--------------
+ 2025-10-22 21:12:56.116428-05 |                 0 |               0 |                  0 |             0 |            0
+(1 row)
+
+-- this will reset the checkpoint history, means clean up the history. 
+SELECT pg_stat_reset_shared('bgwriter');
+
+SELECT
+  now() AS sample_time,
+  checkpoints_timed,
+  checkpoints_req,
+  buffers_checkpoint,
+  ROUND((checkpoint_write_time/1000.0)::numeric, 2) AS write_seconds,
+  ROUND((checkpoint_sync_time/1000.0)::numeric, 2) AS sync_seconds
+FROM pg_stat_bgwriter;
+
 

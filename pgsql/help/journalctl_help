@@ -1,0 +1,38 @@
+journalctl -p err..alert --no-pager
+
+Look for:
+
+EXT4-fs error
+XFS error
+I/O error
+blk_update_request: I/O error
+Buffer I/O error on device
+nvme timeout
+scsi sense error
+
+journalctl -u systemd-coredump --no-pager
+Look for:
+
+core files for Postgres
+stack traces that mention:
+
+btree
+mdread(), mdopen()
+smgrextend
+visibilitymap
+heap_xlog_visible
+
+
+journalctl -g "Out of memory" --no-pager
+journalctl -g "Killed process" --no-pager
+look for OOM 
+
+
+journalctl -t setroubleshoot
+journalctl -g "denied" --no-pager
+Look for SElinux 
+
+
+
+
+

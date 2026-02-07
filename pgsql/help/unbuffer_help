@@ -1,0 +1,8 @@
+# Terminal 1: Run dump with unbuffered output
+stdbuf -o0 pg_dump -h ... -U postgres -d claimsprocess --schema-only \
+  -n claimsprocess_humana -Fp > claimsprocess_humana.sql
+
+# Terminal 2: Watch file grow in real-time
+watch -n 1 'ls -lh claimsprocess_humana.sql'
+
+

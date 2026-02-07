@@ -1,0 +1,30 @@
+SELECT
+    table_schema,
+    table_name,
+    privilege_type,
+    grantee
+FROM
+    information_schema.table_privileges
+WHERE
+    grantee = 'finance_other_ro'
+    AND privilege_type = 'SELECT'
+    AND table_name IN ('journal_entry', 'journal_entry_category', 'subledger', 'h_subledger');
+
+      grantee      |  table_schema  |       table_name       | privilege_type
+-------------------+----------------+------------------------+----------------
+ finance_humana_ro | finance_humana | subledger              | SELECT
+ finance_humana_ro | finance_humana | h_subledger            | SELECT
+ finance_humana_ro | finance_humana | journal_entry_category | SELECT
+ finance_humana_ro | finance_humana | journal_entry          | SELECT
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT ON TABLES TO finance_other_ro;
+
+GRANT SELECT ON TABLE
+    journal_entry,
+    journal_entry_category,
+    subledger,
+    h_subledger
+TO finance_other_ro;
+
+

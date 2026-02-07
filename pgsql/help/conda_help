@@ -1,0 +1,17 @@
+curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+
+# in interaction, agree the license, and define the installation part to /apps/lib/pgsql/scripts/miniconda3
+
+#Do you wish to update your shell profile to automatically initialize conda?
+#This will activate conda on startup and change the command prompt when activated.
+#If you'd prefer that conda's base environment not be activated on startup,
+#   run the following command when conda is activated:
+#
+#conda config --set auto_activate_base false
+# Note: You can undo this later by running `conda init --reverse $SHELL`
+
+
+export PATH=$PATH:/apps/lib/pgsql/scripts/miniconda3/condabin/
+which conda
+/apps/lib/pgsql/scripts/miniconda3/condabin/conda

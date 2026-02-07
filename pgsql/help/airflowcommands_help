@@ -1,0 +1,108 @@
+cat $(find . -name attempt=1.log|tail -1)
+cat $(find logs -name "attempt=1.log" -path "*show_schemas*" | tail -1)
+
+
+docker exec -it airflow-scheduler bash
+docker exec -it airflow-postgres psql -U airflow
+docker stats airflow-scheduler
+docker exec airflow-scheduler bash -c "ulimit -a"
+
+docker exec airflow-scheduler airflow tasks test list_schemas_sql get_schemas 2025-12-05
+
+docker-compose restart airflow-webserver
+
+docker inspect airflow-scheduler | grep -A5 -B5 "State"
+
+# Analyze all failed tasks in the last hour
+docker exec airflow-scheduler bash -c '
+  echo "=== ALL FAILURES LAST HOUR ==="
+  find /opt/airflow/logs -name "*.log" -type f -mmin -60 | \
+  while read logfile; do
+    if grep -q "ERROR\|Exception\|FAILED" "$logfile"; then
+      echo "🔴 $logfile"
+      grep -h "ERROR\|Exception" "$logfile" | tail -2
+      echo ""
+    fi
+  done
+'
+
+
+docker restart airflow-webserver
+docker exec airflow-webserver find /opt/airflow -name "*.pyc" -delete
+docker exec airflow-webserver find /opt/airflow -type d -name "__pycache__" -exec rm -rf {} +
+
+# Wrong connection ID
+postgres_conn_id="dev_claims"  # Make sure this exists!
+
+# Connection not defined in Airflow
+# Solution: Create connection in UI or via CLI:
+docker exec airflow-scheduler airflow connections add dev_claims \
+    --conn-type postgres \
+    --conn-host localhost \
+    --conn-login airflow \
+    --conn-password airflow \
+    --conn-port 5432 \
+    --conn-schema claims_db  # Optional
+
+
+
+# If using systemd
+sudo systemctl restart airflow-scheduler
+sudo systemctl restart airflow-webserver
+sudo systemctl restart airflow-worker
+
+# If using Docker
+docker-compose restart airflow-scheduler
+docker-compose restart airflow-webserver
+
+# If running manually
+pkill -f "airflow scheduler"
+airflow scheduler &  # Restart
+
+pkill -f "airflow webserver"
+airflow webserver -p 8080 &
+
+# View webserver logs
+docker logs airflow-webserver
+
+# View scheduler logs (most important for DAG failures)
+docker logs airflow-scheduler
+
+# Follow logs in real-time
+docker logs -f airflow-scheduler
+
+# Check specific failed task
+docker exec airflow-webserver ls -la /opt/airflow/logs/
+
+# Navigate to your DAG's log folder
+docker exec airflow-webserver ls -la /opt/airflow/logs/your_dag_name/
+
+# Find the exact log file path
+docker exec airflow-scheduler find /opt/airflow/logs -name "*.log" | grep your_dag_name
+
+# View a specific log file
+docker exec airflow-scheduler cat /opt/airflow/logs/your_dag_name/your_task/2024-01-01/attempt_1.log
+
+# Or use tail to see latest
+docker exec airflow-scheduler tail -100 /opt/airflow/logs/your_dag_name/your_task/2024-01-01/attempt_1.log
+
+# Check DAG details
+docker exec airflow-scheduler airflow dags list | grep list_schemas_sql
+
+# Show DAG info
+docker exec airflow-scheduler airflow dags show list_schemas_sql
+
+# Check next run time
+docker exec airflow-scheduler airflow dags next-execution list_schemas_sql
+
+# Or via Python
+docker exec airflow-scheduler python -c "
+from airflow.models import DagBag
+dagbag = DagBag()
+dag = dagbag.get_dag('list_schemas_sql')
+print('Schedule interval:', dag.schedule_interval)
+print('Is paused:', dag.is_paused)
+print('Next run:', dag.next_dagrun)
+"
+
+

@@ -1,0 +1,69 @@
+# Go to home directory
+cd ~
+
+# Clean up everything
+docker system prune -af
+docker volume prune -f
+
+# Create fresh directory
+rm -rf airflow-simple
+mkdir airflow-basic
+cd airflow-basic
+
+# Create a super simple docker-compose.yml without any variables
+cat > docker-compose.yml << 'EOF'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      retries: 5
+
+  airflow:
+    image: apache/airflow:2.7.3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: '46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho='
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create \
+        --username airflow \
+        --password airflow \
+        --firstname Admin \
+        --lastname User \
+        --role Admin \
+        --email admin@example.com &&
+      airflow webserver
+      "
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+EOF
+
+# Create directories
+mkdir -p dags logs plugins
+
+# Start it
+docker compose up -d

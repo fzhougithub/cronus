@@ -1,0 +1,99 @@
+# 1. Try to convert from LATIN1 to UTF-8 (if source was mislabeled)
+iconv -f LATIN1 -t UTF-8 claimsprocess_humana.claim_core_320_201705 > cleaned_data.sql
+
+# 2. Use different error handling
+iconv -f UTF-8 -t UTF-8//IGNORE claimsprocess_humana.claim_core_320_201705 > cleaned_data.sql
+
+# 3. Use sed to remove/replace specific problematic bytes
+sed 's/\xD1\x45/??/g' claimsprocess_humana.claim_core_320_201705 > cleaned_data.sql
+
+# See what the character actually was
+echo -n -e "\xD1\x45" | iconv -f LATIN1 -t UTF-8
+
+# Get line 761
+sed -n '761p' claimsprocess_humana.claim_core_320_201705
+
+# Get line 761 and show with visible control characters
+sed -n '761p' claimsprocess_humana.claim_core_320_201705 | cat -A
+
+# Get line 761 and examine specific character range
+sed -n '761p' claimsprocess_humana.claim_core_320_201705 | cut -c 990-1000
+
+isutf8 claimsprocess_humana.claim_core_320_201705
+
+# Show line 761 with hex values
+sed -n '761p' claimsprocess_humana.claim_core_320_201705 | hexdump -C
+
+# Show specific byte range around position 1641073
+hexdump -C claimsprocess_humana.claim_core_320_201705 | grep -A2 -B2 "1641070"
+
+# Show the exact problematic bytes
+tail -c +1641070 claimsprocess_humana.claim_core_320_201705 | head -c 20 | od -tx1 -c
+
+# Or examine around that byte position
+dd if=claimsprocess_humana.claim_core_320_201705 bs=1 skip=1641070 count=50 2>/dev/null | od -tx1 -c
+
+python3 -c "
+with open('claimsprocess_humana.claim_core_320_201705', 'rb') as f:
+    data = f.read()
+    
+# Go to byte 1641073 (0-based index 1641072)
+start = 1641070
+print('Bytes around position 1641073:')
+print(data[start:start+10])
+print('Hex:', data[start:start+10].hex())
+print('As text (attempt):', data[start:start+10].decode('latin1', errors='replace'))
+"
+
+# Show context around the problematic character
+sed -n '760,762p' claimsprocess_humana.claim_core_320_201705
+
+# With character positions visible
+sed -n '761p' claimsprocess_humana.claim_core_320_201705 | python3 -c "
+import sys
+line = sys.stdin.read()
+print('Full line length:', len(line))
+print('Characters 990-1000:', repr(line[989:1000]))
+print('Character at position 994:', repr(line[993]))
+"
+
+# Get the exact context and show in hex
+sed -n '761p' claimsprocess_humana.claim_core_320_201705 | \
+  python3 -c "
+import sys
+line = sys.stdin.read()
+start = 990
+end = 1000
+segment = line[start-1:end]
+print('Text around position 994:')
+print(segment)
+print('Hex values:')
+for i, char in enumerate(segment, start=start):
+    print(f'Pos {i}: {char} -> {ord(char):02x}')
+"
+
+
+# Single byte replacements
+sed 's/\xAC/¡/g' input_file > output_file              # 0xAC -> ¡
+sed 's/\xA8/¿/g' input_file > output_file              # 0xA8 -> ¿  
+sed 's/\xAE/®/g' input_file > output_file              # 0xAE -> ®
+sed 's/\xAD/­/g' input_file > output_file              # 0xAD -> soft hyphen
+sed 's/\xA6/¦/g' input_file > output_file              # 0xA6 -> ¦
+
+# Two-byte sequence replacements
+sed 's/\xC2\x3F/¿/g' input_file > output_file          # 0xC2 0x3F -> ¿
+sed 's/\xDD\x50/ÝP/g' input_file > output_file         # 0xDD 0x50 -> ÝP
+sed 's/\xDD\x45/ÝE/g' input_file > output_file         # 0xDD 0x45 -> ÝE
+sed 's/\xDD\x44/ÝD/g' input_file > output_file         # 0xDD 0x44 -> ÝD
+sed 's/\xDD\x48/ÝH/g' input_file > output_file         # 0xDD 0x48 -> ÝH
+sed 's/\xDD\x34/Ý4/g' input_file > output_file         # 0xDD 0x34 -> Ý4
+sed 's/\xDD\x20/Ý /g' input_file > output_file         # 0xDD 0x20 -> Ý[space]
+sed 's/\xDD\x4D/ÝM/g' input_file > output_file         # 0xDD 0x4D -> ÝM
+sed 's/\xDD\x47/ÝG/g' input_file > output_file         # 0xDD 0x47 -> ÝG
+sed 's/\xD1\x45/ÑE/g' input_file > output_file         # 0xD1 0x45 -> ÑE
+sed 's/\xC2\x20/Â /g' input_file > output_file         # 0xC2 0x20 -> Â[space]
+
+hexdump -C iuputfile
+
+dd if=/pg_backups/pg2pg_init_Fp/claimsprocess_humana.claim_core_320_202301 bs=1 skip=1680609960 count=20 2>/dev/null | od -tx1 -c
+

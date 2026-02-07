@@ -1,3 +1,29 @@
+To silience the aletr on prod
+
+export KUBECONFIG=~/.kube/domanirx-devops1-prod-oidc.config
+kubens
+kubectl get pods
+kubectl -n monitoring port-forward svc/alertmanager-operated 9093:9093
+
+kubectl get pods -n pct
+NAME                                                    READY   STATUS    RESTARTS   AGE
+dev-finance-ui-pctportal-dcfcd85b-2dpf5                 1/1     Running   0          7d9h
+dev-pct-api-catalog-7c994885df-wwvml                    1/1     Running   0          7d10h
+dev-pct-api-job-776dbbfd45-9bfh2                        1/1     Running   0          7d10h
+dev-pct-consumer-adjudicatedclaim-7f9c594fcf-phklk      1/1     Running   0          7d10h
+dev-pct-consumerproducer-claimstream-5d64bf9554-9swht   1/1     Running   0          11h
+dev-pct-jobexecutor-job-75c44789cf-fzvv8                1/1     Running   0          14h
+
+
+kubectl get pods --all-namespaces --field-selector=spec.nodeName=<your-node-name> -o wide
+
+Then, go to http://localhost:9093/#/alerts
+
+Silience them, for hours or days. Maintenance. 
+
+kubectl -n monitoring get pods
+
+
 kubectl  port-forward svc/kube-prometheus-stack-alertmanager 9093:9093 -n monitoring
 
 localhost:9093

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+greplist='A'
+if [ $# -eq 1 ];then
+	greplist=$1
+fi
+
+logfile=$(ls -larth /pg_logs|tail -1|awk '{print $9}')
+
+PIDs=$(grep PID /pg_logs/$logfile|awk '{print $12}'|cut -d')' -f1|egrep -v "$greplist"|tail -10)
+for i in $PIDs; do echo ; echo $i;echo ------- ; grep $i /pg_logs/$logfile;done
+
+echo $logfile

@@ -1,0 +1,24 @@
+-- Check if there are any performance issues
+SELECT 
+    datname,
+    xact_commit,
+    xact_rollback,
+    blks_read,
+    blks_hit,
+    tup_returned,
+    tup_fetched,
+    tup_inserted,
+    tup_updated,
+    tup_deleted
+FROM pg_stat_database 
+WHERE datname IN ('benefits', 'ods_domani');
+
+-- On publisher, check the actual table and index sizes
+SELECT 
+    schemaname,
+    relname,
+    n_live_tup as rows,
+    pg_size_pretty(pg_relation_size(schemaname||'.'||relname)) as table_size,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname) - pg_relation_size(schemaname||'.'||relname)) as index_size
+FROM pg_stat_user_tables 
+WHERE relname = 'drug_label_association_report';

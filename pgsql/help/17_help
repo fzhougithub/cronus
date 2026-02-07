@@ -1,0 +1,22 @@
+SELECT r.rolname as role_name,
+       m.rolname as member_of,
+       getpg.grantor::regrole as granted_by,
+       getpg.inherit_option, -- Whether permissions are inherited automatically
+       getpg.set_option,     -- Whether 'SET ROLE' is allowed
+       getpg.admin_option    -- Whether the user can grant this role to others
+FROM pg_auth_members getpg
+JOIN pg_roles r ON getpg.member = r.oid
+JOIN pg_roles m ON getpg.roleid = m.oid;
+
+SELECT 
+    roleid::regrole AS "Member of",
+    grantor::regrole AS "Granted by",
+    admin_option AS "Admin",
+    inherit_option AS "Inherit",
+    set_option AS "Set"
+FROM pg_auth_members 
+WHERE member = 'datamart'::regrole;
+
+-- Add this line into .psqlrc file to make the command simple again
+\set m 'SELECT roleid::regrole AS role, inherit_option AS inherit, set_option AS set FROM pg_auth_members WHERE member = :''USER'';'
+\set m 'SELECT roleid::regrole AS role, inherit_option AS inherit, set_option AS set FROM pg_auth_members WHERE member = (CASE WHEN :''1'' = '':1'' THEN current_user ELSE :''1'' END)::regrole;'

@@ -1,0 +1,78 @@
+#!/bin/bash
+
+set -m
+
+if [ $# -ne 9 ]; then
+	echo "Usage: $0 <sourceIP> <sourceDB> <sourceSchema> <targetIP> <targetDB> <targetSchema> <snapshot> <tablefile> <jobs>"
+	echo "example: $0 10.222.79.110 claimsprocess claimsprocess_humana 10.221.129.108 ods_domani claimsprocess_humana 0000006A-000438B3-1 claimsprocess_humana.tablist 10"
+	exit 1
+else
+	s_host=$1
+	s_db=$2
+	s_schema=$3
+	t_host=$4
+	t_db=$5
+	t_schema=$6
+	snapshot=$7
+	tablist=$8
+	jobs=$9
+fi
+
+dumpdir=/pg_backups/pg2pg_init
+logdir=/pg_backups/restorelogs
+dump_bkup=/pg_backups/pg2pg_init_$(date +%d%M%Y)
+log_bkup=/pg_backups/restorelogs_$(date +%d%M%Y)
+
+echo "$(wc -l < $tablist) tables"
+
+mv $dumpdir $dump_bkup
+mv $logdir $log_bkup
+
+mkdir -p $logdir
+mkdir -p $dumpdir
+
+process_table() {
+local table=$1
+local log_file="$logdir/${table}.log"
+
+echo "$(date): START processing table: $table" | tee -a $log_file
+
+if pg_dump -h "$s_host" -d "$s_db" -t "$table" --data-only --snapshot="$snapshot" -Fd -j 4 -f "$dump_dir" 2>>"$log_file" \
+   && \
+   pg_restore -h "$t_host" -d "$t_db" --schema="$t_schema" --data-only -j 4 "$dump_dir" 2>>"$log_file"; then
+
+   echo "$(date): SUCCESS completed table: $table" | tee -a "$log_file"
+
+else
+   echo "$(date): FAILED table: $table" | tee -a "$log_file"
+fi
+}
+
+export -f process_table
+export s_host s_db s_schema t_host t_db t_schema snapshot
+
+echo "Starting parallel restore with $jobs jobs..."
+t_start=$(date)
+
+#cat $tablist | xargs -I {} -P $jobs bash -c 'process_table "$@"' _ {}
+parallel -j "$jobs" process_table ::: $(cat "$tablist")
+
+total_count=$(ls $logdir/|wc -l)
+success_count=$(grep -r "SUCCESS" $logdir/ | wc -l)
+failed_count=$(grep -r "FAILED" $logdir/ | wc -l)
+
+t_end=$(date)
+
+echo "=== RESTORE COMPLETED ===" > restore_summary.log
+echo "Start: $t_start" >> restore_summary.log
+echo "End: $t_end" >> restore_summary.log
+echo "Total tables: $total_count" >> restore_summary.log
+echo "Successful: $success_count" >> restore_summary.log
+echo "Failed: $failed_count" >> restore_summary.log
+
+if [ $failed_count -gt 0 ]; then
+    echo "Failed tables:" >> restore_summary.log
+    grep -r FAILED restore_logs/* | cut -d':' -f1 >> restore_summary.log
+fi
+
+cat restore_summary.log

@@ -1,0 +1,25 @@
+docker exec airflow-postgres psql -U airflow -c "
+DELETE FROM serialized_dag WHERE dag_id = 'list_schemas_sql';
+DELETE FROM dag WHERE dag_id = 'list_schemas_sql';
+"
+
+docker-compose restart airflow-scheduler
+docker exec airflow-scheduler airflow dags trigger list_schemas_sql
+
+
+
+SELECT 
+    ti.dag_id,
+    ti.task_id,
+    ti.run_id,
+    ti.start_date,
+    ti.end_date,
+    ti.duration,
+    ti.state,
+    ti.try_number
+FROM task_instance ti
+WHERE ti.dag_id = 'list_schemas_sql'
+ORDER BY ti.start_date DESC
+LIMIT 5;
+
+

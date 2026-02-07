@@ -1,3 +1,32 @@
+git log --oneline
+
+git log main..DEVOPS-12711-Setup-Citus-Cluster-HUAT --oneline
+419bc4a3 (HEAD -> DEVOPS-12711-Setup-Citus-Cluster-HUAT, origin/DEVOPS-12711-Setup-Citus-Cluster-HUAT) DEVOPS-12711 Setup Citus VMs in HUAT
+
+git branch -r
+git ls-remote --heads origin
+
+git log develop..DEVOPS-12711-Setup-Citus-Cluster-HUAT --oneline
+
+
+
+1. fetch branch from origin in the branch
+git fetch origin
+# if not in branch
+git checkout DEVOPS-12087-Add-Tablespace5-Disk-20TB
+# Reset your branch to match the remote exactly
+git reset --hard origin/DEVOPS-12087-Add-Tablespace5-Disk-20TB
+# Then, modify little bit in one flie
+git commit -m "DEVOPS-12087 Add pg_tablespace_5 20TB, final single commit"
+# then, push with git push --force-with-lease
+git push --force-with-lease # This one is for team work, not for individual work on branch
+git push --force-with-lease --set-upstream origin DEVOPS-12087-Add-Tablespace5-Disk-20TB
+#or
+git push origin DEVOPS-12087-Add-Tablespace5-Disk-20TB -f
+# check log
+git log --oneline origin/DEVOPS-12087-Add-Tablespace5-Disk-20TB
+
+
 git pull origin main --rebase
 
 git diff --staged
@@ -24,7 +53,7 @@ git checkout -b  DEVOPS-9839-add-space-to-uatpls-db-kc
 git add .
 git commit -m 'DEVOPS-9389 add space for apps in ualpls db'
 git push origin <branch name>
-git commit --amend
+git commit --amend --no-edit
 git push origin DEVOPS-10708-add-space-to-huat-db-kc -f
 git push origin --delete DEVOPS-10835-change-logrotate-pgbackrest-conf-for-all-db
 

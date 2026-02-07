@@ -1,0 +1,116 @@
+pg_dumpall -g > globals.sql
+## pg_dumpall > full_backup.sql
+pg_dumpall --roles-only > roles.sql
+## pg_dumpall --databases > databases.sql
+
+option 2: 
+
+#!/bin/bash
+# comprehensive_role_backup.sh
+
+BACKUP_DIR="/backup/postgresql/$(date +%Y%m%d)"
+mkdir -p "$BACKUP_DIR"
+
+# 1. Basic globals
+pg_dumpall -g > "$BACKUP_DIR/globals.sql"
+
+# 2. Role-specific privileges
+psql -d postgres -Atc "
+SELECT 'GRANT ' || privilege_type || ' ON ' || 
+       CASE classid 
+           WHEN 'pg_class'::regclass THEN 'TABLE'
+           WHEN 'pg_namespace'::regclass THEN 'SCHEMA'
+           WHEN 'pg_database'::regclass THEN 'DATABASE'
+       END || ' ' || COALESCE(table_schema || '.', '') || table_name || 
+       ' TO ' || grantee || ';'
+FROM (
+    SELECT DISTINCT 
+        grantee,
+        privilege_type,
+        classid,
+        schemaname as table_schema,
+        tablename as table_name
+    FROM pg_catalog.pg_permissions 
+    WHERE grantee NOT IN ('postgres', 'PUBLIC')
+) grants;" > "$BACKUP_DIR/role_grants.sql"
+
+# 3. Role memberships
+psql -d postgres -f - > "$BACKUP_DIR/role_memberships.sql" <<'EOF'
+SELECT 'GRANT ' || roleid || ' TO ' || member || ';'
+FROM pg_auth_members 
+WHERE roleid NOT IN ('postgres') AND member NOT IN ('postgres');
+EOF
+
+# 4. Default privileges
+pg_dumpall --schema-only | grep -A 10 "ALTER DEFAULT PRIVILEGES" > "$BACKUP_DIR/default_privileges.sql"
+
+echo "Role backup completed in $BACKUP_DIR"
+
+OPtion 3
+
+# Generate comprehensive role and privilege backup
+psql -d postgres <<'EOF' > complete_roles_backup.sql
+
+-- Users and roles with all attributes
+\echo '-- ROLES AND USERS'
+SELECT 'CREATE ROLE ' || rolname || 
+       CASE WHEN rolsuper THEN ' SUPERUSER' ELSE '' END ||
+       CASE WHEN rolinherit THEN ' INHERIT' ELSE ' NOINHERIT' END ||
+       CASE WHEN rolcreaterole THEN ' CREATEROLE' ELSE '' END ||
+       CASE WHEN rolcreatedb THEN ' CREATEDB' ELSE '' END ||
+       CASE WHEN rolcanlogin THEN ' LOGIN' ELSE ' NOLOGIN' END ||
+       CASE WHEN rolreplication THEN ' REPLICATION' ELSE '' END ||
+       CASE WHEN rolbypassrls THEN ' BYPASSRLS' ELSE '' END ||
+       ';'
+FROM pg_roles 
+WHERE rolname NOT LIKE 'pg_%' AND rolname != 'postgres';
+
+-- Role passwords (if set)
+SELECT 'ALTER ROLE ' || rolname || ' PASSWORD ''' || rolpassword || ''';'
+FROM pg_authid 
+WHERE rolpassword IS NOT NULL AND rolname NOT LIKE 'pg_%';
+
+-- Role memberships
+\echo '-- ROLE MEMBERSHIPS'
+SELECT 'GRANT ' || b.rolname || ' TO ' || a.rolname || ';'
+FROM pg_auth_members m
+JOIN pg_roles a ON m.member = a.oid
+JOIN pg_roles b ON m.roleid = b.oid
+WHERE a.rolname NOT LIKE 'pg_%' AND b.rolname NOT LIKE 'pg_%';
+
+-- Database privileges
+\echo '-- DATABASE PRIVILEGES'
+SELECT 'GRANT ' || privilege_type || ' ON DATABASE ' || datname || ' TO ' || grantee || ';'
+FROM (
+    SELECT DISTINCT datname, privilege_type, grantee
+    FROM pg_database d
+    JOIN aclexplode(datacl) a ON true
+    WHERE grantee NOT IN ('postgres', 'PUBLIC')
+) dbprivs;
+
+EOF
+
+Option 4:
+
+#!/bin/bash
+# daily_role_backup.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="/backup/roles_complete_${DATE}.sql"
+
+# Method 1: Use pg_dumpall -g as base
+pg_dumpall -g > "$BACKUP_FILE"
+
+# Method 2: Append comprehensive role information
+echo "-- Additional Role Privileges and Memberships" >> "$BACKUP_FILE"
+psql -d postgres -c "
+-- Add custom privilege extraction here
+" >> "$BACKUP_FILE"
+
+# Method 3: Also backup pg_shadow for password hashes (if needed)
+pg_dump -s -t pg_shadow postgres >> "$BACKUP_FILE"
+
+echo "Complete role backup saved to $BACKUP_FILE"
+
+
+

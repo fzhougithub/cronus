@@ -1,0 +1,12 @@
+when I modify and work on the code, Sarkis want to test his merged code. Then, I did
+
+git commit --amend --no-edit
+git pull origin main --rebase
+git push origin DEVOPS-12711-Setup-Citus-Cluster-HUAT -f
+
+fzhou@DST-JXK2FKH0CK datamartcitushumana-db-alma9-drx-kc % git log origin/main..HEAD --oneline
+5dac1615 (HEAD -> DEVOPS-12711-Setup-Citus-Cluster-HUAT, origin/DEVOPS-12711-Setup-Citus-Cluster-HUAT) DEVOPS-12711 Setup Citus VMs in HUAT 
+
+This one line show the pull request is OK
+
+So, my current branch is clean, but, the change is not finally merged back to main branch. Should be fine. 

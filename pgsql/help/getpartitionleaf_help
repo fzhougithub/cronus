@@ -1,0 +1,18 @@
+SELECT 
+  nmsp_child.nspname AS partition_schema,
+  child.relname AS partition_table,
+  nmsp_parent.nspname AS parent_schema,
+  parent.relname AS parent_table,
+  pg_get_expr(child.relpartbound, child.oid) AS partition_bounds
+FROM pg_inherits
+JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN pg_class child ON pg_inherits.inhrelid = child.oid
+JOIN pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+WHERE child.relkind = 'r'          -- Regular tables only (leaf partitions)
+  AND child.relispartition         -- Must be a partition
+  AND nmsp_child.nspname = 'claimsprocess_humana'  -- ← FILTER BY SCHEMA HERE
+ORDER BY 
+  parent_schema,
+  parent_table,
+  partition_bounds;

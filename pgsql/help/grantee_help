@@ -1,0 +1,114 @@
+SELECT grantee, privilege_type
+FROM information_schema.table_privileges where table_name='adjudication_claim' and table_schema='pde_humana';
+
+SELECT grantee, privilege_type
+FROM information_schema.database_privileges 
+WHERE grantee NOT IN ('postgres', 'PUBLIC');
+
+SELECT rolname, rolsuper, rolinherit, rolcreaterole, 
+       rolcreatedb, rolcanlogin, rolreplication
+FROM pg_roles 
+WHERE rolname NOT LIKE 'pg_%' AND rolname != 'postgres';
+
+
+== Find the existing grantee
+
+-- On OLD database, run this to see what was granted:
+
+SELECT 
+    'GRANT ' || privilege_type || ' ON TABLE ' || table_schema || '.' || table_name || 
+    ' TO ' || grantee || ';' as grant_statement
+FROM information_schema.table_privileges 
+WHERE table_schema = 'datamart';
+-------------------------------------------------------------------------------------
+ GRANT INSERT ON TABLE datamart.accumulator_member_deductible_build TO dt204295;
+ GRANT SELECT ON TABLE datamart.accumulator_member_deductible_build TO dt204295;
+
+SELECT 
+    'GRANT USAGE, SELECT ON SEQUENCE ' || sequence_schema || '.' || sequence_name || 
+    ' TO ' || grantee || ';' as grant_statement
+FROM information_schema.sequence_privileges 
+WHERE sequence_schema = 'datamart';
+
+-- Most straightforward way - just see the raw ACL:
+SELECT 
+    nspname as schema_name,
+    nspowner::regrole as owner,
+    nspacl as permissions_list
+FROM pg_namespace 
+WHERE nspname = 'datamart';
+
+ schema_name |  owner   |                                     permissions_list
+-------------+----------+------------------------------------------------------------------------------------------
+ datamart    | datamart | {datamart=UC/datamart,dt204295=U/datamart,datamart_ro=U/datamart,datamart_rw=U/datamart}
+
+-- Test if specific users have schema access
+SELECT 
+    'datamart' as schema_name,
+    rolname as username,
+    has_schema_privilege(rolname, 'datamart', 'USAGE') as can_use_schema,
+    has_schema_privilege(rolname, 'datamart', 'CREATE') as can_create_objects
+FROM pg_roles 
+WHERE rolname NOT LIKE 'pg_%' 
+AND rolname != 'postgres'
+AND rolname IN ('datamart', 'datamart_humana');  -- Replace with actual usernames
+
+ schema_name | username | can_use_schema | can_create_objects
+-------------+----------+----------------+--------------------
+ datamart    | datamart | t              | t
+(1 row)
+
+-- See who owns datamart schema
+SELECT nspname, nspowner::regrole 
+FROM pg_namespace 
+WHERE nspname = 'datamart';
+
+-- See raw permissions (looks like {user1=UC/user1,user2=U/user1})
+SELECT nspname, nspacl FROM pg_namespace WHERE nspname = 'datamart';
+
+ nspname  |                                          nspacl
+----------+------------------------------------------------------------------------------------------
+ datamart | {datamart=UC/datamart,dt204295=U/datamart,datamart_ro=U/datamart,datamart_rw=U/datamart}
+(1 row)
+
+SELECT 'Schema Info:' as check_type;
+SELECT nspname, nspowner::regrole 
+FROM pg_namespace 
+WHERE nspname = 'datamart';
+ods_domani-# WHERE nspname = 'datamart';
+ nspname  | nspowner
+----------+----------
+ datamart | datamart
+(1 row)
+
+ods_domani=# SELECT nspname, nspacl
+ods_domani-# FROM pg_namespace
+ods_domani-# WHERE nspname = 'datamart';
+ nspname  |                                          nspacl
+----------+------------------------------------------------------------------------------------------
+ datamart | {datamart=UC/datamart,dt204295=U/datamart,datamart_ro=U/datamart,datamart_rw=U/datamart}
+(1 row)
+
+-- Since the ACL parsing is complex, let's just TEST users who should have access:
+SELECT 
+    'postgres' as test_user,
+    has_schema_privilege('postgres', 'datamart', 'USAGE') as can_access
+UNION ALL
+SELECT 
+    'app_user' as test_user,
+    has_schema_privilege('app_user', 'datamart', 'USAGE') as can_access
+UNION ALL
+SELECT 
+    'readonly_user' as test_user, 
+    has_schema_privilege('readonly_user', 'datamart', 'USAGE') as can_access;
+
+SELECT DISTINCT usename as username
+FROM pg_stat_activity 
+WHERE usename NOT LIKE 'pg_%' 
+AND usename != 'postgres'
+ORDER BY usename;
+
+SELECT 
+    'your_username_here' as username,
+    has_schema_privilege('your_username_here', 'datamart', 'USAGE') as can_use_schema;
+

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+BACKUP_DIR="/pg_backups/claimprocess_humana"
+DB_NAME="ods_domani"
+# The parent table that will receive all the data
+TARGET_PARENT="claimsprocess_humana.claim_extension_1"
+
+echo "Extracting IDs and loading data into $TARGET_PARENT..."
+
+# 1. Get the list of IDs (the first column) for all relevant partitions
+# We use the same grep logic you just used to be precise
+FILE_IDS=$(pg_restore -l $BACKUP_DIR | grep "TABLE DATA" | grep "claim_extension_1" | grep -v a_claim_extension | awk -F';' '{print $1}')
+
+for ID in $FILE_IDS; do
+    # Build the path to the compressed data file
+    DATA_FILE="$BACKUP_DIR/$ID.dat.gz"
+
+    if [ -f "$DATA_FILE" ]; then
+        echo "Processing ID $ID -> $TARGET_PARENT"
+        # Decompress on the fly and pipe to psql COPY
+        zcat "$DATA_FILE" | psql -d "$DB_NAME" -c "COPY $TARGET_PARENT FROM STDIN"
+
+        if [ $? -ne 0 ]; then
+            echo "Error loading ID $ID. Check logs."
+        fi
+    else
+        echo "Warning: File $DATA_FILE not found."
+    fi
+done
+
+echo "Done."

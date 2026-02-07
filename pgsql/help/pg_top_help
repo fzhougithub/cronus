@@ -1,0 +1,36 @@
+ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%cpu | head -20
+
+In pg_top, use these keys:
+
+c - toggle command display to see full queries
+
+s - change sort order (try by CPU, time, etc.)
+
+r - reverse sort order
+
+u - filter by user
+
+S - change delay time
+
+[postgres@ods-db-01-alma8-huat-drx-kc ~]$ ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%cpu | head -20
+    PID    PPID CMD                         %CPU %MEM
+ 193683    2674 postgres: huat_ods-db-01: p 54.2 19.6
+ 141050    2674 postgres: huat_ods-db-01: p 53.3 16.2
+ 205228    2674 postgres: huat_ods-db-01: a 31.2 26.8
+3687631    2674 postgres: huat_ods-db-01: d 17.1 50.6
+3688553    2674 postgres: huat_ods-db-01: d 14.6 50.3
+3689634    2674 postgres: huat_ods-db-01: d 11.1 50.7
+3698732    2674 postgres: huat_ods-db-01: d 10.6 50.5
+4044679    2674 postgres: huat_ods-db-01: h  9.0  2.2
+4054792    2674 postgres: huat_ods-db-01: h  8.9  2.3
+3690754    2674 postgres: huat_ods-db-01: d  8.7 49.4
+4048586    2674 postgres: huat_ods-db-01: h  8.7  2.2
+4049913    2674 postgres: huat_ods-db-01: h  8.7  2.3
+4051936    2674 postgres: huat_ods-db-01: h  8.6  2.3
+4079810    2674 postgres: huat_ods-db-01: h  8.6  2.3
+3989921    2674 postgres: huat_ods-db-01: h  8.5  2.2
+3990580    2674 postgres: huat_ods-db-01: h  8.5  2.3
+4033427    2674 postgres: huat_ods-db-01: h  8.5  2.3
+4056841    2674 postgres: huat_ods-db-01: h  8.5  2.3
+4023601    2674 postgres: huat_ods-db-01: h  8.3  2.3
+

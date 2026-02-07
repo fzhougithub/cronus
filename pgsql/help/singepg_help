@@ -1,0 +1,13 @@
+/usr/pgsql-14/bin/postgres --single -D /apps/lib/pgsql/14/data financials -P
+
+reindex system financials;
+
+In normal case, this will bring the new 2662 file back to desired database location like
+
+[postgres@finance-db-02-alma8-olly-drx-kc ~]$ ls -larth /apps/lib/pgsql/14/data/base/*/2662
+-rw-------. 1 postgres postgres 32K Jan 13  2025 /apps/lib/pgsql/14/data/base/16385/2662
+-rw-------. 1 postgres postgres 32K Jan 27 22:54 /apps/lib/pgsql/14/data/base/13748/2662
+
+In this case, we can fully recover the data. 
+
+dmesg | grep -iE "error|critical|sdc"

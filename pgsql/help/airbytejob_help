@@ -1,0 +1,36 @@
+[root@ods-db-01-alma9-huat-drx-kc ~]$ kubectl get events -n airbyte-abctl --sort-by='.lastTimestamp' --field-selector type!=Normal | grep replication-job-100
+57m         Warning   FailedScheduling   pod/replication-job-100-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+
+
+
+[root@ods-db-01-alma9-huat-drx-kc ~]$ kubectl get events -n airbyte-abctl --sort-by='.lastTimestamp' | grep -E "replication-job-100|Failed|Error|OOM|Killed"
+58m         Warning   FailedScheduling   pod/replication-job-100-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+57m         Warning   FailedScheduling   pod/replication-job-101-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+27m         Warning   FailedScheduling   pod/replication-job-101-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+49m         Warning   FailedScheduling   pod/replication-job-102-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+3m37s       Warning   FailedScheduling   pod/replication-job-102-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+27m         Warning   FailedScheduling   pod/replication-job-103-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+7m7s        Warning   FailedScheduling   pod/replication-job-103-attempt-0   0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+53m         Warning   FailedScheduling   pod/replication-job-99-attempt-0    0/1 nodes are available: 1 Insufficient memory. preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+
+
+NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+echo $NODE_NAME
+airbyte-abctl-control-plane
+
+[root@ods-db-01-alma9-huat-drx-kc ~]$ kubectl describe node $NODE_NAME | grep -A 5 "Memory"
+  MemoryPressure   False   Mon, 05 Jan 2026 17:05:23 +0000   Tue, 30 Dec 2025 21:25:49 +0000   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure     False   Mon, 05 Jan 2026 17:05:23 +0000   Tue, 30 Dec 2025 21:25:49 +0000   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure      False   Mon, 05 Jan 2026 17:05:23 +0000   Tue, 30 Dec 2025 21:25:49 +0000   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready            True    Mon, 05 Jan 2026 17:05:23 +0000   Tue, 30 Dec 2025 21:26:11 +0000   KubeletReady                 kubelet is posting ready status
+Addresses:
+  InternalIP:  172.18.0.2
+--
+  Namespace                   Name                                                       CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+  ---------                   ----                                                       ------------  ----------  ---------------  -------------  ---
+  airbyte-abctl               airbyte-abctl-connector-builder-server-774997f95d-d4rxq    0 (0%)        0 (0%)      0 (0%)           0 (0%)         5d19h
+  airbyte-abctl               airbyte-abctl-cron-bdddc55f-864l9                          0 (0%)        0 (0%)      0 (0%)           0 (0%)         5d19h
+  airbyte-abctl               airbyte-abctl-server-7544b7ccdf-c42np                      0 (0%)        0 (0%)      0 (0%)           0 (0%)         4d18h
+  airbyte-abctl               airbyte-abctl-temporal-995d6c5cd-ffwd2                     0 (0%)        0 (0%)      0 (0%)           0 (0%)         5d19h
+
+

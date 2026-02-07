@@ -1,0 +1,34 @@
+
+-- Parent vs child column-by-column compat check (name/type/nullability)
+WITH parent AS (
+  SELECT column_name, data_type, is_nullable
+  FROM information_schema.columns
+  WHERE table_schema = 'test10' AND table_name = 'a'
+),
+child AS (
+  SELECT column_name, data_type, is_nullable
+  FROM information_schema.columns
+  WHERE table_schema = 'test10' AND table_name = 'b'
+)
+SELECT
+  p.column_name,
+  p.data_type AS parent_type,
+  c.data_type AS child_type,
+  p.is_nullable AS parent_nullable,
+  c.is_nullable AS child_nullable,
+  CASE
+    WHEN c.column_name IS NULL THEN 'missing_in_child'
+    WHEN p.data_type <> c.data_type THEN 'type_mismatch'
+    WHEN p.is_nullable = 'NO' AND c.is_nullable <> 'NO' THEN 'nullability_mismatch'
+    ELSE 'ok'
+  END AS status
+FROM parent p
+LEFT JOIN child c USING (column_name)
+UNION ALL
+SELECT
+  c.column_name, NULL, c.data_type, NULL, c.is_nullable, 'extra_column_in_child'
+FROM child c
+LEFT JOIN parent p USING (column_name)
+WHERE p.column_name IS NULL
+ORDER BY 1;
+

@@ -1,3 +1,27 @@
+config for archive retension
+
+# Retain archives only until the last backup that needs them is expired
+repo1-retention-archive-type=backup
+repo1-retention-archive=1  # Keep archives for 1 backup set (the latest)
+
+
+
+# Example: keep only the last 3 incremental backups + the full they depend on
+pgbackrest --stanza=10-173-12-40 expire --retention-full=1 --retention-diff=3
+
+# Or even more aggressive: keep only 1 full + 1 incremental (very common in production)
+pgbackrest --stanza=10-173-12-40 expire --retention-full=1 --retention-diff=1
+
+
+pgbackrest --stanza=10-222-254-160 expire --set=20251005-093003F
+
+pgbackrest --stanza=<STANZA_NAME> \
+    --repo=1 \
+    restore \
+    --target-action=promote \
+    --set-restore=20251026-093002F \
+    --force
+
 pgbackrest --stanza=10-222-57-191 restore --type=time --target="2025-09-04 05:10:00" --delta --pg1-path=/apps/lib/pgsql/14/data1
 
 2025-09-05 02:19:35.776 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)

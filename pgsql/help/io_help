@@ -1,3 +1,59 @@
+iostat -x -m 2 1 | awk 'NR>6 && $NF >= 10 {print $1, $NF}'
+sdb 23.07
+sdj 63.22
+sdi 61.62
+dm-2 23.19
+dm-11 61.65
+dm-15 63.63
+
+
+iostat -x -m 2
+iotop -oPa
+vmstat 2
+dstat -cdngy
+sar -d 2
+pidstat -d -p <PID> 1
+atop -d
+cat /proc/pressure/io
+
+iostat -x -m 2 | awk '
+{
+  for(i=2; i<=NF; i++) {
+    if($i+0 > 100) { print; break }
+  }
+}'
+
+lsblk -o NAME,MAJ:MIN,TYPE,MOUNTPOINT
+
+dmsetup ls
+dmsetup ls --tree
+udevadm info --query=all --name=/dev/dm-15
+
+dmsetup ls --tree  # It give the major.minor device number, then
+
+ls -larth /sys/dev/block/ # get the idea about the device
+
+[root@claimshumana-db-01-alma8-prod-drx-kc ~]$ ls -larth /sys/dev/block/|grep dm-15
+lrwxrwxrwx. 1 root root 0 Oct 24 19:03 253:15 -> ../../devices/virtual/block/dm-15
+
+[root@claimshumana-db-01-alma8-prod-drx-kc ~]$ readlink -f /sys/dev/block/253:15
+/sys/devices/virtual/block/dm-15
+
+find /dev -type b -printf '%M %u %g %t %k %D %f\n' | grep '253:8'
+
+lvs -a -o +devices
+
+
+SELECT * FROM pg_stat_io;
+SELECT * FROM pg_stat_bgwriter;
+SHOW track_io_timing;
+SELECT pid, wait_event_type, wait_event, query FROM pg_stat_activity WHERE state='active';
+/usr/pgsql-14/bin/pg_test_timing
+SELECT * FROM pg_cputime(); 
+pg_proctab extension
+
+
+
 1. boot sda IO, pretty high
 
 High I/O on the `/boot` directory (which typically resides on device `/dev/sda1`) is unusual — it's a mostly static area that stores kernel and initramfs images. If you're getting high I/O alerts on it, here are some **possible causes** to investigate:

@@ -1,0 +1,112 @@
+SELECT
+    'alter table '||n.nspname||'.'||c.relname||' set tablespace tblspc3;',
+    pg_size_pretty(pg_relation_size(c.oid)) AS table_size
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+JOIN
+    pg_tablespace t ON t.oid = c.reltablespace
+WHERE
+LIMIT 10;
+
+
+
+SELECT
+    t.spcname AS tablespace_name,
+    a.rolname AS tablespace_owner,
+    -- CORRECTED LINE: Use the function instead of the direct column
+    pg_tablespace_location(t.oid) AS location,
+    pg_size_pretty(pg_tablespace_size(t.oid)) AS total_size
+FROM
+    pg_tablespace t
+JOIN
+    pg_authid a ON t.spcowner = a.oid
+ORDER BY
+    tablespace_name;
+
+ tablespace_name | tablespace_owner |     location     | total_size
+-----------------+------------------+------------------+------------
+ pg_default      | postgres         |                  | 10 TB
+ pg_global       | postgres         |                  | 2816 kB
+ tblspc1         | postgres         | /pg_tablespace_1 | 13 TB
+ tblspc2         | postgres         | /pg_tablespace_2 | 8842 GB
+ tblspc3         | postgres         | /pg_tablespace_3 | 1180 kB
+(5 rows)
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_tablespace.spcname AS tablespace_name,
+    pg_relation_size(c.oid) AS tablesize_bytes,
+    pg_size_pretty(pg_relation_size(c.oid)) AS tablesize_pretty
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+JOIN
+    pg_tablespace ON pg_tablespace.oid = c.reltablespace
+ORDER BY
+    tablesize_bytes DESC;
+
+     schema_name      |       table_name       | tablespace_name | tablesize_bytes | tablesize_pretty
+----------------------+------------------------+-----------------+-----------------+------------------
+ claimsprocess_humana | claim_core_320_202312  | tblspc2         |    258777653248 | 241 GB
+ claimsprocess_humana | claim_core_320_202306  | tblspc2         |    257764073472 | 240 GB
+ claimsprocess_humana | claim_core_320_202304  | tblspc2         |    247582023680 | 231 GB
+
+
+WITH RECURSIVE partition_hierarchy AS (
+  SELECT inhrelid, inhparent
+  FROM pg_inherits
+  WHERE inhparent = 'claimsprocess_humana.claim_core'::regclass
+  UNION
+  SELECT i.inhrelid, i.inhparent
+  FROM pg_inherits i
+  INNER JOIN partition_hierarchy ph ON i.inhparent = ph.inhrelid
+),
+leaf_partitions AS (
+  SELECT p.inhrelid
+  FROM partition_hierarchy p
+  LEFT JOIN pg_inherits i ON p.inhrelid = i.inhparent
+  WHERE i.inhparent IS NULL
+)
+SELECT
+  pg_size_pretty(SUM(pg_total_relation_size(lp.inhrelid))) AS total_size,
+  COUNT(lp.inhrelid) AS partition_count
+FROM leaf_partitions lp;
+
+
+SELECT
+'alter table '||n.nspname||'.'||c.relname||' set tablespace tblspc3;',
+    pg_tablespace.spcname AS tablespace_name,
+    pg_relation_size(c.oid) AS tablesize_bytes,
+    pg_size_pretty(pg_relation_size(c.oid)) AS tablesize_pretty
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+JOIN
+    pg_tablespace ON pg_tablespace.oid = c.reltablespace
+where pg_tablespace.spcname='tblspc2'
+order by
+    4 DESC limit 10;
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_size_pretty(pg_relation_size(c.oid)) AS table_size
+FROM
+    pg_class c
+JOIN
+    pg_namespace n ON n.oid = c.relnamespace
+JOIN
+    pg_tablespace t ON t.oid = c.reltablespace
+WHERE
+    -- Filter for regular tables ('r') and partitioned tables ('p')
+    c.relkind IN ('r', 'p')
+    -- Filter by the source tablespace name
+    AND t.spcname = 'tblspc2'
+ORDER BY
+    pg_relation_size(c.oid) DESC
+LIMIT 10;

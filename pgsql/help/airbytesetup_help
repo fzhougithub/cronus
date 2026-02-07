@@ -1,0 +1,1147 @@
+dnf -y update
+dnf -y install curl git vim
+
+https://docs.docker.com/engine/install/centos/
+
+dnf -y install dnf-plugins-core
+dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+# install docker engine,This command installs Docker, but it doesn't start Docker. It also creates a docker group, however, it doesn't add any users to the group by default.
+dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+systemctl enable --now docker
+
+docker run hello-world
+
+#After complete install of docker, start to install Airbyte
+
+curl -L https://github.com/airbytehq/abctl/releases/download/v0.30.3/abctl-v0.30.3-linux-amd64.tar.gz -o abctl.tar.gz
+tar -xzf abctl.tar.gz
+mv abctl-v0.30.3-linux-amd64/abctl /usr/bin/abctl
+chmod +x /usr/bin/abctl
+
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+chmod +x ./kind
+mv ./kind /usr/bin/kind
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+mv /pg_backups/kubectl /usr/bin/.
+chmod 755 /usr/bin/kubectl
+
+export KUBECONFIG=/root/.airbyte/abctl/abctl.kubeconfig
+kubectl get namespaces
+kubectl get deployments -n airbyte-abctl
+kubectl describe deployment airbyte-abctl-worker  -n airbyte-abctl > worker_desc.yaml
+kubectl get configmaps -n airbyte-abctl
+NAME                                   DATA   AGE
+airbyte-abctl-airbyte-env              259    3d
+airbyte-abctl-temporal-dynamicconfig   1      3d
+kube-root-ca.crt                       1      3d
+kubectl edit configmap airbyte-abctl-airbyte-env -n airbyte-abctl
+
+kubectl rollout restart deployment airbyte-abctl-worker -n airbyte-abctl
+kubectl get pods -n airbyte-abctl | grep worker
+kubectl exec -it [REPLACE_WITH_POD_NAME] -n airbyte-abctl -- env | grep JOB_MAIN
+
+kubectl rollout restart deployment airbyte-abctl-server -n airbyte-abctl
+kubectl rollout restart deployment airbyte-abctl-worker -n airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get ingress -n airbyte-abctl
+NAME            CLASS   HOSTS   ADDRESS         PORTS   AGE
+ingress-abctl   nginx   *       10.96.148.207   80      3d
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl annotate ingress ingress-abctl -n airbyte-abctl nginx.ingress.kubernetes.io/proxy-body-size=1G --overwrite
+ingress.networking.k8s.io/ingress-abctl annotated
+
+
+kubectl get pods --all-namespaces | grep -i airbyte
+kind get kubeconfig --name airbyte-abctl > /tmp/kind-kubeconfig
+kubectl get pods --all-namespaces | grep server
+kubectl get pods -A | grep -i server
+
+docker exec -it airbyte-abctl-control-plane crictl ps | grep server
+kubectl logs airbyte-abctl-server-84677586df-nbgw8 -n airbyte-abctl --tail=20
+
+ods_domani=# SELECT pg_create_logical_replication_slot('airbyte_huat_slot', 'pgoutput');
+ pg_create_logical_replication_slot
+------------------------------------
+ (airbyte_huat_slot,321F/8C355390)
+(1 row)
+
+create role airbyte with login password 'FpH40Gt0AO7tEFG4cJkfxENu2EKzB6';
+ALTER USER airbyte REPLICATION;
+GRANT CONNECT ON DATABASE ods_domani TO airbyte;
+GRANT CONNECT ON DATABASE test TO airbyte;
+GRANT CONNECT ON DATABASE "*" TO airbyte;
+GRANT USAGE ON SCHEMA public TO airbyte;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO airbyte;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO airbyte;
+GRANT CREATE ON SCHEMA public TO airbyte;
+grant claimsprocess_humana_ro to airbyte;
+
+-- On DESTINATION DB (ods-db-01-alma9-huat-drx-kc)
+\c postgres  -- as superuser
+
+-- Grant CONNECT on test database (fixes the error)
+GRANT CONNECT ON DATABASE test TO airbyte_user;
+
+-- Also grant on your target database
+GRANT CONNECT ON DATABASE your_target_db TO airbyte_user;
+
+-- Schema permissions for writing raw/normalized tables
+GRANT CREATE, USAGE ON SCHEMA public TO airbyte_user;  -- or your target schema
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO airbyte_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO airbyte_user;
+-- 1. CONNECT privileges (mandatory)
+GRANT CONNECT ON DATABASE test TO airbyte_user;
+GRANT CONNECT ON DATABASE your_target_db TO airbyte_user;
+
+-- 2. Schema write privileges
+GRANT USAGE, CREATE ON SCHEMA public TO airbyte_user;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO airbyte_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO airbyte_user;
+
+-- 3. For airbyte_internal schema (raw tables)
+GRANT USAGE, CREATE ON SCHEMA airbyte_internal TO airbyte_user;
+GRANT ALL ON ALL TABLES IN SCHEMA airbyte_internal TO airbyte_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA airbyte_internal GRANT ALL ON TABLES TO airbyte_user;
+
+
+dnf -y update
+dnf -y install curl git vim
+
+https://docs.docker.com/engine/install/centos/
+
+dnf -y install dnf-plugins-core
+dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+# install docker engine,This command installs Docker, but it doesn't start Docker. It also creates a docker group, however, it doesn't add any users to the group by default.
+dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+systemctl enable --now docker
+
+docker run hello-world
+
+#After complete install of docker, start to install Airbyte
+
+curl -L https://github.com/airbytehq/abctl/releases/download/v0.30.3/abctl-v0.30.3-linux-amd64.tar.gz -o abctl.tar.gz
+tar -xzf abctl.tar.gz
+mv abctl-v0.30.3-linux-amd64/abctl /usr/bin/abctl
+chmod +x /usr/bin/abctl
+
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+chmod +x ./kind
+mv ./kind /usr/bin/kind
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+mv /pg_backups/kubectl /usr/bin/.
+chmod 755 /usr/bin/kubectl
+
+export KUBECONFIG=/root/.airbyte/abctl/abctl.kubeconfig
+kubectl get namespaces
+kubectl get pods --all-namespaces | grep -i airbyte
+kind get kubeconfig --name airbyte-abctl > /tmp/kind-kubeconfig
+kubectl get pods --all-namespaces | grep server
+kubectl get pods -A | grep -i server
+
+docker exec -it airbyte-abctl-control-plane crictl ps | grep server
+kubectl logs airbyte-abctl-server-84677586df-nbgw8 -n airbyte-abctl --tail=20
+
+ods_domani=# SELECT pg_create_logical_replication_slot('airbyte_huat_slot', 'pgoutput');
+ pg_create_logical_replication_slot
+------------------------------------
+ (airbyte_huat_slot,321F/8C355390)
+(1 row)
+
+create role airbyte with login password 'FpH40Gt0AO7tEFG4cJkfxENu2EKzB6';
+ALTER USER airbyte REPLICATION;
+GRANT CONNECT ON DATABASE ods_domani TO airbyte;
+GRANT CONNECT ON DATABASE test TO airbyte;
+GRANT CONNECT ON DATABASE "*" TO airbyte;
+GRANT USAGE ON SCHEMA public TO airbyte;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO airbyte;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO airbyte;
+GRANT CREATE ON SCHEMA public TO airbyte;
+grant claimsprocess_humana_ro to airbyte;
+
+
+
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+Change docker location
+mkdir /pg_backups/docker
+systemctl stop docker
+systemctl stop docker.socket
+rsync -aHAX /var/lib/docker/ /pg_backups/docker/
+mkdir -p /etc/docker
+
+tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "data-root": "/pg_backups/docker"
+}
+EOF
+
+systemctl daemon-reload
+systemctl restart docker
+docker info | grep "Docker Root Dir"
+
+Then, change kind location, symbolic /tmp to /pg_backups/tmp
+mkdir -p /pg_backups/tmp
+export DOCKER_TMPDIR=/pg_backups/tmp
+umount -l /tmp
+ln -s /pg_backups/tmp /tmp
+
+abctl local instalexport DOCKER_TMPDIR=/pg_backups/tmp
+umount -l /tmp
+ln -s /pg_backups/tmp /tmp
+
+Then, issues
+As of late 2025, Docker Hub limits:
+
+Unauthenticated pulls: 100 pulls per 6 hours per IP.
+Authenticated (free Docker account): 200 pulls per 6 hours.
+Paid plans: Unlimited.
+
+The limit resets every 6 hours (based on when you hit it). Try again later.
+
+docker login
+USING WEB-BASED LOGIN
+Login Succeeded
+
+abctl local install
+
+This is a known behavior with abctl/Kind setups: the host Docker authentication does not automatically propagate into the Kind cluster nodes. The pods inside the cluster attempt unauthenticated pulls, quickly hitting Docker Hub's rate limits (or failing outright).
+
+Try another
+
+abctl local uninstall
+
+abctl local install --no-airbyte
+
+kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+
+abctl local install  # Add --low-resource-mode if your server is limited
+
+abctl images manifest
+
+abctl local install --low-resource-mode
+#Failed with cgroup v2 requirement
+
+Add one line into config
+vi /etc/default/grub
+#systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all
+#Should modify the existing parameter, add the above line like
+GRUB_CMDLINE_LINUX="nofb splash=quiet crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M resume=/dev/mapper/rootvg-swap rd.lvm.lv=rootvg/rootvol rd.lvm.lv=rootvg/swap rhgb quiet systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all"
+
+Then, check whether the VM is using BIOS or UEFI boot
+[ -d /sys/firmware/efi ] && echo "UEFI" || echo "BIOS/Legacy"
+BIOS/Legacy
+
+Then, for BIOS boot
+sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+
+sudo reboot
+
+stat -fc %T /sys/fs/cgroup/
+cgroup2fs
+
+docker info --format '{{.CgroupVersion}}'
+2
+
+abctl local uninstall   # Clean up any partial cluster
+abctl images manifest
+
+# Pre-pull the key images (your docker login ensures authenticated pulls)
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+# Load them into the running Kind cluster
+kind load docker-image airbyte/bootloader:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/worker:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/webapp:2.0.1 --name airbyte-abctl
+kind load docker-image postgres:16-alpine --name airbyte-abctl
+kind load docker-image minio/minio:latest --name airbyte-abctl
+kind load docker-image temporalio/auto-setup:latest --name airbyte-abctl
+
+abctl local credentials
+
+# Then, space is full
+docker image prune -a      # Unused images
+docker container prune     # Stopped containers
+docker volume prune        # Unused volumes
+docker builder prune -a    # Build cache
+
+sudo systemctl stop docker
+sudo systemctl stop docker.socket  # If it exists
+
+mkdir /pg_backups/docker
+mkdir -p /pg_backups/containerd
+
+rsync -aP /var/lib/docker/ /pg_backups/docker/
+rsync -aP /var/lib/containerd/ /pg_backups/containerd/
+
+1 add docker daemon config
+mkdir -p /etc/docker
+vi /etc/docker/daemon.json
+{
+  "data-root": "/pg_backups/docker"
+}
+
+systemctl daemon-reload
+
+2. edit containerd config
+containerd config default > /etc/containerd/config.toml
+edit above file
+vi /etc/containerd/config.toml
+root = '/pg_backups/containerd'
+
+systemctl daemon-reload
+systemctl restart containerd
+systemctl restart docker
+
+
+docker info | grep "Docker Root Dir"
+ Docker Root Dir: /pg_backups/docker
+
+# Pre-pull the key images (your docker login ensures authenticated pulls)
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+cd /pg_backups
+curl -Lo /pg_backups/kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+sudo chmod +x /pg_backups/kind
+mv /pg_backups/kind /usr/local/bin/kind
+kind version
+
+abctl local install --low-resource-mode \
+  --docker-username=fzssnc \
+  --docker-password=1Djgmjxdd \
+  --docker-email=frank.zhou@sscinc.com \
+  --docker-server=https://index.docker.io/v1/
+
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/bootloader:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/worker:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/webapp:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image postgres:16-alpine --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image minio/minio:latest --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image temporalio/auto-setup:latest --name airbyte-abctl
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+kubectl --kubeconfig /root/.airbyte/abctl/abctl.kubeconfig -n airbyte-abctl get events --sort-by='.metadata.creationTimestamp'
+kubectl --kubeconfig /root/.airbyte/abctl/abctl.kubeconfig -n airbyte-abctl logs <bootloader-pod-name> --container bootloader -f
+
+better to wait for the back-off period, and give another try. or upgrade to the paid plan to download the images
+
+After two hours, retry, 
+abctl local install --low-resource-mode   --docker-username=fzssnc   --docker-password=1Djgmjxdd   --docker-email=frank.zhou@sscinc.com   --docker-server=https://index.docker.io/v1/
+
+Succeed
+
+abctl local credentials
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Retrieving your credentials from 'airbyte-auth-secrets'
+  INFO    Credentials:
+            Email: [not set]
+            Password: ChJF7Nch630XMRNEm2NjEUXjZ1R6Lxlx
+            Client-Id: c8888425-fb37-45b4-bef6-39c8d9ac426f
+            Client-Secret: ZzQpHxeLd7yZei31vBsK4ZfcPH406zGM
+
+ ssh -L 8000:localhost:8000 finance-db-01-alma9-olly-drx-kc.ssnc-corp.cloud
+
+[root@finance-db-01-alma9-olly-drx-kc ~]$ abctl local status -v
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Found Docker installation: version 29.1.3
+  DEBUG   failed to export kube config: failed to get cluster internal kubeconfig: command "docker exec --privileged airbyte-abctl-control-plane cat /etc/kubernetes/admin.conf" failed with error: exit status 128
+ SUCCESS  Existing cluster 'airbyte-abctl' found
+  INFO    Found helm chart 'airbyte-abctl'
+            Status: deployed
+            Chart Version: 2.0.19
+            App Version: 2.0.1
+  INFO    Found helm chart 'ingress-nginx'
+            Status: deployed
+            Chart Version: 4.14.1
+            App Version: 1.14.1
+  INFO    Airbyte should be accessible via http://localhost:8000
+
+fzhou@DST-JXK2FKH0CK ~ % sudo systemsetup -setremotelogin on
+Password:
+setremotelogin: remote login is already On.
+
+
+curl -vk https://airbyte-olly-drx-kc.ssnc-corp.cloud
+
+Then, we deploy the loadbalancer http, and it works!
+
+https://http-olly-admin-drx-kc.ssnc-corp.cloud/login?loginRedirect=%2Fsetup
+
+You should use the abctl generated credential
+[root@finance-db-01-alma9-olly-drx-kc ~]$ abctl local credentials
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Retrieving your credentials from 'airbyte-auth-secrets'
+  INFO    Credentials:
+            Email: fzhou@sscinc.com
+            Password: ChJF7Nch630XMRNEm2NjEUXjZ1R6Lxlx
+            Client-Id: c8888425-fb37-45b4-bef6-39c8d9ac426f
+            Client-Secret: ZzQpHxeLd7yZei31vBsK4ZfcPH406zGM
+
+docker ps | grep airbyte-server
+
+sudo usermod -aG docker postgres
+
+
+dnf -y update
+dnf -y install curl git vim
+
+https://docs.docker.com/engine/install/centos/
+
+dnf -y install dnf-plugins-core
+dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+# install docker engine,This command installs Docker, but it doesn't start Docker. It also creates a docker group, however, it doesn't add any users to the group by default.
+dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+systemctl enable --now docker
+
+docker run hello-world
+
+#After complete install of docker, start to install Airbyte
+
+curl -L https://github.com/airbytehq/abctl/releases/download/v0.30.3/abctl-v0.30.3-linux-amd64.tar.gz -o abctl.tar.gz
+tar -xzf abctl.tar.gz
+mv abctl-v0.30.3-linux-amd64/abctl /usr/bin/abctl
+chmod +x /usr/bin/abctl
+
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+chmod +x ./kind
+mv ./kind /usr/bin/kind
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+mv /pg_backups/kubectl /usr/bin/.
+chmod 755 /usr/bin/kubectl
+
+export KUBECONFIG=/root/.airbyte/abctl/abctl.kubeconfig
+kubectl get namespaces
+kubectl get pods --all-namespaces | grep -i airbyte
+kind get kubeconfig --name airbyte-abctl > /tmp/kind-kubeconfig
+kubectl get pods --all-namespaces | grep server
+kubectl get pods -A | grep -i server
+
+docker exec -it airbyte-abctl-control-plane crictl ps | grep server
+kubectl logs airbyte-abctl-server-84677586df-nbgw8 -n airbyte-abctl --tail=20
+
+ods_domani=# SELECT pg_create_logical_replication_slot('airbyte_huat_slot', 'pgoutput');
+ pg_create_logical_replication_slot
+------------------------------------
+ (airbyte_huat_slot,321F/8C355390)
+(1 row)
+
+create role airbyte with login password 'FpH40Gt0AO7tEFG4cJkfxENu2EKzB6';
+ALTER USER airbyte REPLICATION;
+GRANT CONNECT ON DATABASE ods_domani TO airbyte;
+GRANT CONNECT ON DATABASE test TO airbyte;
+GRANT CONNECT ON DATABASE "*" TO airbyte;
+GRANT USAGE ON SCHEMA public TO airbyte;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO airbyte;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO airbyte;
+GRANT CREATE ON SCHEMA public TO airbyte;
+grant claimsprocess_humana_ro to airbyte;
+
+
+
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+Change docker location
+mkdir /pg_backups/docker
+systemctl stop docker
+systemctl stop docker.socket
+rsync -aHAX /var/lib/docker/ /pg_backups/docker/
+mkdir -p /etc/docker
+
+tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "data-root": "/pg_backups/docker"
+}
+EOF
+
+systemctl daemon-reload
+systemctl restart docker
+docker info | grep "Docker Root Dir"
+
+Then, change kind location, symbolic /tmp to /pg_backups/tmp
+mkdir -p /pg_backups/tmp
+export DOCKER_TMPDIR=/pg_backups/tmp
+umount -l /tmp
+ln -s /pg_backups/tmp /tmp
+
+abctl local instalexport DOCKER_TMPDIR=/pg_backups/tmp
+umount -l /tmp
+ln -s /pg_backups/tmp /tmp
+
+Then, issues
+As of late 2025, Docker Hub limits:
+
+Unauthenticated pulls: 100 pulls per 6 hours per IP.
+Authenticated (free Docker account): 200 pulls per 6 hours.
+Paid plans: Unlimited.
+
+The limit resets every 6 hours (based on when you hit it). Try again later.
+
+docker login
+USING WEB-BASED LOGIN
+Login Succeeded
+
+abctl local install
+
+This is a known behavior with abctl/Kind setups: the host Docker authentication does not automatically propagate into the Kind cluster nodes. The pods inside the cluster attempt unauthenticated pulls, quickly hitting Docker Hub's rate limits (or failing outright).
+
+Try another
+
+abctl local uninstall
+
+abctl local install --no-airbyte
+
+kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+
+abctl local install  # Add --low-resource-mode if your server is limited
+
+abctl images manifest
+
+abctl local install --low-resource-mode
+#Failed with cgroup v2 requirement
+
+Add one line into config
+vi /etc/default/grub
+#systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all
+#Should modify the existing parameter, add the above line like
+GRUB_CMDLINE_LINUX="nofb splash=quiet crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M resume=/dev/mapper/rootvg-swap rd.lvm.lv=rootvg/rootvol rd.lvm.lv=rootvg/swap rhgb quiet systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all"
+
+Then, check whether the VM is using BIOS or UEFI boot
+[ -d /sys/firmware/efi ] && echo "UEFI" || echo "BIOS/Legacy"
+BIOS/Legacy
+
+Then, for BIOS boot
+sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+
+sudo reboot
+
+stat -fc %T /sys/fs/cgroup/
+cgroup2fs
+
+docker info --format '{{.CgroupVersion}}'
+2
+
+abctl local uninstall   # Clean up any partial cluster
+abctl images manifest
+
+# Pre-pull the key images (your docker login ensures authenticated pulls)
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+# Load them into the running Kind cluster
+kind load docker-image airbyte/bootloader:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/worker:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/webapp:2.0.1 --name airbyte-abctl
+kind load docker-image postgres:16-alpine --name airbyte-abctl
+kind load docker-image minio/minio:latest --name airbyte-abctl
+kind load docker-image temporalio/auto-setup:latest --name airbyte-abctl
+
+abctl local credentials
+
+# Then, space is full
+docker image prune -a      # Unused images
+docker container prune     # Stopped containers
+docker volume prune        # Unused volumes
+docker builder prune -a    # Build cache
+
+sudo systemctl stop docker
+sudo systemctl stop docker.socket  # If it exists
+
+mkdir /pg_backups/docker
+mkdir -p /pg_backups/containerd
+
+rsync -aP /var/lib/docker/ /pg_backups/docker/
+rsync -aP /var/lib/containerd/ /pg_backups/containerd/
+
+1 add docker daemon config
+mkdir -p /etc/docker
+vi /etc/docker/daemon.json
+{
+  "data-root": "/pg_backups/docker"
+}
+
+systemctl daemon-reload
+
+2. edit containerd config
+containerd config default > /etc/containerd/config.toml
+edit above file
+vi /etc/containerd/config.toml
+root = '/pg_backups/containerd'
+
+systemctl daemon-reload
+systemctl restart containerd
+systemctl restart docker
+
+
+docker info | grep "Docker Root Dir"
+ Docker Root Dir: /pg_backups/docker
+
+# Pre-pull the key images (your docker login ensures authenticated pulls)
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+cd /pg_backups
+curl -Lo /pg_backups/kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+sudo chmod +x /pg_backups/kind
+mv /pg_backups/kind /usr/local/bin/kind
+kind version
+
+abctl local install --low-resource-mode \
+  --docker-username=fzssnc \
+  --docker-password=1Djgmjxdd \
+  --docker-email=frank.zhou@sscinc.com \
+  --docker-server=https://index.docker.io/v1/
+
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/bootloader:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/worker:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/webapp:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image postgres:16-alpine --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image minio/minio:latest --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image temporalio/auto-setup:latest --name airbyte-abctl
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+kubectl --kubeconfig /root/.airbyte/abctl/abctl.kubeconfig -n airbyte-abctl get events --sort-by='.metadata.creationTimestamp'
+kubectl --kubeconfig /root/.airbyte/abctl/abctl.kubeconfig -n airbyte-abctl logs <bootloader-pod-name> --container bootloader -f
+
+better to wait for the back-off period, and give another try. or upgrade to the paid plan to download the images
+
+After two hours, retry, 
+abctl local install --low-resource-mode   --docker-username=fzssnc   --docker-password=1Djgmjxdd   --docker-email=frank.zhou@sscinc.com   --docker-server=https://index.docker.io/v1/
+
+Succeed
+
+abctl local credentials
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Retrieving your credentials from 'airbyte-auth-secrets'
+  INFO    Credentials:
+            Email: [not set]
+            Password: ChJF7Nch630XMRNEm2NjEUXjZ1R6Lxlx
+            Client-Id: c8888425-fb37-45b4-bef6-39c8d9ac426f
+            Client-Secret: ZzQpHxeLd7yZei31vBsK4ZfcPH406zGM
+
+ ssh -L 8000:localhost:8000 finance-db-01-alma9-olly-drx-kc.ssnc-corp.cloud
+
+[root@finance-db-01-alma9-olly-drx-kc ~]$ abctl local status -v
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Found Docker installation: version 29.1.3
+  DEBUG   failed to export kube config: failed to get cluster internal kubeconfig: command "docker exec --privileged airbyte-abctl-control-plane cat /etc/kubernetes/admin.conf" failed with error: exit status 128
+ SUCCESS  Existing cluster 'airbyte-abctl' found
+  INFO    Found helm chart 'airbyte-abctl'
+            Status: deployed
+            Chart Version: 2.0.19
+            App Version: 2.0.1
+  INFO    Found helm chart 'ingress-nginx'
+            Status: deployed
+            Chart Version: 4.14.1
+            App Version: 1.14.1
+  INFO    Airbyte should be accessible via http://localhost:8000
+
+fzhou@DST-JXK2FKH0CK ~ % sudo systemsetup -setremotelogin on
+Password:
+setremotelogin: remote login is already On.
+
+
+curl -vk https://airbyte-olly-drx-kc.ssnc-corp.cloud
+
+Then, we deploy the loadbalancer http, and it works!
+
+https://http-olly-admin-drx-kc.ssnc-corp.cloud/login?loginRedirect=%2Fsetup
+
+You should use the abctl generated credential
+[root@finance-db-01-alma9-olly-drx-kc ~]$ abctl local credentials
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Retrieving your credentials from 'airbyte-auth-secrets'
+  INFO    Credentials:
+            Email: fzhou@sscinc.com
+            Password: ChJF7Nch630XMRNEm2NjEUXjZ1R6Lxlx
+            Client-Id: c8888425-fb37-45b4-bef6-39c8d9ac426f
+            Client-Secret: ZzQpHxeLd7yZei31vBsK4ZfcPH406zGM
+
+docker ps | grep airbyte-server
+
+sudo usermod -aG docker postgres
+
+
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+Change docker location
+mkdir /pg_backups/docker
+systemctl stop docker
+systemctl stop docker.socket
+rsync -aHAX /var/lib/docker/ /pg_backups/docker/
+mkdir -p /etc/docker
+
+tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "data-root": "/pg_backups/docker"
+}
+EOF
+
+systemctl daemon-reload
+systemctl restart docker
+docker info | grep "Docker Root Dir"
+
+Then, change kind location, symbolic /tmp to /pg_backups/tmp
+mkdir -p /pg_backups/tmp
+export DOCKER_TMPDIR=/pg_backups/tmp
+umount -l /tmp
+ln -s /pg_backups/tmp /tmp
+
+abctl local instalexport DOCKER_TMPDIR=/pg_backups/tmp
+umount -l /tmp
+ln -s /pg_backups/tmp /tmp
+
+Then, issues
+As of late 2025, Docker Hub limits:
+
+Unauthenticated pulls: 100 pulls per 6 hours per IP.
+Authenticated (free Docker account): 200 pulls per 6 hours.
+Paid plans: Unlimited.
+
+The limit resets every 6 hours (based on when you hit it). Try again later.
+
+docker login
+USING WEB-BASED LOGIN
+Login Succeeded
+
+abctl local install
+
+This is a known behavior with abctl/Kind setups: the host Docker authentication does not automatically propagate into the Kind cluster nodes. The pods inside the cluster attempt unauthenticated pulls, quickly hitting Docker Hub's rate limits (or failing outright).
+
+Try another
+
+abctl local uninstall
+
+abctl local install --no-airbyte
+
+kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+
+abctl local install  # Add --low-resource-mode if your server is limited
+
+abctl images manifest
+
+abctl local install --low-resource-mode
+#Failed with cgroup v2 requirement
+
+Add one line into config
+vi /etc/default/grub
+#systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all
+#Should modify the existing parameter, add the above line like
+GRUB_CMDLINE_LINUX="nofb splash=quiet crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M resume=/dev/mapper/rootvg-swap rd.lvm.lv=rootvg/rootvol rd.lvm.lv=rootvg/swap rhgb quiet systemd.unified_cgroup_hierarchy=1 cgroup_no_v1=all"
+
+Then, check whether the VM is using BIOS or UEFI boot
+[ -d /sys/firmware/efi ] && echo "UEFI" || echo "BIOS/Legacy"
+BIOS/Legacy
+
+Then, for BIOS boot
+sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+
+sudo reboot
+
+stat -fc %T /sys/fs/cgroup/
+cgroup2fs
+
+docker info --format '{{.CgroupVersion}}'
+2
+
+abctl local uninstall   # Clean up any partial cluster
+abctl images manifest
+
+# Pre-pull the key images (your docker login ensures authenticated pulls)
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+# Load them into the running Kind cluster
+kind load docker-image airbyte/bootloader:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/worker:2.0.1 --name airbyte-abctl
+kind load docker-image airbyte/webapp:2.0.1 --name airbyte-abctl
+kind load docker-image postgres:16-alpine --name airbyte-abctl
+kind load docker-image minio/minio:latest --name airbyte-abctl
+kind load docker-image temporalio/auto-setup:latest --name airbyte-abctl
+
+abctl local credentials
+
+# Then, space is full
+docker image prune -a      # Unused images
+docker container prune     # Stopped containers
+docker volume prune        # Unused volumes
+docker builder prune -a    # Build cache
+
+sudo systemctl stop docker
+sudo systemctl stop docker.socket  # If it exists
+
+mkdir /pg_backups/docker
+mkdir -p /pg_backups/containerd
+
+rsync -aP /var/lib/docker/ /pg_backups/docker/
+rsync -aP /var/lib/containerd/ /pg_backups/containerd/
+
+1 add docker daemon config
+mkdir -p /etc/docker
+vi /etc/docker/daemon.json
+{
+  "data-root": "/pg_backups/docker"
+}
+
+systemctl daemon-reload
+
+2. edit containerd config
+containerd config default > /etc/containerd/config.toml
+edit above file
+vi /etc/containerd/config.toml
+root = '/pg_backups/containerd'
+
+systemctl daemon-reload
+systemctl restart containerd
+systemctl restart docker
+
+
+docker info | grep "Docker Root Dir"
+ Docker Root Dir: /pg_backups/docker
+
+# Pre-pull the key images (your docker login ensures authenticated pulls)
+docker pull airbyte/bootloader:2.0.1
+docker pull airbyte/server:2.0.1
+docker pull airbyte/workload-launcher:2.0.1
+docker pull airbyte/connector-builder-server:2.0.1
+docker pull airbyte/cron:2.0.1
+docker pull airbyte/worker:2.0.1
+docker pull airbyte/webapp:2.0.1  # If needed for UI
+docker pull postgres:16-alpine
+docker pull minio/minio:latest
+docker pull temporalio/auto-setup:latest
+
+cd /pg_backups
+curl -Lo /pg_backups/kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+sudo chmod +x /pg_backups/kind
+mv /pg_backups/kind /usr/local/bin/kind
+kind version
+
+abctl local install --low-resource-mode \
+  --docker-username=fzssnc \
+  --docker-password=1Djgmjxdd \
+  --docker-email=frank.zhou@sscinc.com \
+  --docker-server=https://index.docker.io/v1/
+
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/bootloader:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/server:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/workload-launcher:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/connector-builder-server:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/cron:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/worker:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image airbyte/webapp:2.0.1 --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image postgres:16-alpine --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image minio/minio:latest --name airbyte-abctl
+TMPDIR=/pg_backups/tmp kind load docker-image temporalio/auto-setup:latest --name airbyte-abctl
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+kubectl --kubeconfig /root/.airbyte/abctl/abctl.kubeconfig -n airbyte-abctl get events --sort-by='.metadata.creationTimestamp'
+kubectl --kubeconfig /root/.airbyte/abctl/abctl.kubeconfig -n airbyte-abctl logs <bootloader-pod-name> --container bootloader -f
+
+better to wait for the back-off period, and give another try. or upgrade to the paid plan to download the images
+
+After two hours, retry, 
+abctl local install --low-resource-mode   --docker-username=fzssnc   --docker-password=1Djgmjxdd   --docker-email=frank.zhou@sscinc.com   --docker-server=https://index.docker.io/v1/
+
+Succeed
+
+abctl local credentials
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Retrieving your credentials from 'airbyte-auth-secrets'
+  INFO    Credentials:
+            Email: [not set]
+            Password: ChJF7Nch630XMRNEm2NjEUXjZ1R6Lxlx
+            Client-Id: c8888425-fb37-45b4-bef6-39c8d9ac426f
+            Client-Secret: ZzQpHxeLd7yZei31vBsK4ZfcPH406zGM
+
+ ssh -L 8000:localhost:8000 finance-db-01-alma9-olly-drx-kc.ssnc-corp.cloud
+
+[root@finance-db-01-alma9-olly-drx-kc ~]$ abctl local status -v
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Found Docker installation: version 29.1.3
+  DEBUG   failed to export kube config: failed to get cluster internal kubeconfig: command "docker exec --privileged airbyte-abctl-control-plane cat /etc/kubernetes/admin.conf" failed with error: exit status 128
+ SUCCESS  Existing cluster 'airbyte-abctl' found
+  INFO    Found helm chart 'airbyte-abctl'
+            Status: deployed
+            Chart Version: 2.0.19
+            App Version: 2.0.1
+  INFO    Found helm chart 'ingress-nginx'
+            Status: deployed
+            Chart Version: 4.14.1
+            App Version: 1.14.1
+  INFO    Airbyte should be accessible via http://localhost:8000
+
+fzhou@DST-JXK2FKH0CK ~ % sudo systemsetup -setremotelogin on
+Password:
+setremotelogin: remote login is already On.
+
+
+curl -vk https://airbyte-olly-drx-kc.ssnc-corp.cloud
+
+Then, we deploy the loadbalancer http, and it works!
+
+https://http-olly-admin-drx-kc.ssnc-corp.cloud/login?loginRedirect=%2Fsetup
+
+You should use the abctl generated credential
+[root@finance-db-01-alma9-olly-drx-kc ~]$ abctl local credentials
+  INFO    Using Kubernetes provider:
+            Provider: kind
+            Kubeconfig: /root/.airbyte/abctl/abctl.kubeconfig
+            Context: kind-airbyte-abctl
+ SUCCESS  Retrieving your credentials from 'airbyte-auth-secrets'
+  INFO    Credentials:
+            Email: fzhou@sscinc.com
+            Password: ChJF7Nch630XMRNEm2NjEUXjZ1R6Lxlx
+            Client-Id: c8888425-fb37-45b4-bef6-39c8d9ac426f
+            Client-Secret: ZzQpHxeLd7yZei31vBsK4ZfcPH406zGM
+
+docker ps | grep airbyte-server
+
+sudo usermod -aG docker postgres
+
+
+kubectl edit deployment airbyte-abctl-server -n airbyte-abctl
+
+Add server size config
+- name: SERVER_MAX_REQUEST_SIZE
+  value: "300MB"
+
+kubectl rollout restart deployment airbyte-abctl-server -n airbyte-abctl
+
+1. Source: Limit to 1 schema (public)
+2. Connection: Select 20-50 tables initially
+3. Scale up gradually via "Edit connection" → add more streams
+4. Use CDC after initial load (skip full snapshots)
+
+Connector: Scans 2000+ tables → 50MB+ JSON catalog
+Airbyte Server: Default 1-10MB limit → 413 Payload Too Large
+UI: "Discover catalog failed... exit code 0" (connector succeeded)
+
+kubectl edit deployment airbyte-abctl-server -n airbyte-abctl
+
+kubectl get deployment airbyte-abctl-server -n airbyte-abctl -o yaml | grep -A 5 "JAVA_OPTS"
+        - name: JAVA_OPTS
+          value: -Djetty.http.maxRequestSize=1073741824 -Djetty.http.maxFormContentSize=104857600
+            -Djetty.http.maxRequestHeaderSize=1048576
+        image: airbyte/server:v2.0.0
+        imagePullPolicy: IfNotPresent
+        name: airbyte-server
+
+kubectl rollout restart deployment airbyte-abctl-server -n airbyte-abctl
+
+# Get the new pod name
+POD_NAME=$(kubectl get pods -n airbyte-abctl | grep airbyte-abctl-server | awk '{print $1}')
+
+# Check env vars in the pod
+kubectl exec -it $POD_NAME -n airbyte-abctl -- printenv | grep JAVA_OPTS
+
+
+export KUBECONFIG=/root/.airbyte/abctl/abctl.kubeconfig
+kubectl edit deployment airbyte-abctl-server -n airbyte-abctl
+kubectl get deployment airbyte-abctl-server -n airbyte-abctl -o yaml > airbyte-server-deployment.yaml
+
+kubectl get configmap airbyte-abctl-airbyte-env -n airbyte-abctl -o yaml > configmap.yaml
+kubectl patch configmap airbyte-abctl-airbyte-env -n airbyte-abctl --type merge -p '{"data": {
+  "SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT": "4Gi",
+  "SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST": "3Gi",
+  "SIDECAR_MAIN_CONTAINER_CPU_LIMIT": "2",
+  "SIDECAR_MAIN_CONTAINER_CPU_REQUEST": "1",
+  "SERVER_MAX_REQUEST_SIZE": "1073741824"
+}}'
+
+kubectl rollout restart deployment/airbyte-abctl-server -n airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl | grep worker
+airbyte-abctl-worker-6f9d646655-8gp2k                     1/1     Running       1 (14h ago)   23h
+
+
+The kubectl edit deployment command does NOT edit a local file—it edits the live Kubernetes API object for your airbyte-abctl-server deployment (stored in the Kubernetes cluster’s etcd database, not on your AlmaLinux server’s filesystem)
+
+change the primary side max_slot_wal_keep_size = -1;
+
+Change the destination side: synchronous_commit = off;
+
+
+# If you use Helm
+helm upgrade airbyte airbyte/airbyte --set worker.env.WORKER_MAX_CONCURRENCY=20
+
+# If you use kubectl directly
+kubectl edit deployment airbyte-worker
+
+- name: WORKER_MAX_CONCURRENCY
+  value: "20"
+
+In the airbyte-worker deployment, update the Resource Limits:
+
+kubectl edit deployment airbyte-worker -n airbyte
+
+resources:
+  limits:
+    cpu: "10"       # Use half of your 20 CPUs
+    memory: "64Gi"  # Give it 64GB of your 240GB
+  requests:
+    cpu: "4"
+    memory: "32Gi"
+
+Then, you must set the Java Heap to match, or Java will still only use its default (usually 1GB):
+
+kubectl edit deployment airbyte-worker -n airbyte
+
+env:
+  - name: JOB_MAIN_CONTAINER_MEMORY_REQUEST
+    value: "32Gi"
+  - name: JOB_MAIN_CONTAINER_MEMORY_LIMIT
+    value: "64Gi"
+
+kubectl get pods -n airbyte -w
+
+kubectl describe deployment airbyte-worker -n airbyte

@@ -1,0 +1,5 @@
+SELECT nspname AS schema, relname
+FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE c.relfilenode = 926954442;
+
+SET zero_damaged_pages = on;

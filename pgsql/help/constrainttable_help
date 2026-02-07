@@ -1,0 +1,9 @@
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pc.conname AS constraint_name,
+    pc.contype AS constraint_type
+FROM pg_constraint pc
+JOIN pg_class c ON pc.conrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE pc.conname = 'dur_safety_block_edit_id_pkey';

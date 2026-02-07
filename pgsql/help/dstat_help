@@ -1,0 +1,19 @@
+yum install dstat -y
+dstat -d --disk-util --top-io
+
+dstat -d -D dm-11,dm-15,sdb,sdj,sdi 2
+
+dnf install sysstat -y
+systemctl enable --now sysstat
+By default, sysstat collects data every 10 minutes. If you want ​​more granular data (e.g., every 1–5 minutes)​​, you’ll need to edit /etc/sysconfig/sysstator /etc/default/sysstatand restart the service.
+
+sar -d 2 5
+
+sar -d -f /var/log/sa/saXX
+
+ls -l /var/log/sa/
+sar -d -f /var/log/sa/sa10 2 5
+
+lsblk -o NAME,MOUNTPOINT,FSTYPE,SIZE,UUID
+df -hT
+

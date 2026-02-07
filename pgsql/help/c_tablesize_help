@@ -1,0 +1,86 @@
+-- Watch partition _02 specifically
+-- ### You have to set search path!!
+
+-- TOP 10 largest partitions
+SELECT
+    table_name::text AS table_name,
+    pg_size_pretty(SUM(shard_size)) AS total_size,
+    COUNT(*) AS shards
+FROM citus_shards
+WHERE table_name::text LIKE 'claim_core_claimid_%'
+GROUP BY table_name
+ORDER BY SUM(shard_size) DESC
+LIMIT 10;
+
+SELECT
+    table_name::text AS table_name,
+    shardid,
+    shard_name,
+    pg_size_pretty(shard_size) AS shard_size,
+    nodename AS worker_node
+FROM citus_shards
+WHERE table_name::text LIKE 'claim_core_claimid_%'
+ORDER BY SUM(shard_size) OVER (PARTITION BY table_name) DESC,
+         table_name,
+         shardid
+limit 20;
+
+SELECT
+    table_name::text AS table_name,
+    shard_name,
+    pg_size_pretty(shard_size) AS shard_size,
+    nodename
+FROM citus_shards
+WHERE table_name::text = 'claim_core_claimid_02'
+ORDER BY shardid;
+
+
+SELECT * FROM pg_dist_partition WHERE logicalrelid::text LIKE '%claim_core_claimid%';
+
+pg_dist_partition
+
+SELECT
+    shardid,
+    logicalrelid,
+    shardminvalue, shardmaxvalue
+FROM pg_dist_shard
+WHERE logicalrelid::text LIKE '%claim_core_claimid%';
+
+SELECT logicalrelid FROM pg_dist_partition
+WHERE logicalrelid::text LIKE '%claim_core_claimid%';
+
+SELECT shardid FROM pg_dist_shard 
+WHERE logicalrelid = 'claim_core_claimid_02'::regclass;
+
+SELECT s.shardid, c.relname
+FROM pg_dist_shard s
+JOIN pg_class c ON c.relname LIKE format('%s_%%', s.logicalrelid)
+WHERE s.logicalrelid = 'claim_core_claimid_02'::regclass;
+
+SELECT pg_size_pretty(pg_total_relation_size('claim_core_claimid_97'::regclass));
+ pg_size_pretty
+----------------
+ 16 kB
+(1 row)
+
+SELECT logicalrelid, COUNT(*) AS total_rows
+FROM pg_dist_shard
+WHERE logicalrelid = 'claim_core_claimid_02'::regclass
+GROUP BY logicalrelid;
+
+SELECT * FROM citus_shards 
+WHERE table_name::text LIKE '%claim_core_claimid_02%';
+
+SELECT tablename FROM pg_tables WHERE tablename LIKE 'claim_core_claimid_02%';
+
+SELECT 
+    schemaname, 
+    tablename, 
+    pg_size_pretty(pg_total_relation_size(tablename::regclass))
+FROM pg_tables 
+WHERE tablename LIKE 'claim_core_claimid_02%'
+ORDER BY pg_total_relation_size(tablename::regclass) DESC;
+
+
+
+

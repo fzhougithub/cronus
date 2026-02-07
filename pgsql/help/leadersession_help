@@ -1,0 +1,11 @@
+SELECT
+    query,
+    COUNT(*) AS sessions_running,
+    array_agg(pid) AS pids
+FROM pg_stat_activity
+WHERE state = 'active'
+GROUP BY query
+HAVING COUNT(*) > 1
+ORDER BY sessions_running DESC;
+
+

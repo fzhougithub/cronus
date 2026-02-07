@@ -1,0 +1,9 @@
+use rundeck
+node ods.*
+df -h /
+If something wrong, go to certain host
+
+sudo dnf -y remove --oldinstallonly --setopt installonly_limit=2 kernel
+
+
+domanirx-devopshuat-oidc.config

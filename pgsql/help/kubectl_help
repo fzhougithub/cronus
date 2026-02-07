@@ -1,0 +1,42 @@
+fzhou@DST-JXK2FKH0CK .kube % kubectl get prometheusrule -A
+NAMESPACE    NAME                                                         AGE
+monitoring   kube-prometheus-stack-alertmanager.rules                     2y68d
+monitoring   kube-prometheus-stack-config-reloaders                       2y68d
+monitoring   kube-prometheus-stack-etcd                                   2y68d
+monitoring   kube-prometheus-stack-general.rules                          2y68d
+monitoring   kube-prometheus-stack-k8s.rules                              2y68d
+monitoring   kube-prometheus-stack-kube-apiserver-availability.rules      2y68d
+monitoring   kube-prometheus-stack-kube-apiserver-burnrate.rules          2y68d
+monitoring   kube-prometheus-stack-kube-apiserver-histogram.rules         2y68d
+monitoring   kube-prometheus-stack-kube-apiserver-slos                    2y68d
+monitoring   kube-prometheus-stack-kube-prometheus-general.rules          2y68d
+monitoring   kube-prometheus-stack-kube-prometheus-node-recording.rules   2y68d
+monitoring   kube-prometheus-stack-kube-scheduler.rules                   2y68d
+monitoring   kube-prometheus-stack-kube-state-metrics                     2y68d
+monitoring   kube-prometheus-stack-kubelet.rules                          2y68d
+monitoring   kube-prometheus-stack-kubernetes-apps                        2y68d
+monitoring   kube-prometheus-stack-kubernetes-resources                   2y68d
+monitoring   kube-prometheus-stack-kubernetes-storage                     2y68d
+monitoring   kube-prometheus-stack-kubernetes-system                      2y68d
+monitoring   kube-prometheus-stack-kubernetes-system-apiserver            2y68d
+monitoring   kube-prometheus-stack-kubernetes-system-controller-manager   2y68d
+monitoring   kube-prometheus-stack-kubernetes-system-kube-proxy           2y68d
+monitoring   kube-prometheus-stack-kubernetes-system-kubelet              2y68d
+monitoring   kube-prometheus-stack-kubernetes-system-scheduler            2y68d
+monitoring   kube-prometheus-stack-node-exporter                          2y68d
+monitoring   kube-prometheus-stack-node-exporter.rules                    2y68d
+monitoring   kube-prometheus-stack-node-network                           2y68d
+monitoring   kube-prometheus-stack-node.rules                             2y68d
+monitoring   kube-prometheus-stack-prometheus                             2y68d
+monitoring   kube-prometheus-stack-prometheus-operator                    2y68d
+
+
+kubectl get prometheusrule -n monitoring
+
+kubectl describe prometheusrule <rule-name> -n monitoring
+
+
+kubectl edit prometheusrule <rule-name> -n monitoring
+
+
+kubectl delete prometheusrule <rule-name> -n monitoring

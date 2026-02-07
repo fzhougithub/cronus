@@ -1,0 +1,6 @@
+tar cjvf for_fail_transfer_wal.tar.bz2 /pg_backups/for_fail_transfer_wal
+tar xjvf for_fail_transfer_wal.tar.bz2
+
+to check healthy, if below command output nothing, it is OK. 
+tar -tjf for_fail_transfer_wal.tar.bz2 > /dev/null
+

@@ -1,0 +1,165 @@
+set citus.shard_replication_factor=2;
+
+alter database set citus.shard_replication_factor = 2;
+-- for existing table
+SELECT replicate_table_shards('sensor_ranges.items');
+
+
+ods_domani=# SELECT
+    p.shardid,
+    p.placementid,
+    p.shardstate,
+    p.groupid,
+    n.nodename,
+    n.nodeport
+FROM
+    pg_dist_placement p
+JOIN
+    pg_dist_node n ON p.groupid = n.nodeid
+WHERE
+    p.shardid IN (173086, 173087) -- Checking the first two Shard IDs
+ORDER BY p.shardid, p.groupid;
+ shardid | placementid | shardstate | groupid |                          nodename                           | nodeport
+---------+-------------+------------+---------+-------------------------------------------------------------+----------
+  173086 |       71085 |          1 |       1 | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  173086 |       71086 |          1 |       2 | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  173087 |       71087 |          1 |       2 | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  173087 |       71088 |          1 |       3 | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+(4 rows)
+
+citus_recover_shard_placements()
+
+citus_recover_shard_placements(group_id)
+
+In above example, if node 04 offline and online again, since the 03 has the right data
+SELECT citus_recover_shard_placements(3);
+
+SELECT
+    p.shardid,
+    p.placementid,
+    p.shardstate,
+    n.nodename,
+    n.nodeport,
+    p.groupid
+FROM
+    pg_dist_placement p
+JOIN
+    pg_dist_node n ON p.groupid = n.nodeid
+WHERE
+    p.shardstate != 1  -- Find all placements that are NOT FINALIZED (i.e., unhealthy or recovering)
+ORDER BY
+    p.shardstate, p.shardid;
+
+shardstate Value (Non-1),Status,Action Needed
+0 (INACTIVE),"The placement is present in metadata but is currently down, inaccessible, or stale (e.g., if a worker node went offline).",You need to run citus_recover_shard_placements(group_id) on the worker's group ID once the node is back online.
+2 (DELETING),"The placement is scheduled to be removed (e.g., if you are scaling down or manually dropping a placement).",Wait for Citus to complete the operation.
+3 (PREPARING),"The placement is currently being created and synced (e.g., if you just ran replicate_table_shards()).",Wait for the process to finish and turn into state 1.
+
+
+If the node 04 offline, should
+1. detect or catch the error like
+
+2. mark the node offline
+
+SELECT
+    nodeid AS group_id,
+    nodename,
+    nodeport
+FROM
+    pg_dist_node
+WHERE
+    nodename LIKE '%db-04%'; -- Filter by the name of your worker 04
+
+ group_id |                          nodename                           | nodeport
+----------+-------------------------------------------------------------+----------
+        3 | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+
+ods_domani=# SELECT nodename, nodeport, isactive
+FROM pg_dist_node
+WHERE groupid = 3;
+                          nodename                           | nodeport | isactive
+-------------------------------------------------------------+----------+----------
+ datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 | t
+(1 row)
+
+UPDATE pg_dist_node SET isactive = false WHERE groupid = 3;
+
+ods_domani=# insert into items values(12,'after 04 offline');
+INSERT 0 1
+
+Then, after we bring up the node 04 online
+
+UPDATE pg_dist_node
+SET isactive = true
+WHERE groupid = 3;
+
+SELECT nodename, isactive
+FROM pg_dist_node
+WHERE groupid = 3;
+-- 'isactive' should now be 't' (true)
+
+
+-- Connect to the coordinator node
+-- This function finds the missing/stale data on groupid 3 and copies 
+-- the correct data from the remaining healthy replicas to Node 04.
+SELECT citus_recover_shard_placements(3);
+
+-- be very careful for this command, need to detail the codition to void the problem!!!
+DELETE FROM pg_dist_placement
+WHERE groupid = 3;
+
+SELECT replicate_table_shards('sensor_ranges.items', 2);
+NOTICE:  Copying shard 173087 from datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud:5432 to datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud:5432 ...
+NOTICE:  Copying shard 173088 from datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud:5432 to datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud:5432 ...
+
+SELECT shardid
+FROM pg_dist_shard
+WHERE logicalrelid = 'sensor_ranges.items'::regclass;
+
+-- DANGER: Run this only on the coordinator.
+DELETE FROM pg_dist_placement
+WHERE
+    groupid = 3
+    AND shardid IN (
+        SELECT shardid FROM pg_dist_shard WHERE logicalrelid = 'sensor_ranges.items'::regclass
+    );
+
+	
+Another sulution
+
+SELECT p.shardid, dn_bad.nodename AS target_node, dn_good.nodename AS source_node
+FROM pg_dist_placement p
+JOIN pg_dist_node dn_bad ON p.groupid = dn_bad.nodeid -- Node 04 (Group 3)
+JOIN pg_dist_placement p_good ON p.shardid = p_good.shardid
+JOIN pg_dist_node dn_good ON p_good.groupid = dn_good.nodeid -- A healthy node (Group 1 or 2)
+WHERE p.groupid = 3 AND p.shardstate != 1; -- Filter for bad state on Node 04
+
+SELECT master_copy_shard_placement(
+    [shardid],
+    '[source_node_name]',
+    5432,
+    '[target_node_name]', -- Which is Node 04
+    5432
+);
+
+ods_domani=# SELECT replicate_table_shards('claimsprocess_humana.claim_extension_1',2);
+NOTICE:  Copying shard 170963 from datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud:5432 to datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud:5432 ...
+ERROR:  Table 'claim_extension_1' is streaming replicated. Shards of streaming replicated tables cannot be copied
+CONTEXT:  while executing command on localhost:5432
+
+That table is streaming replicated, the right way to fix it like
+
+SELECT
+    p.shardid,
+    p.groupid,
+    c.relname
+FROM
+    pg_dist_placement p
+JOIN
+    pg_dist_shard ps ON p.shardid = ps.shardid
+JOIN
+    pg_class c ON ps.logicalrelid = c.oid
+WHERE
+    c.relname = 'claim_extension_1' AND p.groupid = 3;
+
+

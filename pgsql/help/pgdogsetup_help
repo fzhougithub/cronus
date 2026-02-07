@@ -1,0 +1,175 @@
+wget https://github.com/pgdogdev/pgdog/archive/refs/tags/v0.1.17.tar.gz
+tar xvf v0.1.17.tar.gz
+
+Install on Macbook
+
+mkdir ~/pgdog-lab
+cd ~/pgdog-lab
+
+vi docker-compose.yml
+version: "3.9"
+
+services:
+
+  # ---------- PostgreSQL Instances ----------
+  pg1:
+    image: postgres:17
+    container_name: pg1
+    environment:
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg1_data:/var/lib/postgresql/data
+
+  pg2:
+    image: postgres:17
+    container_name: pg2
+    environment:
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg2_data:/var/lib/postgresql/data
+
+  pg3:
+    image: postgres:17
+    container_name: pg3
+    environment:
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5435:5432"
+    volumes:
+      - pg3_data:/var/lib/postgresql/data
+
+  # ---------- pgDog Proxy ----------
+  pgdog:
+    image: ghcr.io/cybertec-postgresql/pgdog:latest
+    container_name: pgdog
+    depends_on:
+      - pg1
+      - pg2
+      - pg3
+    ports:
+      - "6543:6543"   # pgDog listener port
+    volumes:
+      - ./pgdog-config.yml:/etc/pgdog/pgdog.yml:ro
+
+volumes:
+  pg1_data:
+  pg2_data:
+  pg3_data:
+
+
+vi pgdog-config.yml
+listen:
+  host: "0.0.0.0"
+  port: 6543
+
+targets:
+  pg1:
+    conn_string: "host=pg1 port=5432 user=postgres password=pass"
+  pg2:
+    conn_string: "host=pg2 port=5432 user=postgres password=pass"
+  pg3:
+    conn_string: "host=pg3 port=5432 user=postgres password=pass"
+
+routing:
+  # Example: Route schema1 → pg1
+  - match:
+      schema: "schema1"
+    target: "pg1"
+
+  # Route schema2 → pg2
+  - match:
+      schema: "schema2"
+    target: "pg2"
+
+  # Default: any other schema → pg3
+  - target: "pg3"
+
+
+start everything
+
+docker pull cybertecpostgresql/pgdog
+
+docker login ghcr.io
+fzhougithub
+github_pat_11AB....
+
+docker-compose up -d
+
+since the image is not anywhere, we need to build by ourselves
+
+git clone https://github.com/pgdogdev/pgdog.git
+
+cd pgdog
+
+vi Dockerfile
+# ---- Builder ----
+FROM rustlang/rust:nightly AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
+
+WORKDIR /build
+COPY . .
+
+# Use nightly toolchain to build pgdog
+RUN rustup default nightly
+RUN cargo +nightly build --release
+
+# ---- Runtime image ----
+FROM debian:12-slim
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/target/release/pgdog /usr/local/bin/pgdog
+RUN mkdir -p /etc/pgdog
+
+CMD ["pgdog", "/etc/pgdog/pgdog.yml"]
+
+---------------------------
+
+docker build --platform linux/amd64 -t pgdog:local .
+
+Give up, too many errors, AI does not know how to go ahead
+
+changed to finance olly
+
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y clang llvm llvm-devel llvm-static llvm-libs openssl-devel pkgconf-pkg-config git curl
+
+# install rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+rustup install nightly
+rustup default nightly
+
+cd /pg_backups
+mkdir work
+cd work
+git clone https://github.com/pgdogdev/pgdog.git
+cd pgdog
+
+export RUSTFLAGS="-C linker=clang"
+cargo +nightly build --release
+
+or 
+dnf install -y mold
+cargo +nightly build --release
+
+The above build will keep the output in 
+pgdog/target/release/
+
+key files are
+pgdog/target/release/pgdog         <-- main pgDog binary
+pgdog/target/release/pgdog-plugin  <-- plugin binary (if built)
+
+tar cvzf pgdog-release.tar.gz *.so demo pgdog examples
+In production, just extract it to certain directory is OK!!
+
+
+
+
+

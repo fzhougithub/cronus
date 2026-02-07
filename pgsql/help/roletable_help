@@ -1,0 +1,74 @@
+0. Best
+
+-- 1. What can the role actually do right now?
+SELECT privilege_type 
+FROM information_schema.role_table_grants 
+WHERE grantee = 'myrole' 
+  AND table_schema = 'myschema' 
+  AND table_name = 'mytable';
+
+-- 2. Is it allowed to SELECT?
+SELECT has_table_privilege('myrole', 'myschema.mytable', 'SELECT');
+
+
+
+SELECT 
+    grantor, 
+    grantee, 
+    table_schema, 
+    table_name, 
+    privilege_type,
+    is_grantable,
+    with_hierarchy
+FROM information_schema.table_privileges
+WHERE table_schema = 'pharmacy'
+  AND table_name   = 'pharmacy_additional_details'
+  AND grantee      = 'pharmacy_rw'          -- or in ('myrole','public')
+ORDER BY privilege_type;
+
+SELECT 
+    def.defaclobjtype::text AS object_type,
+    n.nspname AS schema,
+    r.rolname AS defaclrole,
+    pg_catalog.pg_get_userbyid(def.defaclrole) AS grantor,
+    def.defaclacl AS default_privileges
+FROM pg_default_acl def
+JOIN pg_namespace n ON n.oid = def.defaclnamespace
+JOIN pg_roles r     ON r.oid = def.defaclrole
+WHERE n.nspname = 'myschema'
+  AND def.defaclobjtype = 'r'          -- 'r' = tables
+  AND pg_catalog.pg_get_userbyid(def.defaclrole) = 'myrole';  -- or the role that set it
+
+-- Does the role own the table?
+SELECT table_schema, table_name, tableowner
+FROM information_schema.tables
+WHERE table_schema = 'myschema'
+  AND table_name   = 'mytable'
+  AND tableowner   = 'myrole';
+
+-- Does the role have USAGE on the schema? (required for anything)
+SELECT has_schema_privilege('myrole', 'myschema', 'USAGE');
+
+-- Is the role a member of the table owner?
+SELECT 
+    r.rolname AS role,
+    m.rolname AS member_of
+FROM pg_roles r
+JOIN pg_auth_members am ON am.member = r.oid
+JOIN pg_roles m ON m.oid = am.roleid
+WHERE r.rolname = 'myrole';
+
+SELECT 
+    table_schema,
+    table_name,
+    privilege_type
+FROM information_schema.role_table_grants
+WHERE grantee = 'myrole'
+  AND table_schema = 'myschema'
+  AND table_name   = 'mytable'
+ORDER BY table_name, privilege_type;
+
+SELECT has_table_privilege('myrole', 'myschema.mytable', 'SELECT');   -- true/false
+SELECT has_table_privilege('myrole', 'myschema.mytable', 'INSERT');  -- etc.
+
+

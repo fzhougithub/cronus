@@ -1,0 +1,8 @@
+diff -u -B \-I '^--' \-I '^\\' claimsprocess_humana.sql ods_claimsprocess_humana.sql > schema_diff_final.txt
+
+-u	Readable +/- format for schema changes.
+-B	Removes empty line noise.
+\-I '^--'	Removes comment noise (pg_dump descriptions).
+\-I '^\\'	Removes psql meta-command noise (non-SQL lines).
+
+

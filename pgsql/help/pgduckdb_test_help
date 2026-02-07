@@ -1,0 +1,69 @@
+SET duckdb.force_execution = true;
+
+SET duckdb.threads = 8;           -- or
+SET duckdb.worker_threads = 8;
+
+DROP TABLE IF EXISTS fact_big CASCADE;
+
+CREATE TABLE fact_big (
+    id        BIGINT            NOT NULL,
+    low1      SMALLINT          NOT NULL,  -- 4 distinct values
+    low2      SMALLINT          NOT NULL,  -- 2 distinct values
+    ts        TIMESTAMPTZ       NOT NULL,
+    measure   INTEGER           NOT NULL
+);
+
+-- (a) Create the heap as a CTAS for speed
+CREATE TABLE fact_big_tmp
+WITH (fillfactor = 100) AS
+SELECT i::BIGINT                 AS id,
+       (i % 4)::SMALLINT         AS low1,
+       (i % 2)::SMALLINT         AS low2,
+       -- simple, cheap timestamp generation:
+       (TIMESTAMPTZ '2024-01-01' + (i % 365) * INTERVAL '1 day') AS ts,
+       (i % 1000)::INT           AS measure
+FROM generate_series(1, 100000000) AS gs(i);
+
+-- (b) Swap into the final table name
+ALTER TABLE fact_big RENAME TO fact_big_old;
+ALTER TABLE fact_big_tmp RENAME TO fact_big;
+DROP TABLE fact_big_old;
+
+-- (c) Build PK concurrently to avoid a long exclusive lock
+--     (CREATE UNIQUE INDEX CONCURRENTLY is the safe pattern)
+CREATE UNIQUE INDEX CONCURRENTLY fact_big_id_uidx ON fact_big(id);
+ALTER TABLE fact_big ADD CONSTRAINT fact_big_pkey PRIMARY KEY USING INDEX fact_big_id_uidx;
+
+-- (d) Stats for the planner
+ANALYZE fact_big;
+
+
+
+DO $$
+DECLARE
+  batch   BIGINT := 1000000;           -- 1M per batch
+  max_id  BIGINT := 100000000;         -- 100M total
+  start_i BIGINT := 1;
+  end_i   BIGINT;
+BEGIN
+  WHILE start_i <= max_id LOOP
+    end_i := LEAST(start_i + batch - 1, max_id);
+    INSERT INTO fact_big (id, low1, low2, ts, measure)
+    SELECT i::BIGINT,
+           (i % 4)::SMALLINT,
+           (i % 2)::SMALLINT,
+           (TIMESTAMPTZ '2024-01-01' + (i % 365) * INTERVAL '1 day'),
+           (i % 1000)::INT
+    FROM generate_series(start_i, end_i) AS gs(i);
+
+    RAISE NOTICE 'Inserted up to %', end_i;
+    start_i := end_i + 1;
+  END LOOP;
+END$$;
+
+-- Then add the PK:
+CREATE UNIQUE INDEX CONCURRENTLY fact_big_id_uidx ON fact_big(id);
+ALTER TABLE fact_big ADD CONSTRAINT fact_big_pkey PRIMARY KEY USING INDEX fact_big_id_uidx;
+ANALYZE fact_big;
+
+

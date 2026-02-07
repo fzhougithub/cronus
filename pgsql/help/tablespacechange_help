@@ -1,0 +1,24 @@
+SELECT 
+  'ALTER TABLE ' || quote_ident(n.nspname) || '.' || quote_ident(c.relname) || 
+  ' SET TABLESPACE ' || quote_ident(ts.spcname) || ';' AS alter_table_stmt
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_tablespace ts ON c.reltablespace = ts.oid
+WHERE n.nspname = 'claimsprocess_humana'  -- your schema
+  AND c.relkind = 'r'                      -- ordinary tables only
+  AND c.reltablespace != 0                 -- exclude pg_default tables
+ORDER BY n.nspname, c.relname;
+
+
+SELECT 
+  'ALTER INDEX ' || quote_ident(n.nspname) || '.' || quote_ident(c.relname) || 
+  ' SET TABLESPACE ' || quote_ident(ts.spcname) || ';' AS alter_index_stmt
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_tablespace ts ON c.reltablespace = ts.oid
+JOIN pg_index i ON i.indexrelid = c.oid
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'i'                      -- indexes only
+  AND c.reltablespace != 0                 -- exclude pg_default
+ORDER BY n.nspname, c.relname;
+

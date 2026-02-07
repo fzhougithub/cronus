@@ -1,0 +1,37 @@
+SELECT
+    n.nspname as schema_name,
+    c.relname as table_name,
+    con.conname as constraint_name
+FROM pg_constraint con
+JOIN pg_class c ON con.conrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE con.conname = 'domanirx_application_pkey';
+
+ schema_name |      table_name      |      constraint_name
+-------------+----------------------+---------------------------
+ landingpage | domanirx_application | domanirx_application_pkey
+
+SELECT conrelid::regclass as table_name
+FROM pg_constraint 
+WHERE conname = 'domanirx_application_pkey';
+
+
+
+ods_domani=# SELECT
+ods_domani-#     n.nspname AS schema_name,
+ods_domani-#     c.relname AS table_name,
+ods_domani-#     a.attname AS column_name
+ods_domani-# FROM pg_index i
+ods_domani-# JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+ods_domani-# JOIN pg_class c ON c.oid = i.indrelid
+ods_domani-# JOIN pg_namespace n ON n.oid = c.relnamespace
+ods_domani-# WHERE i.indisprimary
+ods_domani-#   AND n.nspname = 'test1'
+ods_domani-#   AND c.relname = 't_p';
+ schema_name | table_name | column_name
+-------------+------------+-------------
+ test1       | t_p        | customer_id
+ test1       | t_p        | claim_id
+(2 rows)
+
+

@@ -1,0 +1,3 @@
+du -hxd1 / | sort -rh
+
+

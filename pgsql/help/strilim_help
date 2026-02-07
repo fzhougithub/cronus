@@ -1,0 +1,5 @@
+dnf install java-11-openjdk git -y
+
+
+
+

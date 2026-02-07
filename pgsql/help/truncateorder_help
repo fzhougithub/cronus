@@ -1,0 +1,46 @@
+WITH RECURSIVE fk_tree AS (
+    SELECT
+        c.oid AS table_oid,
+        n.nspname AS schema_name,
+        c.relname AS table_name,
+        NULL::text AS parent_table
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind = 'r' AND c.relname IN (
+        -- put your 100 table names here
+        'table_a', 'table_b', 'table_c'
+    )
+    UNION ALL
+    SELECT
+        child.oid,
+        child_ns.nspname,
+        child.relname,
+        parent.relname
+    FROM pg_constraint con
+    JOIN pg_class parent ON parent.oid = con.confrelid
+    JOIN pg_class child ON child.oid = con.conrelid
+    JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
+    JOIN fk_tree ft ON ft.table_oid = parent.oid
+    WHERE con.contype = 'f'
+)
+SELECT DISTINCT
+    'TRUNCATE TABLE ' || schema_name || '.' || table_name || ' CASCADE;' AS truncate_stmt
+FROM fk_tree
+ORDER BY parent_table NULLS FIRST;
+
+
+
+SELECT
+    child_ns.nspname AS child_schema,
+    child.relname AS child_table,
+    parent_ns.nspname AS parent_schema,
+    parent.relname AS parent_table
+FROM pg_depend d
+JOIN pg_constraint con ON con.oid = d.objid
+JOIN pg_class child ON child.oid = con.conrelid
+JOIN pg_class parent ON parent.oid = con.confrelid
+JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
+JOIN pg_namespace parent_ns ON parent_ns.oid = parent.relnamespace
+WHERE con.contype = 'f';
+
+

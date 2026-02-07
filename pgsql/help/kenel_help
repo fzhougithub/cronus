@@ -1,0 +1,13 @@
+
+sudo mkdir -p /var/log/journal
+sudo chown root:systemd-journal /var/log/journal
+sudo chmod 2755 /var/log/journal
+
+need to tune journal.conf /etc/systemd/journald.conf
+SystemMaxUse=1G
+RuntimeMaxUse=200M
+
+
+journalctl -t systemd-coredump --no-pager
+journalctl -k --no-pager
+journalctl -u postgresql-14.service --nopager

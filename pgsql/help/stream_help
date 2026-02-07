@@ -1,0 +1,13 @@
+/usr/pgsql-14/bin/pg_basebackup -D /apps/lib/pgsql/14/data  -X s -R -v -c fast -S for_claimpsprocess_03 -h 10.221.152.82
+
+First, create replication slot on primary 
+
+SELECT pg_create_physical_replication_slot('for_claimpsprocess_03');
+
+SELECT pg_create_physical_replication_slot('replica_slot');
+
+Second, update the replication to use the slot!
+
+primary_conninfo = 'host=primary_host port=5432 user=repl_user password=...'
+primary_slot_name = 'for_claimprocess_03' -- Critical for WAL retention
+

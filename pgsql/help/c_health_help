@@ -1,0 +1,21 @@
+SELECT * FROM citus_check_cluster_node_health();
+
+SELECT
+    p.shardid,
+    n.nodename,
+    n.nodeport,
+    p.shardstate
+FROM pg_dist_placement p
+JOIN pg_dist_node n
+  ON p.groupid = n.groupid
+ORDER BY p.shardid, n.nodename;
+
+
+citus.shard_replication_factor=1, should be 2;
+SET citus.shard_replication_factor = 2;
+
+SELECT citus_drain_node('worker1', 5432);
+
+You can update, but maybe not work
+update pg_dist_placement set shardstate=1 where shardid in (162365,162366,162367);
+

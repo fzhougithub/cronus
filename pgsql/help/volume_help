@@ -1,3 +1,6 @@
+lvextend -r -l +100%FREE /dev/mapper/appsvg-appslv
+lvextend -r -l +100%FREE /dev/mapper/backupsvg-backupslv
+
 https://domanirx.atlassian.net/browse/DEVOPS-10708
 
 1. Create the ticket description, refer to devops-9839
@@ -52,6 +55,7 @@ git push origin <branch name>
 
 cd to the directory contain main.tf file
 
+#export TF_LOG=DEBUG
 #AWS_PROFILE='prod' terraform init --upgrade
 
 source ~/vault-nonprod
@@ -119,11 +123,82 @@ After reboot, lsblk can show the disk space increased to 5TB, the LVM under disk
 Now, run again
 /usr/bin/rescan-scsi-bus.sh
  
-Now
-pvresize /dev/sdd
+lsblk
+dmesg | grep -i sd
+lsscsi
+sudo partprobe
+Then, lsblk again, you will see new disk added as sdl 19.5T disk
+If still does not show after partprobe, then, run fdisk -l /dev/sdl
+
+now, since the new disk need to be initialized, run
+pvcreate /dev/sdl
+
+vgs
+  VG             #PV #LV #SN Attr   VSize    VFree
+  appsvg           1   1   0 wz--n-   19.53t    0
+  backupsvg        1   1   0 wz--n-   <5.86t    0
+  bulkloadsvg      1   1   0 wz--n-   <2.93t    0
+  logsvg           1   1   0 wz--n-   <2.93t    0
+  pg_walvg         1   1   0 wz--n- <600.00g    0
+  rootvg           1   7   0 wz--n-  <51.27g 5.62g
+  swapsvg          1   1   0 wz--n- <480.00g    0
+  tablespace_1vg   1   1   0 wz--n-   19.53t    0
+  tablespace_2vg   1   1   0 wz--n-   19.53t    0
+  tablespace_3vg   1   1   0 wz--n-   <9.77t    0
+  tablespace_4vg   1   1   0 wz--n-   19.53t    0
+
+vgcreate tablespace_5vg /dev/sdl
+
+vgextend tablespace_5vg /dev/sdl
+
+vgremove tablespace_5vg
+
+Here is the real case
+[root@claimshumana-db-03-alma8-prod-drx-kc ~]$ vgremove tablespace_5vg
+  Volume group "tablespace_5vg" successfully removed
+[root@claimshumana-db-03-alma8-prod-drx-kc ~]$ pvcreate /dev/sdl
+  Physical volume "/dev/sdl" successfully created.
+[root@claimshumana-db-03-alma8-prod-drx-kc ~]$ vgcreate tablespace_5vg /dev/sdl
+  Volume group "tablespace_5vg" successfully created
+[root@claimshumana-db-03-alma8-prod-drx-kc ~]$ vgs
+  VG             #PV #LV #SN Attr   VSize    VFree
+  appsvg           1   1   0 wz--n-   19.53t     0
+  backupsvg        1   1   0 wz--n-   <5.86t     0
+  bulkloadsvg      1   1   0 wz--n-   <2.93t     0
+  logsvg           1   1   0 wz--n-   <2.93t     0
+  pg_walvg         1   1   0 wz--n- <600.00g     0
+  rootvg           1   7   0 wz--n-  <51.27g  5.62g
+  swapsvg          1   1   0 wz--n- <480.00g     0
+  tablespace_1vg   1   1   0 wz--n-   19.53t     0
+  tablespace_2vg   1   1   0 wz--n-   19.53t     0
+  tablespace_3vg   1   1   0 wz--n-   <9.77t     0
+  tablespace_4vg   1   1   0 wz--n-   19.53t     0
+  tablespace_5vg   1   0   0 wz--n-   19.53t 19.53t
+[root@claimshumana-db-03-alma8-prod-drx-kc ~]$ pvs
+  PV         VG             Fmt  Attr PSize    PFree
+  /dev/sda2  rootvg         lvm2 a--   <51.27g  5.62g
+  /dev/sdb   tablespace_3vg lvm2 a--    <9.77t     0
+  /dev/sdc   appsvg         lvm2 a--    19.53t     0
+  /dev/sdd   pg_walvg       lvm2 a--  <600.00g     0
+  /dev/sde   bulkloadsvg    lvm2 a--    <2.93t     0
+  /dev/sdf   tablespace_1vg lvm2 a--    19.53t     0
+  /dev/sdg   swapsvg        lvm2 a--  <480.00g     0
+  /dev/sdh   backupsvg      lvm2 a--    <5.86t     0
+  /dev/sdi   tablespace_4vg lvm2 a--    19.53t     0
+  /dev/sdj   logsvg         lvm2 a--    <2.93t     0
+  /dev/sdk   tablespace_2vg lvm2 a--    19.53t     0
+  /dev/sdl   tablespace_5vg lvm2 a--    19.53t 19.53t
+
 
 Now,
+lvcreate -n tablespace_5lv -L 19.53T tablespace_5vg
 
+# The result match pattern like tablespace_2vg-tablespace_2lv, which is the tablespace_5vg-tablespace_5lv, is device mapper name or LVM mapped device name.
+tablespace_5vg is volume group name which is from pvs
+tablespace_5lv is the logical volume name which is for vgs. 
+
+
+Below is used for extend disk. 
 lvextend -r -l +100%FREE /dev/mapper/appsvg-appslv
 #lvresize -r -L +1996G /dev/mapper/appsvg-appslv
 df -h

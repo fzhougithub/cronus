@@ -1,0 +1,8 @@
+ls -l /sbin/{reboot,poweroff,halt}
+lrwxrwxrwx. 1 root root 16 Dec  4 08:27 /sbin/halt -> ../bin/systemctl
+lrwxrwxrwx. 1 root root 16 Dec  4 08:27 /sbin/poweroff -> ../bin/systemctl
+lrwxrwxrwx. 1 root root 16 Dec  4 08:27 /sbin/reboot -> ../bin/systemctl
+
+reboot -f
+
+

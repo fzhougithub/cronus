@@ -1,0 +1,9 @@
+iostat -x 1 3
+
+
+
+
+
+PID 193683, 141050: ~54% CPU each (likely heavy queries)
+
+PID 205228: 31% CPU

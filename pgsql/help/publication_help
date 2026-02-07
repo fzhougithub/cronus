@@ -1,3 +1,17 @@
+SELECT
+  slot_name,
+  plugin,
+  slot_type,
+  active,
+  active_pid,
+  datoid,
+  database,
+  xmin,
+  restart_lsn,
+  confirmed_flush_lsn
+FROM pg_replication_slots
+WHERE slot_name = 'huat_pharmacy_sub';
+
 SELECT pg_create_logical_replication_slot('qc_finance_global_sub', 'pgoutput');
 
 

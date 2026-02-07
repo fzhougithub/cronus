@@ -1,3 +1,18 @@
+#AWS_PROFILE='prod' terraform init --upgrade
+AWS_PROFILE='non-prod' terraform init
+AWS_PROFILE='non-prod' terraform plan
+AWS_PROFILE="non-prod" terraform init
+AWS_PROFINE='non-prod' terraform apply
+
+pyenv activate venv
+
+
+ansible-playbook playbook.yaml -l odshumana-pg16-02-alma9-prod-drx-kc.ssnc-corp.cloud --tag pg-base --diff
+
+
+ansible-playbook ./playbook_claimshumana-db-03.yaml --diff --check > ~/Downloads/playbook_claimshumana-db-03.check
+awk '/TASK \[.*\]/ {task=$0} /changed: \[.*\]/ {print task "\n" $0}'  ~/Downloads/playbook_claimshumana-db-03.check > summary_changes.log
+
 This is the final solution for the ansible required python
 brew install pyenv
 brew install pyenv-virtualenv
@@ -13,7 +28,7 @@ pip3 install ansible==9.13.0 ansible-core==2.16.14 hvac dnspython
 ansible-playbook ./playbook.yaml --tags pg-base,pg-repmanager,pg-credentials -e "do_replica_bootstrap=yes" -e "postgresql_restart_allowed=yes"
 ansible-playbook ./playbook.yaml --tags pg-repmanager -e "do_replica_bootstrap=yes" -e "postgresql_restart_allowed=yes"
 
-
+ansible-playbook ./playbook.yaml --limit finance-db-04-alma9-olly-drx-kc.ssnc-corp.cloud --tags pg-base --diff -e "postgresql_restart_allowed=yes"
 
 ansible-doc -t lookup -l
 

@@ -1,0 +1,18 @@
+ods_domani=# SELECT
+    s.shardid,
+    count(*) as placement_count
+FROM pg_dist_shard s
+JOIN pg_dist_placement p ON s.shardid = p.shardid
+WHERE s.logicalrelid = 'claimsprocess_humana.claim_core'::regclass
+GROUP BY s.shardid;
+ shardid | placement_count
+---------+-----------------
+  173118 |               2
+  173119 |               2
+  173120 |               2
+  173121 |               2
+  173122 |               2
+  173123 |               2
+(6 rows)
+
+This show 6 shard, each has 2 copies;

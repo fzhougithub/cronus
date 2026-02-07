@@ -1,0 +1,47 @@
+The error shows the expected fields for [[sharded_tables]] are: database, name, schema, column, primary, centroids, centroids_path, data_type, centroid_probes, hasher. There's no shards field listed.
+
+
+
+
+cd /opt/pgdog
+tar xvf /pg_backups/work/pgdog/target/release/pgdog-release.tar.gz
+
+1. Config pgDog
+
+# pgdog.toml
+[general]
+listen = "127.0.0.1:6432"   # PgDog listens here
+workers = 4
+
+# Define the shards (your test databases)
+[[shards]]
+name = "shard1"
+database_url = "postgres://postgres:yourpassword@127.0.0.1:5432/test1"
+
+[[shards]]
+name = "shard2"
+database_url = "postgres://postgres:yourpassword@127.0.0.1:5432/test2"
+
+[[shards]]
+name = "shard3"
+database_url = "postgres://postgres:yourpassword@127.0.0.1:5432/test3"
+
+# Routing rules
+[routes]
+# Simple hash on user_id (you can adjust to your table column)
+shard_key = "user_id"
+strategy = "modulo"
+shards = ["shard1", "shard2", "shard3"]
+
+2. Start pgDog
+
+./pgdog -c ./pgdog.toml run
+
+
+3. Test sharding 
+psql "postgres://postgres:yourpassword@127.0.0.1:6432/test1"
+
+./pgdog fingerprint "INSERT INTO mytable (user_id, name) VALUES (123, 'Alice');"
+./pgdog route "SELECT * FROM mytable WHERE user_id=123;"
+
+

@@ -1,0 +1,58 @@
+-- This one keey PK and unique index
+
+SELECT
+  'DROP INDEX ' || quote_ident(n.nspname) || '.' || quote_ident(i.relname) || ' CASCADE;' AS drop_stmt,
+  'CREATE INDEX ' || quote_ident(i.relname) || ' ON ' || quote_ident(n.nspname) || '.' || quote_ident(c.relname) || ' USING ' || am.amname || ' (' || pg_get_indexdef(i.oid) || ');' AS create_stmt
+FROM pg_index idx
+JOIN pg_class i ON idx.indexrelid = i.oid
+JOIN pg_class c ON idx.indrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+JOIN pg_am am ON i.relam = am.oid
+LEFT JOIN pg_constraint con ON con.conindid = i.oid
+WHERE n.nspname = 'claimsprocess_humana'
+  AND idx.indisprimary = false           -- exclude primary key
+  AND (con.contype IS NULL OR con.contype <> 'u') -- exclude unique constraints
+  AND i.relkind = 'i'
+ORDER BY n.nspname, c.relname, i.relname;
+
+
+
+-- This one keep only PK
+SELECT
+  'DROP INDEX ' || quote_ident(n.nspname) || '.' || quote_ident(i.relname) || ' CASCADE;' AS drop_stmt,
+  'CREATE INDEX ' || quote_ident(i.relname) || ' ON ' || quote_ident(n.nspname) || '.' || quote_ident(c.relname) || ' USING ' || am.amname || ' (' || pg_get_indexdef(i.oid) || ');' AS create_stmt
+FROM pg_index idx
+JOIN pg_class i ON idx.indexrelid = i.oid
+JOIN pg_class c ON idx.indrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+JOIN pg_am am ON i.relam = am.oid
+WHERE n.nspname = 'claimsprocess_humana'
+  AND idx.indisprimary = false
+  AND i.relkind = 'i'
+ORDER BY n.nspname, c.relname, i.relname;
+
+
+
+
+
+SELECT 
+  'DROP INDEX IF EXISTS ' || quote_ident(nspname) || '.' || quote_ident(indexname) || ' CASCADE;' AS drop_stmt,
+  'CREATE INDEX ' || quote_ident(indexname) || ' ON ' || quote_ident(nspname) || '.' || quote_ident(tablename) || ' USING ' || amname || ' (' || indexdef || ');' AS create_stmt
+FROM (
+  SELECT 
+    n.nspname,
+    c.relname AS tablename,
+    i.relname AS indexname,
+    am.amname,
+    pg_get_indexdef(i.oid) AS indexdef
+  FROM 
+    pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    JOIN pg_index idx ON idx.indrelid = c.oid
+    JOIN pg_class i ON i.oid = idx.indexrelid
+    JOIN pg_am am ON i.relam = am.oid
+  WHERE 
+    n.nspname = 'claimsprocess_humana'  -- your schema here
+    AND NOT idx.indisprimary           -- exclude primary keys if desired
+) sub;
+

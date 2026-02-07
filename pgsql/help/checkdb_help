@@ -1,0 +1,132 @@
+You hit a classic `pg_upgrade --clone/--link` failure:
+
+    error while cloning relation "migration_playground.o59t":
+    could not open file "/apps/lib/pgsql/14/data/base/2296628242/917124505": No such file or directory
+
+This means **`pg_upgrade` tried to hard‑link (clone) a relation file from the old PG14 cluster, but the on‑disk file was missing**, even though the system catalogs still reference it. In other words, **the relfilenode that PG thinks should exist doesn’t exist on disk**. `pg_upgrade` can only reuse files that physically exist, because with `--clone` it links/copies the old data files into the new cluster. [\[github.com\]](https://github.com/sicedia/airbyte_k8s_single_node)
+
+***
+
+## What it points to
+
+*   `base/2296628242/917124505` means:
+    *   **database OID** = `2296628242` (maps to a database name in `pg_database`)
+    *   **relfilenode** = `917124505` (the file name PostgreSQL expects for a relation)
+*   The relation name in the error is **`migration_playground.o59t`**, which strongly suggests a **TOAST table** (names like `..._toast` or short `…t` names are common for TOAST). TOAST tables hold out‑of‑line chunks for big rows (text/json/bytea) and live in `pg_toast` schema. [\[postgresql.org\]](https://www.postgresql.org/docs/current/storage-toast.html)
+*   Missing files while the catalog still points to a relfilenode usually means the relation was **rewritten** (its filenode changed) or otherwise got out of sync (e.g., a crash during TRUNCATE/VACUUM FULL, manual file removal, or prior filesystem issues). Operations like **`VACUUM FULL`** and **`TRUNCATE`** *replace* the table with a new physical file and **change the relfilenode**; if the rewrite wasn’t fully durable or catalog changes raced the filesystem, you can end up with a catalog pointing at a file that no longer exists. [\[postgresql.org\]](https://www.postgresql.org/docs/current/sql-vacuum.html), [\[pgpedia.info\]](https://pgpedia.info/f/filenode.html), [\[postgresql.org\]](https://www.postgresql.org/docs/08/storage.html)
+
+***
+
+## How to confirm exactly what is missing (5 quick queries on **PG14**)
+
+1.  **Find the database name** from its OID:
+
+```sql
+SELECT datname FROM pg_database WHERE oid = 2296628242;
+```
+
+2.  Connect to that database, then **resolve the relfilenode** to a relation:
+
+```sql
+SELECT c.oid, n.nspname AS schema, c.relname, c.relkind
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE pg_relation_filenode(c.oid) = 917124505;
+```
+
+*   `relkind='t'` → TOAST table
+*   `relkind='i'` → index
+*   `relkind='r'` → heap table
+
+3.  If it’s **TOAST** (`relkind='t'`), find its **parent table**:
+
+```sql
+SELECT n.nspname AS parent_schema, p.relname AS parent_table
+FROM pg_class p
+WHERE p.reltoastrelid = 917124505;
+```
+
+4.  If it’s an **index** (`relkind='i'`), find its parent relation:
+
+```sql
+SELECT n.nspname AS parent_schema, c.relname AS parent_table
+FROM pg_class c
+JOIN pg_index i ON i.indexrelid = (SELECT oid FROM pg_class WHERE pg_relation_filenode(oid)=917124505)
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE i.indrelid = c.oid;
+```
+
+5.  Optionally check the **current relfilenode** of the parent vs. file on disk:
+
+```sql
+SELECT relname, pg_relation_filenode(oid) AS current_filenode
+FROM pg_class
+WHERE relname = '<parent_table_name>';
+```
+
+If `pg_relation_filenode` returns a number that **does** exist as a file under the db’s directory but **917124505** does not, that means the table/index was **rewritten** and the old filenode no longer exists. [\[pgpedia.info\]](https://pgpedia.info/f/filenode.html), [\[postgresql.org\]](https://www.postgresql.org/docs/current/storage-file-layout.html)
+
+***
+
+## How to fix the old cluster so `pg_upgrade` can run
+
+**Goal:** Make every catalog entry in PG14 refer to a real, present file.
+
+1.  **If the missing object is an index** (`relkind='i'`):  
+    **REINDEX** it to recreate files:
+    ```sql
+    REINDEX INDEX CONCURRENTLY <schema>.<index_name>;  -- or REINDEX INDEX <...> during downtime
+    ```
+    Reindexing **writes a fresh on‑disk file** for that index and updates the relfilenode. [\[postgresql.org\]](https://www.postgresql.org/docs/current/catalog-pg-class.html)
+
+2.  **If it’s a TOAST table** (`relkind='t'`):  
+    You can’t operate on the TOAST table directly; **rewrite the parent table**, which also rewrites its TOAST:
+    *   Preferred during outage:
+        ```sql
+        VACUUM FULL <parent_schema>.<parent_table>;
+        ```
+        `VACUUM FULL` **rewrites the entire table into a new file** (and its TOAST), producing a valid filenode and on‑disk files. Note: requires **ACCESS EXCLUSIVE** lock (blocks reads/writes while running). [\[postgresql.org\]](https://www.postgresql.org/docs/current/sql-vacuum.html)
+    *   If you need another rewrite method: `CLUSTER <table> USING <some_index>;` or `ALTER TABLE <table> SET (fillfactor=100);` followed by rewrite‑forcing operations also change relfilenode (but `VACUUM FULL` is the clearest). [\[rockdata.net\]](https://www.rockdata.net/tutorial/ddl-table-rewrite/)
+
+3.  **If it’s a heap table** (`relkind='r'`) and the main file is missing:
+    *   `VACUUM FULL <schema>.<table>;` to rewrite the heap and recreate files. (Same locking caveats.) [\[postgresql.org\]](https://www.postgresql.org/docs/current/sql-vacuum.html)
+
+> Why this works: `VACUUM FULL` and similar rewrite operations **create a new physical file** and update catalogs to the new relfilenode, so the **current** filenode *will* exist on disk, letting `pg_upgrade --clone` link it. (And if an index was missing, `REINDEX` does the same for the index file.) [\[postgresql.org\]](https://www.postgresql.org/docs/current/sql-vacuum.html)
+
+***
+
+## Then re‑attempt `pg_upgrade` the right way
+
+1.  **Stop the orphan PG16 upgrade postmaster** (if any) and **re‑init** PG16 (clean target). `pg_upgrade` is **not resumable**; a failed run requires a freshly `initdb`’d new cluster and **no leftover `PG_16_*` directories** in tablespaces. [\[github.com\]](https://github.com/sicedia/airbyte_k8s_single_node)
+
+2.  **Run a dry run first**:
+
+```bash
+/usr/pgsql-16/bin/pg_upgrade \
+  -b /usr/pgsql-14/bin -B /usr/pgsql-16/bin \
+  -d /apps/lib/pgsql/14/data -D /apps/lib/pgsql/16/data \
+  --clone -j 5 -v --check
+```
+
+If the check passes, run the real upgrade. [\[github.com\]](https://github.com/sicedia/airbyte_k8s_single_node)
+
+***
+
+## Why did this happen even though you “stopped the old DB correctly”?
+
+Stopping the old server is **necessary**, but it doesn’t repair earlier **catalog ↔ file mismatches** that might have happened long before (e.g., a failed TRUNCATE/VACUUM FULL, manual file deletion, storage corruption, or a crash in the past). `pg_upgrade --clone` is unforgiving: it expects **every relfilenode referenced in the catalogs to exist as a file** so it can hard‑link it. If even one is missing, you get *“could not open file … No such file or directory”* and the run aborts. [\[github.com\]](https://github.com/sicedia/airbyte_k8s_single_node)
+
+***
+
+## Quick “do this now” checklist
+
+1.  On **PG14**: run the 5 queries above to identify the exact object.
+2.  If **index** → `REINDEX INDEX …` (or `REINDEX TABLE …`). If **heap/TOAST** → `VACUUM FULL <parent_table>`. [\[postgresql.org\]](https://www.postgresql.org/docs/current/sql-vacuum.html)
+3.  Re‑run `pg_upgrade --check`, then the real run on a **freshly initdb’d** PG16 cluster. [\[github.com\]](https://github.com/sicedia/airbyte_k8s_single_node)
+
+If you share:
+
+*   `SELECT datname FROM pg_database WHERE oid=2296628242;`
+*   The result of the “resolve relfilenode → relation” query
+    I’ll tell you exactly which command (`REINDEX` vs `VACUUM FULL` on which parent) to run, and then verify your `pg_upgrade --check` is ready to pass.
+

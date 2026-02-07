@@ -1,0 +1,13 @@
+grant create on database ods_domani to airbyte;
+
+GRANT CREATE, USAGE ON SCHEMA public TO airbyte;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO airbyte;
+
+-- 2. For airbyte_internal schema (raw tables)
+CREATE SCHEMA IF NOT EXISTS airbyte_internal;
+GRANT CREATE, USAGE ON SCHEMA airbyte_internal TO airbyte;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA airbyte_internal TO airbyte;
+ALTER DEFAULT PRIVILEGES IN SCHEMA airbyte_internal GRANT ALL PRIVILEGES ON TABLES TO airbyte;
+
+

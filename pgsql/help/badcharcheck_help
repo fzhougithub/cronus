@@ -1,0 +1,4 @@
+SELECT 'invalid_txt' as column_name, convert_to(invalid_txt, 'UTF8') convert1, convert_from(convert_to(invalid_txt, 'UTF8'), 'UTF8') as convert2
+FROM stg_global.invalid_core320_2025 WHERE customer_id = 320 AND claim_id = '554135506031';
+
+

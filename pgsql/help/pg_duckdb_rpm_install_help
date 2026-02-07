@@ -1,0 +1,34 @@
+https://pigsty.io/ext/repo/yum/
+
+curl -fsSL https://repo.pigsty.io/key | sudo tee /etc/pki/rpm-gpg/RPM-GPG-KEY-pigsty >/dev/null
+
+cat /etc/yum.repos.d/pigsty_pgsql.repo
+[pigsty-infra]
+name=Pigsty Infra for $basearch
+baseurl=https://repo.pigsty.io/yum/infra/$basearch
+skip_if_unavailable = 1
+enabled = 1
+priority = 1
+gpgcheck = 1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-pigsty
+module_hotfixes=1
+
+[pigsty-pgsql]
+name=Pigsty PGSQL For el$releasever.$basearch
+baseurl=https://repo.pigsty.io/yum/pgsql/el$releasever.$basearch
+skip_if_unavailable = 1
+enabled = 1
+priority = 1
+gpgcheck = 1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-pigsty
+module_hotfixes=1
+
+
+dnf install pg_duckdb_17*;
+
+add pg_duckdb into shared_preload_library
+
+start instance
+
+create extension pg_duckdb;
+

@@ -1,0 +1,19 @@
+dscl . -list /Users
+dscl . -list /Users UniqueID | awk '$2 >= 500 { print $1 }'
+dscl . -read /Users/_postgres UserShell
+
+# 1. Create the 'postgres' user (UID 520 is arbitrary; avoid conflicts with existing UIDs)
+sudo dscl . -create /Users/postgres
+sudo dscl . -create /Users/postgres UniqueID 520
+sudo dscl . -create /Users/postgres PrimaryGroupID 20
+sudo dscl . -create /Users/postgres UserShell /bin/zsh
+sudo dscl . -create /Users/postgres RealName "PostgreSQL User"
+sudo dscl . -create /Users/postgres NFSHomeDirectory /Users/postgres
+
+sudo mkdir -p /Users/postgres
+sudo chown postgres:staff /Users/postgres
+sudo chmod 755 /Users/postgres
+
+sudo passwd postgres
+
+echo 'fzhou ALL=(postgres) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/postgres-nopasswd && sudo chmod 440 /etc/sudoers.d/postgres-nopasswd

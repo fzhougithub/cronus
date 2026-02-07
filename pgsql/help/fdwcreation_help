@@ -1,0 +1,8 @@
+create extension postgres_fdw;
+create server ods_dumani_humana foreign data wrapper postgres_fdw options(host '10.222.94.20',dbname 'ods_domani_humana',port '5432');
+grant usage on foreign server ods_dumani_humana to tpdodsfinance;
+create user mapping for tpdodsfinance server ods_dumani_humana options(user 'tpdodsfinance', password 'E5kyL0SAmoUh6IHpz3te');
+create schema finance_humana_2 authorization tpdodsfinance;
+set role tpdodsfinance;
+import foreign schema finance_humana from server ods_dumani_humana into finance_humana_2;
+

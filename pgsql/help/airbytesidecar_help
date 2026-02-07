@@ -1,0 +1,763 @@
+The issue
+-------------------
+Discovering schema failed
+The discover catalog failed due to an internal error for source: 8195dc8d-4727-4f5d-b1a5-7ba6aca21384
+
+
+Learn more
+Internal message: Unexpected error performing DISCOVER. The exit of the connector was: 0
+Failure origin: source
+
+Stacktrace
+io.airbyte.workers.exception.WorkerException: Unexpected error performing DISCOVER. The exit of the connector was: 0
+	at io.airbyte.connectorSidecar.ConnectorMessageProcessor.run(ConnectorMessageProcessor.kt:114)
+	at io.airbyte.connectorSidecar.ConnectorWatcher.processConnectorOutput(ConnectorWatcher.kt:154)
+	at io.airbyte.connectorSidecar.ConnectorWatcher.run(ConnectorWatcher.kt:79)
+	at io.airbyte.connectorSidecar.ApplicationKt.main(Application.kt:22)
+	at io.airbyte.connectorSidecar.ApplicationKt.main(Application.kt)
+Caused by: org.openapitools.client.infrastructure.ClientException: Client error : 413 Request Entity Too Large
+	at io.airbyte.api.client.generated.SourceApi.writeDiscoverCatalogResult(SourceApi.kt:1090)
+	at io.airbyte.connectorSidecar.ConnectorMessageProcessor.setOutput(ConnectorMessageProcessor.kt:202)
+	at io.airbyte.connectorSidecar.ConnectorMessageProcessor.run(ConnectorMessageProcessor.kt:108)
+	... 4 more
+
+++++++++++++++++++++++++++++
+
+Start this command, then, kickout discovery, it is trying to catch the sidecar pod
+kubectl get pods -n airbyte-abctl -w | grep sidecar
+
+But, nothing show up until discovery failed
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl -l job-type=discover -o yaml | head -100
+apiVersion: v1
+items: []
+kind: List
+metadata:
+  resourceVersion: ""
+
+kubectl get pods -n airbyte-abctl -o yaml | grep -A20 "connector-sidecar"
+
+kubectl edit deployment airbyte-abctl-server -n airbyte-abctl
+    spec:
+      containers:
+      - env:
+        - name: SERVER_MAX_REQUEST_SIZE
+          value: "1073741824"
+        - name: MICRONAUT_SERVER_MAX_REQUEST_SIZE
+          value: "1073741824"
+        - name: MICRONAUT_SERVER_MULTIPART_MAX_FILE_SIZE
+          value: "1073741824"
+        - name: MICRONAUT_SERVER_MULTIPART_MAX_REQUEST_SIZE
+          value: "1073741824"
+
+kubectl patch configmap airbyte-abctl-airbyte-env -n airbyte-abctl --type merge -p '{"data": {
+  "SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT": "4Gi",
+  "SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST": "3Gi",
+  "SIDECAR_MAIN_CONTAINER_CPU_LIMIT": "2",
+  "SIDECAR_MAIN_CONTAINER_CPU_REQUEST": "1",
+  "SERVER_MAX_REQUEST_SIZE": "1073741824"
+}}'
+
+kubectl rollout restart deployment/airbyte-abctl-server -n airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl | grep worker
+airbyte-abctl-worker-6f9d646655-8gp2k                            1/1     Running       1 (14h ago)   24h
+
+
+Still same thing!!
+
+Then, deepseek looks like found something new
+
+Ah! I see the issue now. The connector-sidecar is running as a container inside another pod, not as a separate pod. Looking at your logs, the sidecar is running as a container in what appears to be a job pod, and it's terminating with exit code 1. The 413 Request Entity Too Large error is happening when the sidecar tries to send the discovery results back to the Airbyte server.
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl --sort-by=.metadata.creationTimestamp | tail -10
+airbyte-abctl-cron-bdddc55f-864l9                                1/1     Running      1 (14h ago)   24h
+airbyte-abctl-temporal-995d6c5cd-ffwd2                           1/1     Running      1 (14h ago)   24h
+airbyte-abctl-worker-6f9d646655-8gp2k                            1/1     Running      1 (14h ago)   24h
+airbyte-abctl-workload-api-server-78987478b9-8mrjd               1/1     Running      1 (14h ago)   24h
+airbyte-abctl-workload-launcher-d6d4bb84b-qgdzd                  1/1     Running      4 (14h ago)   24h
+postgres-discover-44eccd6a-20e6-4717-8c80-e9f2c75c217c-0-bemse   0/2     Error        0             15m
+postgres-discover-1a2d24fd-5a94-400a-baae-1d6102cf69d7-0-fstiu   0/2     Error        0             12m
+replication-job-12-attempt-0                                     0/3     Init:Error   0             6m16s
+airbyte-abctl-server-856c8c7b5f-zc4d2                            1/1     Running      0             4m34s
+postgres-discover-b2713f2a-a45d-48bc-aa84-bf3802ff3518-0-znyjr   0/2     Error        0             3m19s
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl | grep -i discover
+postgres-discover-1a2d24fd-5a94-400a-baae-1d6102cf69d7-0-fstiu   0/2     Error        0             12m
+postgres-discover-44eccd6a-20e6-4717-8c80-e9f2c75c217c-0-bemse   0/2     Error        0             15m
+postgres-discover-b2713f2a-a45d-48bc-aa84-bf3802ff3518-0-znyjr   0/2     Error        0             3m31s
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}' | grep sidecar
+postgres-discover-1a2d24fd-5a94-400a-baae-1d6102cf69d7-0-fstiu	connector-sidecar main
+postgres-discover-44eccd6a-20e6-4717-8c80-e9f2c75c217c-0-bemse	connector-sidecar main
+postgres-discover-b2713f2a-a45d-48bc-aa84-bf3802ff3518-0-znyjr	connector-sidecar main
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pods -n airbyte-abctl -o custom-columns=NAME:.metadata.name,CONTAINERS:.spec.containers[*].name
+NAME                                                             CONTAINERS
+airbyte-abctl-bootloader                                         airbyte-bootloader-container
+airbyte-abctl-connector-builder-server-774997f95d-d4rxq          airbyte-connector-builder-server
+airbyte-abctl-cron-bdddc55f-864l9                                airbyte-cron
+airbyte-abctl-server-856c8c7b5f-zc4d2                            airbyte-server-container
+airbyte-abctl-temporal-995d6c5cd-ffwd2                           airbyte-temporal
+airbyte-abctl-worker-6f9d646655-8gp2k                            airbyte-worker-container
+airbyte-abctl-workload-api-server-78987478b9-8mrjd               airbyte-workload-api-server-container
+airbyte-abctl-workload-launcher-d6d4bb84b-qgdzd                  airbyte-workload-launcher-container
+airbyte-db-0                                                     airbyte-db-container
+postgres-discover-1a2d24fd-5a94-400a-baae-1d6102cf69d7-0-fstiu   connector-sidecar,main
+postgres-discover-44eccd6a-20e6-4717-8c80-e9f2c75c217c-0-bemse   connector-sidecar,main
+postgres-discover-b2713f2a-a45d-48bc-aa84-bf3802ff3518-0-znyjr   connector-sidecar,main
+replication-job-12-attempt-0                                     orchestrator,source,destination
+
+for pod in $(kubectl get pods -n airbyte-abctl -o name); do
+  if kubectl get $pod -n airbyte-abctl -o jsonpath='{.spec.containers[*].name}' | grep -q connector-sidecar; then
+    echo "Pod with sidecar: $pod"
+    kubectl logs $pod -n airbyte-abctl -c connector-sidecar --tail=50
+  fi
+done
+
+The realfix
+
+kubectl get configmap airbyte-abctl-airbyte-env -n airbyte-abctl -o yaml | grep -i "sidecar\|memory\|request"
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get configmap airbyte-abctl-airbyte-env -n airbyte-abctl -o yaml | grep -i "sidecar\|memory\|request"
+  CHECK_JOB_MAIN_CONTAINER_CPU_REQUEST: ""
+  CHECK_JOB_MAIN_CONTAINER_MEMORY_LIMIT: ""
+  CHECK_JOB_MAIN_CONTAINER_MEMORY_REQUEST: ""
+  CONNECTOR_SIDECAR_IMAGE: airbyte/connector-sidecar:2.0.1
+  CONTAINER_ORCHESTRATOR_JAVA_OPTS: -XX:+ExitOnOutOfMemoryError -XX:MaxRAMPercentage=75.0
+    -Ddd.trace.sample.rate=0.5 -Ddd.trace.request_header.tags=User-Agent:http.useragent
+  DISCOVER_JOB_MAIN_CONTAINER_CPU_REQUEST: ""
+  DISCOVER_JOB_MAIN_CONTAINER_MEMORY_LIMIT: ""
+  DISCOVER_JOB_MAIN_CONTAINER_MEMORY_REQUEST: ""
+  FILE_TRANSFER_EPHEMERAL_STORAGE_REQUEST: 5G
+  JOB_MAIN_CONTAINER_CPU_REQUEST: ""
+  JOB_MAIN_CONTAINER_MEMORY_LIMIT: ""
+  JOB_MAIN_CONTAINER_MEMORY_REQUEST: ""
+  REPLICATION_ORCHESTRATOR_CPU_REQUEST: ""
+  REPLICATION_ORCHESTRATOR_MEMORY_LIMIT: ""
+  REPLICATION_ORCHESTRATOR_MEMORY_REQUEST: ""
+  SERVER_MAX_REQUEST_SIZE: "1073741824"
+  SIDECAR_MAIN_CONTAINER_CPU_LIMIT: "2"
+  SIDECAR_MAIN_CONTAINER_CPU_REQUEST: "1"
+  SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT: 4Gi
+  SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST: 3Gi
+
+Then, disk full /
+systemctl stop containerd
+systemctl stop docker
+systemctl stop docker.socket
+mkdir -p /pg_backups/containerd
+mv /var/lib/containerd/* /pg_backups/containerd/
+mv /var/lib/containerd /var/lib/containerd.bak
+ln -s /pg_backups/containerd /var/lib/containerd
+
+systemctl start containerd
+systemctl start docker
+
+
+I can see the issue now! You have a very large PostgreSQL database with many tables (like t_claim_medicare_partd_98, t_claim_medicare_partd_99, etc.). The discovery is actually completing (the connector exits with code 0), but when it tries to send the catalog result back to the Airbyte server, it's getting a 413 Request Entity Too Large error.
+
+kubectl patch configmap airbyte-abctl-airbyte-env -n airbyte-abctl --type merge -p '{"data": {
+  "SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT": "8Gi",
+  "SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST": "6Gi",
+  "SIDECAR_MAIN_CONTAINER_CPU_LIMIT": "2",
+  "SIDECAR_MAIN_CONTAINER_CPU_REQUEST": "1",
+  "SERVER_MAX_REQUEST_SIZE": "209715200",
+  "MICRONAUT_SERVER_MAX_REQUEST_SIZE": "200MB",
+  "JOB_MAIN_CONTAINER_MEMORY_LIMIT": "4Gi",
+  "JOB_MAIN_CONTAINER_MEMORY_REQUEST": "3Gi",
+  "DISCOVER_JOB_MAIN_CONTAINER_MEMORY_LIMIT": "4Gi",
+  "DISCOVER_JOB_MAIN_CONTAINER_MEMORY_REQUEST": "3Gi"
+}}'
+configmap/airbyte-abctl-airbyte-env patched
+
+POD_NAME=$(kubectl get pods -n airbyte-abctl | grep "postgres-discover" | tail -1 | awk '{print $1}')
+kubectl get pod $POD_NAME -n airbyte-abctl -o jsonpath='{.spec.containers[*].resources}'
+{} {}
+kubectl get pod $POD_NAME -n airbyte-abctl -o jsonpath='{.spec.containers[?(@.name=="connector-sidecar")].resources}'
+
+
+kubectl get ingress -n airbyte-abctl -o yaml
+
+kubectl get svc -n airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc containerd]$ kubectl get configmap airbyte-abctl-airbyte-env -n airbyte-abctl -o yaml | grep -A2 -B2 "SIDECAR\|MEMORY\|CPU"
+  CHECK_JOB_KUBE_NODE_SELECTORS: ""
+  CHECK_JOB_KUBE_RUNTIME_CLASS_NAME: ""
+  CHECK_JOB_MAIN_CONTAINER_CPU_LIMIT: ""
+  CHECK_JOB_MAIN_CONTAINER_CPU_REQUEST: ""
+  CHECK_JOB_MAIN_CONTAINER_MEMORY_LIMIT: ""
+  CHECK_JOB_MAIN_CONTAINER_MEMORY_REQUEST: ""
+  CLUSTER_TYPE: hybrid
+  CONFIG_DB_MAX_POOL_SIZE: "20"
+--
+  CONNECTOR_ROLLOUT_WAIT_BETWEEN_ROLLOUTS_SECONDS: "10800"
+  CONNECTOR_ROLLOUT_WAIT_BETWEEN_SYNC_RESULTS_QUERIES_SECONDS: "3600"
+  CONNECTOR_SIDECAR_IMAGE: airbyte/connector-sidecar:2.0.1
+  CONNECTOR_SPECIFIC_RESOURCE_DEFAULTS_ENABLED: "true"
+  CONTAINER_ORCHESTRATOR_DATA_PLANE_CREDS_SECRET_KEY: sa.json
+--
+  DISCOVER_JOB_KUBE_NODE_SELECTORS: ""
+  DISCOVER_JOB_KUBE_RUNTIME_CLASS_NAME: ""
+  DISCOVER_JOB_MAIN_CONTAINER_CPU_LIMIT: ""
+  DISCOVER_JOB_MAIN_CONTAINER_CPU_REQUEST: ""
+  DISCOVER_JOB_MAIN_CONTAINER_MEMORY_LIMIT: 4Gi
+  DISCOVER_JOB_MAIN_CONTAINER_MEMORY_REQUEST: 3Gi
+  DISCOVER_REFRESH_WINDOW_MINUTES: ""
+  DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development.yaml
+--
+  JOB_KUBE_SERVICEACCOUNT: airbyte-admin
+  JOB_KUBE_TOLERATIONS: ""
+  JOB_MAIN_CONTAINER_CPU_LIMIT: ""
+  JOB_MAIN_CONTAINER_CPU_REQUEST: ""
+  JOB_MAIN_CONTAINER_MEMORY_LIMIT: 4Gi
+  JOB_MAIN_CONTAINER_MEMORY_REQUEST: 3Gi
+  JOB_SOURCE_DECLARATIVE_MANIFEST_KUBE_NODE_SELECTORS: ""
+  JOB_SOURCE_DECLARATIVE_MANIFEST_KUBE_RUNTIME_CLASS_NAME: ""
+--
+  PUBLIC_API_EXECUTOR_THREADS: ""
+  PUBLISH_METRICS: "true"
+  REPLICATION_ORCHESTRATOR_CPU_LIMIT: ""
+  REPLICATION_ORCHESTRATOR_CPU_REQUEST: ""
+  REPLICATION_ORCHESTRATOR_MEMORY_LIMIT: ""
+  REPLICATION_ORCHESTRATOR_MEMORY_REQUEST: ""
+  RUN_DATABASE_MIGRATION_ON_STARTUP: "true"
+  RUN_DECLARATIVE_SOURCES_UPDATER: "true"
+--
+  SERVER_MAX_REQUEST_SIZE: "209715200"
+  SERVER_MICRONAUT_ENVIRONMENTS: control-plane
+  SIDECAR_MAIN_CONTAINER_CPU_LIMIT: "2"
+  SIDECAR_MAIN_CONTAINER_CPU_REQUEST: "1"
+  SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT: 8Gi
+  SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST: 6Gi
+  SQL_TLS_DISABLE_HOST_VERIFICATION: "false"
+  SQL_TLS_ENABLED: "false"
+
+kubectl patch ingress ingress-abctl -n airbyte-abctl --type merge -p '{"metadata": {"annotations": {"nginx.ingress.kubernetes.io/proxy-body-size": "500m"}}}'
+
+cat > server-patch.yaml << 'EOF'
+spec:
+  template:
+    spec:
+      containers:
+      - name: airbyte-server-container
+        env:
+        - name: SERVER_MAX_REQUEST_SIZE
+          value: "1073741824"
+        - name: MICRONAUT_SERVER_MAX_REQUEST_SIZE
+          value: "500MB"
+        - name: MICRONAUT_SERVER_MULTIPART_MAX_FILE_SIZE
+          value: "500MB"
+        - name: MICRONAUT_SERVER_MULTIPART_MAX_REQUEST_SIZE
+          value: "500MB"
+        - name: JAVA_TOOL_OPTIONS
+          value: "-Xmx4g -Dmicronaut.server.max-request-size=500MB -Dmicronaut.server.multipart.max-file-size=500MB -Dmicronaut.server.multipart.max-request-size=500MB"
+EOF
+
+kubectl patch deployment airbyte-abctl-server -n airbyte-abctl --patch "$(cat server-patch.yaml)"
+
+kubectl get configmap airbyte-abctl-airbyte-env -n airbyte-abctl -o yaml | grep -i "sidecar"
+  CONNECTOR_SIDECAR_IMAGE: airbyte/connector-sidecar:2.0.1
+  SIDECAR_MAIN_CONTAINER_CPU_LIMIT: "2"
+  SIDECAR_MAIN_CONTAINER_CPU_REQUEST: "1"
+  SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT: 8Gi
+  SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST: 6Gi
+
+kubectl patch configmap airbyte-abctl-airbyte-env -n airbyte-abctl --type merge -p '{"data": {
+  "SIDECAR_MAIN_CONTAINER_CPU_LIMIT": "2",
+  "SIDECAR_MAIN_CONTAINER_CPU_REQUEST": "1",
+  "SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT": "8Gi",
+  "SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST": "6Gi",
+  "CONNECTOR_SPECIFIC_RESOURCE_DEFAULTS_ENABLED": "true",
+  "WORKLOAD_RESOURCE_DEFAULTS_ENABLED": "true"
+}}'
+
+kubectl get configmap -n airbyte-abctl | grep -i helm
+
+# Create a simple test to see pod template
+cat > test-pod.yaml << 'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-resource-pod
+  namespace: airbyte-abctl
+  labels:
+    airbyte: test
+spec:
+  containers:
+  - name: test-sidecar
+    image: busybox
+    command: ["sleep", "3600"]
+    resources:
+      limits:
+        memory: "8Gi"
+        cpu: "2"
+      requests:
+        memory: "6Gi"
+        cpu: "1"
+EOF
+
+
+kubectl apply -f test-pod.yaml -n airbyte-abctl
+
+kubectl get pod test-resource-pod -n airbyte-abctl -o yaml | grep -A10 "resources:"
+
+kubectl delete pod test-resource-pod -n airbyte-abctl
+
+kubectl delete pods -n airbyte-abctl -l job-type=discover
+
+kubectl rollout restart deployment airbyte-abctl-worker -n airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc containerd]$ # Check pod YAML
+kubectl get pod $POD_NAME -n airbyte-abctl -o yaml | grep -A15 "resources:"
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: "1"
+        memory: 3Gi
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /config
+      name: airbyte-config
+    - mountPath: /storage
+      name: airbyte-storage
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-js6bz
+--
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /config
+      name: airbyte-config
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-js6bz
+      readOnly: true
+    workingDir: /config
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  imagePullSecrets:
+  - {}
+  initContainers:
+  - env:
+--
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: "1"
+        memory: 3Gi
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /config
+      name: airbyte-config
+    - mountPath: /storage
+      name: airbyte-storage
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-js6bz
+
+# Or check specific container
+kubectl get pod $POD_NAME -n airbyte-abctl -o json | jq '.spec.containers[] | select(.name=="connector-sidecar") | .resources'
+{
+  "limits": {
+    "cpu": "2",
+    "memory": "4Gi"
+  },
+  "requests": {
+    "cpu": "1",
+    "memory": "3Gi"
+  }
+}
+
+kubectl get jobs -n airbyte-abctl
+
+kubectl get cronjobs -n airbyte-abctl
+
+kubectl logs deployment/airbyte-abctl-workload-launcher -n airbyte-abctl --tail=50 
+
+[root@ods-db-01-alma9-huat-drx-kc containerd]$ kubectl logs deployment/airbyte-abctl-workload-launcher -n airbyte-abctl --tail=50
+Unsetting empty environment variable 'CONTAINER_ORCHESTRATOR_DATA_PLANE_CREDS_SECRET_NAME'
+Unsetting empty environment variable 'ACTIVITY_INITIAL_DELAY_BETWEEN_ATTEMPTS_SECONDS'
+
+    ___    _      __          __
+   /   |  (_)____/ /_  __  __/ /____
+  / /| | / / ___/ __ \/ / / / __/ _ \
+ / ___ |/ / /  / /_/ / /_/ / /_/  __/
+/_/  |_/_/_/  /_.___/\__, /\__/\___/
+                    /____/
+        : airbyte-workload-launcher :
+
+2025-12-31 22:14:28,607 [main]	INFO	i.m.c.e.DefaultEnvironment(<init>):170 - Established active environments: [k8s, control-plane, edition-community]
+2025-12-31 22:14:28,862 [main]	INFO	c.z.h.HikariDataSource(<init>):79 - config-pool - Starting...
+2025-12-31 22:14:28,874 [main]	INFO	c.z.h.HikariDataSource(<init>):81 - config-pool - Start completed.
+2025-12-31 22:14:28,945 [main]	INFO	i.m.l.PropertiesLoggingLevelsConfigurer(configureLogLevelForPrefix):113 - Setting log level 'INFO' for logger: 'io.netty'
+2025-12-31 22:14:28,945 [main]	INFO	i.m.l.PropertiesLoggingLevelsConfigurer(configureLogLevelForPrefix):113 - Setting log level 'ERROR' for logger: 'com.zaxxer.hikari'
+2025-12-31 22:14:28,945 [main]	INFO	i.m.l.PropertiesLoggingLevelsConfigurer(configureLogLevelForPrefix):113 - Setting log level 'INFO' for logger: 'io.grpc'
+2025-12-31 22:14:28,946 [main]	INFO	i.m.l.PropertiesLoggingLevelsConfigurer(configureLogLevelForPrefix):113 - Setting log level 'ERROR' for logger: 'com.zaxxer.hikari.pool'
+2025-12-31 22:14:28,946 [main]	INFO	i.m.l.PropertiesLoggingLevelsConfigurer(configureLogLevelForPrefix):113 - Setting log level 'INFO' for logger: 'io.fabric8.kubernetes.client'
+2025-12-31 22:14:29,310 [scheduled-executor-thread-2]	INFO	i.a.w.l.PodSweeper(sweepPods):56 - Starting pod sweeper cycle in namespace [airbyte-abctl]...
+2025-12-31 22:14:29,313 [scheduled-executor-thread-2]	INFO	i.a.w.l.PodSweeper(sweepPods):88 - Will sweep Succeeded pods older than 2025-12-31T22:04:29.311Z (UTC).
+2025-12-31 22:14:29,313 [scheduled-executor-thread-2]	INFO	i.a.w.l.PodSweeper(sweepPods):91 - Will sweep unsuccessful pods older than 2025-12-31T20:14:29.311Z (UTC).
+2025-12-31 22:14:29,689 [main]	INFO	i.a.f.ConfigFileClient(<init>):141 - path /flags does not exist, will return default flag values
+2025-12-31 22:14:29,756 [scheduled-executor-thread-3]	INFO	i.a.w.l.p.c.WorkloadApiQueueConsumer(initialize):41 - Initializing ApiQueueConsumer for d98c7d1a-73ef-4baa-8d4c-afa70bae8710
+2025-12-31 22:14:29,759 [scheduled-executor-thread-3]	INFO	i.a.w.l.p.c.WorkloadApiQueuePoller(initialize):53 - Initalizing ApiQueuePoller with d98c7d1a-73ef-4baa-8d4c-afa70bae8710 and default
+2025-12-31 22:14:29,772 [scheduled-executor-thread-3]	INFO	i.a.w.l.p.c.WorkloadApiQueuePoller(initialize):53 - Initalizing ApiQueuePoller with d98c7d1a-73ef-4baa-8d4c-afa70bae8710 and high
+2025-12-31 22:14:29,781 [main]	INFO	i.a.w.l.a.DataplaneIdentityService(initialize):55 - Running as c5d8cbb4-04da-4548-a90f-bec84eefd7ee (1014788a-b5ee-495c-bcea-cfe9432883a8) for
+2025-12-31 22:14:29,787 [main]	INFO	i.m.r.Micronaut(start):101 - Startup completed in 1468ms. Server Running: http://airbyte-abctl-workload-launcher-f85579946-42db4:8016
+2025-12-31 22:14:29,787 [Thread-2]	INFO	i.a.w.l.ClaimedProcessor(getWorkloadList):91 - requesting workload list: WorkloadListRequest(dataplane=[c5d8cbb4-04da-4548-a90f-bec84eefd7ee], status=[claimed], updatedBefore=null)
+2025-12-31 22:14:29,941 [scheduled-executor-thread-2]	INFO	i.a.w.l.PodSweeper(sweepPods):149 - Completed pod sweeper cycle.
+2025-12-31 22:14:29,983 [Thread-2]	INFO	i.a.w.l.ClaimedProcessor(retrieveAndProcess):58 - Re-hydrating 0 workload claim(s)...
+2025-12-31 22:14:29,983 [Thread-3]	INFO	i.a.w.l.p.c.WorkloadApiQueuePoller(resumePolling):68 - Resuming ApiQueuePoller with d98c7d1a-73ef-4baa-8d4c-afa70bae8710 and high
+2025-12-31 22:14:29,983 [Thread-3]	INFO	i.a.w.l.p.c.WorkloadApiQueuePoller(resumePolling):68 - Resuming ApiQueuePoller with d98c7d1a-73ef-4baa-8d4c-afa70bae8710 and default
+2025-12-31 22:16:15,808 [high-1]	INFO	i.a.w.l.p.s.m.Stage(apply):42 - APPLY Stage: BUILD — (workloadId=decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover)
+2025-12-31 22:16:15,828 [high-1]	INFO	i.a.w.l.p.s.m.Stage(apply):42 - APPLY Stage: CLAIM — (workloadId=decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover)
+2025-12-31 22:16:15,841 [high-1]	INFO	i.a.w.l.c.WorkloadApiClient(claim):93 - Claimed: true for workload decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover via API in dataplane 1014788a-b5ee-495c-bcea-cfe9432883a8 (c5d8cbb4-04da-4548-a90f-bec84eefd7ee)
+2025-12-31 22:16:15,842 [high-1]	INFO	i.a.w.l.p.s.m.Stage(apply):42 - APPLY Stage: LOAD_SHED — (workloadId=decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover)
+2025-12-31 22:16:15,842 [high-1]	INFO	i.a.w.l.p.s.m.Stage(apply):42 - APPLY Stage: CHECK_STATUS — (workloadId=decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover)
+2025-12-31 22:16:15,894 [high-1]	INFO	i.a.w.l.p.s.CheckStatusStage(applyStage):63 - No pod found running for workload decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover
+2025-12-31 22:16:15,894 [high-1]	INFO	i.a.w.l.p.s.m.Stage(apply):42 - APPLY Stage: MUTEX — (workloadId=decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover)
+2025-12-31 22:16:15,895 [high-1]	INFO	i.a.w.l.p.s.EnforceMutexStage(applyStage):49 - No mutex key specified for workload: decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover. Continuing...
+2025-12-31 22:16:15,895 [high-1]	INFO	i.a.w.l.p.s.m.Stage(apply):42 - APPLY Stage: ARCHITECTURE — (workloadId=decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover)
+2025-12-31 22:16:15,896 [high-1]	INFO	i.a.w.l.p.s.m.Stage(apply):42 - APPLY Stage: LAUNCH — (workloadId=decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover)
+2025-12-31 22:16:15,903 [high-1]	INFO	i.a.w.l.p.f.InitContainerFactory(create$io_airbyte_airbyte_workload_launcher):42 - [initContainer] image: airbyte/workload-init-container:2.0.1 resources: ResourceRequirements(claims=[], limits={memory=12Gi, cpu=2}, requests={memory=9Gi, cpu=1}, additionalProperties={})
+2025-12-31 22:16:21,438 [high-1]	INFO	i.a.w.l.c.WorkloadApiClient(updateStatusToLaunched):75 - Attempting to update workload: decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover to LAUNCHED.
+2025-12-31 22:16:21,456 [high-1]	INFO	i.a.w.l.p.h.SuccessHandler(accept):83 - Pipeline completed for workload: decd338e-5647-4c0b-adf4-da0e75f5a750_337df66c-8085-4291-acb3-b680ec30218b_0_discover.
+2025-12-31 22:16:28,980 [scheduled-executor-thread-3]	INFO	i.a.w.l.PodSweeper(sweepPods):56 - Starting pod sweeper cycle in namespace [airbyte-abctl]...
+2025-12-31 22:16:28,981 [scheduled-executor-thread-3]	INFO	i.a.w.l.PodSweeper(sweepPods):88 - Will sweep Succeeded pods older than 2025-12-31T22:06:28.980Z (UTC).
+2025-12-31 22:16:28,981 [scheduled-executor-thread-3]	INFO	i.a.w.l.PodSweeper(sweepPods):91 - Will sweep unsuccessful pods older than 2025-12-31T20:16:28.980Z (UTC).
+2025-12-31 22:16:28,995 [scheduled-executor-thread-3]	INFO	i.a.w.l.PodSweeper(sweepPods):149 - Completed pod sweeper cycle.
+
+kubectl get deployment airbyte-abctl-workload-launcher -n airbyte-abctl -o yaml | grep -i "env\|resources"
+
+# If needed, update workload launcher too
+cat > workload-patch.yaml << 'EOF'
+spec:
+  template:
+    spec:
+      containers:
+      - name: airbyte-workload-launcher-container
+        env:
+        - name: SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT
+          value: "8Gi"
+        - name: SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST
+          value: "6Gi"
+        - name: SIDECAR_MAIN_CONTAINER_CPU_LIMIT
+          value: "2"
+        - name: SIDECAR_MAIN_CONTAINER_CPU_REQUEST
+          value: "1"
+EOF
+
+kubectl patch deployment airbyte-abctl-workload-launcher -n airbyte-abctl --patch "$(cat workload-patch.yaml)"
+
+cat > custom-discover-pod.yaml << 'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: manual-postgres-discover
+  namespace: airbyte-abctl
+  labels:
+    job-type: discover
+spec:
+  restartPolicy: Never
+  containers:
+  - name: connector-sidecar
+    image: airbyte/connector-sidecar:2.0.1
+    resources:
+      limits:
+        memory: "8Gi"
+        cpu: "2"
+      requests:
+        memory: "6Gi"
+        cpu: "1"
+    env:
+    - name: AIRBYTE_ENTRYPOINT
+      value: "airbyte-integration"
+    - name: AIRBYTE_INTEGRATION_PATH
+      value: "/airbyte/integration_code"
+    # Add other necessary env vars...
+  - name: main
+    image: your-connector-image
+    resources:
+      limits:
+        memory: "4Gi"
+        cpu: "1"
+      requests:
+        memory: "3Gi"
+        cpu: "0.5"
+EOF
+
+kubectl patch ingress ingress-abctl -n airbyte-abctl --type merge -p '{"metadata": {"annotations": {"nginx.ingress.kubernetes.io/proxy-body-size": "500m"}}}'
+
+# 2. Update server
+cat > server-patch.yaml << 'EOF'
+spec:
+  template:
+    spec:
+      containers:
+      - name: airbyte-server-container
+        env:
+        - name: SERVER_MAX_REQUEST_SIZE
+          value: "1073741824"
+        - name: MICRONAUT_SERVER_MAX_REQUEST_SIZE
+          value: "500MB"
+        - name: MICRONAUT_SERVER_MULTIPART_MAX_FILE_SIZE
+          value: "500MB"
+        - name: MICRONAUT_SERVER_MULTIPART_MAX_REQUEST_SIZE
+          value: "500MB"
+        - name: JAVA_TOOL_OPTIONS
+          value: "-Xmx4g -Dmicronaut.server.max-request-size=500MB"
+EOF
+
+kubectl patch deployment airbyte-abctl-server -n airbyte-abctl --patch "$(cat server-patch.yaml)"
+
+kubectl patch configmap airbyte-abctl-airbyte-env -n airbyte-abctl --type merge -p '{"data": {
+  "SIDECAR_MAIN_CONTAINER_CPU_LIMIT": "2",
+  "SIDECAR_MAIN_CONTAINER_CPU_REQUEST": "1",
+  "SIDECAR_MAIN_CONTAINER_MEMORY_LIMIT": "8Gi",
+  "SIDECAR_MAIN_CONTAINER_MEMORY_REQUEST": "6Gi",
+  "CONNECTOR_SPECIFIC_RESOURCE_DEFAULTS_ENABLED": "true"
+}}'
+
+kubectl delete pods -n airbyte-abctl -l job-type=discover
+
+kubectl rollout restart deployment airbyte-abctl-workload-launcher -n airbyte-abctl
+
+kubectl rollout restart deployment airbyte-abctl-worker -n airbyte-abctl
+
+The key issue is that the sidecar pods aren't getting any resource limits ({} {}). Once they have proper limits (8Gi memory) AND the server can accept large requests (500MB+), the discovery should work.
+
+Now, the AI said it can see the resource limit, and that is good news
+
+POD_NAME=$(kubectl get pods -n airbyte-abctl --sort-by=.metadata.creationTimestamp | tail -5 | grep "postgres-discover" | tail -1 | awk '{print $1}')
+
+kubectl get pod $POD_NAME -n airbyte-abctl -o json | jq '.spec.containers[] | {name: .name, resources: .resources}'
+
+kubectl get pod $POD_NAME -n airbyte-abctl -o json | jq '.spec.containers[] | {name: .name, resources: .resources}'
+{
+  "name": "connector-sidecar",
+  "resources": {
+    "limits": {
+      "cpu": "2",
+      "memory": "8Gi"
+    },
+    "requests": {
+      "cpu": "1",
+      "memory": "6Gi"
+    }
+  }
+}
+{
+  "name": "main",
+  "resources": {
+    "limits": {
+      "memory": "4Gi"
+    },
+    "requests": {
+      "memory": "3Gi"
+    }
+  }
+}
+
+# Check the workload launcher logs more carefully
+kubectl logs deployment/airbyte-abctl-workload-launcher -n airbyte-abctl --tail=100 | grep -i "sidecar\|resources"
+
+kubectl patch configmap airbyte-abctl-airbyte-env -n airbyte-abctl --type merge -p '{"data": {
+  "CONNECTOR_SIDECAR_CPU_LIMIT": "2",
+  "CONNECTOR_SIDECAR_CPU_REQUEST": "1",
+  "CONNECTOR_SIDECAR_MEMORY_LIMIT": "8Gi",
+  "CONNECTOR_SIDECAR_MEMORY_REQUEST": "6Gi",
+  "CONNECTOR_SIDECAR_RESOURCES_ENABLED": "true",
+  "WORKER_SIDECAR_CPU_LIMIT": "2",
+  "WORKER_SIDECAR_CPU_REQUEST": "1",
+  "WORKER_SIDECAR_MEMORY_LIMIT": "8Gi",
+  "WORKER_SIDECAR_MEMORY_REQUEST": "6Gi"
+}}'
+
+# First, get the current environment variables
+kubectl get deployment airbyte-abctl-server -n airbyte-abctl -o jsonpath='{.spec.template.spec.containers[0].env}' | jq .
+
+# Create a proper JSON patch
+cat > server-patch.json << 'EOF'
+[
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/env",
+    "value": [
+      {
+        "name": "SERVER_MAX_REQUEST_SIZE",
+        "value": "1073741824"
+      },
+      {
+        "name": "MICRONAUT_SERVER_MAX_REQUEST_SIZE", 
+        "value": "500MB"
+      },
+      {
+        "name": "MICRONAUT_SERVER_MULTIPART_MAX_FILE_SIZE",
+        "value": "500MB"
+      },
+      {
+        "name": "MICRONAUT_SERVER_MULTIPART_MAX_REQUEST_SIZE",
+        "value": "500MB"
+      },
+      {
+        "name": "JAVA_TOOL_OPTIONS",
+        "value": "-Xmx4g -Dmicronaut.server.max-request-size=500MB -Dmicronaut.server.multipart.max-file-size=500MB -Dmicronaut.server.multipart.max-request-size=500MB"
+      }
+    ]
+  }
+]
+EOF
+
+
+kubectl patch ingress ingress-abctl -n airbyte-abctl --type merge -p '{"metadata": {"annotations": {"nginx.ingress.kubernetes.io/proxy-body-size": "500m"}}}'
+
+# Start a discovery in the UI, then:
+kubectl logs deployment/airbyte-abctl-workload-launcher -n airbyte-abctl --tail=200 | grep -A5 -B5 "sidecar\|container.*resource"
+
+cat > debug-sidecar-pod.yaml << 'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-sidecar-resources
+  namespace: airbyte-abctl
+spec:
+  restartPolicy: Never
+  containers:
+  - name: connector-sidecar
+    image: airbyte/connector-sidecar:2.0.1
+    command: ["sleep", "3600"]
+    resources:
+      limits:
+        memory: "8Gi"
+        cpu: "2"
+      requests:
+        memory: "6Gi"
+        cpu: "1"
+    env:
+    - name: AIRBYTE_EDITION
+      value: COMMUNITY
+    - name: WORKLOAD_API_READ_TIMEOUT_SECONDS
+      value: "300"
+EOF
+
+kubectl apply -f debug-sidecar-pod.yaml -n airbyte-abctl
+
+# Check if it runs with resources
+kubectl get pod debug-sidecar-resources -n airbyte-abctl -o json | jq '.spec.containers[0].resources'
+{
+  "limits": {
+    "cpu": "2",
+    "memory": "8Gi"
+  },
+  "requests": {
+    "cpu": "1",
+    "memory": "6Gi"
+  }
+}
+
+# Check for mutating webhooks
+kubectl get mutatingwebhookconfiguration -A
+
+# Check for resource quotas
+kubectl get resourcequotas -n airbyte-abctl
+
+
+# Check for limit ranges
+kubectl get limitranges -n airbyte-abctl
+
+# Delete any existing discover pods
+kubectl delete pods -n airbyte-abctl -l airbyte=discover 2>/dev/null || true
+
+
+Excellent! Now the sidecar container DOES have resources (8Gi memory, 2 CPU). That's great progress! The resources are now properly configured.
+
+The problem is still the 413 Request Entity Too Large error, which means the HTTP response from the sidecar to the Airbyte server is too large. This is now a server configuration issue, not a resource issue.
+
+# Check server pod environment variables
+kubectl get pods -n airbyte-abctl -l airbyte=server -o jsonpath='{.items[0].spec.containers[0].env}' | jq '.[] | select(.name | test("MAX|SIZE"))'
+
+# Get the current server deployment
+kubectl get deployment airbyte-abctl-server -n airbyte-abctl -o yaml > server-backup.yaml
+
+
+# Create a proper patch
+cat > server-patch.json << 'EOF'
+[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/env/-",
+    "value": {
+      "name": "SERVER_MAX_REQUEST_SIZE",
+      "value": "1073741824"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/env/-",
+    "value": {
+      "name": "MICRONAUT_SERVER_MAX_REQUEST_SIZE",
+      "value": "1GB"
+    }
+  },
+  {
+    "op": "add", 
+    "path": "/spec/template/spec/containers/0/env/-",
+    "value": {
+      "name": "MICRONAUT_SERVER_MULTIPART_MAX_FILE_SIZE",
+      "value": "1GB"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/env/-",
+    "value": {
+      "name": "MICRONAUT_SERVER_MULTIPART_MAX_REQUEST_SIZE", 
+      "value": "1GB"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/env/-",
+    "value": {
+      "name": "JAVA_TOOL_OPTIONS",
+      "value": "-Xmx4g -Dmicronaut.server.max-request-size=1GB -Dmicronaut.server.multipart.max-file-size=1GB -Dmicronaut.server.multipart.max-request-size=1GB"
+    }
+  }
+]
+EOF
+
+# Apply the patch
+kubectl patch deployment airbyte-abctl-server -n airbyte-abctl --type='json' -p="$(cat server-patch.json)"
+
+# Check if SERVER_MAX_REQUEST_SIZE exists
+kubectl get deployment airbyte-abctl-server -n airbyte-abctl -o jsonpath='{.spec.template.spec.containers[0].env}' | jq '.[] | select(.name == "SERVER_MAX_REQUEST_SIZE")'
+
+ods_domani=# select pg_total_relation_size('claimsprocess_humana_shard1.claim_core')/1024/1024/1024;
+ ?column?
+----------
+      125
+(1 row)
+
+ods_domani=# select count(1) from claimsprocess_humana_shard1.claim_core;
+  count
+----------
+ 81181735
+(1 row)
+
+Source is 
+ods_domani=# select count(1) from claimsprocess_humana.claim_core;
+  count
+----------
+ 81212175
+(1 row)
+
+Sync now. 
+
+[root@ods-db-01-alma9-huat-drx-kc ~]$ kubectl get pods -n airbyte-abctl | grep replication-job-101-attempt-0
+replication-job-101-attempt-0                             0/3     Pending     0             17m
+
+

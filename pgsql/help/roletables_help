@@ -1,0 +1,9 @@
+SELECT n.nspname AS schema_name,
+       c.relname AS table_name,
+       r.rolname AS role_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_roles r ON r.rolname = 'finance_misc_ro'  -- replace with role name
+WHERE c.relkind = 'r'  -- only tables
+  AND has_table_privilege(r.rolname, c.oid, 'SELECT');
+

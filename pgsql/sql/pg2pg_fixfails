@@ -1,0 +1,18 @@
+#!/bin/bash
+
+logdir=/pg_backups/restorelogs
+dumpdir=/pg_backups/pg2pg_init
+exefile=invaid_fix
+
+echo "#!/bin/bash" >$exefile
+for i in $(grep -r invalid $logdir/*.log |cut -d: -f1|cut -d/ -f4|cut -d. -f1,2)
+do
+	echo "clean $dumpdir/${i}/*.dat"
+	sed -i -e 's/\xAC//g' -e 's/\xDD\x4D//g' -e 's/\xA8//g' -e 's/\xD1//g' -e 's/\xAE//g' -e 's/\xAD//g'  -e 's/\xDD//g' $dumpdir/${i}/*.dat
+	grep pg_restore $logdir/${i}.cmd >> $exefile
+done
+
+cat $exefile
+
+ 
+

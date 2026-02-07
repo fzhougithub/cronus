@@ -1,0 +1,11 @@
+-- Create schema and import foreign tables
+CREATE SCHEMA shipping_fdw;
+IMPORT FOREIGN SCHEMA shipping FROM SERVER remote_pg INTO shipping_fdw;
+
+-- Grant access
+GRANT USAGE ON SCHEMA shipping_fdw TO analyst;
+GRANT SELECT ON ALL TABLES IN SCHEMA shipping_fdw TO analyst;
+
+-- Create user mapping
+CREATE USER MAPPING FOR analyst SERVER remote_pg OPTIONS (user 'remote_user', password 'secret');
+

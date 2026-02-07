@@ -1,0 +1,30 @@
+SELECT n.nspname||'.'||c.relname
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'r'  -- regular tables
+  AND c.oid IN (SELECT inhrelid FROM pg_inherits)  -- is a child
+  AND NOT EXISTS (
+      SELECT 1 FROM pg_inherits WHERE inhparent = c.oid
+  )  -- not a parent
+ORDER BY pg_total_relation_size(c.oid) DESC;
+
+
+SELECT n.nspname AS schema_name,
+       c.relname AS table_name,
+       pg_total_relation_size(c.oid) AS total_size_bytes
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'r'  -- regular tables
+  AND c.oid IN (SELECT inhrelid FROM pg_inherits)  -- is a child
+  AND NOT EXISTS (
+      SELECT 1 FROM pg_inherits WHERE inhparent = c.oid
+  )  -- not a parent
+ORDER BY pg_total_relation_size(c.oid) DESC;
+
+
+SELECT inhparent::regclass AS parent_table
+FROM pg_inherits
+WHERE inhrelid = 'claimsprocess_humana.claim_submission_clarification_codes_63'::regclass;
+

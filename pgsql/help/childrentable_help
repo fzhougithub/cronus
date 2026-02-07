@@ -1,0 +1,37 @@
+1. Children partition table
+
+SELECT 
+    n.nspname || '.' || c.relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    pg_total_relation_size(c.oid) AS size_bytes
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'r'  -- regular table
+  AND EXISTS (         -- is a child
+      SELECT 1 FROM pg_inherits i WHERE i.inhrelid = c.oid
+  )
+  AND NOT EXISTS (     -- is NOT a parent (i.e., no children)
+      SELECT 1 FROM pg_inherits i WHERE i.inhparent = c.oid
+  )
+ORDER BY size_bytes DESC;
+
+
+2. children standalone table
+
+SELECT 
+    n.nspname || '.' || c.relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    pg_total_relation_size(c.oid) AS size_bytes
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'r'
+  AND NOT EXISTS (     -- not a child
+      SELECT 1 FROM pg_inherits i WHERE i.inhrelid = c.oid
+  )
+  AND NOT EXISTS (     -- not a parent
+      SELECT 1 FROM pg_inherits i WHERE i.inhparent = c.oid
+  )
+ORDER BY size_bytes DESC;
+

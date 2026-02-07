@@ -1,0 +1,79 @@
+SELECT c.oid::regclass AS table_name,
+       am.amname AS access_method
+FROM pg_class c
+JOIN pg_am am ON c.relam = am.oid
+WHERE am.amname ILIKE '%columnar%';
+
+check which table are columnar table
+
+SELECT
+  n.nspname AS schema_name,
+  c.relname AS table_name,
+  'columnar' AS access_method,
+  CASE WHEN c.relkind = 'r' THEN 'Leaf partition / regular columnar table'
+       ELSE c.relkind::text END AS table_type,
+  pg_size_pretty(pg_table_size(c.oid)) AS table_size,
+  c.reltuples::bigint AS estimated_row_count
+FROM
+  pg_class c
+JOIN
+  pg_namespace n ON c.relnamespace = n.oid
+JOIN
+  pg_am am ON c.relam = am.oid
+WHERE
+  am.amname = 'columnar' -- Only columnar tables
+  AND c.relkind = 'r' -- Leaf partitions/regular tables (columnar storage is rarely on parent partitions)
+ORDER BY
+  n.nspname,
+  c.relname;
+
+
+
+yum  install -y citus_14.x86_64 citus_14-llvmjit.x86_64 citus_14-devel.x86_64
+yum erase citus_14.x86_64 citus_14-devel.x86_64 citus_14-llvmjit.x86_64
+
+yum install hydra_14.x86_64 hydra_14-llvmjit.x86_64
+yum erase hydra_14.x86_64 hydra_14-llvmjit.x86_64
+
+CREATE EXTENSION citus_columnar;
+
+CREATE TABLE claim_c
+(
+    LIKE claim INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES
+)
+PARTITION BY LIST (customer_id);
+
+
+test=# \dS columnar_t;
+                  Table "public.columnar_t"
+ Column |       Type        | Collation | Nullable | Default
+--------+-------------------+-----------+----------+---------
+ id     | integer           |           | not null |
+ name   | character varying |           |          |
+ action | character(1)      |           |          |
+Indexes:
+    "t_pkey" PRIMARY KEY, btree (id)
+
+test=# INSERT INTO columnar_t (id, name, action)
+test-# SELECT generate_series(6, 6 + 1000000 - 1), 'test_' || (random() * 1000000)::integer, (array['d','i','u'])[floor(random()*3 +1)::int];
+INSERT 0 1000000
+test=# INSERT INTO columnar_t (id, name, action)
+test-# SELECT generate_series(1000007, 1000007 + 1000000 - 1), 'test_' || (random() * 1000000)::integer, (array['d','i','u'])[floor(random()*3 +1)::int];
+INSERT 0 1000000
+test=#
+
+test=# select * from cdc;
+ id |  name  | action
+----+--------+--------
+  5 |        | d
+  5 | test a | i
+  6 | 2 test | i
+  3 |        | d
+(4 rows)
+
+create view report as select id,name from columnar_t
+except
+select l.id,l.name from columnar_t l join cdc on l.id=cdc.id
+union all
+select id,name from cdc where action='i'
+order by id;

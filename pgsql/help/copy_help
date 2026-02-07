@@ -1,0 +1,98 @@
+SET citus.binary_master_copy_format = true;
+SET citus.max_intermediate_result_size = -1;
+
+-- Run on coordinator to generate commands. 
+SELECT DISTINCT ON (shardid)
+format('psql -h %s -p %s -U datamart -d %s -c "COPY %I TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"',
+       nodename, nodeport, current_database(), shard_name)
+FROM citus_shards
+WHERE table_name = 'claimsprocess_humana.claim_core'::regclass;
+
+ psql -h datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY "claimsprocess_humana.claim_core_173118" TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY "claimsprocess_humana.claim_core_173119" TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY "claimsprocess_humana.claim_core_173120" TO
+STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY "claimsprocess_humana.claim_core_173121" TO
+STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY "claimsprocess_humana.claim_core_173122" TO
+STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY "claimsprocess_humana.claim_core_173123" TO
+STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+
+Save them in taskslist file, and then, run in parallel
+
+then, using parallel command
+parallel --jobs 4 < task_list
+or
+cat tasklist | xargs -I {} -P 4 bash -c "{}"
+
+But, if we use native partition, could not directly COPY table, have to copy select
+
+SELECT DISTINCT ON (shardid)
+format('psql -h %s -p %s -U datamart -d %s -c "COPY (SELECT * FROM %I) TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"', 
+       nodename, nodeport, current_database(), shard_name)
+FROM citus_shards
+WHERE table_name = 'claimsprocess_humana.claim_core'::regclass;
+
+ psql -h datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY (SELECT * FROM "claimsprocess_humana.claim_c
+ore_173118") TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY (SELECT * FROM "claimsprocess_humana.claim_c
+ore_173119") TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY (SELECT * FROM "claimsprocess_humana.claim_c
+ore_173120") TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY (SELECT * FROM "claimsprocess_humana.claim_c
+ore_173121") TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY (SELECT * FROM "claimsprocess_humana.claim_c
+ore_173122") TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+ psql -h datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud -p 5432 -U datamart -d ods_domani -c "COPY (SELECT * FROM "claimsprocess_humana.claim_c
+ore_173123") TO STDOUT WITH BINARY" | psql -d test1 -c "COPY claimsprocess_test.claim_core FROM STDIN WITH BINARY"
+
+Then, time parallel --jobs 6 < taskslist
+just several minutes can load all of the data
+
+
+Method,Risk of Temp Files,Complexity,Recommendation
+Manual COPY (SELECT *),Extremely High,Low,Avoid for tables > 5GB
+pg_dump,Low,Medium,Use for daily backups/migrations
+Direct Shard Pipe,Zero,High,"Use for ""emergency"" moves when disk is full"
+
+
+
+Method 1: The "Unix Pipe" (Recommended)
+This is the fastest method. You use the psql command-line tool to stream data directly from the source Citus cluster into your local table without ever writing a file to disk.
+
+Run this from the bash terminal of your server (not inside the psql prompt):
+
+Bash
+
+psql -h <citus_coordinator_host> -U datamart -d ods_domani -c \
+"COPY (SELECT * FROM claimsprocess_humana.claim_core) TO STDOUT" | \
+psql -d test1 -c "COPY claim_core FROM STDIN"
+Why this is better:
+
+No Materialization: Data flows like water through a pipe. The test1 database processes each row as it arrives and commits it, rather than trying to "save" the whole 12GB+ result set in a temp file first.
+
+Memory Efficiency: It uses almost no pgsql_tmp space because the "buffer" is just the small RAM buffer of the Unix pipe.
+
+Method 2: The "Binary Pipe" (Maximum Speed)
+If your tables have the exact same structure (same columns in the same order), you can use the BINARY format. This skips the overhead of converting data to text and back, which is significantly faster for large datasets.
+
+Bash
+
+psql -h <citus_coordinator_host> -U datamart -d ods_domani -c \
+"COPY (SELECT * FROM claimsprocess_humana.claim_core) TO STDOUT WITH BINARY" | \
+psql -d test1 -c "COPY claim_core FROM STDIN WITH BINARY"
+Method 3: The "Chunked" SQL Method (If you must stay in SQL)
+If you cannot use the command line and must stay inside your SQL editor, you must break the INSERT into small batches to prevent the temp files from exploding.
+
+SQL
+
+-- Load data in chunks of 100,000 rows (adjust range as needed)
+INSERT INTO claim_core 
+SELECT * FROM claimsprocess_humana.claim_core 
+WHERE customer_id BETWEEN 0 AND 100000;
+
+-- Commit and then run the next chunk
+INSERT INTO claim_core 
+SELECT * FROM claimsprocess_humana.claim_core 
+WHERE customer_id BETWEEN 100001 AND 200000;

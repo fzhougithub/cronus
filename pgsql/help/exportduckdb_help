@@ -1,0 +1,2 @@
+COPY table_name TO 'output_file_or_directory.parquet' (FORMAT PARQUET);
+

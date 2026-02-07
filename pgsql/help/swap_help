@@ -1,0 +1,37 @@
+sudo fuser -vm /swap
+                     USER        PID ACCESS COMMAND
+/swap:               root     kernel swap  /swap/swapfile
+                     root     kernel mount /swap
+You need to disable the running swap file first
+sudo swapoff /swap/swapfile
+
+sudo fuser -vm /swap
+                     USER        PID ACCESS COMMAND
+/swap:               root     kernel mount /swap
+
+umount /swap
+
+Then, comfirm there is no swap show
+swapon --show
+
+sudo blkid /dev/sdf
+/dev/sdf: UUID="ecCGeA-DIoG-IcJ7-lr55-larP-hbaa-9OdnAw" TYPE="LVM2_member"
+
+wipefs /dev/sdf
+DEVICE OFFSET TYPE        UUID                                   LABEL
+sdf    0x218  LVM2_member ecCGeA-DIoG-IcJ7-lr55-larP-hbaa-9OdnAw
+
+sudo wipefs -a /dev/sdf
+/dev/sdf: 8 bytes were erased at offset 0x00000218 (LVM2_member): 4c 56 4d 32 20 30 30 31
+
+sudo blkid /dev/sdf
+
+fdisk -l /dev/sdf
+Disk /dev/sdf: 48 GiB, 51539607552 bytes, 100663296 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+	
+
+swapoff /dev/mapper/swapsvg-swapslv

@@ -1,0 +1,132 @@
+# Connect to PostgreSQL
+docker exec -it airflow-postgres psql -U airflow
+
+# Check task instance state
+SELECT dag_id, task_id, state, start_date, end_date, duration
+FROM task_instance 
+WHERE dag_id = 'list_schemas_sql' 
+AND task_id = 'get_schemas'
+ORDER BY start_date DESC LIMIT 5;
+
+# Check for exceptions
+SELECT dag_id, task_id, state, try_number, job_id, hostname, executor_config
+FROM task_instance 
+WHERE state = 'failed' 
+AND dag_id = 'list_schemas_sql';
+
+# Check task fail metadata
+SELECT * FROM task_fail 
+WHERE dag_id = 'list_schemas_sql' 
+ORDER BY execution_date DESC LIMIT 3;
+
+\q
+
+
+
+To check logs for a failed DAG run, you have several options:
+
+## 1. **Airflow UI Logs** (Most Common)
+- Go to **Airflow UI** → **DAGs** → Click on your DAG name
+- Click on the **"Graph"** or **"Grid"** view
+- Find the failed task instance (red square)
+- Click on the task → **"Log"** button
+
+## 2. **Direct Log Access via CLI**
+
+### If using LocalExecutor/SequentialExecutor:
+```bash
+# Check default logs location
+ls -la $AIRFLOW_HOME/logs/
+
+# Navigate to your DAG's log folder
+cd $AIRFLOW_HOME/logs/your_dag_name/
+```
+
+### If using Docker:
+```bash
+# Access the scheduler/worker container
+docker exec -it airflow-scheduler bash
+
+# Check logs in the container
+cd /opt/airflow/logs/
+```
+
+## 3. **Common Log Locations**
+
+### Default Airflow log structure:
+```
+${AIRFLOW_HOME}/logs/
+├── dag_id/
+│   ├── task_id/
+│   │   ├── 2024-01-01/
+│   │   │   ├── attempt_1.log
+│   │   │   └── attempt_2.log
+│   │   └── latest/
+├── scheduler/
+│   └── YYYY-MM-DD.log
+└── dag_processor_manager/
+```
+
+## 4. **Check Scheduler Logs** (if DAG won't start)
+```bash
+# Check scheduler logs
+tail -f $AIRFLOW_HOME/logs/scheduler/latest/*.log
+
+# Or if using systemd
+journalctl -u airflow-scheduler -f
+```
+
+## 5. **Enable Debug Logging** (if logs are insufficient)
+
+Add to your `airflow.cfg` or set as environment variable:
+```ini
+[logging]
+logging_level = INFO  # Change to DEBUG for more details
+```
+[logging]
+logging_level = DEBUG
+log_filename_template = {{ ti.dag_id }}/{{ ti.task_id }}/{{ ts }}/{{ try_number }}.log
+
+# Set before starting Airflow components
+export AIRFLOW__LOGGING__LOGGING_LEVEL=DEBUG
+
+# Or add to your shell profile
+echo 'export AIRFLOW__LOGGING__LOGGING_LEVEL=DEBUG' >> ~/.bashrc
+
+
+
+Or temporarily for debugging:
+```bash
+export AIRFLOW__LOGGING__LOGGING_LEVEL=DEBUG
+```
+
+## 6. **Check DAG File Syntax** (for `list_schema` failure)
+```bash
+# Validate your DAG file
+python your_dag_file.py
+
+# Or use Airflow's CLI
+airflow dags list | grep your_dag_name
+airflow tasks list your_dag_name --tree
+```
+
+## 7. **Quick Debug Commands**
+```bash
+# Check if DAG is loaded
+airflow dags list
+
+# Test specific task
+airflow tasks test your_dag_name your_task_name 2024-01-01
+
+# Check DAG structure
+airflow dags show your_dag_name --save test.png
+```
+
+## 8. **Common Issues for `list_schema` Failure**
+- **Import errors** in DAG file
+- **Database connection** issues
+- **Permissions** problems
+- **Syntax errors** in Python code
+- **Missing dependencies** in virtual environment
+
+**Which environment are you using?** (Local, Docker, Kubernetes, Cloud Composer, MWAA?) This will help me give more specific guidance on log access.

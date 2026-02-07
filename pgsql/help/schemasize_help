@@ -1,3 +1,17 @@
+
+SELECT n.nspname AS schema_name,
+       c.relname AS table_name,
+       t.spcname AS tablespace
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
+WHERE n.nspname='claimsprocess_humana' and c.relkind = 'r'  -- only regular tables
+  AND (t.spcname IS NULL OR t.spcname = 'pg_default')
+ORDER BY schema_name, table_name;
+
+
+
+
 SELECT
     n.nspname AS schema_name,
     pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_schema_size

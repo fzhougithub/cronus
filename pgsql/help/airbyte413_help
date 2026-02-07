@@ -1,0 +1,31 @@
+GRANT USAGE ON SCHEMA claimsprocess_humana TO  airbyte;
+GRANT SELECT ON TABLE claimsprocess_humana.claim_core TO airbyte
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA claimsprocess_humana TO airbyte;
+
+Using table filter like
+
+
+# First, get your source ID
+SOURCE_ID="your_source_id_here"
+
+# Force discovery for ONLY claim_core table
+curl -X POST http://your-airbyte:8000/api/v1/sources/discover_schema \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sourceId": "'$SOURCE_ID'",
+    "disable_cache": true,
+    "connectionConfiguration": {
+      "host": "your_host",
+      "port": 5432,
+      "database": "your_database",
+      "schemas": ["claimsprocess_humana"],
+      "username": "your_user",
+      "password": "your_pass",
+      "ssl": false,
+      "replication_method": "Standard",
+      "tunnel_method": "NO_TUNNEL",
+      "table_name_pattern": "claim_core"
+    }
+  }'
+
+

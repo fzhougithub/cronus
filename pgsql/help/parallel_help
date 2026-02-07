@@ -1,3 +1,62 @@
+Let’s break down your command step by step:
+
+```bash
+cat $tablist | xargs -I {} -P $jobs bash -c 'process_table "$@"' _ {}
+```
+
+***
+
+### ✅ **1. `cat $tablist`**
+
+*   Reads the contents of the file stored in `$tablist`.
+*   Each line in `$tablist` is expected to be a **table name**.
+
+***
+
+### ✅ **2. `| xargs -I {} -P $jobs`**
+
+*   **`xargs`** takes input from `cat` and runs commands for each item.
+*   **`-I {}`**: Defines a placeholder `{}` that will be replaced by each table name.
+*   **`-P $jobs`**: Runs up to `$jobs` commands **in parallel** (e.g., if `$jobs=4`, 4 tables processed at once).
+
+***
+
+### ✅ **3. `bash -c 'process_table "$@"' _ {}`**
+
+*   **`bash -c '...'`**: Runs the given string as a new Bash command.
+*   Inside the string: `process_table "$@"`
+    *   Calls your exported function `process_table` with all arguments passed to the script.
+*   The `_ {}` part:
+    *   `_` is a dummy `$0` (script name) for the new shell.
+    *   `{}` becomes `$1` inside the new shell, so `"$@"` expands to `{}` (the table name).
+
+Effectively, for each table name, this runs:
+
+```bash
+bash -c 'process_table "$@"' _ table_name
+```
+
+***
+
+### ✅ **What this achieves**
+
+*   Reads table names from `$tablist`.
+*   For each table name, calls `process_table table_name`.
+*   Runs up to `$jobs` processes in parallel.
+
+***
+
+### ✅ **Why export matters**
+
+*   `export -f process_table` ensures the function is available in the subshells spawned by `bash -c`.
+*   `export s_host ...` ensures your variables are available too.
+
+***
+
+👉 Do you want me to **rewrite this using GNU Parallel** (which is cleaner and more powerful than `xargs` for this use case)? Or **show a version that logs each job’s start and end time for better monitoring**?
+
+
+
 so, just the vacuum could not be run as parallel by nature
 
 

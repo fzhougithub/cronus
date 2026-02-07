@@ -1,0 +1,94 @@
+1. Install requied tools
+
+dnf groupinstall -y "Development Tools"
+Make sure already installed pg17
+[root@finance-db-02-alma9-olly-drx-kc ~]$ yum list installed|grep postgresql
+postgresql17.x86_64                                      17.6-1PGDG.rhel9                 @pgdg17
+postgresql17-contrib.x86_64                              17.6-1PGDG.rhel9                 @pgdg17
+postgresql17-devel.x86_64                                17.6-1PGDG.rhel9                 @pgdg17
+postgresql17-libs.x86_64                                 17.6-1PGDG.rhel9                 @pgdg17
+postgresql17-server.x86_64                               17.6-1PGDG.rhel9                 @pgdg17
+
+dnf install -y git gcc-c++ cmake ninja-build openssl-devel readline-devel zlib-devel flex bison libxml2-devel libxslt-devel libxml2 libxslt pkgconfig glibc-devel libstdc++-devel lz4-devel libicu-devel 
+
+dnf install -y libcurl-devel openssl-devel
+
+2. Download the git code
+git clone https://github.com/duckdb/pg_duckdb
+cd pg_duckdb
+
+[root@finance-db-02-alma9-olly-drx-kc pg_duckdb]$ git submodule update --init --recursive
+Submodule 'third_party/duckdb' (https://github.com/duckdb/duckdb.git) registered for path 'third_party/duckdb'
+Cloning into '/home/fzhou/work/pg_duckdb/third_party/duckdb'...
+Submodule path 'third_party/duckdb': checked out 'b390a7c3760bd95926fe8aefde20d04b349b472e'
+
+export PATH=$PATH:/usr/local/bin:/usr/pgsql-17/bin
+rm -rf third_party/duckdb/build/release
+make duckdb
+make PG_CONFIG=/usr/pgsql-17/bin/pg_config
+# For a static DuckDB build (smaller binary), add DUCKDB_BUILD=ReleaseStatic to the make commands.
+
+#make PG_CONFIG=/usr/pgsql-17/bin/pg_config install
+#make clean
+
+dnf install -y rpm-build redhat-rpm-config
+
+mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+
+# create rpm package
+cd ..
+tar \
+  --transform 's|^pg_duckdb/|pg_duckdb-built/|' \
+  -cvf ~/rpmbuild/SOURCES/pg_duckdb-built.tar \
+  pg_duckdb/
+
+[root@finance-db-02-alma9-olly-drx-kc work]$ ls -larth ~/rpmbuild/SOURCES/pg_duckdb-built.tar
+-rw-r--r--. 1 root root 1.1G Oct 29 08:06 /root/rpmbuild/SOURCES/pg_duckdb-built.tar
+
+gzip ~/rpmbuild/SOURCES/pg_duckdb-built.tar
+
+2. write the rpm spec file
+vi ~/rpmbuild/SPECS/pg_duckdb.spec
+
+Name:           pg_duckdb
+#Version:        v1.0.0  # Replace with actual DuckDB/pg_duckdb version (check via git describe or README)
+Version:        1.0.0
+Release:        1%{?dist}
+Summary:        DuckDB-powered PostgreSQL extension for analytics
+
+License:        MIT
+URL:            https://github.com/duckdb/pg_duckdb
+Source0:        %{name}-built.tar.gz
+
+BuildRequires:  postgresql17-devel, gcc-c++, cmake, ninja-build
+Requires:       postgresql17-server
+
+%description
+pg_duckdb embeds DuckDB's analytical engine into PostgreSQL for high-performance queries.
+
+%prep
+%setup -q -n %{name}-built
+
+%build
+# Already built; skip to ensure artifacts are used
+make duckdb PG_CONFIG=/usr/pgsql-17/bin/pg_config
+
+%install
+PG_CONFIG=/usr/pgsql-17/bin/pg_config make install DESTDIR=%{buildroot}
+
+%files
+%defattr(-,root,root,-)
+%{_libdir}/pgsql/pg_duckdb.so
+%{pgextensiondir}/pg_duckdb*
+%{pgsharedir}/extension/pg_duckdb*
+
+%changelog
+* Wed Oct 29 2025 Your Name <you@example.com> - 0.10.2-1
+- Built pg_duckdb for AlmaLinux 9 / PG 17
+
+======================
+
+# After confirm , change DEST=/usr/pgsql-17/share/extension/
+
+

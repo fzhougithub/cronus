@@ -1,0 +1,28 @@
+Command
+	
+Purpose
+
+
+rpm -q zabbix-sender
+	
+Check if a specific package is installed
+
+
+rpm -qi zabbix-sender
+	
+Show detailed info about an installed package
+
+
+rpm -ql zabbix-sender
+	
+List all files installed by the package
+
+
+dnf list installed 'zabbix*'
+	
+Same as rpm -qa \| grep zabbix, but using DNF
+
+
+dnf info zabbix-sender
+	
+Show package details from repositories

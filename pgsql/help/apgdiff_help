@@ -1,0 +1,3 @@
+1. brew install apgdiff
+2. clean_pg_sql.sh source destination
+3. apgdiff source new_destination

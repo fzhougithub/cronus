@@ -1,0 +1,129 @@
+SELECT
+    -- 1. PostgreSQL Partition Info
+    pc.relname AS local_partition_name,
+
+    -- 2. Citus Shard Info
+    psd.shardid AS shard_id,
+
+    -- 3. Citus Worker Location Info (using the pg_dist_node table)
+    pdn.nodename AS worker_node,
+    pdn.nodeport AS worker_port,
+    CASE pd.shardstate
+        WHEN 0 THEN 'Active'
+        WHEN 1 THEN 'Inactive'
+        ELSE 'Unknown'
+    END AS shard_state, -- NOTE: shardstate is on the placement table (pd)
+
+    -- 4. Size for verification
+    pg_size_pretty(pg_total_relation_size(pc.oid)) AS total_size
+FROM
+    worker_node;
+
+
+-- Try to force read data with different methods
+SELECT run_command_on_workers($$
+    -- Method 1: Force sequential scan with no filters
+    SELECT 'Method 1 - Count: ' || COUNT(*)::text 
+    FROM claimsprocess_humana.claim_core_claimid_22
+    UNION ALL
+    -- Method 2: Check if any rows visible
+    SELECT 'Method 2 - Any rows: ' || 
+           EXISTS(SELECT 1 FROM claimsprocess_humana.claim_core_claimid_22 LIMIT 1)::text
+    UNION ALL
+    -- Method 3: Try to read actual data
+    SELECT 'Method 3 - First claim_id: ' || 
+           COALESCE(MIN(claim_id), 'NULL') 
+    FROM claimsprocess_humana.claim_core_claimid_22;
+$$);
+
+-- Check if VACUUM helps
+SELECT run_command_on_workers($$
+    VACUUM (VERBOSE, ANALYZE) claimsprocess_humana.claim_core_claimid_22;
+    SELECT 'VACUUM complete on ' || inet_server_addr();
+$$);
+
+-- Check transaction age
+SELECT run_command_on_workers($$
+    SELECT 
+        'Database: ' || current_database(),
+        'Oldest xmin: ' || age(datfrozenxid),
+        'Transaction wraparound risk: ' || 
+        CASE WHEN age(datfrozenxid) > 1000000000 THEN 'HIGH' ELSE 'OK' END
+    FROM pg_database WHERE datname = current_database();
+$$);
+
+-- Try query without using indexes
+SELECT run_command_on_workers($$
+    SET enable_indexscan = off;
+    SET enable_bitmapscan = off;
+    SELECT 'Heap-only scan count: ' || COUNT(*)::text
+    FROM claimsprocess_humana.claim_core_claimid_22;
+    RESET enable_indexscan;
+    RESET enable_bitmapscan;
+$$);
+
+-- This rewrites the table completely
+SELECT run_command_on_workers($$
+    VACUUM (FULL, VERBOSE) claimsprocess_humana.claim_core_claimid_22;
+$$);
+
+-- Enable checksum verification if available
+SELECT run_command_on_workers($$
+    SELECT 
+        'Data checks:',
+        'Table size: ' || pg_size_pretty(pg_total_relation_size('claimsprocess_humana.claim_core_claimid_22')),
+        'Toast size: ' || pg_size_pretty(pg_total_relation_size('claimsprocess_humana.claim_core_claimid_22' || '_toast')),
+        'Toast index size: ' || pg_size_pretty(pg_total_relation_size('claimsprocess_humana.claim_core_claimid_22' || '_toast' || '_index'));
+$$);
+
+-- Export data to see if it can be read
+SELECT run_command_on_workers($$
+    COPY (SELECT * FROM claimsprocess_humana.claim_core_claimid_22 LIMIT 10) 
+    TO '/tmp/test_export.csv' WITH CSV HEADER;
+    SELECT 'COPY result: ' || (SELECT COUNT(*) FROM claimsprocess_humana.claim_core_claimid_22)::text;
+$$);
+
+-- Most important: Can we read ANY data?
+SELECT run_command_on_workers($$
+    DO $$
+    DECLARE
+        rec RECORD;
+        counter INT := 0;
+    BEGIN
+        -- Try to read first few rows
+        FOR rec IN SELECT * FROM claimsprocess_humana.claim_core_claimid_22 LIMIT 5
+        LOOP
+            counter := counter + 1;
+            RAISE NOTICE 'Row %: claim_id = %', counter, rec.claim_id;
+        END LOOP;
+        
+        IF counter = 0 THEN
+            RAISE NOTICE 'No rows readable - table appears empty';
+        ELSE
+            RAISE NOTICE 'Successfully read % rows', counter;
+        END IF;
+    END $$;
+$$);
+
+
+-- TOAST corruption is common after crashes
+SELECT run_command_on_workers($$
+    SELECT 
+        'Main table OID: ' || oid::text,
+        'TOAST table OID: ' || reltoastrelid::text,
+        'TOAST index OID: ' || reltoastidxid::text
+    FROM pg_class 
+    WHERE relname = 'claim_core_claimid_22' 
+    AND relnamespace = 'claimsprocess_humana'::regnamespace;
+    
+    -- Check TOAST table health
+    SELECT 
+        'TOAST table exists: ' || EXISTS(
+            SELECT 1 FROM pg_class WHERE oid = c.reltoastrelid
+        )::text
+    FROM pg_class c
+    WHERE c.relname = 'claim_core_claimid_22' 
+    AND c.relnamespace = 'claimsprocess_humana'::regnamespace;
+$$);
+
+

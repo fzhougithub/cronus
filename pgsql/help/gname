@@ -1,0 +1,28 @@
+#!/bin/bash
+
+if [[ $1 != *01* ]]; then
+  a=$(echo "$1" | cut -d'-' -f1,2)
+  b=$(echo "$1" | cut -d'-' -f3-)
+  o="${a}-01-${b}"
+else
+  o=$1
+fi
+
+if [[ $o != *alma8* ]]; then
+  a=$(echo "$o" | cut -d'-' -f1,2,3)
+  b=$(echo "$o" | cut -d'-' -f4-)
+  o="${a}-alma8-${b}"
+else
+  o=$1
+fi
+
+if [[ $o == *-kc ]]; then
+  o="${o}-kc"
+fi
+
+if [[ $o != *cloud ]]; then
+  o="${}.ssnc-corp.cloud"
+fi
+
+echo "$o"
+

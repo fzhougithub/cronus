@@ -1,0 +1,6 @@
+repoquery --repoid=pigsty-pgsql
+repoquery --repoid=pigsty-infra
+
+dnf repoquery --qf '%{VERSION}-%{RELEASE} %{REPOID}' postgresql16-contrib --showduplicates
+yum install postgresql16-contrib-16.10-1PGDG.rhel9.x86_64
+

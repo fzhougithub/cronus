@@ -1,0 +1,29 @@
+-- Check if standby is in recovery mode
+SELECT pg_is_in_recovery();
+
+-- Check current WAL position
+SELECT pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn(), pg_is_wal_replay_paused();
+
+-- Check replication status
+SELECT * FROM pg_stat_wal_receiver;
+
+On primary:
+
+-- Check if walsender processes are running
+SELECT * FROM pg_stat_replication;
+
+-- Check replication slots
+SELECT * FROM pg_replication_slots;
+
+# On standby server
+grep -E "(primary_conn|recovery|standby)" $PGDATA/postgresql.conf
+grep -E "(primary_conn|recovery|standby)" $PGDATA/postgresql.auto.conf
+
+# On standby server
+ls -la $PGDATA/standby.signal
+cat $PGDATA/standby.signal
+
+SELECT slot_name, active, restart_lsn, confirmed_flush_lsn 
+FROM pg_replication_slots;
+
+

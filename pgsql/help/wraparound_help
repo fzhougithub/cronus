@@ -42,6 +42,22 @@ LIMIT 100;
  pg_toast.pg_toast_95929                                      | t       | 197676571 | 8192 bytes
 
 
+SELECT 'vacuum(freeze,analyze)  '||n.nspname || '.' || c.relname||';'
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relfrozenxid != 0
+  AND c.relkind IN ('r', 'i', 'S', 't', 'm', 'c', 'f', 'p')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY age(c.relfrozenxid) DESC
+
+---------------------------------------------------------------------
+ vacuum(freeze,analyze)  claimsprocess_humana.claim_core_830_202206;
+ vacuum(freeze,analyze)  claimsprocess_humana.claim_core_319_202412;
+ vacuum(freeze,analyze)  claimsprocess_humana.claim_core_544_202504;
+ vacuum(freeze,analyze)  claimsprocess_humana.claim_core_830_202212;
+ vacuum(freeze,analyze)  claimsprocess_humana.claim_core_830_202210;
+
+
 -- This query identifies the most critical tables (the "eldest") by calculating
 -- their individual Transaction ID (XID) age and ordering them from highest to lowest.
 

@@ -15,3 +15,10 @@ SHOW log_directory;           -- e.g., 'log' or '/var/log/postgresql'
 SHOW log_filename;            -- e.g., 'postgresql-%Y-%m-%d_%H%M%S.log'
 
 
+SELECT name, setting, unit, vartype FROM pg_settings
+WHERE name IN (
+  'max_connections','shared_buffers','work_mem','maintenance_work_mem',
+  'max_worker_processes','max_parallel_workers','max_locks_per_transaction'
+);
+
+

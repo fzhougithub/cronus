@@ -1,0 +1,177 @@
+数据库逻辑解码很有必要，也很有用处，多用于异构数据库逻辑复制中。另外逻辑解码在某些关键时候可以救命，比如主从脑裂的场景，如果在主备切换后原主库还有业务写入会造成脑裂，这时候如果创建了逻辑复制槽，那么可以将某段时间的xlog日志解码成sql语句，找回丢失的数据，这一点很有用。
+
+pg有很多逻辑解码的插件，其中pg原生的逻辑解码工具pg_recvlogical就可以使用，它使用默认的test_decoding的插件，该插件位于pg源码contrib/test_decoding目录下，需要先对该目录进行安装，安装完后会在pg安装目录的lib目录下创建test_decoding链接库文件。
+
+下面具体看看pg_recvlogical的使用以及在主备脑裂时候如何找回丢失的数据。
+
+安装test_decoding插件
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+[postgres@db1 ~]$ cd /pgsql/postgresql-11.3/contrib/test_decoding/
+[postgres@db1 test_decoding]$ make && make install
+创建逻辑复制槽
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+[postgres@db1 share]$ pg_recvlogical --create-slot -S logicslot -d test
+[postgres@db1 share]$ psql
+psql (11.3)
+Type "help" for help.
+
+
+postgres=# select * from pg_replication_slots;
+ slot_name |    plugin     | slot_type | datoid | database | temporary | active | active_pid | xmin | catalog_xmin | restart_lsn | confirmed_flush_lsn
+-----------+---------------+-----------+--------+----------+-----------+--------+------------+------+--------------+-------------+---------------------
+ logicslot | test_decoding | logical   |  24760 | test     | f         | f      |            |      |    110980560 | 7F/B0178EB8 | 7F/B0178EF0
+(1 row)
+启动复制槽（后台启动会实时的将日志解码到制定的文件中，也可以不启动，在需要解码xlog时再启动解码）
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+[postgres@db1 pginst1]$ pg_recvlogical --start -S logicslot -d test -f logical_decoding.log &
+测试一下实时解码
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+[postgres@db1 pginst1]$ psql test
+psql (11.3)
+Type "help" for help.
+
+
+test=# create table test(id int);
+CREATE TABLE
+test=# insert into test values(1);
+INSERT 0 1
+
+
+[postgres@db1 pginst1]$ cat logical_decoding.log
+BEGIN 110980560
+COMMIT 110980560
+BEGIN 110980561
+table public.test: INSERT: id[integer]:1
+COMMIT 110980561
+模拟主备脑裂，找回原主库丢失的数据
+
+先将流复制环境改为异步（如果同步的话，备库提升后原主库无法写入，无法模拟原主库脑裂写入）
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+postgres=# alter system set synchronous_standby_names='';
+ALTER SYSTEM
+postgres=# \q
+[postgres@HWFBS01 ~]$ pg_ctl reload
+server signaled
+[postgres@HWFBS01 ~]$ psql
+psql (11.3)
+Type "help" for help.
+
+
+postgres=# show synchronous_standby_names;
+ synchronous_standby_names
+---------------------------
+
+
+(1 row)
+查询主库lsn位置：
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+postgres=# select pg_current_wal_lsn();
+ pg_current_wal_lsn
+--------------------
+ 4C/47000060
+(1 row)
+备库直接提升为主库：
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+[postgres@HWFBS02 ~]$ pg_ctl promote
+waiting for server to promote.... done
+server promoted
+原主库继续写入数据，模拟脑裂
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+test=# delete from test;
+DELETE 32
+test=# insert into test values(1);
+INSERT 0 1
+查看原主库当前lsn位置
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+postgres=# select pg_current_wal_lsn();
+ pg_current_wal_lsn
+--------------------
+ 4C/470044E0
+(1 row)
+使用pg_recvlogical进行日志区间解码
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+[postgres@HWFBS01 ~]$ pg_recvlogical --start -S logicslot -d test -I 4C/47000060 -E 4C/470044E0 -f 1.log
+查看解码的日志内容：
+
+代码语言：javascript代码运行次数：0
+运行
+AI代码解释
+[postgres@HWFBS01 ~]$ cat 1.log
+BEGIN 493416304
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+table public.test: DELETE: (no-tuple-data)
+COMMIT 493416304
+BEGIN 493416305
+table public.test: INSERT: id[integer]:1
+COMMIT 493416305
+BEGIN 493416306
+COMMIT 493416306
+通过日志发现test发生了一次delete全部数据，insert了一条数据，通过这些内容可以将应用丢失的数据找回。
+
+使用逻辑解码有几点需要注意：
+
+1、逻辑复制槽使用一定要注意因为无法消费造成主库的xlog堆积的问题
+
+2、如果之前已经解码过一段区间的xlog，restart_lsn会进行推进，这时如果新解码的区间包含原有lsn区间，会忽略原来的xlog日志，也就是说连续对某段xlog进行两次解码，第二次是解码不出来内容的。
+
+3、逻辑解码需要设置wal_level=logic，这个会大大增加wal大小，对性能有很大的损害，如果是高并发insert环境下，写逻辑解码日志的速度可能会成为瓶颈。

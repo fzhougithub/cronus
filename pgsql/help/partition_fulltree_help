@@ -5,5 +5,15 @@ FROM pg_inherits i
 JOIN pg_class p ON p.oid = i.inhparent
 JOIN pg_class c ON c.oid = i.inhrelid
 WHERE p.relname LIKE 'claim_core_p1%'
+and c.relkind='r'
+ORDER BY p.relname, c.relname;
+
+SELECT
+  'alter table claimsprocess_humana.'||||c.relname||' set tablespace tblspc4;'
+FROM pg_inherits i
+JOIN pg_class p ON p.oid = i.inhparent
+JOIN pg_class c ON c.oid = i.inhrelid
+WHERE p.relname LIKE 'claim_core_p1%'
+and c.relkind='r'
 ORDER BY p.relname, c.relname;
 

@@ -1,0 +1,43 @@
+Using s3 load the dump into finance-db-03-alma8-olly-drx-kc.ssnc-corp.cloud
+Load the content into financial DB. 
+
+Then, test from finance-db-03-alma8-olly-drx-kc.ssnc-corp.cloud to finance-db-04-alma9-olly-drx-kc.ssnc-corp.cloud
+
+on 17 server, 
+/usr/pgsql-17/bin/pg_basebackup -Xs -c fast -R -v -D /apps/lib/pgsql/17/data -h 10.222.103.222
+
+[postgres@finance-db-04-alma9-olly-drx-kc 17]$ /usr/pgsql-17/bin/pg_basebackup -Xs -c fast -R -v -D /apps/lib/pgsql/17/data -h 10.222.103.222
+pg_basebackup: initiating base backup, waiting for checkpoint to complete
+pg_basebackup: checkpoint completed
+pg_basebackup: write-ahead log start point: 3/92000028 on timeline 1
+pg_basebackup: starting background WAL receiver
+pg_basebackup: created temporary replication slot "pg_basebackup_1569136"
+pg_basebackup: write-ahead log end point: 3/92000158
+pg_basebackup: waiting for background process to finish streaming ...
+pg_basebackup: syncing data to disk ...
+pg_basebackup: renaming backup_manifest.tmp to backup_manifest
+pg_basebackup: base backup completed
+
+chmod -R 700 /apps/lib/pgsql/17/data
+
+[root@finance-db-04-alma9-olly-drx-kc pg_logs]$ systemctl start postgresql-17.service
+[root@finance-db-04-alma9-olly-drx-kc pg_logs]$ ps -ef|grep receiver
+postgres 1489268 1489263  0 16:31 ?        00:00:00 postgres: olly_finance-db-03: walreceiver streaming 3/93000060
+root     1489270 1489177  0 16:31 pts/1    00:00:00 grep --color=auto receiver
+
+financials=# ALTER DATABASE financials REFRESH COLLATION VERSION;
+ERROR:  cannot execute ALTER DATABASE in a read-only transaction
+
+financials=# create table t1(id int);
+CREATE TABLE
+financials=# insert into t1 values(1),(2);
+INSERT 0 2
+
+financials=# select * from t1;
+ id
+----
+  1
+  2
+(2 rows)
+
+Replication Works. 

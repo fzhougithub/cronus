@@ -1,0 +1,24 @@
+find /sys/class/block -type l -name "dm*" -exec bash -c 'printf "$(basename {}) -> "' \; -exec cat {}/dm/name \;
+
+ls -l /dev/mapper/
+total 0
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 appsvg-appslv -> ../dm-2
+lrwxrwxrwx. 1 root root       8 Oct 24 19:03 backupsvg-backupslv -> ../dm-10
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 bulkloadsvg-bulkloadslv -> ../dm-7
+crw-------. 1 root root 10, 236 Oct 24 19:03 control
+lrwxrwxrwx. 1 root root       8 Oct 24 19:03 logsvg-logslv -> ../dm-13
+lrwxrwxrwx. 1 root root       8 Oct 24 19:03 pg_walvg-pg_wallv -> ../dm-14
+lrwxrwxrwx. 1 root root       8 Oct 24 19:03 rootvg-homevol -> ../dm-12
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 rootvg-logvol -> ../dm-6
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 rootvg-rootvol -> ../dm-0
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 rootvg-swap -> ../dm-1
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 rootvg-tmpvol -> ../dm-4
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 rootvg-trapsvol -> ../dm-3
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 rootvg-vartmpvol -> ../dm-5
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 swapsvg-swapslv -> ../dm-9
+lrwxrwxrwx. 1 root root       8 Oct 24 19:03 tablespace_1vg-tablespace_1lv -> ../dm-11
+lrwxrwxrwx. 1 root root       8 Oct 24 19:03 tablespace_2vg-tablespace_2lv -> ../dm-15
+lrwxrwxrwx. 1 root root       7 Oct 24 19:03 tablespace_3vg-tablespace_3lv -> ../dm-8
+
+dm-11→ tablespace_1vg-tablespace_1lv
+dm-15→ tablespace_2vg-tablespace_2lv

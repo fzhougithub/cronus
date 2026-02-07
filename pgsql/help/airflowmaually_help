@@ -1,0 +1,69 @@
+# Step 1: Pull images manually
+docker pull postgres:15
+docker pull apache/airflow:2.7.3
+
+# Step 2: Start PostgreSQL
+docker run -d \
+  --name airflow-postgres \
+  -e POSTGRES_USER=airflow \
+  -e POSTGRES_PASSWORD=airflow \
+  -e POSTGRES_DB=airflow \
+  -p 5432:5432 \
+  -v postgres_data:/var/lib/postgresql/data \
+  postgres:15
+
+# Step 3: Wait for PostgreSQL to be ready
+sleep 10
+
+# Step 4: Initialize Airflow database
+docker run --rm \
+  --name airflow-init \
+  --link airflow-postgres:postgres \
+  -e AIRFLOW__CORE__EXECUTOR=LocalExecutor \
+  -e AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow \
+  -e AIRFLOW__CORE__FERNET_KEY='46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=' \
+  -e AIRFLOW__CORE__LOAD_EXAMPLES='false' \
+  apache/airflow:2.7.3 \
+  airflow db init
+
+# Step 5: Create Airflow admin user
+docker run --rm \
+  --name airflow-create-user \
+  --link airflow-postgres:postgres \
+  -e AIRFLOW__CORE__EXECUTOR=LocalExecutor \
+  -e AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow \
+  apache/airflow:2.7.3 \
+  airflow users create \
+  --username airflow \
+  --password airflow \
+  --firstname Admin \
+  --lastname User \
+  --role Admin \
+  --email admin@example.com
+
+# Step 6: Start Airflow scheduler (in background)
+docker run -d \
+  --name airflow-scheduler \
+  --link airflow-postgres:postgres \
+  -e AIRFLOW__CORE__EXECUTOR=LocalExecutor \
+  -e AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow \
+  -e AIRFLOW__CORE__FERNET_KEY='46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=' \
+  -e AIRFLOW__CORE__LOAD_EXAMPLES='false' \
+  -v $(pwd)/dags:/opt/airflow/dags \
+  -v $(pwd)/logs:/opt/airflow/logs \
+  apache/airflow:2.7.3 \
+  airflow scheduler
+
+# Step 7: Start Airflow webserver
+docker run -d \
+  --name airflow-webserver \
+  --link airflow-postgres:postgres \
+  -e AIRFLOW__CORE__EXECUTOR=LocalExecutor \
+  -e AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow \
+  -e AIRFLOW__CORE__FERNET_KEY='46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=' \
+  -e AIRFLOW__CORE__LOAD_EXAMPLES='false' \
+  -p 8080:8080 \
+  -v $(pwd)/dags:/opt/airflow/dags \
+  -v $(pwd)/logs:/opt/airflow/logs \
+  apache/airflow:2.7.3 \
+  airflow webserver

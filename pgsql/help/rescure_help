@@ -1,0 +1,10 @@
+1. postgres --single -D /apps/lib/pgsql/14/data
+2. Fill the required archive back
+3. after started, check select * from pg_database;
+4. crtl+D
+5. /usr/pgsql-14/bin/pg_ctl start -D /apps/lib/pgsql/14/data -o "-c listen_addresses='' -c max_connections=5 -c superuser_reserved_connections=0"
+6. psql login
+7. alter table to other tablespace
+8. Monitor the file transfer
+
+

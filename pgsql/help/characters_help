@@ -1,0 +1,20 @@
+0xD1: In WIN1252, this is 'Ñ' (Latin capital letter N with tilde)
+
+0x45: In WIN1252, this is 'E' (regular capital E) - this one is actually valid UTF8
+
+0xAE: In WIN1252, this is '®' (registered trademark symbol)
+
+0xAD: In WIN1252, this is '­' (soft hyphen)
+
+\xAC - ¬ (Not Sign) WIN1252: 0xAC = ¬ (Logical NOT symbol) Appearance: Looks like a small L-shaped symbol Usage: Used in mathematics and logic
+
+Why problematic: This character doesn't have a direct equivalent in some encoding conversions
+
+2. \xDD\x4D - ÝM This is actually a two-character sequence: \xDD = Ý (Latin capital letter Y with acute) \x4D = M (Regular capital M) Together: "ÝM"
+
+Why problematic: The Ý character (0xDD) can cause encoding issues when converting from WIN1252 to UTF-8
+
+3. \xA8 - ¨ (Diaeresis/Umlaut) WIN1252: 0xA8 = ¨ (Diaeresis - the two dots above vowels) Appearance: Two dots (like in ä, ö, ü) Usage: Used in German and other languages to modify vowel sounds
+
+Why problematic: When this combining character appears alone (not combined with a vowel), it can cause UTF-8 encoding issues
+'s/\xD1//g' -e 's/\xAE//g' -e 's/\xAD//g' your_file.dat

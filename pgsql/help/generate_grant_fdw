@@ -1,0 +1,57 @@
+#!/bin/bash
+
+if [ $# -ne 3 ];then
+	echo "Usage: $0 schema,usermapping,user"
+	echo "e.g: $0 finance_humana_2 r_finance_humana_ro, hplpdclaimresearch"
+	exit 1
+else
+	sh=${1}
+	map=${2}
+	user=${3}
+fi
+
+if [[ $map == *_ro ]];then
+cat <<EOF
+\set ECHO ALL
+\dn+ $sh
+\du+ $map
+\du+ $user
+
+GRANT USAGE ON SCHEMA $sh TO $user;
+GRANT SELECT ON ALL TABLES IN SCHEMA $sh TO $user;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA $sh TO $user;
+ALTER DEFAULT PRIVILEGES FOR ROLE $map IN SCHEMA $sh GRANT SELECT ON TABLES TO $user;
+ALTER DEFAULT PRIVILEGES FOR ROLE $map IN SCHEMA $sh GRANT SELECT ON SEQUENCES TO $user;
+\du+ $user
+EOF
+
+elif [[ $map == *_rw ]];then
+cat <<EOF
+\dn+ $sh
+\du+ $map
+\du+ $user
+
+-- if there is no required user, create it seperately with password and push password
+GRANT USAGE ON SCHEMA $sh to $user;
+GRANT SELECT,INSERT,DELETE,UPDATE ON ALL TABLES in SCHEMA $sh to $user;
+GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA $sh TO $user;
+ALTER DEFAULT PRIVILEGES FOR ROLE $map IN SCHEMA $sh GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $user;
+ALTER DEFAULT PRIVILEGES FOR ROLE $map IN SCHEMA $sh GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO $user;
+-- GRANT CREATE ON SCHEMA $map TO $user; 
+-- should change owner of sequence to allow user to alter sequence. 
+
+\du+ $user
+EOF
+fi
+
+#Notes:
+#| Letter | Privilege      | Meaning                                              |
+#| ------ | -------------- | ---------------------------------------------------- |
+#| **a**  | **INSERT**     | Ability to insert new rows into the table            |
+#| **r**  | **SELECT**     | Ability to read (query) rows from the table          |
+#| **w**  | **UPDATE**     | Ability to update existing rows                      |
+#| **d**  | **DELETE**     | Ability to delete rows                               |
+#| **D**  | **TRUNCATE**   | Ability to truncate the table (remove all rows)      |
+#| **x**  | **REFERENCES** | Ability to create foreign keys referencing the table |
+#| **t**  | **TRIGGER**    | Ability to create triggers on the table              |
+

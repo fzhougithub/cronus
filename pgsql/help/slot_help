@@ -1,3 +1,18 @@
+# Per streaming replication
+On the Primary, create a slot:
+SQL
+SELECT pg_create_physical_replication_slot('replica_1_slot');
+On the Replica, update your connection string (in primary_conninfo within postgresql.conf or standby.signal) to include: primary_slot_name = 'replica_1_slot'
+Restart the Replica.
+
+
+Or
+max_wal_size and min_wal_size increase
+
+
+
+SELECT pg_drop_replication_slot('replica_slot_01');
+
 SELECT slot_name, plugin, slot_type, database, active, active_pid,confirmed_flush_lsn, restart_lsn, wal_status
 FROM pg_replication_slots;
 

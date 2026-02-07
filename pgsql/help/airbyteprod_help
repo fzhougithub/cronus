@@ -1,0 +1,19 @@
+On source
+
+create role test1 with login password 'ZnaDCB3fwkf3ZFtzOw9jcQloKacxHn';
+grant create on database ods_domani to test1;
+grant usage on schema test1 to test1;
+grant select on table test1.t1 to test1;
+alter user test1 replication;
+GRANT ALL ON PUBLICATION a9_huat_claimsprocess_humana_pub TO test1;
+
+On destination
+create schema test10;
+grant connect on database ods_domani to test1;
+grant create,temporary on database ods_domani to test1;
+grant usage on schema test10 to test1;
+grant create on schema test10 to test1;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA test10 to test1;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA test10 to test1;
+ALTER DEFAULT PRIVILEGES IN SCHEMA test10 GRANT ALL PRIVILEGES ON TABLES TO test1;
+ALTER DEFAULT PRIVILEGES IN SCHEMA  test10 GRANT ALL PRIVILEGES ON SEQUENCES TO  test1;

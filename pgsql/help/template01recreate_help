@@ -1,0 +1,17 @@
+-- 0) Ensure nobody is connected to template1
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'template1';
+
+-- 1) Allow connections to template1 if previously disabled (optional)
+UPDATE pg_database SET datallowconn = true
+WHERE datname = 'template1';
+
+-- 2) Drop and recreate template1 from pristine template0
+DROP DATABASE template1;
+
+CREATE DATABASE template1 TEMPLATE template0;
+
+-- 3) Mark it as a template again
+UPDATE pg_database SET datistemplate = true
+WHERE datname = 'template1';

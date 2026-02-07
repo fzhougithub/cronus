@@ -1,3 +1,28 @@
+AWS_PROFILE='non-prod' terraform state show module.pct-db-01-huat-drx-kc.ssccloud_volume.volumes\[\"pg_backups\"\]
+/usr/bin/rescan-scsi-bus.sh
+pvresize /dev/sdd
+lvextend -r -l +100%FREE /dev/mapper/backupsvg-backupslv
+
+
+AWS_PROFILE='non-prod' terraform state list
+AWS_PROFILE='non-prod' terraform plan -destroy -target=module.datamartcitushumana-db-01-alma9-huat-drx-kc
+AWS_PROFILE='non-prod' terraform plan -destroy -target=module.datamartcitushumana-db-04-alma9-huat-drx-kc.ssccloud_instance.postgres
+Above command is different than
+AWS_PROFILE='non-prod' terraform plan -destroy -target=module.datamartcitushumana-db-04-alma9-huat-drx-kc
+The real destroy command 
+AWS_PROFILE='non-prod' terraform destroy -target=module.datamartcitushumana-db-04-alma9-huat-drx-kc
+
+cat > backend-new.hcl <<EOF
+bucket = "your-state-bucket"
+key    = "ods-db-new-env/terraform.tfstate"  # Different from old env
+region = "us-east-1"
+EOF
+
+terraform init -backend-config=backend-new.hcl
+
+
+
+
 ssh-copy-id -i ~/.ssh/id_rsa.pub 10-222-73-109.ssnc-corp.cloud
 
 source ~/vault-nonprod

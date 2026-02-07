@@ -1,3 +1,10 @@
+SELECT conname AS constraint_name,
+       contype AS constraint_type,
+       pg_get_constraintdef(oid) AS definition
+FROM pg_constraint
+WHERE conrelid = 'claimsprocess_humana.a_claim_client_pricing_unit'::regclass;
+
+
 SELECT
     conname,
     pg_get_constraintdef(c.oid)

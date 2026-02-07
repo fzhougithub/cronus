@@ -1,0 +1,260 @@
+Excellent! Your DAG is working now! Let me show you where to find the results:
+
+## **1. Where to Find the Results:**
+
+### **A. In Logs (Your print statement):**
+```bash
+# Find the latest log for show_schemas task
+cat $(find logs -name "attempt=1.log" -path "*show_schemas*" | tail -1)
+
+# Or use your handy command:
+cat $(find . -name "attempt=1.log" -path "*show_schemas*" | tail -1)
+
+# Expected output should show:
+# Schemas in dev_ods: ['schema1', 'schema2', ...]
+```
+
+### **B. In XCom (Database storage):**
+```bash
+# Check XCom table for results
+docker exec airflow-postgres psql -U airflow -c "
+SELECT 
+    dag_id,
+    task_id,
+    key,
+    CASE 
+        WHEN LENGTH(value::text) > 100 
+        THEN SUBSTRING(value::text, 1, 100) || '...'
+        ELSE value::text
+    END as value_preview,
+    execution_date
+FROM xcom 
+WHERE dag_id = 'list_schemas_sql'
+  AND task_id = 'get_schemas'
+ORDER BY execution_date DESC 
+LIMIT 3;
+"
+
+# Full XCom value (might be large)
+docker exec airflow-postgres psql -U airflow -c "
+SELECT value::text
+FROM xcom 
+WHERE dag_id = 'list_schemas_sql'
+  AND task_id = 'get_schemas'
+ORDER BY execution_date DESC 
+LIMIT 1;
+"
+```
+
+## **2. View Results in Airflow UI:**
+
+1. Go to http://localhost:8080
+2. Navigate to your DAG `list_schemas_sql`
+3. Click on the **Graph** view
+4. Click on the `get_schemas` task (green box)
+5. Click **XCom** tab
+6. You'll see the query results stored as JSON
+
+## **3. Improved Version with Better Output:**
+
+Update your DAG to get better results:
+
+```python
+# /opt/airflow/dags/list_schema.py
+
+import pendulum
+from airflow import DAG
+from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.operators.python import PythonOperator
+import json
+
+def print_schemas(**context):
+    rows = context['ti'].xcom_pull(task_ids='get_schemas')
+    if rows:
+        print("=" * 50)
+        print(f"Found {len(rows)} schemas:")
+        print("=" * 50)
+        for i, row in enumerate(rows, 1):
+            print(f"{i:3}. {row[0]}")
+        print("=" * 50)
+        
+        # Also save as JSON for easier processing
+        schemas = [r[0] for r in rows]
+        context['ti'].xcom_push(key='schema_list', value=json.dumps(schemas))
+    else:
+        print("No schemas found!")
+
+def save_to_file(**context):
+    """Optional: Save schemas to a file"""
+    rows = context['ti'].xcom_pull(task_ids='get_schemas')
+    schemas = [r[0] for r in rows] if rows else []
+    
+    with open('/tmp/schemas.txt', 'w') as f:
+        for schema in schemas:
+            f.write(f"{schema}\n")
+    
+    print(f"Saved {len(schemas)} schemas to /tmp/schemas.txt")
+    return f"/tmp/schemas.txt"
+
+with DAG(
+    dag_id="list_schemas_sql",
+    start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
+    schedule=None,
+    catchup=False,
+    max_active_runs=1,
+    tags=["monitoring", "postgres"],
+) as dag:
+
+    get_schemas = PostgresOperator(
+        task_id="get_schemas",
+        postgres_conn_id="dev_ods",
+        sql="""
+            SELECT nspname
+            FROM pg_namespace
+            WHERE nspname NOT LIKE 'pg_%'
+              AND nspname <> 'information_schema'
+            ORDER BY 1;
+        """,
+        do_xcom_push=True,
+    )
+
+    show_schemas = PythonOperator(
+        task_id="show_schemas",
+        python_callable=print_schemas,
+    )
+    
+    # Optional: Add a task to save results
+    save_schemas = PythonOperator(
+        task_id="save_schemas",
+        python_callable=save_to_file,
+    )
+
+    get_schemas >> show_schemas >> save_schemas
+```
+
+## **4. Quick Check Script:**
+
+Create `check_results.sh`:
+
+```bash
+#!/bin/bash
+echo "=== Checking DAG Results ==="
+
+# 1. Check latest logs
+echo ""
+echo "1. Latest logs for show_schemas:"
+LATEST_SHOW_LOG=$(find logs -name "attempt=1.log" -path "*show_schemas*" 2>/dev/null | tail -1)
+if [ -n "$LATEST_SHOW_LOG" ]; then
+    tail -20 "$LATEST_SHOW_LOG"
+else
+    echo "No logs found for show_schemas"
+fi
+
+# 2. Check XCom
+echo ""
+echo "2. XCom entries:"
+docker exec airflow-postgres psql -U airflow -t -c "
+SELECT 
+    'Task: ' || task_id || 
+    ', Key: ' || COALESCE(key, 'default') ||
+    ', Value length: ' || LENGTH(value::text)
+FROM xcom 
+WHERE dag_id = 'list_schemas_sql'
+ORDER BY execution_date DESC 
+LIMIT 3;
+"
+
+# 3. Check task instances
+echo ""
+echo "3. Task execution status:"
+docker exec airflow-postgres psql -U airflow -t -c "
+SELECT 
+    task_id,
+    state,
+    to_char(start_date, 'HH24:MI:SS') as start_time,
+    to_char(end_date, 'HH24:MI:SS') as end_time,
+    ROUND(duration::numeric, 2) as duration_sec
+FROM task_instance 
+WHERE dag_id = 'list_schemas_sql'
+  AND execution_date = (
+    SELECT MAX(execution_date) 
+    FROM task_instance 
+    WHERE dag_id = 'list_schemas_sql'
+  )
+ORDER BY start_date;
+"
+```
+
+## **5. Test with Specific Query:**
+
+If you want to see what's actually being returned:
+
+```bash
+# Test the SQL directly
+docker exec airflow-postgres psql -U airflow -d YOUR_DB_NAME -c "
+SELECT nspname
+FROM pg_namespace
+WHERE nspname NOT LIKE 'pg_%'
+  AND nspname <> 'information_schema'
+ORDER BY 1;
+"
+
+# Replace YOUR_DB_NAME with actual database from dev_ods connection
+```
+
+## **6. Monitor Real-time:**
+
+```bash
+# Watch for new DAG runs
+watch -n 5 '
+echo "=== Latest DAG Run ==="
+docker exec airflow-postgres psql -U airflow -t -c "
+SELECT 
+    run_id,
+    state,
+    start_date,
+    end_date
+FROM dag_run 
+WHERE dag_id = '\''list_schemas_sql'\''
+ORDER BY start_date DESC 
+LIMIT 1;
+"
+'
+```
+
+## **7. If You Don't See Output:**
+
+Check if `print()` statements are visible:
+
+```python
+# Alternative: Use logging instead of print
+def print_schemas(**context):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    rows = context['ti'].xcom_pull(task_ids='get_schemas')
+    schemas = [r[0] for r in rows] if rows else []
+    
+    logger.info("=" * 50)
+    logger.info(f"Found {len(rows)} schemas:")
+    logger.info("=" * 50)
+    for i, schema in enumerate(schemas, 1):
+        logger.info(f"{i:3}. {schema}")
+```
+
+## **8. Run and Check Now:**
+
+```bash
+# 1. Trigger the DAG
+docker exec airflow-scheduler airflow dags trigger list_schemas_sql
+
+# 2. Wait a moment
+sleep 10
+
+# 3. Check results
+cat $(find logs -name "attempt=1.log" -path "*show_schemas*" | tail -1) | grep -A20 "Found"
+```
+
+**Run the check script first:** `./check_results.sh`
+
+This will show you exactly where the results are stored!

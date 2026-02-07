@@ -1,3 +1,16 @@
+SELECT
+  n.nspname || '.' || c.relname AS table_name,
+  sr.srsubstate,
+  sr.srsublsn
+FROM pg_subscription_rel sr
+JOIN pg_class c ON sr.srrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE sr.srsubstate <> 'r'
+ORDER BY table_name;
+
+
+DELETE FROM pg_subscription WHERE subname = 'olly_finance_humana_sub';
+
 create subscription uatpls_finance_other_sub connection 'host=10.222.223.132 dbname=financials port=5432' publication uatpls_finance_other_pub with (copy_data=false);
 
 crt_sub="CREATE SUBSCRIPTION ${subname} connection 'host=${publisher} dbname=${pub_db} port=${pub_port}' PUBLICATION ${pubname} ;"
@@ -188,3 +201,33 @@ CREATE SUBSCRIPTION subscription_name
     [ WITH ( subscription_parameter [= value] [, ... ] ) ]
 
 WITH (copy_data=true, enabled = false)
+
+
+benefits=# SELECT * FROM pg_stat_activity WHERE pid = (SELECT active_pid FROM pg_replication_slots WHERE slot_name = 'pharmacy_sub');
+-[ RECORD 1 ]----+--------------------------------------------------------------------------
+datid            | 16410
+datname          | benefits
+pid              | 1310555
+leader_pid       |
+usesysid         | 10
+usename          | postgres
+application_name | pharmacy_sub
+client_addr      | 10.222.173.209
+client_hostname  | 10-222-173-209.ssnc-corp.cloud
+client_port      | 36714
+backend_start    | 2025-10-31 01:06:42.269163+00
+xact_start       |
+query_start      | 2025-10-31 01:06:42.280498+00
+state_change     | 2025-10-31 01:06:42.280504+00
+wait_event_type  | Lock
+wait_event       | transactionid
+state            | active
+backend_xid      |
+backend_xmin     |
+query_id         |
+query            | CREATE_REPLICATION_SLOT "pharmacy_sub" LOGICAL pgoutput NOEXPORT_SNAPSHOT
+backend_type     | walsender
+
+It is coming from cancelled create subscription command. 
+
+Is just taking time, finally complete. 

@@ -1,0 +1,66 @@
+SELECT DISTINCT 'GRANT SELECT ON ' || quote_ident(schemaname) || '.' || quote_ident(tablename) || ' TO ab_claimsprocess_humana;' AS grant_statement
+FROM (
+    -- Root Table
+    SELECT 'claimsprocess_humana' AS schemaname, 'claim_core' AS tablename
+    UNION ALL
+    -- Level 1 Partitions
+    SELECT
+        nmsp_child.nspname AS schemaname,
+        child.relname AS tablename
+    FROM pg_inherits
+        JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
+        JOIN pg_class child ON pg_inherits.inhrelid = child.oid
+        JOIN pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+        JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+    WHERE nmsp_parent.nspname = 'claimsprocess_humana'
+      AND parent.relname = 'claim_core'
+    UNION ALL
+    -- Level 2 Partitions (Grandchildren)
+    SELECT
+        nmsp_gc.nspname AS schemaname,
+        gc.relname AS tablename
+    FROM pg_inherits inh1
+        JOIN pg_class p ON inh1.inhparent = p.oid
+        JOIN pg_class c ON inh1.inhrelid = c.oid
+        JOIN pg_namespace nmsp_p ON nmsp_p.oid = p.relnamespace
+        JOIN pg_inherits inh2 ON inh2.inhparent = c.oid
+        JOIN pg_class gc ON inh2.inhrelid = gc.oid
+        JOIN pg_namespace nmsp_gc ON nmsp_gc.oid = gc.relnamespace
+    WHERE nmsp_p.nspname = 'claimsprocess_humana'
+      AND p.relname = 'claim_core'
+) as all_partitions;
+
+
+SELECT DISTINCT 'GRANT SELECT ON ' || quote_ident(schemaname) || '.' || quote_ident(tablename) || ' TO claimsprocess_humana_ab;' AS grant_statement
+FROM (
+    -- Root Table
+    SELECT 'claimsprocess_humana' AS schemaname, 'claim_error' AS tablename
+    UNION ALL
+    -- Level 1 Partitions
+    SELECT
+        nmsp_child.nspname AS schemaname,
+        child.relname AS tablename
+    FROM pg_inherits
+        JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
+        JOIN pg_class child ON pg_inherits.inhrelid = child.oid
+        JOIN pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+        JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+    WHERE nmsp_parent.nspname = 'claimsprocess_humana'
+      AND parent.relname = 'claim_error'
+    UNION ALL
+    -- Level 2 Partitions (Grandchildren)
+    SELECT
+        nmsp_gc.nspname AS schemaname,
+        gc.relname AS tablename
+    FROM pg_inherits inh1
+        JOIN pg_class p ON inh1.inhparent = p.oid
+        JOIN pg_class c ON inh1.inhrelid = c.oid
+        JOIN pg_namespace nmsp_p ON nmsp_p.oid = p.relnamespace
+        JOIN pg_inherits inh2 ON inh2.inhparent = c.oid
+        JOIN pg_class gc ON inh2.inhrelid = gc.oid
+        JOIN pg_namespace nmsp_gc ON nmsp_gc.oid = gc.relnamespace
+    WHERE nmsp_p.nspname = 'claimsprocess_humana'
+      AND p.relname = 'claim_error'
+) as all_partitions;
+
+

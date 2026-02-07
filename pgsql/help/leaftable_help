@@ -1,0 +1,26 @@
+WITH RECURSIVE partition_tree AS (
+    -- Anchor: direct children of t_p
+    SELECT
+        inhrelid AS partition_oid,
+        1 AS level
+    FROM pg_inherits
+    WHERE inhparent = 'test10.t_p'::regclass
+
+    UNION ALL
+
+    -- Recursive: children of children
+    SELECT
+        i.inhrelid,
+        pt.level + 1
+    FROM pg_inherits i
+    JOIN partition_tree pt ON i.inhparent = pt.partition_oid
+)
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name
+FROM partition_tree pt
+JOIN pg_class c ON c.oid = pt.partition_oid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r';  -- only leaf tables
+
+

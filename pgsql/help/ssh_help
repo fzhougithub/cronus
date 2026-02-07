@@ -1,3 +1,11 @@
 ssh-copy-id -i ~/.ssh/id_rsa.pub username@remote_host
 
 openssl rand -base64 45
+
+ssh -L 8000:localhost:8000 finance-db-01-alma9-olly-drx-kc.ssnc-corp.cloud
+ssh -R 8000:localhost:8000 fzhou@10.242.150.136
+ssh -R 8000:localhost:8000 fzhou@10.242.150.136
+
+
+
+

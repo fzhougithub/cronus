@@ -1,3 +1,22 @@
+https://domanirx.atlassian.net/browse/DEVOPS-13436
+
+grant select on all tables in schema test10 to datamart;
+grant create on schema test10 to datamart;
+set role postgres;
+grant execute on function datamart.trigger_on_t_p_fn to test1;
+GRANT USAGE ON SCHEMA datamart TO test1;
+
+ods_domani=# set role test1;
+SET
+ods_domani=> CREATE TRIGGER trigger_on_t_p
+AFTER INSERT OR UPDATE OR DELETE
+ON test10.t_p
+FOR EACH ROW
+EXECUTE FUNCTION datamart.trigger_on_t_p_fn();
+CREATE TRIGGER
+
+SELECT has_schema_privilege('datamart', 'USAGE');
+SELECT has_function_privilege('datamart.trigger_on_t_p_fn()', 'EXECUTE');
 session_replication_role
 
 ALTER TABLE ... ENABLE REPLICA TRIGGER trigger_name;

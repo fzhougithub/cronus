@@ -1,0 +1,31 @@
+SELECT
+  conname AS constraint_name,
+  pg_get_constraintdef(pg_constraint.oid) AS constraint_definition, -- Explicitly use pg_constraint.oid
+  CASE
+    WHEN contype = 'p' THEN 'Primary Key (unique)'
+    WHEN contype = 'u' THEN 'Unique Constraint'
+  END AS constraint_type,
+  array_agg(attname ORDER BY attnum) AS columns -- Columns in the unique constraint
+FROM
+  pg_constraint
+JOIN
+  pg_class ON pg_constraint.conrelid = pg_class.oid
+JOIN
+  pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+JOIN
+  pg_attribute ON pg_class.oid = pg_attribute.attrelid
+  AND pg_attribute.attnum = ANY(pg_constraint.conkey)
+WHERE
+  pg_namespace.nspname = 'datamart_humana' -- Your schema
+  AND pg_class.relname = 'claim' -- Your table
+  AND contype IN ('p', 'u') -- Primary keys and unique constraints
+GROUP BY
+  pg_constraint.oid, conname, contype -- Use pg_constraint.oid here too (consistent)
+ORDER BY
+  constraint_name;
+
+       constraint_name       |        constraint_definition        |   constraint_type    |        columns
+-----------------------------+-------------------------------------+----------------------+------------------------
+ datamrt_humana_claim_h_pkey | PRIMARY KEY (customer_id, claim_id) | Primary Key (unique) | {customer_id,claim_id}
+(1 row)
+

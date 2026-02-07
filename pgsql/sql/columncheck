@@ -1,0 +1,38 @@
+#!/bin/bash
+
+plist=$(cat /pg_backups/pg2pg_init_Fp/isutf8.log|cut -d: -f1)
+output_sql="checkcolumn_queries.sql"
+
+
+echo "-- Generated on $(date)" > "$output_sql"
+echo "" > "$output_sql"
+
+for i in $plist; do
+    echo "-- Table: $i" >> "$output_sql"
+    sch=$(echo "$i" | cut -d. -f1)
+    tab=$(echo "$i" | cut -d. -f2)
+    
+    cat >> "$output_sql" <<EOF
+-- Query for $sch.$tab
+SELECT format(' 
+    SELECT
+    %L as tablename,
+    %L AS column_name,
+    COUNT(*) AS Total_Rows,
+    COUNT(CASE WHEN NOT claimsprocess_humana.validate_utf8(%I) THEN 1 END) AS bad_encoding_rows
+    FROM $sch.$tab;
+','$sch.$tab',column_name,column_name)
+FROM information_schema.columns
+WHERE table_schema = '$sch'
+  AND table_name = '$tab'
+  AND data_type IN ('text', 'character varying')
+GROUP BY column_name
+\gexec
+
+EOF
+done
+
+echo "Generated: $output_sql"
+
+echo "psql -h 10.221.152.82 -d claimsprocess -U postgres -t < $output_sql > columncheck.log 2>&1"
+psql -h 10.221.152.82 -d claimsprocess -U postgres -t < $output_sql >> columncheck.log 2>&1

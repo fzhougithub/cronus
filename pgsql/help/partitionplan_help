@@ -1,0 +1,16 @@
+SELECT
+  relname,
+  seq_scan,
+  idx_scan
+FROM pg_stat_user_tables
+WHERE schemaname = 'claimsprocess_humana'
+  AND relname LIKE 'claim_core_319_%'
+ORDER BY relname
+LIMIT 5;
+
+EXPLAIN (ANALYZE, VERBOSE, BUFFERS)
+SELECT count(1)
+FROM claim_core
+WHERE customer_id = 319 AND claim_id BETWEEN '202511000000' AND '202511999999';
+
+

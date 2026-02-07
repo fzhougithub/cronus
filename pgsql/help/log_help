@@ -1,3 +1,36 @@
+log_line_prefix = '%t [%p]: [%l-1] db=%d,user=%u,app=%a '
+
+This setup give the detail command value
+
+2025-11-25 07:42:16 UTC [69258]: [17820243-1] db=benefits,user=hupddrugmgmt,app=PostgreSQL JDBC Driver DETAIL:  parameters: $1 = '69900653'
+2025-11-25 07:42:16 UTC [111985]: [3211944-1] db=benefits,user=hupddrugmgmt,app=PostgreSQL JDBC Driver LOG:  execute S_2: BEGIN
+2025-11-25 07:42:16 UTC [111985]: [3211945-1] db=benefits,user=hupddrugmgmt,app=PostgreSQL JDBC Driver LOG:  execute S_3: select case when dl.drug_label_nm is not null then dl.drug_label_nm else adhoc_drug_label_nm end as labelnm, string_agg(dmb.identifying_nm,  '| ') as fmid_association , dmb.master_customer_set_id as mcsid from drugmgmt.fmid_drug_label_association fdrug JOIN  drugmgmt.drug_management_block dmb  ON dmb.drug_management_block_id = fdrug.drug_management_block_id left join drugmgmt.customer_drug_label cdl on cdl.customer_drug_label_id = fdrug.customer_drug_label_id left join drugmgmt.drug_label dl on dl.drug_label_id = cdl.drug_label_id left join drugmgmt.adhoc_drug_label adl on adl.adhoc_drug_label_id = fdrug.adhoc_drug_label_id where dmb.master_customer_set_id = $1 group by dl.drug_label_nm,adhoc_drug_label_nm, mcsid order by dl.drug_label_nm,adhoc_drug_label_nm
+
+
+
+
+sudo tee /etc/rsyslog.d/99-silence-jdbc-spam.conf > /dev/null <<'EOF'
+# Drop all lines that contain the exact string "app=PostgreSQL JDBC Driver"
+if $msg contains "app=PostgreSQL JDBC Driver" then {
+    stop
+}
+EOF
+
+sed -i '/JDBC Driver/d' *.log
+
+
+-- turn off the things that generate the noise
+ALTER SYSTEM SET log_statement                     = 'none';
+ALTER SYSTEM SET log_duration                      = off;
+ALTER SYSTEM SET log_min_duration_statement        = -1;   -- -1 = never
+ALTER SYSTEM SET log_min_duration_sample           = -1;
+ALTER SYSTEM SET log_parameter_max_length          = 0;  -- 0 = suppress parameters
+ALTER SYSTEM SET log_parameter_max_length_on_error = 0;
+
+-- make it take effect
+SELECT pg_reload_conf();
+
+
 SELECT 
     slot_name,
     confirmed_flush_lsn,

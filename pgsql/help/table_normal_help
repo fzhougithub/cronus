@@ -1,0 +1,11 @@
+SELECT n.nspname || '.' || c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'r'  -- regular table or partitioned table
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_inherits i WHERE i.inhrelid = c.oid
+  )
+ORDER BY c.relname;
+
+

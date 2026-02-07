@@ -1,0 +1,97 @@
+That's a solid plan\! You've successfully moved the schema. Now the challenge is efficiently updating the privileges so that existing users can access the new copy of the schema in Database B.
+
+Since PostgreSQL **roles are global** across the cluster, the `a_ro` (read-only) and `a_rw` (read/write) roles already exist and are already granted to the necessary users. You don't need to change the roles themselves or their membership.
+
+Instead, you need to manage the **permissions (privileges)** granted to those roles within the new target database, **Database B**.
+
+Here is the step-by-step process to ensure all relevant roles have the correct access to the new $\text{schema\_a}$ in $\text{Database\_B}$:
+
+-----
+
+## 🛠️ Step 1: Revoke Access from Database A (If Necessary)
+
+If you are decommissioning $\text{schema\_a}$ in $\text{Database\_A}$, you must first remove access there to prevent applications from connecting to the old data.
+
+```sql
+-- Connect to Database A
+REVOKE ALL ON SCHEMA schema_a FROM a_ro, a_rw;
+REVOKE CONNECT ON DATABASE Database_A FROM a_ro, a_rw;
+```
+
+-----
+
+## 🛠️ Step 2: Grant Connect to Database B
+
+Ensure the roles can actually connect to the new database.
+
+```sql
+-- Connect to Database B
+GRANT CONNECT ON DATABASE Database_B TO a_ro, a_rw;
+```
+
+-----
+
+## 🛠️ Step 3: Grant Schema-Level Permissions in Database B
+
+Grant the basic permission to access objects within the new schema.
+
+```sql
+-- Connect to Database B
+GRANT USAGE ON SCHEMA schema_a TO a_ro, a_rw;
+```
+
+-----
+
+## 🛠️ Step 4: Grant Table-Level Permissions (The Main Task)
+
+This is the most crucial step. You need to apply the appropriate permissions to **all current and future tables** within $\text{schema\_a}$.
+
+### A. Apply Permissions to Existing Tables
+
+You can use a simple loop or a sequence of `GRANT` statements to apply permissions to all existing tables.
+
+#### For the Read-Only Role (`a_ro`):
+
+```sql
+-- Connect to Database B
+GRANT SELECT ON ALL TABLES IN SCHEMA schema_a TO a_ro;
+```
+
+#### For the Read-Write Role (`a_rw`):
+
+```sql
+-- Connect to Database B
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA schema_a TO a_rw;
+```
+
+### B. Set Default Permissions for Future Tables (Crucial for Maintenance)
+
+To ensure that any new tables created in $\text{schema\_a}$ automatically get the correct permissions, you must set **default privileges**.
+
+#### For the Read-Only Role (`a_ro`):
+
+```sql
+-- Connect to Database B
+ALTER DEFAULT PRIVILEGES FOR ROLE [schema_a_owner]
+IN SCHEMA schema_a
+GRANT SELECT ON TABLES TO a_ro;
+```
+
+#### For the Read-Write Role (`a_rw`):
+
+```sql
+-- Connect to Database B
+ALTER DEFAULT PRIVILEGES FOR ROLE [schema_a_owner]
+IN SCHEMA schema_a
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO a_rw;
+```
+
+**Note:** Replace `[schema_a_owner]` with the PostgreSQL role that owns the objects in $\text{schema\_a}$ (likely the user who performed the dump/restore or a dedicated admin role).
+
+-----
+
+## 🛠️ Step 5: Update Application Connection Strings
+
+The final step, which is **not a PostgreSQL command**, is to update the application configuration files or environment variables to point all affected applications and users to the new connection details for **Database B**.
+
+This ensures that when an application connects using a user who is a member of `a_ro` or `a_rw`, they connect to the correct database and automatically inherit the privileges you just set.

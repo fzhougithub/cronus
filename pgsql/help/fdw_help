@@ -1,3 +1,143 @@
+DROP USER MAPPING FOR local_role SERVER foreign_server_name;
+select * from pg_foreign_server;
+
+
+SELECT table_schema, table_name, table_type
+FROM information_schema.tables
+WHERE table_schema = 'finance_humana_2';
+
+
+create extension postgres_fdw;
+create server dev_financials_humana_finance_humana foreign data wrapper postgres_fdw options(host '10.222.254.72',dbname 'financials_humana', port '5432');
+create user mapping for postgres server dev_financials_humana_finance_humana options(user 'postgres',password 'Y4ovlCI$oD7!8Ue7MUEe+7TZlHYTZk6w');
+-- you must have ro user login to remote server before create user mapping. 
+create user mapping for tpdodsfinance server dev_financials_humana_finance_humana options(user 'r_finance_humana_ro',password 'PaX8lGwuBDI078zSG27vqFKxuWacc2');
+create schema finance_humana_2 authorization postgres;
+
+create role dev_financials_humana_finance_humana_user;
+GRANT USAGE ON FOREIGN SERVER dev_financials_humana_finance_humana TO dev_financials_humana_finance_humana_user;
+
+-- Here, the user mapping is funny, should create remote user login and mapping to the schema level privilege
+-- in source db
+create role r_finance_humana_ro with login password '';
+create role r_finance_humana_rw with login password '';
+-- in target db
+create role r_finance_humana_ro;
+create role r_finance_humana_rw;
+
+-- Then, create user mapping like
+create user mapping for r_finance_humana_ro server dev_financials_humana_finance_humana options(user 'r_finance_humana_ro',password 'PaX8lGwuBDI078zSG27vqFKxuWacc2');
+create user mapping for r_finance_humana_rw server dev_financials_humana_finance_humana options(user 'r_finance_humana_rw',password 'UKdqQIISkDjNuMEZSybLXmSAzRbvxu');
+
+GRANT USAGE ON FOREIGN SERVER dev_financials_humana_finance_humana TO r_finance_humana_rw;
+GRANT USAGE ON FOREIGN SERVER dev_financials_humana_finance_humana TO r_finance_humana_ro;
+
+drop schema finance_humana_2;
+create schema finance_humana_2 authorization r_finance_humana_rw;
+set role r_finance_humana_rw;
+IMPORT FOREIGN SCHEMA finance_humana FROM SERVER dev_financials_humana_finance_humana INTO finance_humana_2;
+RESET ROLE;
+
+
+SELECT ft.ftrelid::regclass AS foreign_table,
+       srv.srvname AS server_name
+FROM pg_foreign_table ft
+JOIN pg_foreign_server srv ON ft.ftserver = srv.oid;
+
+select * from pg_foreign_table;
+
+
+
+
+
+SELECT relname AS table_name
+FROM pg_class c
+JOIN pg_foreign_table ft ON c.oid = ft.ftrelid
+JOIN pg_foreign_server fs ON ft.ftserver = fs.oid
+JOIN pg_foreign_data_wrapper fdw ON fs.srvfdw = fdw.oid
+WHERE fdw.fdwname = 'cstore_fdw';
+
+
+select * from information_schema.foreign_tables;
+select * from pg_foreign_server;
+drop foreign table claim_f1;
+drop server duckdb_local;
+drop extension duckdb_fdw;
+yum erase -y duckdb_fdw_14.x86_64 duckdb_fdw_14-llvmjit.x86_64
+
+cd /
+tar xvf /var/tmp/duckdb_fdw_pg14_1.4.1.tar.gz
+
+SELECT fs.srvname, fdw.fdwname
+FROM pg_foreign_server fs
+JOIN pg_foreign_data_wrapper fdw ON fs.srvfdw = fdw.oid
+WHERE fs.srvname = 'duckdb_local';
+
+SELECT * FROM pg_foreign_data_wrapper WHERE fdwname = 'duckdb_fdw';
+
+SELECT
+  fs.srvname,
+  opts.option_name,
+  opts.option_value
+FROM pg_foreign_server fs,
+     LATERAL pg_options_to_table(fs.srvoptions) AS opts
+WHERE opts.option_name = 'keep_connections';
+
+
+test=# SELECT srvname, srvoptions FROM pg_foreign_server;
+   srvname    |            srvoptions
+--------------+-----------------------------------
+ duckdb_local | {database=/apps/lib/pgsql/duckdb}
+(1 row)
+
+SELECT srvname, fdwname, srvoptions
+FROM pg_foreign_server
+JOIN pg_foreign_data_wrapper ON pg_foreign_server.srvfdw = pg_foreign_data_wrapper.oid;
+   srvname    |  fdwname   |            srvoptions
+--------------+------------+-----------------------------------
+ duckdb_local | duckdb_fdw | {database=/apps/lib/pgsql/duckdb}
+
+SELECT
+    ft.foreign_table_schema,
+    ft.foreign_table_name,
+    fs.srvname AS server_name,
+    fdw.fdwname AS fdw_name
+FROM
+    information_schema.foreign_tables ft
+JOIN
+    pg_foreign_table pft ON ft.foreign_table_name = pft.ftrelid::regclass::text
+JOIN
+    pg_foreign_server fs ON pft.ftserver = fs.oid
+JOIN
+    pg_foreign_data_wrapper fdw ON fs.srvfdw = fdw.oid;
+
+ foreign_table_schema | foreign_table_name | server_name  |  fdw_name
+----------------------+--------------------+--------------+------------
+ public               | duckdb_t1          | duckdb_local | duckdb_fdw
+ public               | t3                 | duckdb_local | duckdb_fdw
+ public               | duckdb_sales       | duckdb_local | duckdb_fdw
+(3 rows)
+
+test=# \det
+        List of foreign tables
+ Schema |    Table     |    Server
+--------+--------------+--------------
+ public | duckdb_sales | duckdb_local
+ public | duckdb_t1    | duckdb_local
+ public | t3           | duckdb_local
+(3 rows)
+
+\d+ duckdb_sales
+
+test=# SELECT srvname, srvoptions
+FROM pg_foreign_server
+WHERE srvname = 'duckdb_local';
+   srvname    |            srvoptions
+--------------+-----------------------------------
+ duckdb_local | {database=/apps/lib/pgsql/duckdb}
+(1 row)
+
+
 -- Create FDW to another Postgres schema
 CREATE EXTENSION postgres_fdw;
 
@@ -12,4 +152,31 @@ CREATE USER MAPPING FOR ods_user
 IMPORT FOREIGN SCHEMA public
   FROM SERVER sales_server
   INTO ods_sales;
+
+SELECT table_schema, table_name, table_type
+FROM information_schema.tables
+WHERE table_schema = 'finance_humana_2';
+
+
+SELECT
+    ft.ftrelid::regclass AS foreign_table,
+    n.nspname AS schema,
+    r.rolname AS owner_role,
+    srv.srvname AS server
+FROM pg_foreign_table ft
+JOIN pg_class c ON c.oid = ft.ftrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_roles r ON r.oid = c.relowner
+JOIN pg_foreign_server srv ON srv.oid = ft.ftserver
+ORDER BY schema, foreign_table;
+
+
+
+SELECT
+    um.usename AS local_role,
+    srv.srvname AS server,
+    umoptions AS mapping_options
+FROM pg_user_mappings um
+JOIN pg_foreign_server srv ON srv.oid = um.srvid
+ORDER BY local_role;
 

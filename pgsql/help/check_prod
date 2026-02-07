@@ -1,0 +1,42 @@
+#!/bin/zsh
+
+# Debugging
+{
+    echo "=== $(date) ==="
+    echo "PATH: $PATH"
+    echo "SSH_AUTH_SOCK: $SSH_AUTH_SOCK"
+    
+    # Load SSH key securely
+    if [ -z "$SSH_AUTH_SOCK" ]; then
+        eval "$(ssh-agent -s)" >/dev/null
+    fi
+    
+    # Add key only if not already loaded
+    if ! ssh-add -l >/dev/null 2>&1; then
+        ssh-add --apple-use-keychain ~/.ssh/id_rsa  # Use your key filename
+    fi
+    
+    # Verify SSH
+    ssh-add -L || {
+        echo "SSH FAILED: No keys available"
+        exit 1
+    }
+
+    # Rest of your original script...
+    LOCK_FILE="rebuild.lock"
+    if [ -f "$LOCK_FILE" ]; then
+        echo "Another rebuild process is already running. Exiting."
+        exit 3
+    fi
+    touch "$LOCK_FILE"
+    trap "rm -f $LOCK_FILE" EXIT
+    
+    for j in $(cat /Users/fzhou/typedir);
+    do 
+      for i in $(cat /Users/fzhou/nodetype); do
+	  echo ""
+	  echo "=== Check $j space ===="
+          /Users/fzhou/bin/ck_space $i $j
+      done
+    done
+} > /Users/fzhou/check_prod_debug.log 2>&1

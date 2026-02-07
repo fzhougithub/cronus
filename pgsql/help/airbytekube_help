@@ -1,0 +1,18 @@
+    2  vi huatconfig
+    3  export KUBECONFIG=./huatconfig
+    4  kubens
+    5  kubectl log airbyte
+    6  kubectl logs airbyte
+    7  kubens airbyte
+    8  kubectl get pods -n airbyte
+    9  kubectl logs postgres-discover-0c4c0b70-d02e-4149-8399-b645b0dd58b1-0-kswgm
+   11  vi airbytekube_help
+   12  kubectl logs postgres-discover-0c4c0b70-d02e-4149-8399-b645b0dd58b1-0-kswgm -f
+   14  kubectl logs postgres-discover-2a6d1e5c-78be-4d90-98f5-59b273bc8ba3-0-utpxi -f
+   16  kubectl get pods -n airbyte
+   17  kubectl logs postgres-discover-2a6d1e5c-78be-4d90-98f5-59b273bc8ba3-0-utpxi
+   18  kubectl logs postgres-discover-2a6d1e5c-78be-4d90-98f5-59b273bc8ba3-0-utpxi -c
+   19  kubectl logs postgres-discover-2a6d1e5c-78be-4d90-98f5-59b273bc8ba3-0-utpxi -c main
+   20  kubectl top pods
+   21  kubectl get events
+   22  kubectl get pods

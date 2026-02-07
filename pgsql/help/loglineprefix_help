@@ -1,0 +1,21 @@
+https://www.postgresql.org/docs/14/runtime-config-logging.html#GUC-LOG-LINE-PREFIX
+
+Important to control the logfile size. 
+
+log_line_prefix = '%m [%p] %q%u@%d '
+
+The true nuclear options
+
+ALTER SYSTEM SET log_statement = 'none';
+ALTER SYSTEM SET log_min_duration_statement = 200;
+ALTER SYSTEM SET log_duration = off;
+ALTER SYSTEM SET log_error_verbosity = 'default';
+ALTER SYSTEM SET log_statement_stats = off;
+ALTER SYSTEM SET log_parser_stats = off;
+ALTER SYSTEM SET log_planner_stats = off;
+ALTER SYSTEM SET log_executor_stats = off;
+SELECT pg_reload_conf();
+
+
+
+

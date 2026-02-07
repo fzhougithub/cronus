@@ -1,0 +1,61 @@
+Key Takeaways
+
+TIMESTAMPTZ: No data changes needed—timezone affects only display.
+TIMESTAMP:   Update data if the original timestamps were tied to a different timezone (use AT TIME ZONE for conversions).
+Other types: Assess based on whether the data’s meaning depends on the old timezone.
+
+
+SHOW timezone;
+
+alter system set timezone='America/Chicago';
+select pg_reload_conf();
+
+alter system set log_timezone='America/Chicago';
+select pg_reload_conf();
+
+-- Check existing timezone field. 
+
+SELECT
+  n.nspname AS schema_name,
+  c.relname AS table_name,
+  a.attname AS column_name,
+  t.typname AS data_type
+FROM
+  pg_attribute a
+JOIN
+  pg_class c ON a.attrelid = c.oid
+JOIN
+  pg_namespace n ON c.relnamespace = n.oid
+JOIN
+  pg_type t ON a.atttypid = t.oid
+WHERE
+  t.typname = 'timestamp' -- Targets "timestamp without time zone"
+  AND c.relkind = 'r' -- Include only regular tables (exclude views, indexes, etc.)
+  AND a.attnum > 0 -- Exclude system columns (e.g., ctid, oid)
+ORDER BY
+  n.nspname,
+  c.relname,
+  a.attname;
+
+
+
+
+SELECT
+  datname AS database_name,
+  split_part(config_entry, '=', 2) AS timezone_value  -- Extracts the timezone (e.g., 'America/Chicago')
+FROM (
+  -- Unnest all database-specific settings first
+  SELECT
+    d.datname,
+    unnest(drs.setconfig) AS config_entry
+  FROM
+    pg_database d
+  JOIN
+    pg_db_role_setting drs ON d.oid = drs.setdatabase
+) AS sub
+WHERE
+  config_entry LIKE 'timezone=%'  -- Filter for timezone settings
+ORDER BY
+  datname;
+
+

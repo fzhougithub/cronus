@@ -1,3 +1,35 @@
+SELECT
+    relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(C.oid)) AS total_size_pretty,
+    pg_total_relation_size(C.oid) AS total_size_bytes
+FROM pg_class C
+LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
+WHERE nspname = 'customer'
+  AND relkind = 'r'
+ORDER BY total_size_bytes DESC;
+
+
+
+
+SELECT
+    schemaname || '.' || relname AS table_full_name,
+    pg_size_pretty(pg_total_relation_size(schemaname || '.' || relname)) AS total_size
+FROM pg_stat_user_tables
+WHERE schemaname = 'claimsprocess_humana'
+ORDER BY pg_total_relation_size(schemaname || '.' || relname) DESC;
+
+
+
+SELECT
+    schemaname || '.' || relname AS table_full_name,
+    pg_size_pretty(pg_total_relation_size(schemaname || '.' || relname)) AS total_size,
+    pg_total_relation_size(schemaname || '.' || relname) AS total_size_bytes
+FROM pg_stat_user_tables
+WHERE schemaname = 'claimsprocess_humana'
+ORDER BY total_size_bytes DESC;
+
+
+
 SELECT reltuples::bigint
 FROM pg_class
 WHERE oid = '2382643138'::regclass;

@@ -1,0 +1,42 @@
+
+CREATE SCHEMA IF NOT EXISTS datamart_humana;
+
+CREATE TABLE IF NOT EXISTS datamart_humana.claim_sparse (
+    schema_name     text        NOT NULL,
+    table_name      text        NOT NULL,
+    column_name     text        NOT NULL,
+    non_null_count  bigint      NOT NULL,
+    total_rows      bigint      NOT NULL,
+    sparsity_pct    numeric(7,4) NOT NULL,
+    computed_at     timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (schema_name, table_name, column_name, computed_at)
+);
+
+DO $$
+DECLARE
+    v_schema text := 'datamart_humana';
+    v_table  text := 'claim_duckdb';
+    v_total  bigint;
+    v_col    text;
+    v_sql    text;
+    v_count  bigint;
+BEGIN
+    -- Get total rows once
+    EXECUTE format('SELECT COUNT(*) FROM %I.%I', v_schema, v_table) INTO v_total;
+
+    -- Loop through all columns
+    FOR v_col IN
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = v_schema AND table_name = v_table
+        ORDER BY ordinal_position
+    LOOP
+        v_sql := format('SELECT COUNT(*) FROM %I.%I WHERE %I IS NOT NULL', v_schema, v_table, v_col);
+        EXECUTE v_sql INTO v_count;
+
+        INSERT INTO datamart_humana.claim_sparse(schema_name, table_name, column_name, non_null_count, total_rows, sparsity_pct, computed_at)
+        VALUES (v_schema, v_table, v_col, v_count, v_total,
+                CASE WHEN v_total = 0 THEN 0 ELSE 100.0 * (1 - (v_count::numeric / v_total)) END,
+                now());
+    END LOOP;
+END$$;

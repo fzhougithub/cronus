@@ -1,0 +1,31 @@
+#!/bin/bash
+JOB_ID=12345
+TOKEN="YOUR_API_TOKEN"
+BASE_URL="https://airbyte-k8s-huat-drx-kc.ssnc-corp.cloud"
+
+# 1. Cancel job
+curl -s -X POST "$BASE_URL/v1/jobs/cancel" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"id\": $JOB_ID}"
+
+# 2. Poll until cancelled or timeout
+for i in {1..30}; do
+  STATUS=$(curl -s "$BASE_URL/v1/jobs/get" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"id\": $JOB_ID}" | jq -r '.job.status')
+
+  echo "[$(date +%T)] Job $JOB_ID status: $STATUS"
+  
+  if [[ "$STATUS" == "cancelled" || "$STATUS" == "failed" || "$STATUS" == "succeeded" ]]; then
+    exit 0
+  fi
+  
+  sleep 5
+done
+
+echo " Timeout waiting for cancellation" >&2
+exit 1
+
+

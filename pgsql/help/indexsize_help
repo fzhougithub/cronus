@@ -1,3 +1,57 @@
+
+
+
+SELECT
+  pg_size_pretty(SUM(pg_indexes_size(pg_class.oid))) AS total_index_size
+FROM pg_stat_user_tables
+JOIN pg_class ON pg_class.relname = pg_stat_user_tables.relname
+WHERE schemaname = 'claimsprocess_humana';
+ total_index_size
+------------------
+ 1093 GB
+
+-- total without PK
+
+SELECT
+    pg_size_pretty(
+        SUM(
+            pg_indexes_size(c.oid)
+            - COALESCE((
+                SELECT pg_relation_size(i.indexrelid)
+                FROM pg_index i
+                WHERE i.indrelid = c.oid
+                  AND i.indisprimary
+            ), 0)
+        )
+    ) AS total_index_size_without_pk
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'r';
+
+
+
+-- Per table index size minus PK
+SELECT
+    n.nspname           AS schema,
+    c.relname           AS table,
+    pg_size_pretty(
+        pg_indexes_size(c.oid)
+        - COALESCE((
+            SELECT pg_relation_size(i.indexrelid)
+            FROM pg_index i
+            WHERE i.indrelid = c.oid
+              AND i.indisprimary
+        ), 0)
+    ) AS index_size_without_pk
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'r' order by index_size_without_pk desc;
+
+
+
+
 --- This one definitely works
 
 SELECT

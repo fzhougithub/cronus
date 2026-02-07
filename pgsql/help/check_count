@@ -1,0 +1,46 @@
+#!/bin/bash
+
+
+if [ $# -ne 5 ]
+then
+        echo
+        echo "Usage: $0 [tablist_file] [pubIP] [pubDB] [subIP] [subDB]"
+        echo
+        exit
+else
+        tablist="$1"
+        pubIP="$2"
+	pubDB="$3"
+	subIP="$4"
+	subDB=$5
+	outFile=check_count.out
+fi
+
+> ${outFile}
+
+echo "CREATE SCHEMA IF NOT EXISTS chk_count" | psql -h $subIP -d $subDB
+
+echo "SET client_min_messages TO warning;DROP TABLE IF EXISTS chk_count.lr_counts_tmp" | psql -h $subIP -d $subDB
+
+echo "CREATE TABLE chk_count.lr_counts_tmp (tablename varchar, pub_count int, sub_count int)" | psql -h $subIP -d $subDB
+
+for I in $( cat $tablist )
+do
+        sql="select count(*) from $I"
+        pub_number_str=$( echo "$sql" | psql -t -h $pubIP $pubDB )
+        set - $pub_number_str
+        pub_number=$1
+        ods_number_str=$( echo "$sql" | psql -t -h $subIP $subDB )
+        set - $ods_number_str
+        ods_number=$1
+        echo "INSERT INTO chk_count.lr_counts_tmp VALUES ('$I', $pub_number, $ods_number)" | psql -h $subIP -d $subDB -q
+        #echo -e "[$I]\t[$pub_number]\t[$ods_number]"
+
+done
+
+#echo "select * from chk_count.lr_counts_tmp where pub_count > 0 order by sub_count desc" | psql -h $subIP -d $subDB
+#echo "\"select *, (pub_count - sub_count) AS pub_minus_sub_diff from chk_count.lr_counts_tmp  order by sub_count desc\" | psql -h $subIP -d $subDB > ${outFile}"
+echo "select *, (pub_count - sub_count) AS pub_minus_sub_diff from chk_count.lr_counts_tmp  order by sub_count desc" | psql -h $subIP -d $subDB > ${outFile}
+
+cat ${outFile}
+echo "SET client_min_messages TO warning;DROP SCHEMA IF EXISTS chk_count CASCADE" | psql -h $subIP -d $subDB

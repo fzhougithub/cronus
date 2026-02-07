@@ -1,0 +1,45 @@
+/usr/pgsql-14/bin/postgres --single -P -D /apps/lib/pgsql/14/data ods_domani
+
+[root@ods-db-04-alma8-prod-drx-kc ~]$ lsof +L1 /apps/lib/pgsql/14/data/
+COMMAND       PID       USER   FD   TYPE DEVICE SIZE/OFF NLINK       NODE NAME
+sssd         1392       root   14r   REG  253,0 11567160     0     856696 /var/lib/sss/mc/initgroups (deleted)
+sssd_be      1464       root   18r   REG  253,0 11567160     0     856696 /var/lib/sss/mc/initgroups (deleted)
+zabbix_ag    1486     zabbix    1w   REG  253,9   775048     0    4194456 /var/log/zabbix/zabbix_agentd.log-20260111 (deleted)
+zabbix_ag    1486     zabbix    2w   REG  253,9   775048     0    4194456 /var/log/zabbix/zabbix_agentd.log-20260111 (deleted)
+zabbix_ag    1486     zabbix    3r   REG  253,0 11567160     0     856696 /var/lib/sss/mc/initgroups (deleted)
+zabbix_ag    1487     zabbix    3r   REG  253,0 11567160     0     856696 /var/lib/sss/mc/initgroups (deleted)
+zabbix_ag    1488     zabbix    1w   REG  253,9   775048     0    4194456 /var/log/zabbix/zabbix_agentd.log-20260111 (deleted)
+zabbix_ag    1488     zabbix    2w   REG  253,9   775048     0    4194456 /var/log/zabbix/zabbix_agentd.log-20260111 (deleted)
+zabbix_ag    1488     zabbix    3r   REG  253,0 11567160     0     856696 /var/lib/sss/mc/initgroups (deleted)
+zabbix_ag    1489     zabbix    3r   REG  253,0 11567160     0     856696 /var/lib/sss/mc/initgroups (deleted)
+postmaste    1657   postgres  cwd    DIR  253,8     4096    19 6442451072 /apps/lib/pgsql/14/data
+postmaste    3147   postgres  cwd    DIR  253,8     4096    19 6442451072 /apps/lib/pgsql/14/data
+lted      1056979 cortexuser    6u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1056979 cortexuser    7u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057019 cortexuser    6u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057019 cortexuser    7u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057020 cortexuser    6u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057020 cortexuser    7u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057021 cortexuser    6u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057021 cortexuser    7u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057022 cortexuser    6u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+lted      1057022 cortexuser    7u   REG   0,22     4096     0   53846431 /dev/shm/pym-1056979-m22d2xq7 (deleted)
+postmaste 2648614   postgres  cwd    DIR  253,8     4096    19 6442451072 /apps/lib/pgsql/14/data
+postmaste 2648615   postgres  cwd    DIR  253,8     4096    19 6442451072 /apps/lib/pgsql/14/data
+postmaste 2648616   postgres  cwd    DIR  253,8     4096    19 6442451072 /apps/lib/pgsql/14/data
+postmaste 2648617   postgres  cwd    DIR  253,8     4096    19 6442451072 /apps/lib/pgsql/14/data
+postmaste 2648630   postgres  cwd    DIR  253,8     4096    19 6442451072 /apps/lib/pgsql/14/data
+
+
+
+[root@ods-db-04-alma8-prod-drx-kc ~]$ od -j 128 -N 16 -t x4 /apps/lib/pgsql/14/data/base/16411/pg_filenode.map
+0000200 00000a67 020fd885 00000d7f 020fd886
+0000220
+
+strace -e openat /usr/pgsql-14/bin/postgres --single -P -D /apps/lib/pgsql/14/data ods_domani 2>&1 | grep base/16411
+
+/usr/pgsql-14/bin/pg_resetwal -f -D /apps/lib/pgsql/14/data
+
+[postgres@ods-db-03-alma8-prod-drx-kc 16411]$ strace -f /usr/pgsql-14/bin/postgres --single -P -D /apps/lib/pgsql/14/data ods_domani 2>&1 | grep -E 'openat|ENOENT|PANIC'
+
+Need to research strace command

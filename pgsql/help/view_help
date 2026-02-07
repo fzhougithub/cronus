@@ -1,0 +1,15 @@
+SELECT
+    viewowner AS owner_name,
+    schemaname AS schema_name,
+    viewname AS view_name
+FROM
+    pg_views
+WHERE
+    -- Optionally exclude system schemas like 'pg_catalog' and 'information_schema'
+    schemaname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY
+    viewowner,
+    schemaname,
+    viewname;
+
+

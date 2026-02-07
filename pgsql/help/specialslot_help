@@ -1,0 +1,3 @@
+CREATE SUBSCRIPTION $t_sub CONNECTION 'host=${s_host} dbname=${s_db} port=${5432}' PUBLICATION ${s_pub} WITH (copy_data = false, create_slot = false, enabled = false, slot_name = '${s_pub}_tricky_slot');
+
+CREATE SUBSCRIPTION prd_claimsprocess_humana_sub CONNECTION 'host=10.221.152.82 dbname=claimsprocess port=5432' PUBLICATION prd_claimsprocess_humana_pub with (copy_data = false, create_slot = false, enabled = false, slot_name = prd_claimsprocess_humana_sub_tricky_slot');

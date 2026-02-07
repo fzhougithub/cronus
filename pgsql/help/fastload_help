@@ -1,0 +1,120 @@
+We have 11TB source DB need to be initialized to turn on logical replication
+The native postgresql pub/sub approach does not work, it will take 30 hours to complete according to current speed
+We test the pg_dump, all of the tables can be dumped within 6 hours
+
+But there is bad character block us for pg_restore;
+
+Without fully test all of the table restore, but looks like the pg_restore process is very slow, the existing tested tables, which are just 3TB, took more than 6 hours. 
+
+How to fast the pg_restore speed? 
+
+`pg_restore` is usually slow because it replays all SQL (INSERTs, index builds, FK checks, triggers, WAL logging) in a fully transactional, crash‑safe way. To speed it up for your 11 TB case, you need to change *how* you restore, not just how many jobs you run.
+
+Below is a practical checklist that tends to give the biggest wins.
+
+## 1. Restore schema and data separately
+
+1) Dump schema only (no data, no privileges, no owners):
+- pg_dump -Fc -s -d source_db -f schema.dump
+
+2) Dump data only:
+- pg_dump -Fc -a -d source_db -f data.dump
+
+3) On target, restore schema first (can keep indexes or not; see next section):
+- pg_restore -d target_db -j 8 --section=pre-data schema.dump
+
+4) Then restore data only:
+- pg_restore -d target_db -j 8 --data-only data.dump
+
+This gives you control to drop constraints/indexes temporarily if needed.
+
+## 2. Drop or delay indexes and FKs if possible
+
+Indexes and foreign keys are *the* biggest slowdown when you bulk‑load terabytes.
+
+- Best performance pattern:
+  - Create tables without secondary indexes, foreign keys, and heavy triggers.
+  - Load all data with pg_restore --data-only (parallel).
+  - Then create indexes and foreign keys after the load, also in parallel (multiple sessions, each creating a subset of indexes).
+- If you must keep constraints:
+  - At least drop or defer the heaviest non‑PK indexes and recreate afterward.
+  - Consider DISABLE TRIGGER ALL on tables that don’t need business triggers during the load, then re‑enable after.
+
+For logical replication: it’s perfectly valid to initialize the subscriber with a “minimal schema” (PKs, NOT NULLs) and add other indexes later; the replication slot will buffer changes, and you let it catch up after index builds.
+
+## 3. Use COPY‑friendly options in pg_restore
+
+Make sure the dump is using COPY, not INSERT:
+
+- pg_dump default for large dumps is COPY; just avoid --inserts / --column-inserts.
+- On restore:
+  - Use --no-owner --no-acl to skip unneeded metadata.
+  - Use a sensible job count: pg_restore -j 8 or -j 16 depending on CPU/IO; more isn’t always better if you’re IO‑bound.
+
+Example:
+
+- pg_restore -d target_db -j 16 --data-only --no-owner --no-acl data.dump
+
+Watch iostat / vmstat / sar to see if you’re CPU‑bound or IO‑bound and tune -j accordingly.
+
+## 4. Relax durability during the initial load
+
+On the target (subscriber) *for the initial load only*, you can safely relax some settings to speed things up, then set them back before going live:
+
+In postgresql.conf (or ALTER SYSTEM):
+
+- synchronous_commit = off
+- fsync = off           (only if you can afford to lose this initial load and redo it on crash)
+- full_page_writes = off (again, only for initial load if you can reload)
+- wal_compression = on
+- maintenance_work_mem: increase (e.g., several GB) to speed index builds
+- max_wal_size: increase so checkpointing doesn’t thrash
+
+Also, reduce autovacuum impact temporarily on the target:
+
+- autovacuum = off (or at least reduce its activity) during the initial bulk load.
+- Re‑enable autovacuum and run a manual VACUUM ANALYZE after the load.
+
+Remember to turn fsync/full_page_writes/autovacuum back on before putting the replica into production.
+
+## 5. Improve disk and WAL throughput
+
+- Put WAL on fast storage (separate SSD/NVMe if possible).
+- Make sure there is no contention from other workloads during restore.
+- Increase wal_buffers and consider lowering wal_writer_delay so WAL is flushed more smoothly.
+
+## 6. Use multiple databases / schemas smartly
+
+With 11 TB:
+
+- If table sizes are skewed, schedule the biggest tables to restore first with their own dedicated jobs or even their own pg_restore invocation, while smaller tables use a separate pg_restore -j N.
+- You can also manually split the data dump by table and restore largest tables in parallel using multiple pg_restore processes.
+
+## 7. Validate “bad character” blockers separately
+
+For the “bad character” that blocks pg_restore:
+
+- Fix encoding/invalid byte sequences first, ideally on the source dump stream:
+  - Use client_encoding = 'UTF8' (or your real encoding) consistently.
+  - Validate with something like iconv or a small test COPY to find offending rows.
+- Once that is fixed, time a clean end‑to‑end restore of a representative 1–2 TB subset after applying the performance changes above; extrapolate from that instead of the current slow baseline.
+
+***
+
+If you share:
+
+- Target server CPU count / storage layout.
+- Current pg_restore command line and major restore‑time settings (fsync, synchronous_commit, autovacuum, etc.).
+
+it’s possible to sketch a more specific restore plan (exact -j value, which indexes to delay, and a concrete “init + catch‑up to logical replication” sequence).
+
+[1](https://severalnines.com/blog/how-optimize-postgresql-logical-replication/)
+[2](https://postgrespro.com/list/thread-id/2468592)
+[3](https://www.pgedge.com/blog/postgresql-16-logical-replication-improvements-in-action)
+[4](https://www.pgedge.com/blog/understanding-and-reducing-postgresql-replication-lag)
+[5](https://www.postgresql.org/message-id/CALqEK1fhEP3+vDctz6qizpmuWvLWcV9DZ8ROycpCRLHMWzsMdQ@mail.gmail.com)
+[6](https://stackoverflow.com/questions/49639691/postgres-logical-replication-initial-setup-super-slow)
+[7](https://stackoverflow.com/questions/77498119/postgres-logical-replication-data-synchronization-step-progressing-very-slowly-f)
+[8](https://www.reddit.com/r/PostgreSQL/comments/10vj69o/will_logical_replication_put_a_big_strain_on_the/)
+[9](https://www.postgresql.org/docs/current/logical-replication.html)
+[10](https://postgrespro.com/list/thread-id/2563340)

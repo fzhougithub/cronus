@@ -1,0 +1,8 @@
+pg_dump --encoding=UTF8 --no-owner --no-privileges your_db > your_db_utf8.sql
+
+iconv -f LATIN1 -t UTF8 your_db_utf8.sql > /dev/null
+If iconv reports errors, you have invalid byte sequences that need fixing before restore.
+
+CREATE DATABASE your_db_utf8 WITH ENCODING 'UTF8' LC_COLLATE='en_US.UTF-8' LC_CTYPE='en_US.UTF-8' TEMPLATE template0;
+
+psql -d your_db_utf8 -f your_db_utf8.sql

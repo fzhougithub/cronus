@@ -1,0 +1,19 @@
+SELECT logicalrelid, colocationid, partkey
+FROM pg_dist_partition
+WHERE logicalrelid = 'claim_core'::regclass;
+
+logicalrelid | claim_core
+colocationid | 45
+partkey      | {VAR :varno 1 :varattno 2 :vartype 1043 :vartypmod 16 :varcollid 100 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 2 :location -1}
+
+SELECT logicalrelid::text, colocationid
+FROM pg_dist_partition
+WHERE logicalrelid IN (
+    'claimsprocess_humana.claim_core'::regclass,
+    'claimsprocess_humana.claim_message_tracking'::regclass
+);
+      logicalrelid      | colocationid
+------------------------+--------------
+ claim_core             |           45
+ claim_message_tracking |           45
+(2 rows)

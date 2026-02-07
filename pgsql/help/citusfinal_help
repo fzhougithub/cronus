@@ -1,0 +1,73 @@
+ods_domani=# SELECT * FROM run_command_on_all_nodes($$
+  SELECT pg_create_logical_replication_slot('cdc_slot', 'pgoutput', false)
+$$);
+ nodeid | success |         result
+--------+---------+------------------------
+      4 | t       | (cdc_slot,9A/D1989720)
+      1 | t       | (cdc_slot,39/C69F2410)
+      2 | t       | (cdc_slot,3A/20A6FAA0)
+      3 | t       | (cdc_slot,39/F6583540)
+(4 rows)
+
+test=# create subscription items_sub connection 'host=10.221.139.162 dbname=ods_domani port=5432' publication items_pub WITH (copy_data=true,create_slot=false,slot_name='cdc_slot');
+
+Then, you have to create subscription to each of the workers
+
+test=# CREATE SUBSCRIPTION items_04_sub connection 'host=10.221.139.161 dbname=ods_domani port=5432' publication items_pub WITH (copy_data=false,create_slot=false,slot_name='cdc_slot');
+CREATE SUBSCRIPTION
+
+test=# CREATE SUBSCRIPTION items_03_sub connection 'host=10.221.139.128 dbname=ods_domani port=5432' publication items_pub WITH (copy_data=false,create_slot=false,slot_name='cdc_slot');
+CREATE SUBSCRIPTION
+
+
+test=# CREATE SUBSCRIPTION items_02_sub connection 'host=10.221.139.160 dbname=ods_domani port=5432' publication items_pub WITH (copy_data=false,create_slot=false,slot_name='cdc_slot');
+CREATE SUBSCRIPTION
+
+test=# select * from items;
+ key |    value
+-----+--------------
+ 3   | a value
+ 7   | a value
+ 1   | a value
+ 9   | a value
+ 4   | a value
+ 2   | a value
+ 6   | a value
+ 10  | a value
+ 5   | a value
+ 11  | test from 04
+ 8   | test from 03
+(11 rows)
+
+
+-- To set for the current session (temporary):
+SET citus.shard_replication_factor = 2;
+
+-- To set permanently for all new sessions on the 'ods_domani' database: -- This command will detect the location of issuer, should run on server. 
+ALTER DATABASE ods_domani SET citus.shard_replication_factor = 2;
+
+SELECT replicate_table_shards('sensor_ranges.items');
+
+ods_domani=# SELECT
+    p.shardid,
+    p.placementid,
+    p.shardstate,
+    p.groupid,
+    n.nodename,
+    n.nodeport
+FROM
+    pg_dist_placement p
+JOIN
+    pg_dist_node n ON p.groupid = n.nodeid
+WHERE
+    p.shardid IN (173086, 173087) -- Checking the first two Shard IDs
+ORDER BY p.shardid, p.groupid;
+ shardid | placementid | shardstate | groupid |                          nodename                           | nodeport
+---------+-------------+------------+---------+-------------------------------------------------------------+----------
+  173086 |       71085 |          1 |       1 | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  173086 |       71086 |          1 |       2 | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  173087 |       71087 |          1 |       2 | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  173087 |       71088 |          1 |       3 | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+(4 rows)
+
+

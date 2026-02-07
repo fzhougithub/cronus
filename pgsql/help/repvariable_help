@@ -1,0 +1,11 @@
+prod benefit and ods
+
+Pub:
+max_replication_slots=2500
+max_wal_senders = 2500
+wal_sender_timeout =1m
+max_sync_workers_per_subscription=128
+
+Sub:
+max_logical_replication_workers=256
+max_sync_workers_per_subscription=128

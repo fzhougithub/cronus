@@ -1,0 +1,12 @@
+# 1. Manual only (what you likely have)
+DAG('list_schemas_sql', schedule_interval=None)
+
+# 2. Daily at midnight
+DAG('list_schemas_sql', schedule_interval='@daily')
+
+# 3. Cron expression
+DAG('list_schemas_sql', schedule_interval='0 2 * * *')  # 2 AM daily
+
+# 4. Timedelta
+from datetime import timedelta
+DAG('list_schemas_sql', schedule_interval=timedelta(hours=1))

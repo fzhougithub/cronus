@@ -1,0 +1,17 @@
+
+
+
+
+Per option C, give detail payload statement for CDC, not for streaming!!
+Also how to edit state, that is what we are looking for!
+
+Per option B: 
+"You should re‑discover the source schema if you added/removed tables. But changing only row filters in the publication does not by itself force a destination erase. Whether data is dropped depends on Sync Mode:
+
+Full Refresh | Overwrite will drop/recreate destination tables each run. [howtouselinux.com]
+Incremental | Append + Deduped will not erase the destination; it will append/dedupe based on PK/cursor. [postgresql.org]"
+
+This is logically good but in real world difficult solution, first of all, we do have process_create_ts field, contain data we can follow, but, how big the chunk we should setup consider the query performance to traverse 10TB table? How many times we have to change the publication where clause and link the change to the relevant airbyte incremental refresh? The final moment I believe we have to stop the traffic on source to allow we catch up accurate LSN, right? I am thinking whether it is really doable
+
+
+Option D: Modify code, yes, that is a great if we can modify Airbyte internal job logic, please guide me with the detail!!

@@ -1,3 +1,7 @@
+sed -n '/^COPY claimsprocess_humana.claim_core (/,/^\.$/p' claimsprocess_humana_12012025_data_ddl.sql > claim_core_only.sql
+
+cat user|sed "s/^/'/; s/$/'/"
+
 cat lumilist|sed "s/.*/'&'/g"
 
 grep -irl "log_duration" * | grep yaml | xargs sed -i '' -E '/- option: log_duration/{n;N;s/\n[[:space:]]*value: off//;}' 

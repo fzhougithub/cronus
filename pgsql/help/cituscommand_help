@@ -1,0 +1,211 @@
+
+SELECT create_distributed_table('claimsprocess_humana.claim_core_filldt', 'fill_dt', 'hash','default', shard_count => 3);
+
+SELECT COUNT(*) AS shard_count, 
+       pg_size_pretty(SUM(shard_size)) AS total_size
+FROM citus_shards 
+WHERE table_name::text = 'claim_core_filldt_default';
+
+SELECT 
+    logicalrelid,
+    partmethod,
+    repmodel
+FROM pg_dist_partition 
+WHERE logicalrelid = 'claim_core_filldt_default'::regclass;
+
+SELECT 
+    table_name::text,
+    shardid,
+    shard_name,
+    pg_size_pretty(shard_size),
+    nodename
+FROM citus_shards 
+WHERE table_name::text = 'claim_core_filldt_default';
+
+SELECT 
+    table_name::text,
+    shardid,
+    pg_size_pretty(shard_size),
+    nodename
+FROM citus_shards 
+WHERE table_name::text = 'claim_core_filldt_default'
+ORDER BY shardid;
+
+
+SELECT c.oid::regclass AS table_name,
+       dp.partmethod,
+       dp.colocationid,
+       dp.repmodel
+FROM pg_dist_partition dp
+JOIN pg_class c ON dp.logicalrelid = c.oid
+WHERE c.relname IN ('claim_core_filldt', 'claim_core_filldt_20400102')
+   OR c.relname LIKE 'claim_core_filldt_2040%';
+
+
+run_command_on_all_nodes
+-- Run on the COORDINATOR node to create slots on all nodes
+SELECT * FROM run_command_on_all_nodes(
+    $$
+    SELECT pg_create_logical_replication_slot('cdc_slot', 'pgoutput', false)
+    $$
+);
+
+
+SELECT logicalrelid, partmethod, shardcount
+FROM pg_dist_partition
+WHERE logicalrelid = 'your_table'::regclass;
+
+SELECT create_distributed_table('table_name', 'distribution_column', shard_count => 32, replication_factor => 2);
+
+
+
+
+ods_domani=# select routine_name from information_schema.routines where routine_name like '%shard%';
+                routine_name
+--------------------------------------------
+ master_get_new_shardid
+ master_create_empty_shard
+ citus_shard_allowed_on_node_true
+ relation_is_a_known_shard
+ master_update_shard_statistics
+ worker_apply_shard_ddl_command
+ worker_apply_shard_ddl_command
+ worker_apply_inter_shard_ddl_command
+ get_shard_id_for_distribution_column
+ lock_shard_resources
+ lock_shard_metadata
+ master_move_shard_placement
+ run_command_on_shards
+ get_colocated_shard_array
+ master_copy_shard_placement
+ replicate_table_shards
+ citus_shard_cost_1
+ citus_shard_cost_by_disk_size
+ rebalance_table_shards
+ citus_update_shard_statistics
+ citus_dist_shard_cache_invalidate
+ get_rebalance_table_shards_plan
+ citus_cleanup_orphaned_shards
+ citus_drop_all_shards
+ fix_partition_shard_index_names
+ fix_all_partition_shard_index_names
+ worker_fix_partition_shard_index_names
+ worker_split_shard_release_dsm
+ citus_shards_on_worker
+ citus_shard_indexes_on_worker
+ isolate_tenant_to_new_shard
+ citus_split_shard_by_split_points
+ worker_split_shard_replication_setup
+ citus_copy_shard_placement
+ citus_copy_shard_placement
+ citus_move_shard_placement
+ citus_move_shard_placement
+ citus_shard_sizes
+ pg_dist_shard_placement_trigger_func
+ add_shard_metadata
+ citus_internal_add_shard_metadata
+ delete_shard_metadata
+ citus_internal_delete_shard_metadata
+ shard_name
+ citus_internal_copy_single_shard_placement
+(45 rows)
+
+ master_get_table_ddl_events
+ master_get_new_shardid
+ master_create_empty_shard
+ master_get_active_worker_nodes
+ master_update_shard_statistics
+ master_get_new_placementid
+ pg_postmaster_start_time
+ master_remove_partition_metadata
+ master_remove_distributed_table_metadata_from_workers
+ master_run_on_worker
+ master_set_node_property
+ master_move_shard_placement
+ master_copy_shard_placement
+ master_disable_node
+ master_remove_node
+ master_update_node
+ master_unmark_object_distributed
+ master_activate_node
+ master_add_secondary_node
+ master_add_node
+ master_add_inactive_node
+ master_drain_node
+ master_update_table_statistics
+(23 rows)
+
+-- See shard details
+SELECT 
+    shardid,
+    shard_name(table_name, shardid) as shard_name,
+    nodename,
+    nodeport,
+    shard_size(table_name, shardid) as size_bytes
+FROM citus_shards 
+WHERE table_name = 'sensor_readings'::regclass;
+
+-- See distribution column
+SELECT 
+    column_name,
+    column_type
+FROM citus_dist_column 
+WHERE table_name = 'sensor_readings'::regclass;
+
+-- Create separate tables for ranges
+CREATE TABLE sensor_readings_range1 (
+    LIKE sensor_readings INCLUDING ALL,
+    CHECK (sensor_id >= 1 AND sensor_id < 1000)
+);
+SELECT create_distributed_table('sensor_readings_range1', 'sensor_id');
+
+CREATE TABLE sensor_readings_range2 (
+    LIKE sensor_readings INCLUDING ALL,
+    CHECK (sensor_id >= 1000 AND sensor_id < 5000)
+);
+SELECT create_distributed_table('sensor_readings_range2', 'sensor_id');
+
+-- Use UNION ALL or application logic to query across ranges
+
+SELECT shardid, shardminvalue, shardmaxvalue
+FROM pg_dist_shard 
+WHERE logicalrelid = 'claimsprocess_humana.claim_core_claimid'::regclass;
+
+SELECT
+    logicalrelid,
+    shard.shardid,
+    shardminvalue, shardmaxvalue,
+    node.nodename,
+    node.nodeport,
+    placement.shardstate
+FROM pg_dist_shard shard
+JOIN pg_dist_placement placement ON shard.shardid = placement.shardid
+JOIN pg_dist_node node ON placement.groupid = node.groupid
+WHERE logicalrelid = 'claimsprocess_humana.claim_core'::regclass
+  AND node.noderole = 'primary'
+ORDER BY shardid, node.nodename;
+ logicalrelid | shardid | shardminvalue | shardmaxvalue |                          nodename                           | nodeport | shardstate
+--------------+---------+---------------+---------------+-------------------------------------------------------------+----------+------------
+ claim_core   |  162365 | -2147483648   | -715827884    | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 |          1
+ claim_core   |  162366 | -715827883    | 715827881     | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 |          1
+ claim_core   |  162367 | 715827882     | 2147483647    | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud |     5432 |          1
+(3 rows)
+
+-- All shards + their worker locations for your distributed table
+SELECT
+    shard.shardid,
+    shard.shardminvalue, shard.shardmaxvalue,
+    node.nodename,
+    node.nodeport
+FROM pg_dist_shard shard
+JOIN pg_dist_placement placement ON shard.shardid = placement.shardid
+JOIN pg_dist_node node ON placement.groupid = node.groupid
+WHERE shard.logicalrelid = 'claimsprocess_humana.claim_core'::regclass
+  AND node.noderole = 'primary'
+ORDER BY shard.shardid;
+ shardid | shardminvalue | shardmaxvalue |                          nodename                           | nodeport
+---------+---------------+---------------+-------------------------------------------------------------+----------
+  162365 | -2147483648   | -715827884    | datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  162366 | -715827883    | 715827881     | datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+  162367 | 715827882     | 2147483647    | datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud |     5432
+(3 rows)

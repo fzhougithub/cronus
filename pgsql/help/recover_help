@@ -1,0 +1,33 @@
+ignore_invalid_pages = on
+
+restart
+
+
+-- run in the database with OID 16386 (find it via pg_database.oid)
+SELECT relname, oid, relfilenode
+FROM pg_class
+WHERE relfilenode = 3673741536;
+
+Or use oid2name/filesystem path $PGDATA/base/16386/3673741536_vm.
+
+Rebuild the visibility map for that table:
+
+Install/load pg_visibility and run checks (and rebuild if needed):
+SQL-- show VM bits and PD_ALL_VISIBLE statusSELECT * FROM pg_visibility_map('your_table'::regclass);-- force VM rebuild by a full vacuumVACUUM (FULL, FREEZE, VERBOSE, ANALYZE)
+
+
+-- show VM bits and PD_ALL_VISIBLE status
+SELECT * FROM pg_visibility_map('your_table'::regclass);
+
+-- force VM rebuild by a full vacuum
+VACUUM (FULL, FREEZE, VERBOSE, ANALYZE) your_table;
+
+
+After fixing, turn ignore_invalid_pages back OFF and restart.
+
+Is VM critical?
+
+It’s not critical for data correctness; it’s metadata.
+If corrupted or missing, you can safely remove/rebuild it by running VACUUM FULL or using pg_visibility tools.
+
+Suppose should be fixed early

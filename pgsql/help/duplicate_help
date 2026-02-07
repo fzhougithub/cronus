@@ -1,0 +1,17 @@
+DELETE FROM claim
+WHERE ctid IN (
+  SELECT ctid
+  FROM (
+    SELECT ctid,
+           ROW_NUMBER() OVER (PARTITION BY customer_id, claim_id ORDER BY ctid) AS rn
+    FROM claim
+  ) t
+  WHERE rn > 1
+);
+
+DELETE 10
+
+ods_domani=#       reindex index datamrt_humana_claim_pkey;
+REINDEX
+
+

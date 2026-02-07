@@ -1,0 +1,37 @@
+1. Check whether the timeline same
+
+Primary:
+
+SELECT timeline_id, checkpoint_lsn FROM pg_control_checkpoint();
+ timeline_id | checkpoint_lsn
+-------------+----------------
+           2 | 144F/1E000028
+
+SELECT pg_current_wal_lsn(), pg_walfile_name(pg_current_wal_lsn());
+ pg_current_wal_lsn |     pg_walfile_name
+--------------------+--------------------------
+ 144F/7861E6F0      | 000000020000144F00000078
+
+Other:
+SELECT pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn(), pg_is_wal_replay_paused();
+ pg_last_wal_receive_lsn | pg_last_wal_replay_lsn | pg_is_wal_replay_paused
+-------------------------+------------------------+-------------------------
+ 144F/7861E6F0           | 144F/1E0000A0          | t
+
+In this case, since the file are same, but the pg_is_wal_replay_paused is true, should be something in log file tell the issue
+Then, found the error in log
+
+2025-10-28 09:57:35.865 UTC [3185687] postgres@postgres LOG:  disconnection: session time: 0:00:00.040 user=postgres database=postgres host=[local]
+2025-10-28 09:57:36.136 UTC [726753] FATAL:  recovery aborted because of insufficient parameter settings
+2025-10-28 09:57:36.136 UTC [726753] DETAIL:  max_connections = 300 is a lower setting than on the primary server, where its value was 501.
+2025-10-28 09:57:36.136 UTC [726753] HINT:  You can restart the server after making the necessary configuration changes.
+
+You can change and reload the max_connections from 300 to 501, then, 
+SELECT pg_wal_replay_resume();
+
+So, you don't have to make the confuse than the timeline changed. 
+
+If really timeline changed
+
+pg_rewind --target-pgdata=/apps/lib/pgsql/14/data \
+          --source-server="host=host01 user=postgres dbname=postgres" 

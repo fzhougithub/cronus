@@ -1,0 +1,387 @@
+export KUBECONFIG=~/.kube/domanirx-devops2-prod-oidc.config
+kubens
+kubectl config set-context --current --namespace=airbyte
+kubens
+
+Then, should run API to get the discovery done
+
+https://airbyte-prod-drx-kc.ssnc-corp.cloud/workspaces/f08412d6-6e6f-4d98-a519-5f051be18304/connections/new-connection/configure?sourceId=d5e1266f-5c41-4667-959a-a82fc1be6c5d&destinationId=8b1f18c8-ee59-46c4-872b-12428f447102
+
+source id: d5e1266f-5c41-4667-959a-a82fc1be6c5d
+dest id: 8b1f18c8-ee59-46c4-872b-12428f447102
+
+Airbyte 2.0+ uses OAuth 2.0 Client Credentials (client_id + client_secret) instead of static API keys
+https://docs.airbyte.com/platform/using-airbyte/configuring-api-access
+
+
+
+
+
+
+
+[root@ods-db-01-alma9-huat-drx-kc curl -s "http://localhost:8000/api/public/v1/workspaces?limit=20&offset=0" | jq .set=0" | jq .
+{
+  "data": [
+    {
+      "workspaceId": "53377f69-19f4-4326-98cf-2ba558dd0965",
+      "name": "MiniKube_Test",
+      "dataResidency": "",
+      "notifications": {
+        "failure": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "success": {
+          "email": {
+            "enabled": false
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "connectionUpdate": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "connectionUpdateActionRequired": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "syncDisabled": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "syncDisabledWarning": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        }
+      }
+    }
+  ],
+  "previous": "",
+  "next": "http://localhost:8001/api/public/v1/workspaces?includeDeleted=false&limit=20&offset=20"
+}
+
+
+curl -v http://localhost:8000/api/public/v1/workspaces|jq .
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 127.0.0.1:8000...
+* Connected to localhost (127.0.0.1) port 8000 (#0)
+> GET /api/public/v1/workspaces HTTP/1.1
+> Host: localhost:8000
+> User-Agent: curl/7.76.1
+> Accept: */*
+>
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 Ok
+< Date: Wed, 14 Jan 2026 17:22:25 GMT
+< Content-Type: application/json
+< Content-Length: 675
+< Connection: keep-alive
+<
+{ [675 bytes data]
+100   675  100   675    0     0  67500      0 --:--:-- --:--:-- --:--:-- 67500
+* Connection #0 to host localhost left intact
+{
+  "data": [
+    {
+      "workspaceId": "53377f69-19f4-4326-98cf-2ba558dd0965",
+      "name": "MiniKube_Test",
+      "dataResidency": "",
+      "notifications": {
+        "failure": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "success": {
+          "email": {
+            "enabled": false
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "connectionUpdate": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "connectionUpdateActionRequired": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "syncDisabled": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        },
+        "syncDisabledWarning": {
+          "email": {
+            "enabled": true
+          },
+          "webhook": {
+            "enabled": false
+          }
+        }
+      }
+    }
+  ],
+  "previous": "",
+  "next": "http://localhost:8001/api/public/v1/workspaces?includeDeleted=false&limit=20&offset=20"
+}
+
+kubectl edit ingress ingress-abctl -n airbyte-abctl --kubeconfig ~/.airbyte/abctl/abctl.kubeconfig
+
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1G
+
+kubectl edit ingress ingress-abctl -n airbyte-abctl --kubeconfig ~/.airbyte/abctl/abctl.kubeconfig
+
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+
+Then, it past the previous failure, got the error like
+
+Please wait a little bit more…
+Airbyte is temporarily unavailable. Please try again. (HTTP 502)
+
+Different error
+
+
+kubectl config set-context --current --namespace=airbyte-abctl
+
+kubectl config view --minify | grep namespace:
+namespace: airbyte-abctl
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl describe ingress ingress-abctl -n airbyte-abctl | grep proxy
+Annotations:  nginx.ingress.kubernetes.io/proxy-body-size: 50m
+              nginx.ingress.kubernetes.io/proxy-read-timeout: 600
+              nginx.ingress.kubernetes.io/proxy-send-timeout: 600
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl logs ingress-nginx-controller-fb46d5776-p8cf2 -n ingress-nginx|grep -v airbyte-abctl-airbyte-abctl-airbyte-server-svc-http|grep -i error
+2026/01/14 17:43:52 [error] 1411#1411: *47524475 upstream prematurely closed connection while reading response header from upstream, client: 10.222.113.67, server: _, request: "POST /api/v1/sources/discover_schema HTTP/1.1", upstream: "http://10.244.0.19:8001/api/v1/sources/discover_schema", host: "airbyte-huat-drx-kc.ssnc-corp.cloud", referrer: "https://airbyte-huat-drx-kc.ssnc-corp.cloud/workspaces/53377f69-19f4-4326-98cf-2ba558dd0965/connections/new-connection/configure?sourceId=8195dc8d-4727-4f5d-b1a5-7ba6aca21384&destinationId=dced0a59-67a5-48e4-bd49-4265e381f105"
+2026/01/14 17:49:07 [error] 1411#1411: *47524475 upstream prematurely closed connection while reading response header from upstream, client: 10.222.113.67, server: _, request: "POST /api/v1/sources/discover_schema HTTP/1.1", upstream: "http://10.244.0.19:8001/api/v1/sources/discover_schema", host: "airbyte-huat-drx-kc.ssnc-corp.cloud", referrer: "https://airbyte-huat-drx-kc.ssnc-corp.cloud/workspaces/53377f69-19f4-4326-98cf-2ba558dd0965/connections/new-connection/configure?sourceId=8195dc8d-4727-4f5d-b1a5-7ba6aca21384&destinationId=dced0a59-67a5-48e4-bd49-4265e381f105"
+2026/01/14 17:59:31 [error] 1409#1409: *47584111 upstream prematurely closed connection while reading response header from upstream, client: 10.222.113.67, server: _, request: "POST /api/v1/sources/discover_schema HTTP/1.1", upstream: "http://10.244.0.19:8001/api/v1/sources/discover_schema", host: "airbyte-huat-drx-kc.ssnc-corp.cloud", referrer: "https://airbyte-huat-drx-kc.ssnc-corp.cloud/workspaces/53377f69-19f4-4326-98cf-2ba558dd0965/connections/new-connection/configure?sourceId=8195dc8d-4727-4f5d-b1a5-7ba6aca21384&destinationId=dced0a59-67a5-48e4-bd49-4265e381f105"
+
+
+Then, we know there is a postgresql service for airbyte
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get svc airbyte-db-svc -n airbyte-abctl
+NAME             TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
+airbyte-db-svc   ClusterIP   10.96.36.111   <none>        5432/TCP   14d
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get pod airbyte-db-0 -n airbyte-abctl -o wide
+NAME           READY   STATUS    RESTARTS     AGE   IP           NODE                          NOMINATED NODE   READINESS GATES
+airbyte-db-0   1/1     Running   4 (9d ago)   14d   10.244.0.5   airbyte-abctl-control-plane   <none>           <none>
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl get secret airbyte-abctl-airbyte-secrets -n airbyte-abctl -o yaml
+apiVersion: v1
+data:
+  AB_INSTANCE_ADMIN_CLIENT_ID: ""
+  AB_INSTANCE_ADMIN_CLIENT_SECRET: ""
+  AB_INSTANCE_ADMIN_PASSWORD: ""
+  AB_JWT_SIGNATURE_SECRET: ""
+  AIRBYTE_DUMMY_SECRET: ZHVtbXk=
+  AIRBYTE_LICENSE_KEY: ""
+  AWS_ASSUME_ROLE_ACCESS_KEY_ID: ""
+  AWS_ASSUME_ROLE_SECRET_ACCESS_KEY: ""
+  BUILDER_GITHUB_AIRBYTE_PAT_TOKEN: ""
+  CONNECTOR_ROLLOUT_GITHUB_AIRBYTE_PAT: ""
+  CUSTOMERIO_API_KEY: ""
+  DATABASE_PASSWORD: YWlyYnl0ZQ==
+  DATABASE_USER: YWlyYnl0ZQ==
+  DATAPLANE_CLIENT_ID: ""
+  DATAPLANE_CLIENT_SECRET: ""
+  INITIAL_USER_PASSWORD: ""
+  KEYCLOAK_ADMIN_PASSWORD: YWlyYnl0ZTEyMw==
+  KEYCLOAK_ADMIN_USER: YWlyYnl0ZUFkbWlu
+  KEYCLOAK_DATABASE_PASSWORD: YWlyYnl0ZQ==
+  KEYCLOAK_DATABASE_USERNAME: YWlyYnl0ZQ==
+  OPENAI_API_KEY_PROJ_FAILED_SYNC_ASSISTANT: ""
+  STIGG_API_KEY: ""
+  TEMPORAL_CLI_TLS_CERT: ""
+  TEMPORAL_CLI_TLS_KEY: ""
+  TEMPORAL_CLOUD_CLIENT_CERT: ""
+  TEMPORAL_CLOUD_CLIENT_KEY: ""
+kind: Secret
+metadata:
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-1"
+  creationTimestamp: "2025-12-30T21:26:18Z"
+  labels:
+    airbyte: templates
+    app.kubernetes.io/instance: airbyte-abctl
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: templates
+    app.kubernetes.io/version: 2.0.1
+    helm.sh/chart: airbyte-2.0.19
+  name: airbyte-abctl-airbyte-secrets
+  namespace: airbyte-abctl
+  resourceVersion: "474"
+  uid: aef0cdff-fc6b-45c1-8e6e-532574b6ab6e
+type: Opaque
+
+echo "YWlyYnl0ZQ==" | base64 --decode
+airbyte
+
+  psql -h airbyte-db-svc.airbyte-abctl.svc.cluster.local -U airbyte -d airbyte
+
+kubectl exec -it airbyte-db-0 -n airbyte-abctl -- psql -U airbyte -l
+
+                                                        List of databases
+        Name         |  Owner  | Encoding | Locale Provider |  Collate   |   Ctype    | Locale | ICU Rules |  Access privileges
+---------------------+---------+----------+-----------------+------------+------------+--------+-----------+---------------------
+ db-airbyte          | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+ postgres            | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+ template0           | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | =c/airbyte         +
+                     |         |          |                 |            |            |        |           | airbyte=CTc/airbyte
+ template1           | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | =c/airbyte         +
+                     |         |          |                 |            |            |        |           | airbyte=CTc/airbyte
+ temporal            | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+ temporal_visibility | airbyte | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+(6 rows)
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ kubectl exec -it airbyte-db-0 -n airbyte-abctl -- psql -U airbyte -d db-airbyte
+psql (17.5)
+Type "help" for help.
+
+db-airbyte=#
+
+db-airbyte=# SELECT id, scope, status, created_at
+db-airbyte-# FROM jobs
+db-airbyte-# WHERE scope = '7e39b489-70d0-461c-8ec5-00cb53347ab6'
+db-airbyte-# ORDER BY created_at DESC
+db-airbyte-# LIMIT 5;
+ id  |                scope                 |  status   |          created_at
+-----+--------------------------------------+-----------+-------------------------------
+ 812 | 7e39b489-70d0-461c-8ec5-00cb53347ab6 | running   | 2026-01-14 18:15:10.662829+00
+ 808 | 7e39b489-70d0-461c-8ec5-00cb53347ab6 | succeeded | 2026-01-14 17:15:10.981744+00
+ 804 | 7e39b489-70d0-461c-8ec5-00cb53347ab6 | succeeded | 2026-01-14 16:15:10.02815+00
+ 800 | 7e39b489-70d0-461c-8ec5-00cb53347ab6 | succeeded | 2026-01-14 15:15:09.217191+00
+ 796 | 7e39b489-70d0-461c-8ec5-00cb53347ab6 | succeeded | 2026-01-14 14:15:09.007397+00
+(5 rows)
+
+db-airbyte=# SELECT id, job_id, status, created_at
+db-airbyte-# FROM attempts
+db-airbyte-# WHERE job_id IN (
+db-airbyte(#     SELECT id FROM jobs WHERE scope = '7e39b489-70d0-461c-8ec5-00cb53347ab6'
+db-airbyte(# )
+db-airbyte-# ORDER BY created_at DESC
+db-airbyte-# LIMIT 5;
+  id  | job_id |  status   |          created_at
+------+--------+-----------+-------------------------------
+ 1315 |    812 | running   | 2026-01-14 18:15:10.687365+00
+ 1310 |    808 | succeeded | 2026-01-14 17:15:11.137685+00
+ 1306 |    804 | succeeded | 2026-01-14 16:15:10.052891+00
+ 1302 |    800 | succeeded | 2026-01-14 15:15:09.24044+00
+ 1298 |    796 | succeeded | 2026-01-14 14:15:09.03016+00
+(5 rows)
+
+
+
+SELECT * FROM sync_stats
+WHERE attempt_id IN (
+    SELECT id FROM attempts WHERE job_id IN (
+        SELECT id FROM jobs WHERE scope = '7e39b489-70d0-461c-8ec5-00cb53347ab6'
+    )
+);
+(307 rows)
+
+
+db-airbyte=#
+db-airbyte=# SELECT * FROM sync_stats WHERE attempt_id = 1310;
+ id | attempt_id | records_emitted | bytes_emitted | source_state_messages_emitted | destination_state_messages_emitted | records_committed | mean_seconds_before_source_state_message_emitted | max_seconds_before_source_state_message_emitted | mean_seconds_between_state_message_emitted_and_committed | max_seconds_between_state_message_emitted_and_committed | created_at | updated_at | estimated_records | estimated_bytes | bytes_committed | records_rejected
+----+------------+-----------------+---------------+-------------------------------+------------------------------------+-------------------+--------------------------------------------------+-------------------------------------------------+----------------------------------------------------------+---------------------------------------------------------+------------+------------+-------------------+-----------------+-----------------+------------------
+(0 rows)
+
+db-airbyte=#
+db-airbyte=# UPDATE sync_stats
+db-airbyte-# SET source_state_messages_emitted = 0
+db-airbyte-# WHERE attempt_id = 1310 AND source_state_messages_emitted IS NULL;
+UPDATE 0
+
+For next step
+
+[root@ods-db-01-alma9-huat-drx-kc pg_backups]$ helm list -n airbyte-abctl
+NAME         	NAMESPACE    	REVISION	UPDATED                                	STATUS  	CHART               	APP VERSION
+airbyte-abctl	airbyte-abctl	1       	2025-12-30 21:26:17.401493638 +0000 UTC	deployed	airbyte-2.0.19      	2.0.1
+ingress-nginx	ingress-nginx	1       	2025-12-30 21:28:03.38035874 +0000 UTC 	deployed	ingress-nginx-4.14.1	1.14.1
+
+
+yum install helm
+helm repo add airbyte https://airbytehq.github.io/helm-charts
+helm repo update
+helm search repo airbyte/airbyte --versions|head -10
+NAME                               	CHART VERSION	APP VERSION	DESCRIPTION
+airbyte/airbyte                    	1.9.2        	2.0.1      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.9.1        	2.0.1      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.8.5        	1.8.5      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.8.3        	1.8.3      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.8.2        	1.8.2      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.8.1        	1.8.1      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.8.0        	1.8.0      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.7.8        	1.7.8      	Helm chart to deploy airbyte
+airbyte/airbyte                    	1.7.7        	1.7.7      	Helm chart to deploy airbyte
+
+helm upgrade \
+  --install airbyte-abctl airbyte/airbyte \
+  --version 0.344.2 \
+  --namespace airbyte-abctl \
+  --reuse-values
+
+
+kubectl rollout status deployment/airbyte-abctl-server -n airbyte-abctl
+kubectl rollout status deployment/airbyte-abctl-worker -n airbyte-abctl
+
+Above suggest to align the installation with latest stable release
+
+Upgrade the airbyte-v2:
+
+helm repo add airbyte-v2 https://airbytehq.github.io/charts
+helm repo update
+helm search repo airbyte-v2
+NAME                         	CHART VERSION	APP VERSION	DESCRIPTION
+airbyte-v2/airbyte           	2.0.19       	2.0.1      	Helm chart to deploy airbyte
+airbyte-v2/airbyte-data-plane	2.0.1        	2.0.1      	A Helm chart for installing an Airbyte Data Plane.
+
+Then, need to config the values.yaml for the airbyte-v2
+
+

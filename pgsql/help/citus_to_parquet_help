@@ -1,0 +1,88 @@
+1. use python3 pandas on fly save
+
+import sys
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+chunks = pd.read_csv(sys.stdin, chunksize=100000)
+writer = None
+
+for chunk in chunks:
+    table = pa.Table.from_pandas(chunk)
+    if writer is None:
+        writer = pq.ParquetWriter('/pg_backups/claim_citus.parquet', table.schema)
+    writer.write_table(table)
+
+if writer:
+    writer.close()
+
+
+/apps/lib/pgsql/scripts/csv_to_parquet.py
+import sys
+import pandas as pd
+
+#df = pd.read_csv('/tmp/claim_citus.csv')
+#df.to_parquet('/tmp/claim_citus.parquet')
+
+df = pd.read_csv(sys.stdin)
+df.to_parquet('/pg_backups/claim_citus.parquet')
+
+----
+import sys
+import pandas as pd
+
+chunks = pd.read_csv(sys.stdin, chunksize=100000)
+with pd.ExcelWriter('/pg_backups/claim_citus.parquet', engine='pyarrow') as writer:
+    for chunk in chunks:
+        chunk.to_parquet(writer, index=False)
+-------
+
+pip3 install pandas
+pip3 install pyarrow
+
+psql -d ods_domani
+set search_path to datamart_humana
+
+COPY datamart_humana.claim_citus_20251104 TO PROGRAM 'python3 /apps/lib/pgsql/scripts/csv_to_parquet_polar.py' with CSV;
+#COPY datamart_humana.claim_citus_20251104 TO PROGRAM 'python3 /apps/lib/pgsql/scripts/csv_to_parquet.py' with CSV;
+
+
+import sys
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+import time
+import traceback
+
+output_path = '/pg_backups/claim_citus.parquet'
+log_path = '/tmp/parquet_progress.log'
+
+chunk_size = 10000
+row_count = 0
+start_time = time.time()
+
+try:
+    chunks = pd.read_csv(sys.stdin, chunksize=chunk_size)
+    writer = None
+
+    with open(log_path, 'w') as log:
+        for i, chunk in enumerate(chunks):
+            table = pa.Table.from_pandas(chunk)
+            if writer is None:
+                writer = pq.ParquetWriter(output_path, table.schema)
+                log.write(f"[{time.ctime()}] Writer initialized with schema\n")
+            writer.write_table(table)
+            row_count += len(chunk)
+            log.write(f"[{time.ctime()}] Wrote chunk {i+1}, total rows: {row_count}\n")
+            log.flush()
+
+        if writer:
+            writer.close()
+            log.write(f"[{time.ctime()}] Finished writing {row_count} rows to {output_path}\n")
+except Exception as e:
+    with open(log_path, 'a') as log:
+        log.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
+        log.write(traceback.format_exc())
+
+

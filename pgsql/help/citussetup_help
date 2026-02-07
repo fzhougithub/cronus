@@ -1,0 +1,47 @@
+yum install citus_17.x86_64 citus_17-llvmjit.x86_64 citus_17-devel.x86_64
+shared_preload_libraries = 'citus,pg_stat_statements'
+citus.replication_model = 'streaming'
+create extension citus;
+
+SELECT citus_set_coordinator_host('datamartcitushumana-db-01-alma9-huat-drx-kc.ssnc-corp.cloud');
+select * from master_add_node('datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud',5432);
+select * from master_add_node('datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud',5432);
+select * from master_add_node('datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud',5432);
+
+SELECT * FROM master_get_active_worker_nodes();
+
+
+SELECT * FROM pg_dist_shard;
+SELECT * FROM pg_dist_placement;
+
+
+
+1. yum install citus_xx
+2. vi shared_preload_libraries='citus,pg_statements'
+3. restart postgres
+4. configure nodes pg_hba to md5? 
+5. reload
+6. add worker
+
+-- Add workers
+SELECT * FROM master_add_node('datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud', 5432);
+SELECT * FROM master_add_node('datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud', 5432);
+SELECT * FROM master_add_node('datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud', 5432);
+
+7. SELECT * FROM master_get_active_worker_nodes();
+
+8. 
+CREATE TABLE test_table (id bigint, data text);
+SELECT create_distributed_table('test_table', 'id');
+
+
+9. INSERT INTO test_table VALUES (1, 'hello'), (2, 'world');
+SELECT * FROM test_table;
+
+SELECT create_distributed_table(
+  'claimsprocess_humana.claim_core', 
+  'claim_id',  -- your distribution column
+  colocate_with => 'claim_extension_1'
+);
+
+SELECT create_distributed_table('claimsprocess_humana.claim_core','claim_id','hash',colocate_with => 'claimsprocess_humana.claim_extension_1');

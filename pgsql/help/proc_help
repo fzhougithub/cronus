@@ -1,0 +1,3 @@
+cat /proc/$(pgrep -xo postgres)/cmdline | tr '\0' ' '
+
+BOOT_IMAGE=(hd0,msdos1)/vmlinuz-4.18.0-553.74.1.el8_10.x86_64 root=/dev/mapper/rootvg-rootvol ro nofb splash=quiet crashkernel=auto resume=/dev/mapper/rootvg-swap rd.lvm.lv=rootvg/rootvol rd.lvm.lv=rootvg/swap rhgb quiet

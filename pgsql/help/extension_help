@@ -1,0 +1,11 @@
+yum install -y pgvector_14.x86_64 pgvector_14-llvmjit.x86_64
+create extension vector;
+
+yum install -y pg_background_16.x86_64 pg_background_16-llvmjit.x86_64
+create extension pg_background;
+
+yum install -y pg_hint_plan_16.x86_64 pg_hint_plan_16-llvmjit.x86_64
+create extension pg_hint_plan;
+
+CREATE EXTENSION pg_stat_statements;
+

@@ -1,0 +1,63 @@
+-- Create immutable base tableA
+CREATE TABLE tableA (
+  pk_col BIGINT PRIMARY KEY,
+  data_col TEXT NOT NULL
+);
+
+-- Populate tableA with 1 million rows
+INSERT INTO tableA (pk_col, data_col)
+SELECT generate_series, 'data_' || generate_series
+FROM generate_series(1, 1000000);
+
+-- Create CDC shadow table with the same structure as tableA
+-- Initially data_col is NULL meaning no changes applied yet
+CREATE TABLE cdc_shadow (
+  pk_col BIGINT PRIMARY KEY,
+  data_col TEXT -- NULL means no change (initial state)
+);
+
+-- Example CDC operations:
+
+-- Initially load all PKs in cdc_shadow with NULL data_col (no change)
+INSERT INTO cdc_shadow (pk_col, data_col)
+SELECT pk_col, NULL FROM tableA;
+
+-- CDC delete: Delete row from cdc_shadow to mark deletion
+DELETE FROM cdc_shadow WHERE pk_col = 100;
+
+-- CDC insert: Insert new row into cdc_shadow with non-null data_col (change applied)
+INSERT INTO cdc_shadow (pk_col, data_col)
+VALUES (1000001, 'new data 1000001')
+ON CONFLICT (pk_col) DO UPDATE SET data_col = EXCLUDED.data_col;
+
+-- CDC update: delete old key then insert new updated row with data_col non-null
+DELETE FROM cdc_shadow WHERE pk_col = 200;
+INSERT INTO cdc_shadow (pk_col, data_col)
+VALUES (200, 'updated data 200')
+ON CONFLICT (pk_col) DO UPDATE SET data_col = EXCLUDED.data_col;
+
+-- Create the overlay view combining immutable base and CDC shadow changes
+
+CREATE OR REPLACE VIEW final_tableA AS
+SELECT a.pk_col, a.data_col
+FROM tableA a
+LEFT JOIN cdc_shadow c ON a.pk_col = c.pk_col
+WHERE c.pk_col IS NULL OR c.data_col IS NULL -- no changes, take from tableA
+
+UNION ALL
+
+SELECT c.pk_col, c.data_col
+FROM cdc_shadow c
+WHERE c.data_col IS NOT NULL; -- changed rows or new inserts in shadow
+
+
+
+create or replace view claim_and_cdc as
+select a.* from claim a
+left join claim_shadow c on a.customer_id=c.customer_id  and a.claim_id = c.claim_id
+where c.process_create_ts is null
+union
+select s.* from claim_shadow s
+where s.process_create_ts is not null ;
+
+

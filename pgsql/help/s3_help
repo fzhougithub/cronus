@@ -1,7 +1,57 @@
+
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/ods_domani/customer_d/ --recursive --summarize --human-readable --profile db-backup-prod --no-verify-ssl |tail -10
+
+aws s3 sync /pg_backups/customer_d --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/ods_domani/customer_d --profile db-backup-prod --no-verify-ssl
+aws s3 cp /pg_backups/global.dmp --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/ods_domani/ --profile db-backup-prod --no-verify-ssl
+
+
+# One-liner version
+find /pg_backups/archive/10-222-200-6/14-1/ -newer /pg_backups/archive/10-222-200-6/14-1/00000001000030BD/00000001000030BD0000009D-508f0a0ee43baf0c4dd3697a24afe56143b80087.lz4 -name "*.lz4" | sort | sed "s|.*|aws s3 cp '&' 's3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/'& --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl|" > wal_tasks.txt
+
+aws s3 rm s3://db-backup-huat/wal-recovery/2025-12-23-replica-fix/00000001000030BD/ --recursive --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-huat --no-verify-ssl
+
+aws s3 cp /pg_backups/datamart_misc.dmp --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/ods_domani/ --profile db-backup-huat --no-verify-ssl
+aws s3 cp --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/ods_domani/datamart_misc.dmp /pg_backups/ --profile db-backup-huat --no-verify-ssl
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/ods_domani/ --profile db-backup-huat --no-verify-ssl
+aws s3 cp /pg_backups/claimprocess_humana.tgz --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/ods_domani/ --profile db-backup-huat --no-verify-ssl
+aws s3 cp --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/ods_domani/claimprocess_humana.tgz /pg_backups/ --profile db-backup-huat --no-verify-ssl
+
+You can use existing command, plus --debug 2> aws-debug.log to get the region value
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/duckdb/claim.parquet --profile db-backup-huat --no-verify-ssl --debug 2> aws-debug.log
+
+'Region': 'us-east-1' 'aws-global'
+
+aws configure set region aws-global --profile db-backup-dev
+
+aws configure list --profile db-backup-huat
+      Name                    Value             Type    Location
+      ----                    -----             ----    --------
+   profile           db-backup-huat           manual    --profile
+access_key     ****************nirx shared-credentials-file
+secret_key     ****************COX3 shared-credentials-file
+    region                <not set>             None    None
+
+aws configure set region us-east-1 --profile db-backup-huat
+
+
+aws s3 cp /apps/lib/pgsql/duckdb_data/claim.parquet --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/duckdb/claim.parquet --profile db-backup-huat --no-verify-ssl
+
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-huat/duckdb/claim.parquet --profile db-backup-huat --no-verify-ssl
+
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/claimsprocess/ --profile db-backup-prod --no-verify-ssl
+aws s3 cp --recursive /pg_backups/for_fail_transfer_wal --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/claimsprocess/ --profile db-backup-prod --no-verify-ssl
+
+Then, get it on odshumana
+
+aws s3 cp --recursive --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/financials/financials.dump /pg_backups/ --profile db-backup-qc --no-verify-ssl
+aws s3 cp --recursive 
+
+
 aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-qc/financials/  --profile db-backup-qc --no-verify-ssl
 aws s3 cp /pg_backups/financials.dump --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-qc/financials/ --profile db-backup-qc --no-verify-ssl
 
 on olly: mkdir ~/.aws/; vi ~/.aws/credentials; add the content from qc, then, chmod 600. 
+if the server is in different env, just copy the ~/.aws/credential from relevant server to target, it will work. 
 
 aws s3 cp --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-qc/financials/financials.dump /pg_backups/ --profile db-backup-qc --no-verify-ssl
 
@@ -14,3 +64,7 @@ etl-prod-phi-rw	OFmPHB5cXY2Pv2eUOJMe29OXlPKPZNDU	sftp-prod-drx-kc.ssnc-corp.clou
  
 /apps/lib/pgsql/14/scripts/exec_bulkload.sh
  
+aws s3api get-bucket-location --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --bucket db-backup-qc --profile db-backup-qc
+
+SSL validation failed for https://wdc-ecs-01-dtn.dstcorp.net:9021/db-backup-qc?location [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self signed certificate (_ssl.c:1032)
+

@@ -1,0 +1,5 @@
+SELECT * FROM pg_create_physical_replication_slot('my_slot');
+
+/usr/pgsql-14/bin/pg_receivewal -h 10.222.79.110 -D /pg_tablespace_1/sarch -S my_slot -n -v -s 2
+
+

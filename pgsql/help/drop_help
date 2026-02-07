@@ -1,0 +1,5 @@
+psql:1_create.sql:165: ERROR:  relation "member_pkey" already exists
+ALTER TABLE o58_bak DROP CONSTRAINT member_pkey;
+
+psql:1_create.sql:166: ERROR:  relation "o58_alt_member_id_lookup_idx" already exists
+drop index if exists o58_alt_member_id_lookup_idx
