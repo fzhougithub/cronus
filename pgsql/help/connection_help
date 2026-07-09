@@ -1,0 +1,42 @@
+ps -ef|grep postgres:|awk '{print $10,$12,$13}'|awk '{print $2}'|cut -d'(' -f1|sort|uniq -c|sort -k1nr
+    123 10.222.55.172
+    118 10.222.55.123
+     63 10-173-28-131.ssnc-corp.cloud
+     62 10-173-28-102.ssnc-corp.cloud
+     62 10-173-28-134.ssnc-corp.cloud
+     61 10-173-28-125.ssnc-corp.cloud
+     61 10-173-28-127.ssnc-corp.cloud
+     61 10-173-28-21.ssnc-corp.cloud
+      5
+      2 10-173-19-104.ssnc-corp.cloud
+      2 10-173-28-72.ssnc-corp.cloud
+      1 000000010000018B000000FD
+      1 18B/FD1DA000
+      1 [local]
+
+SELECT
+    client_addr,
+    usename,
+    datname,
+    count(*)
+FROM pg_stat_activity
+WHERE client_addr IS NOT NULL
+GROUP BY client_addr, usename, datname
+ORDER BY count(*) DESC;
+
+  client_addr  |     usename     |  datname   | count
+---------------+-----------------+------------+-------
+ 10.222.55.172 | ppdpharmlocator | ods_domani |   122
+ 10.222.55.123 | ppdpharmlocator | ods_domani |   118
+ 10.173.28.131 | ppdplanfinder   | ods_domani |    63
+ 10.173.28.125 | ppdplanfinder   | ods_domani |    62
+ 10.173.28.21  | ppdplanfinder   | ods_domani |    62
+ 10.173.28.127 | ppdplanfinder   | ods_domani |    61
+ 10.173.28.102 | ppdplanfinder   | ods_domani |    61
+ 10.173.28.134 | ppdplanfinder   | ods_domani |    60
+ 10.173.19.104 | ppdplanfinder   | ods_domani |     2
+ 10.173.28.72  | ppdplanfinder   | ods_domani |     2
+ 10.222.55.172 | postgres        | ods_domani |     1
+ 10.222.55.123 | postgres        | ods_domani |     1
+(12 rows)
+

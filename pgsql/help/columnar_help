@@ -1,3 +1,33 @@
+
+-- show all of the columnar tables. 
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    am.amname AS access_method
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_am am ON am.oid = c.relam
+WHERE c.relkind = 'r'   -- regular tables only
+  AND am.amname = 'columnar'
+ORDER BY 1, 2;
+
+Show non-columar table for schema datamart_humana
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    am.amname AS access_method
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_am am ON am.oid = c.relam
+WHERE c.relkind = 'r'                  -- regular tables only (leaf tables)
+  AND n.nspname = 'datamart_humana'
+  AND am.amname <> 'columnar'          -- exclude Hydra columnar tables
+ORDER BY 1, 2;
+
+
+
 SELECT c.oid::regclass AS table_name,
        am.amname AS access_method
 FROM pg_class c

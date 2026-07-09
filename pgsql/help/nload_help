@@ -1,0 +1,6 @@
+nload eth0 -t 1000 >>/tmp/odshumana-pg16-01.log
+
+ cat /tmp/odshumana-pg16-01.log | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | tr '\r' '\n' > /tmp/clean_stats.log
+
+
+

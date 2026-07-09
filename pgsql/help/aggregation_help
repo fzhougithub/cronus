@@ -1,0 +1,2 @@
+select Sum("claim"."claim_cnt") as "Sum_claim_claim_cnt",  Sum("claim"."plan_ingredient_cost_amt") as "Sum_claim_plan_ingredient_cost_amt",  Sum("claim"."plan_total_cost_amt") as "Sum_claim_plan_total_cost_amt",  "claim"."customer_id" as "claim_customer_id",  "claim"."fill_dt" as "claim_fill_dt" from "datamart_humana"."claim_830_all" "claim" where group by "claim"."customer_id", "claim"."fill_dt" order by "claim_customer_id", "claim_fill_dt";
+

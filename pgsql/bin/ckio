@@ -1,0 +1,130 @@
+#!/bin/bash
+
+INTERVAL=1
+COUNT=10
+
+if [ $# -ne 2 ];then
+	echo "$0 <dbname> saturation_rate"
+	echo "e.g: $0 claimsprocess 90"
+	exit 1
+else
+	dbname=$1
+	saturation_rate=$2
+fi
+
+# Print the header once
+#printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n" \
+#       "Device" "r/s" "w/s" "rkB/s" "wkB/s" "await" "svctm" "%util"
+echo "Checking ......"
+
+for ((i=1; i<=COUNT; i++)); do
+    #printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n" \
+    #"Device" "r/s" "w/s" "rkB/s" "wkB/s" "await" "svctm" "%util"
+    # Capture first snapshot
+    SNAP1=$(cat /proc/diskstats)
+    sleep $INTERVAL
+    # Capture second snapshot
+    SNAP2=$(cat /proc/diskstats)
+
+    # Process both snapshots together
+    awk -v intv="$INTERVAL" '
+    # Process the first snapshot (passed via stdin or named pipe)
+    # We use a simple trick: if we see the same device twice, the second one is SNAP2
+    {
+        dev=$3
+        if (!(dev in s_rd)) {
+            # First time seeing this device (SNAP1)
+            s_rd[dev]=$4;  s_rs[dev]=$6;  s_rt[dev]=$7
+            s_wr[dev]=$8;  s_ws[dev]=$10; s_wt[dev]=$11
+            s_im[dev]=$13
+        } else {
+            # Second time seeing this device (SNAP2)
+            rd = $4 - s_rd[dev];  rs = $6 - s_rs[dev]; rt = $7 - s_rt[dev]
+            wr = $8 - s_wr[dev];  ws = $10 - s_ws[dev]; wt = $11 - s_wt[dev]
+            im = $13 - s_im[dev]
+
+            rsr = rd / intv
+            wsr = wr / intv
+            rk  = rs * 512 / 1024 / intv
+            wk  = ws * 512 / 1024 / intv
+
+            tot = rd + wr
+            if (tot > 0) {
+                await = (rt + wt) / tot
+                svctm = im / tot
+            } else {
+                await = 0; svctm = 0
+            }
+
+            # %util = (time spent doing I/O in ms) / (interval in ms) * 100
+            util = (im / (intv * 1000)) * 100
+            if (util > 100) util = 100.0
+
+            if (rd > 0 || wr > 0 || util > 0) {
+                printf "%-10s %6.1f %6.1f %10.1f %10.1f %8.2f %8.2f %5.1f%%\n",
+                       dev, rsr, wsr, rk, wk, await, svctm, util
+            }
+        }
+    }' <<< "$SNAP1"$'\n'"$SNAP2"
+
+    echo "---------------------------------------------------------------------------"
+done > /tmp/ioissue
+
+#device=$(awk -v rate="$saturation_rate" '$NF > rate {print $1}' /tmp/ioissue | sort -u)
+#device=$(awk '$NF+0 > $saturation_rate  {print $1}' /tmp/ioissue | sort | uniq)
+device=$(awk -v rate="$saturation_rate" '$1 ~ /^dm-/ && $NF > rate {print $1}' /tmp/ioissue | sort -u)
+mapping=$(lsblk -no KNAME,MOUNTPOINT | grep "^$i " | awk '{print $1 " -> " $2}')
+
+
+cond=$(echo $device|sed 's/ /|/g')
+
+if [ -n "$device" ]; then
+	echo "Saturation Devices:"
+	printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n" \
+	"Device" "r/s" "w/s" "rkB/s" "wkB/s" "await" "svctm" "%util"
+	cat /tmp/ioissue|egrep "$cond"|sort
+else
+	echo "No Saturation Device"
+	exit 2
+fi
+
+all_paths=""
+for i in $device; do
+    # Get the mount point (handles both dm-* and sd*)
+    path=$(lsblk -no MOUNTPOINT "/dev/$i" | grep -v '^$' | head -n 1)
+    if [ -n "$path" ]; then
+        all_paths+="$path "
+    fi
+done
+
+unique_paths=$(echo "$all_paths" | tr ' ' '\n' | sort -u)
+
+
+for path in $unique_paths; do
+    mapping=$(lsblk -no KNAME,MOUNTPOINT|grep $path)
+    echo "========================================================================"
+    echo "Investigating Mount Point: $mapping"
+    echo "------------------------------------------"
+
+    psql -d "$dbname" -Axt <<EOF
+    SELECT
+        a.pid,
+        a.backend_type,
+        n.nspname || '.' || c.relname AS target_relation,
+        a.state,
+        EXTRACT(epoch FROM (now() - a.query_start))::int AS duration_sec,
+        a.query AS query_snippet
+    FROM pg_stat_activity a
+    -- Join to find tables currently being mentioned in queries or autovacuumed
+    JOIN pg_class c ON (
+        a.query ~ c.relname OR
+        (a.backend_type = 'autovacuum worker' AND a.query ~ c.relname)
+    )
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_tablespace t ON c.reltablespace = t.oid
+    WHERE pg_tablespace_location(t.oid) = '$path'
+      AND (a.state = 'active' OR a.backend_type = 'autovacuum worker')
+      AND a.pid <> pg_backend_pid();
+EOF
+
+done

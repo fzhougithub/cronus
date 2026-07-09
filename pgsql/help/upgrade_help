@@ -1,3 +1,33 @@
+ods_domani=# SELECT DISTINCT
+    n.nspname AS schema_name,
+    c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relam = (
+    SELECT oid FROM pg_am WHERE amname = 'columnar'
+)
+ORDER BY 1, 2;
+   schema_name   |        table_name
+-----------------+--------------------------
+ datamart_humana | claim
+ datamart_humana | claim_20260117
+ datamart_humana | claim_adjustment
+ datamart_humana | claim_bkup_1111
+ datamart_humana | member
+ datamart_humana | narrative_member_address
+ datamart_humana | pos_transaction
+ datamart_other  | claim
+ datamart_other  | claim_20260117
+ datamart_other  | claim_adjustment
+ datamart_other  | claim_bkup_1111
+ datamart_other  | member
+(12 rows)
+
+Those are killer!!!
+
+
+
+
 cd /apps/lib/pgsql/16/upgrade/
 nohup ./run_upgrade.sh > run_upgrade.log 2>&1 &
 

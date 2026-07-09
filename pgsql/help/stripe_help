@@ -1,0 +1,81 @@
+-- Find which table(s) own these stripes
+SELECT DISTINCT
+    c.relname AS table_name,
+    n.nspname AS schema_name,
+    c.oid,
+    s.storage_id
+FROM columnar.stripe s
+JOIN pg_class c ON c.relam = (SELECT oid FROM pg_am WHERE amname = 'columnar')
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE s.storage_id IN (10000003062, 10000003448, 10000003206)
+ORDER BY c.relname, s.storage_id;
+
+
+-- The second way to find the stripe mapping to table
+
+-- Create a temporary helper to find storage_id from table OID
+WITH table_storage_mapping AS (
+    SELECT 
+        c.oid,
+        c.relname,
+        n.nspname
+    FROM pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE c.relam = (SELECT oid FROM pg_am WHERE amname = 'columnar')
+)
+SELECT 
+    m.nspname || '.' || m.relname AS table_name,
+    s.storage_id,
+    COUNT(*) AS stripe_count,
+    SUM(s.row_count) AS total_rows,
+    SUM(s.data_length) AS total_size
+FROM columnar.stripe s
+CROSS JOIN table_storage_mapping m
+WHERE EXISTS (
+    SELECT 1 FROM columnar.stripe s2 
+    WHERE s2.storage_id = s.storage_id 
+    LIMIT 1
+)
+GROUP BY m.nspname, m.relname, s.storage_id
+ORDER BY m.relname;
+
+-- The thrid way
+
+
+-- Get table info
+SELECT 
+    c.relname AS table_name,
+    c.oid,
+    c.relfilenode AS internal_file_id
+FROM pg_class c
+WHERE c.relname LIKE '%member%' 
+  AND c.relam = (SELECT oid FROM pg_am WHERE amname = 'columnar');
+
+-- Then check if storage_id relates to relfilenode:
+SELECT storage_id FROM columnar.stripe WHERE storage_id = <relfilenode> LIMIT 1;
+
+
+
+-- After bulk inserts (e.g., nightly batch job)
+SELECT columnar.vacuum('your_table', stripe_count => 50);
+
+-- Check stripe density
+SELECT COUNT(*) as stripe_count, 
+       AVG(row_count) as avg_rows_per_stripe
+FROM columnar.stripe 
+WHERE storage_id = columnar_relation_storageid('your_table'::regclass);
+
+-- For high-write workloads, increase stripe size to reduce count:
+SELECT columnar.alter_columnar_table_set(
+    'your_table',
+    stripe_row_limit => 500000  -- 5× larger stripes
+);
+
+-- For read-heavy workloads, smaller stripes can improve parallelism:
+SELECT columnar.alter_columnar_table_set(
+    'your_table',
+    stripe_row_limit => 50000   -- Smaller, more parallelizable
+);
+
+columnar.stripe
+

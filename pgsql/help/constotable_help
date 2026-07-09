@@ -1,0 +1,55 @@
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    con.conname AS constraint_name
+FROM pg_constraint con
+JOIN pg_class c ON c.oid = con.conrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE con.conname = 'pharmacy_network_association_info_pk';
+
+ schema_name |            table_name             |           constraint_name
+-------------+-----------------------------------+--------------------------------------
+ pharmacy    | pharmacy_network_association_info | pharmacy_network_association_info_pk
+(1 row)
+
+SELECT
+    pg_get_constraintdef(con.oid) AS definition
+FROM pg_constraint con
+WHERE con.conname = 'pharmacy_network_association_info_pk';
+
+         definition
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------
+ PRIMARY KEY (customer_set_id, pharmacy_id, rate_sheet_id, network_suite_id, pharmacy_component_id, pharmacy_component_effective_begin_dt, pharmacy_component_effective_end
+_dt, network_effective_begin_dt, network_effective_end_dt, rate_sheet_effective_begin_dt, rate_sheet_effective_end_dt, pharmacy_association_effective_begin_dt, pharmacy_as
+sociation_effective_end_dt)
+(1 row)
+
+SELECT
+    a.attname AS column_name,
+    a.attnum
+FROM pg_constraint con
+JOIN pg_class c ON c.oid = con.conrelid
+JOIN pg_attribute a ON a.attrelid = c.oid
+WHERE con.conname = 'pharmacy_network_association_info_pk'
+AND a.attnum = ANY(con.conkey)
+ORDER BY array_position(con.conkey, a.attnum);
+
+               column_name               | attnum
+-----------------------------------------+--------
+ customer_set_id                         |      1
+ pharmacy_id                             |      8
+ rate_sheet_id                           |      9
+ network_suite_id                        |     12
+ pharmacy_component_id                   |     16
+ pharmacy_component_effective_begin_dt   |     17
+ pharmacy_component_effective_end_dt     |     18
+ network_effective_begin_dt              |     19
+ network_effective_end_dt                |     20
+ rate_sheet_effective_begin_dt           |     21
+ rate_sheet_effective_end_dt             |     22
+ pharmacy_association_effective_begin_dt |     23
+ pharmacy_association_effective_end_dt   |     24
+(13 rows)

@@ -1,5 +1,73 @@
+0. iostat -xz 1 10
+Get the saturation dm-n
+
+1.
+ls -l /dev/mapper/
+lrwxrwxrwx. 1 root root       7 Apr  5 07:02 appsvg-appslv -> ../dm-5
+lrwxrwxrwx. 1 root root       7 Apr  5 07:02 backupsvg-backupslv -> ../dm-6
+lrwxrwxrwx. 1 root root       8 Apr  5 07:02 bulkloadsvg-bulkloadslv -> ../dm-14
+
+2. not work 
+dmsetup ls
+
+3. not work
+findmnt -o SOURCE,TARGET 
+mount
+
+Per the relation like below, the dm-2 : dm=device mapper 2=minor number, it is active when mem active, not permanent. 
+
+/dev/mapper/tblspc_12vg-tblspc_12lv
+        ↓
+/dev/dm-2
+        ↓
+/pg_tblspc_12
+
+The real command like
+[root@claimshumana-pg16-01-prod-drx-kc ~]$ ls -l /dev/mapper|grep dm-2$
+lrwxrwxrwx. 1 root root       7 Apr  5 07:02 tblspc_12vg-tblspc_12lv -> ../dm-2
+
+[root@claimshumana-pg16-01-prod-drx-kc ~]$ findmnt /dev/mapper/tblspc_12vg-tblspc_12lv
+TARGET        SOURCE                              FSTYPE OPTIONS
+/pg_tblspc_12 /dev/mapper/tblspc_12vg-tblspc_12lv xfs    rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota
+
+or
+
+[root@claimshumana-pg16-01-prod-drx-kc ~]$ findmnt /dev/dm-2
+TARGET        SOURCE                              FSTYPE OPTIONS
+/pg_tblspc_12 /dev/mapper/tblspc_12vg-tblspc_12lv xfs    rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota
+
+then
+psql -c "SELECT spcname, pg_tablespace_location(oid) FROM pg_tablespace;"
+tblspc_1   | /pg_tblspc_01
+
+Then, query the involved table in this db
+
+SELECT n.nspname AS schema_name, c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_database d ON d.datname = current_database()
+WHERE c.relkind = 'r' AND pg_tablespace_location(COALESCE(c.reltablespace, d.dattablespace)) = '/pg_tblspc_01'; 
+
+    schema_name      |                  table_name
+----------------------+----------------------------------------------
+ claimsprocess_humana | a_claim_compound_product
+ stg_customer_humana  | mi0
+ claimsprocess_humana | rtb_drug_price_tracking
+ claimsprocess_humana | claim_extension_2_07
+ claimsprocess_humana | t_claim_compound_product
+
+
+
+
+
+
+
+
 sudo mkfs.ext4 /dev/sdb
 sudo mkdir /mnt/pgbadger_tmp
 sudo mount /dev/sdb /mnt/pgbadger_tmp
 sudo chown postgres:postgres /mnt/pgbadger_tmp
 df -h /mnt/pgbadger_tmp
+
+
+

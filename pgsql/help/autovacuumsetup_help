@@ -1,0 +1,47 @@
+--very small table, very sensitive autovacuum
+
+ALTER TABLE customer.a19 SET (
+  autovacuum_vacuum_scale_factor = 0,
+  autovacuum_vacuum_threshold = 50,    -- Vacuums after 50 dead rows
+  autovacuum_analyze_scale_factor = 0,
+  autovacuum_analyze_threshold = 25    -- Analyzes after 25 changes
+);
+
+ALTER TABLE customer.a20 SET (
+  autovacuum_vacuum_scale_factor = 0,
+  autovacuum_vacuum_threshold = 100,   -- Vacuums after 100 dead rows
+  autovacuum_analyze_scale_factor = 0,
+  autovacuum_analyze_threshold = 50    -- Analyzes after 50 changes
+);
+
+SELECT
+    s.schemaname,
+    s.relname,
+    s.n_dead_tup AS dead_tuples,
+    -- Calculate the threshold using specific settings
+    (current_setting('autovacuum_vacuum_threshold')::float +
+     current_setting('autovacuum_vacuum_scale_factor')::float * c.reltuples) AS vacuum_threshold,
+    s.last_autovacuum,
+    CASE 
+        WHEN s.n_dead_tup > (current_setting('autovacuum_vacuum_threshold')::float +
+                             current_setting('autovacuum_vacuum_scale_factor')::float * c.reltuples) 
+        THEN 'YES - Eligible'
+        ELSE 'Not yet'
+    END AS needs_vacuum
+FROM pg_stat_user_tables s
+JOIN pg_class c ON s.relid = c.oid
+WHERE s.relname IN ('a19', 'a20');
+-[ RECORD 1 ]----+------------------
+schemaname       | customer
+relname          | a19
+dead_tuples      | 0
+vacuum_threshold | 93.30000000000001
+last_autovacuum  |
+needs_vacuum     | Not yet
+-[ RECORD 2 ]----+------------------
+schemaname       | customer
+relname          | a20
+dead_tuples      | 0
+vacuum_threshold | 788.8000000000001
+last_autovacuum  |
+needs_vacuum     | Not yet

@@ -1,3 +1,19 @@
+-- partition table exists, but not be attached to parent. 
+SELECT
+    n.nspname  AS schema_name,
+    c.relname  AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'        -- 普通表
+  AND c.relispartition       -- 被标记为分区
+  AND NOT EXISTS (
+      SELECT 1
+      FROM pg_inherits i
+      WHERE i.inhrelid = c.oid
+  );
+
+
+
 SELECT DISTINCT c.child_table AS child
 FROM (
   VALUES

@@ -6,6 +6,10 @@ if [ $# -ne 1 ]; then
 	exit 1
 fi
 
+function cdbug() {
+  cd "/Users/fzhou/work/bug/$1"
+}
+
 cd ~/work/bug
 
 [ -d ~/work/bug/$1 ] || mkdir -p ~/work/bug/$1
@@ -22,3 +26,5 @@ done
 
 echo "==== Ticket Preparation Complete ===="
 ls -larth ~/work/bug/$1
+
+cdbug $1 

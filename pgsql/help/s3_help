@@ -1,3 +1,65 @@
+[postgres@jasper-db-01-alma8-qc-drx-kc pg_backups]$ aws s3 cp jasperserver.dump --endpoint-url http://wdc-ecs-01-dtn.dstcorp.net:9020 s3://terraform-non-prod/domanirx/jaspser/dbbackup/ --profile non-prod
+
+
+aws s3 rm s3://db-backup-hpls/   --recursive   --exclude "*"   --include "*.dat.gz"   --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021   --profile db-backup-hpls   --no-verify-ssl
+
+upload create folder
+aws s3 sync /pg_backups/16430.dump s3://db-backup-hpls/16430.dump/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-hpls --no-verify-ssl
+
+downlaod create folder
+aws s3 sync /pg_backups/16430.dump   s3://db-backup-hpls/16430.dump/   --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021   --profile db-backup-hpls   --no-verify-ssl
+
+export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+
+aws s3 sync /pg_backups/16430.dump --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-hpls/ --profile db-backup-hpls --no-verify-ssl
+
+aws s3 sync /pg_backups/datamart_humana01 --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/ods_domani/datamart_humana01 --profile db-backup-prod --no-verify-ssl
+
+aws s3 sync s3://db-backup-prod/ods_domani/datamart_humana01 /pg_backups/datamart_humana01 --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-prod --no-verify-ssl
+
+
+aws s3 mb s3://db-backup-hpls \
+  --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 \
+  --profile db-backup-hpls \
+  --no-verify-ssl
+
+aws s3 ls \
+>   --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 \
+>   --profile db-backup-hpls \
+>   --no-verify-ssl
+/usr/lib/fence-agents/bundled/aws/urllib3/connectionpool.py:1068: InsecureRequestWarning: Unverified HTTPS request is being made to host 'wdc-ecs-01-dtn.dstcorp.net'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/1.26.x/advanced-usage.html#ssl-warnings
+  InsecureRequestWarning,
+2026-05-06 16:41:12 db-backup-hpls
+2024-05-01 12:33:34 db-backup-huat
+
+for f in export_domani*;do aws s3 cp $f s3://db-backup-hpls/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-hpls --no-verify-ssl;done
+
+aws s3 cp s3://db-backup-hpls/ . \
+  --recursive \
+  --exclude "*" \
+  --include "export_domani*" \
+  --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 \
+  --profile db-backup-hpls \
+  --no-verify-ssl
+
+
+
+aws s3 cp s3://db-backup-hpls/ . \
+  --recursive \
+  --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 \
+  --profile db-backup-hpls \
+  --no-verify-ssl
+
+Or
+
+aws s3 sync s3://db-backup-hpls/ . \
+  --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 \
+  --profile db-backup-hpls \
+  --no-verify-ssl
+
+
+
 
 aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-prod/ods_domani/customer_d/ --recursive --summarize --human-readable --profile db-backup-prod --no-verify-ssl |tail -10
 

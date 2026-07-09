@@ -1,0 +1,21 @@
+A process requests memory
+        AND
+the kernel cannot satisfy it
+        AND
+cannot reclaim enough pages
+        AND
+cannot swap enough pages
+
+Above is the time trigger OOM
+
+journalctl -k | grep -i oom
+
+free -g
+
+vmstat 1 10
+
+cat /proc/meminfo | egrep 'MemAvailable|SwapFree|SwapTotal|Committed_AS|CommitLimit'
+
+dmesg -T | grep -A50 -B10 'Killed process'
+
+

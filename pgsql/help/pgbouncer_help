@@ -1,0 +1,406 @@
+Excellent — this is exactly the **right engineering approach** 👍  
+👉 Don’t guess — **measure from DB side**, then go back to app teams with evidence.
+
+I’ll show you a **practical audit framework** you can run today.
+
+***
+
+# ✅ What you’re trying to detect
+
+You want to identify sessions that rely on:
+
+* session variables (`SET ...`)
+* temp tables
+* prepared statements
+* long-running transactions
+* session-level behavior
+
+***
+
+# ✅ ✅ Approach: “Observe behavior from PostgreSQL”
+
+You cannot see everything perfectly, but you **can detect strong signals**.
+
+***
+
+# ✅ 1. Detect session state usage (`SET`, etc.)
+
+***
+
+## ✅ Query active sessions
+
+```sql
+SELECT
+    pid,
+    usename,
+    application_name,
+    state,
+    query
+FROM pg_stat_activity
+WHERE state <> 'idle';
+```
+
+***
+
+## ✅ Look for patterns
+
+Search for:
+
+```sql
+SET
+SET search_path
+SET timezone
+SET work_mem
+```
+
+***
+
+## ✅ Automated scan
+
+```sql
+SELECT *
+FROM pg_stat_activity
+WHERE query ILIKE 'set %';
+```
+
+***
+
+👉 If you see many:
+
+> ❗ app likely depends on session state
+
+***
+
+***
+
+# ✅ 2. Detect TEMP TABLE usage (VERY important)
+
+***
+
+## ✅ Check system catalog
+
+```sql
+SELECT
+    n.nspname AS schema,
+    c.relname AS table
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname LIKE 'pg_temp%';
+```
+
+***
+
+👉 If results exist:
+
+> ❗ temp tables are actively used
+
+***
+
+***
+
+## ✅ Who is using them
+
+```sql
+SELECT DISTINCT pid
+FROM pg_locks
+WHERE relation IN (
+    SELECT oid FROM pg_class WHERE relnamespace IN (
+        SELECT oid FROM pg_namespace WHERE nspname LIKE 'pg_temp%'
+    )
+);
+```
+
+***
+
+***
+
+# ✅ 3. Detect prepared statements
+
+***
+
+## ✅ Check prepared statements
+
+```sql
+SELECT * FROM pg_prepared_statements;
+```
+
+***
+
+👉 If NOT empty:
+
+> ❗ application uses prepared statements  
+> ❗ risk for PgBouncer transaction mode
+
+***
+
+***
+
+# ✅ 4. Detect long transactions (critical for pooling)
+
+***
+
+## ✅ Find long-running sessions
+
+```sql
+SELECT
+    pid,
+    usename,
+    application_name,
+    NOW() - xact_start AS txn_duration,
+    query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY txn_duration DESC
+LIMIT 20;
+```
+
+***
+
+👉 Look for:
+
+* transactions > 1–5 minutes ❗
+
+***
+
+👉 These are deadly for PgBouncer
+
+***
+
+***
+
+# ✅ 5. Detect “idle in transaction” (VERY BAD)
+
+***
+
+## ✅ Query:
+
+```sql
+SELECT
+    pid,
+    usename,
+    application_name,
+    state,
+    NOW() - xact_start AS idle_txn_time,
+    query
+FROM pg_stat_activity
+WHERE state = 'idle in transaction';
+```
+
+***
+
+👉 If you see many:
+
+> ❗ applications holding connections + blocking pooling ❗
+
+***
+
+***
+
+# ✅ 6. Detect connection patterns (K8s pods)
+
+***
+
+## ✅ Count by application
+
+```sql
+SELECT
+    application_name,
+    COUNT(*) AS conn_count
+FROM pg_stat_activity
+GROUP BY application_name
+ORDER BY conn_count DESC;
+```
+
+***
+
+👉 Helps identify:
+
+* which app creates too many connections
+* top offenders for pooling
+
+***
+
+***
+
+# ✅ 7. Detect session reuse vs short queries
+
+***
+
+## ✅ Check query frequency (requires pg\_stat\_statements)
+
+```sql
+SELECT
+    query,
+    calls,
+    mean_exec_time
+FROM pg_stat_statements
+ORDER BY calls DESC
+LIMIT 20;
+```
+
+***
+
+👉 If:
+
+* many short calls ✅
+* fast execution ✅
+
+→ perfect for PgBouncer
+
+***
+
+***
+
+# ✅ 8. Detect session-dependent behavior indirectly
+
+***
+
+## ✅ Look for multi-step patterns
+
+Example:
+
+```sql
+SELECT * FROM pg_stat_activity;
+```
+
+If you see patterns like:
+
+```
+SET search_path...
+SELECT ...
+SELECT ...
+```
+
+***
+
+👉 suggests session dependency
+
+***
+
+***
+
+# ✅ 9. Build a “Compatibility Report”
+
+***
+
+## ✅ You can summarize findings like:
+
+| Check               | Result       | Risk   |
+| ------------------- | ------------ | ------ |
+| session variables   | low/mod/high | medium |
+| temp tables         | none/heavy   | high   |
+| prepared statements | yes/no       | medium |
+| long transactions   | few/many     | high   |
+| idle in transaction | yes/no       | high   |
+
+***
+
+***
+
+# ✅ ✅ Interpretation guide (for developers)
+
+***
+
+## ✅ LOW risk (good for PgBouncer)
+
+* no temp tables ✅
+* no prepared statements ✅
+* short transactions ✅
+* stateless queries ✅
+
+***
+
+***
+
+## ❗ MEDIUM risk
+
+* occasional SET usage
+* prepared statements present
+
+👉 requires tuning
+
+***
+
+***
+
+## ❗ HIGH risk
+
+* temp tables
+* long-running transactions
+* idle in transaction
+
+👉 must fix before PgBouncer
+
+***
+
+***
+
+# ✅ 10. What you present to dev teams
+
+Instead of saying:
+
+> “PgBouncer might break your app”
+
+***
+
+👉 You show:
+
+```
+Top issues detected:
+- Service A uses temp tables heavily ❗
+- Service B has 30-minute transactions ❗
+- Service C uses 500 connections but idle ❗
+```
+
+***
+
+👉 Then propose:
+
+```
+Fixes:
+- avoid temp tables
+- reduce transaction scope
+- disable prepared statements
+```
+
+***
+
+***
+
+# ✅ ✅ Bonus: run continuous audit
+
+You can schedule:
+
+```sql
+pg_stat_activity snapshots
+```
+
+or use:
+
+* Prometheus
+* Grafana
+
+***
+
+***
+
+# ✅ ✅ Final answer
+
+> ✅ You can evaluate PgBouncer compatibility from the database side by analyzing `pg_stat_activity`, `pg_prepared_statements`, temp table usage, and transaction behavior — this allows you to identify whether applications rely on session state, use temp tables, or hold long transactions, and provides concrete evidence to guide developer teams.
+
+***
+
+# ✅ ✅ One-line takeaway
+
+> ✅ Don’t guess — **use PostgreSQL views to detect session-dependent behavior**, then classify apps into safe vs risky for PgBouncer rollout.
+
+***
+
+If you want, I can help you:
+
+✅ generate a full “PgBouncer readiness report script”  
+✅ automatically classify each application  
+✅ build Grafana dashboard for this
+
+That would make this **fully operationalizable** 👍
+

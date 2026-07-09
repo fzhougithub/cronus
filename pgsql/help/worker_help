@@ -1,3 +1,26 @@
+ods_domani=# select subname,count(1) from pg_stat_subscription group by subname order by 2 desc;
+                 subname                  | count
+------------------------------------------+-------
+ odshumana_pg16_02_finance_global_sub     |    54
+ odshumana_pg16_02_finance_humana_sub     |    28
+ odshumana_pg16_02_audit_event_sub        |     5
+ odshumana_pg16_02_planconfig_sub         |     1
+ odshumana_pg16_02_pharmacy_sub           |     1
+ odshumana_pg16_02_drugmgmt_sub           |     1
+ odshumana_pg16_02_cust_and_global_sub    |     1
+ odshumana_pg16_02_pct_humana_sub         |     1
+ odshumana_pg16_02_pde_humana_sub         |     1
+ claimshumana_pg16_prod_ods_stby_02_sub   |     1
+ odshumana_pg16_02_landingpage_sub        |     1
+ odshumana_pg16_02_eligibility_humana_sub |     1
+ odshumana_pg16_02_pct_global_sub         |     1
+ odshumana_pg16_02_program_mandate_sub    |     1
+ odshumana_pg16_02_pde_global_sub         |     1
+ odshumana_pg16_02_pde_other_sub          |     1
+ odshumana_pg16_02_lists_sub              |     1
+(17 rows)
+
+
 netstat -tulnap | grep 3
 
 SELECT a.pid, a.wait_event_type, a.wait_event, a.query, a.state

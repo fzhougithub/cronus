@@ -1,0 +1,6 @@
+# View total bytes received/sent on eth0 in a human-readable way
+ip -h -s link show eth0
+
+ip a s
+
+

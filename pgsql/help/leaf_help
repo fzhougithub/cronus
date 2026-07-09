@@ -1,3 +1,22 @@
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS leaf_partition,
+    pg_get_expr(c.relpartbound, c.oid) AS partition_bound
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relispartition = true
+  AND NOT EXISTS (
+      SELECT 1
+      FROM pg_class c2
+      WHERE c2.relispartition = true
+        AND c2.relpartbound IS NOT NULL
+        AND pg_get_expr(c2.relpartbound, c2.oid)
+            LIKE '%' || c.relname || '%'
+  )
+ORDER BY schema_name, leaf_partition;
+
+
+
 SELECT n.nspname||'.'||c.relname
 FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace

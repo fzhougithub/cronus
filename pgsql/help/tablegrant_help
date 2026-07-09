@@ -1,0 +1,25 @@
+ods_domani=# SELECT grantee, privilege_type
+ods_domani-# FROM information_schema.role_table_grants
+ods_domani-# WHERE table_name = 'f04';
+   grantee   | privilege_type
+-------------+----------------
+ dba_admin   | INSERT
+ dba_admin   | SELECT
+ dba_admin   | UPDATE
+ dba_admin   | DELETE
+ postgres    | INSERT
+ postgres    | SELECT
+ postgres    | UPDATE
+ postgres    | DELETE
+ postgres    | TRUNCATE
+ postgres    | REFERENCES
+ postgres    | TRIGGER
+ customer_ro | SELECT
+ customer_rw | INSERT
+ customer_rw | SELECT
+ customer_rw | UPDATE
+ customer_rw | DELETE
+ dt74466     | SELECT
+(17 rows)
+
+

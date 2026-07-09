@@ -1,0 +1,44 @@
+WITH parts AS (
+  SELECT c.oid::regclass AS rel
+  FROM pg_class c
+  JOIN pg_namespace n ON c.relnamespace = n.oid
+  WHERE n.nspname = 'datamart_humana'
+    AND c.relname LIKE 'claim_c_830_%_p%'
+)
+SELECT
+  count(*) AS stripes_scanned,
+  SUM(cs.rowcount)   AS total_rows,
+  SUM(cs.datalength) AS total_datalength_bytes,
+  MAX(cs.rowcount)   AS max_rows_in_any_stripe
+FROM parts
+CROSS JOIN LATERAL columnar.stats(parts.rel) AS cs;
+
+ stripes_scanned | total_rows | total_datalength_bytes | max_rows_in_any_stripe
+-----------------+------------+------------------------+------------------------
+           17215 |   14497421 |             9172669850 |                  13577
+(1 row)
+
+
+
+
+SELECT count(*) AS column_count
+FROM pg_attribute
+WHERE attrelid = 'datamart_humana.claim_c_830_202512_p3'::regclass
+  AND attnum > 0
+  AND NOT attisdropped;
+
+EXPLAIN (VERBOSE, COSTS, BUFFERS) SELECT customer_id, fill_dt, sum(claim_cnt) FROM datamart_humana.claim WHERE customer_id = 830 GROUP BY customer_id, fill_dt ORDER BY customer_id, fill_dt;
+
+SELECT count(*) FROM datamart_humana.claim WHERE customer_id = 830; SELECT sum(pg_column_size(ROW(claim_cnt, plan_ingredient_cost_amt, plan_total_cost_amt, customer_id, fill_dt)::text)) FROM datamart_humana.claim WHERE customer_id = 830 LIMIT 10000; 
+
+SELECT relname, pg_get_partkeydef(oid) AS partkey FROM pg_class WHERE relnamespace = 'datamart_humana'::regnamespace AND relname = 'claim'; 
+
+-- and list children: 
+SELECT child::regclass AS child FROM pg_inherits JOIN pg_class parent ON pg_inherits.inhparent = parent.oid JOIN pg_class childc ON pg_inherits.inhrelid = childc.oid WHERE parent.oid = 'datamart_humana.claim'::regclass ORDER BY child::text LIMIT 200; 
+
+-- (or use pg_partition_tree if available) This will tell us whether the parent has many child partitions and what the partition key is.
+
+
+create temp table r as 
+select Sum("claim"."claim_cnt") as "Sum_claim_claim_cnt",  Sum("claim"."plan_ingredient_cost_amt") as "Sum_claim_plan_ingredient_cost_amt",  Sum("claim"."plan_total_cost_amt") as "Sum_claim_plan_total_cost_amt",  "claim"."customer_id" as "claim_customer_id",  "claim"."fill_dt" as "claim_fill_dt" from "datamart_humana"."claim" "claim" where ("claim"."customer_id" = 830) group by "claim"."customer_id", "claim"."fill_dt" order by "claim_customer_id", "claim_fill_dt";
+

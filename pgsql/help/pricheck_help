@@ -1,0 +1,22 @@
+SELECT
+    slot_name,
+    active,
+    restart_lsn,
+    confirmed_flush_lsn,
+    pg_size_pretty(
+        COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn), 0)
+    ) AS retained_wal
+FROM pg_replication_slots;
+          slot_name           | active | restart_lsn | confirmed_flush_lsn | retained_wal
+------------------------------+--------+-------------+---------------------+--------------
+ huat_drugmgmt_sub            | f      |             | 5F9/4EEB8840        | 0 bytes
+ huat_eligibility_humana_sub  | f      |             | 5F9/4EF2D168        | 0 bytes
+ huat_foundations_builder_sub | f      |             | 5F9/4EF615A8        | 0 bytes
+ huat_planconfig_sub          | f      |             | 5F9/4EF615A8        | 0 bytes
+ huat_program_mandate_sub     | f      |             | 5F9/4EF615A8        | 0 bytes
+ debezium_benefit_huat        | f      |             | 616/BB5BF8A8        | 0 bytes
+ huat_pharmacy_sub            | f      |             | 5ED/3CEB1728        | 0 bytes
+ huat_lists_sub               | f      |             | 5F9/4EF615A8        | 0 bytes
+(8 rows)
+
+

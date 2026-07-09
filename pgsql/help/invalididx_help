@@ -1,0 +1,19 @@
+SELECT
+    n.nspname AS schema,
+    c.relname AS index_name,
+    t.relname AS table_name,
+    i.indisvalid,
+    c.relkind
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+JOIN pg_class t ON t.oid = i.indrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE NOT i.indisvalid
+ORDER BY 1,2;
+
+        schema        |                 index_name                  |    table_name     | indisvalid | relkind
+----------------------+---------------------------------------------+-------------------+------------+---------
+ claimsprocess_humana | claim_extension_1_dispense_event_search_idx | claim_extension_1 | f          | I
+ claimsprocess_other  | a_claim_core_ix1                            | a_claim_core      | f          | I
+ claimsprocess_other  | claim_extension_1_dispense_event_search_idx | claim_extension_1 | f          | I
+(3 rows)

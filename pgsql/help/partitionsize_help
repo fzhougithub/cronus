@@ -1,0 +1,170 @@
+select sum(total_size_bytes) from (SELECT
+    c.relname AS partition_name,
+    am.amname AS access_method,           -- should show 'columnar' or similar
+    pg_total_relation_size(c.oid) AS total_size,
+    pg_total_relation_size(c.oid) AS total_size_bytes,
+    c.reltuples::bigint AS estimated_rows,
+    p.parent_relname AS parent_table
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_am am ON am.oid = c.relam
+LEFT JOIN (
+    SELECT inhrelid AS child_oid,
+           parent.relname AS parent_relname
+    FROM pg_inherits inh
+    JOIN pg_class parent ON parent.oid = inh.inhparent
+) p ON p.child_oid = c.oid
+WHERE c.relkind = 'r'                    -- ordinary table
+  AND c.relispartition = true            -- is a partition
+  AND c.relname LIKE 'claim_ccg%'        -- your prefix
+  AND am.amname IN ('columnar', 'cstore') -- adjust if your columnar AM has different name
+ORDER BY pg_total_relation_size(c.oid) DESC);
+     sum
+-------------
+ 36827938816
+(1 row)
+
+
+SELECT
+    c.relname AS partition_name,
+    am.amname AS access_method,           -- should show 'columnar' or similar
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    pg_total_relation_size(c.oid) AS total_size_bytes,
+    c.reltuples::bigint AS estimated_rows,
+    p.parent_relname AS parent_table
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_am am ON am.oid = c.relam
+LEFT JOIN (
+    SELECT inhrelid AS child_oid,
+           parent.relname AS parent_relname
+    FROM pg_inherits inh
+    JOIN pg_class parent ON parent.oid = inh.inhparent
+) p ON p.child_oid = c.oid
+WHERE c.relkind = 'r'                    -- ordinary table
+  AND c.relispartition = true            -- is a partition
+  AND c.relname LIKE 'claim_ccg%'        -- your prefix
+  AND am.amname IN ('columnar', 'cstore') -- adjust if your columnar AM has different name
+ORDER BY pg_total_relation_size(c.oid) DESC;
+
+    partition_name     | access_method | total_size | total_size_bytes | estimated_rows |   parent_table
+-----------------------+---------------+------------+------------------+----------------+-------------------
+ claim_ccg_2026_04_p15 | columnar      | 603 MB     |        631971840 |        1006631 | claim_ccg_2026_04
+ claim_ccg_2026_04_p6  | columnar      | 193 MB     |        202473472 |         392675 | claim_ccg_2026_04
+ claim_ccg_2026_04_p3  | columnar      | 172 MB     |        180436992 |         355235 | claim_ccg_2026_04
+ claim_ccg_2026_04_p0  | columnar      | 154 MB     |        160964608 |         315916 | claim_ccg_2026_04
+ claim_ccg_2023_01_p9  | columnar      | 153 MB     |        160612352 |         364601 | claim_ccg_2023_01
+ claim_ccg_2026_03_p15 | columnar      | 142 MB     |        149069824 |         281903 | claim_ccg_2026_03
+ claim_ccg_2026_03_p6  | columnar      | 142 MB     |        149004288 |         272611 | claim_ccg_2026_03
+ claim_ccg_2023_01_p5  | columnar      | 141 MB     |        147611648 |         328820 | claim_ccg_2023_01
+
+
+
+SELECT
+  relname,
+  relkind,
+  partrelid::regclass AS partitioned_table
+FROM pg_partitioned_table pt
+JOIN pg_class c ON c.oid = pt.partrelid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE n.nspname = 'claimsprocess_humana';
+
+a_claim_core                           | p       | claimsprocess.a_claim_core
+ a_claim_error                          | p       | claimsprocess.a_claim_error
+
+This one, give all of the partition size including toast size info
+
+DO $$
+DECLARE
+    part text;
+BEGIN
+    FOR part IN
+        SELECT quote_ident(nspname) || '.' || quote_ident(relname)
+        FROM pg_inherits
+        JOIN pg_class ON pg_class.oid = inhrelid
+        JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+        WHERE inhparent = 'claimsprocess.claim_error'::regclass
+    LOOP
+        EXECUTE 'ANALYZE VERBOSE ' || part;
+    END LOOP;
+END$$;
+
+
+Then, this one just give the immediate child table size, not the leaf size!!!
+SELECT
+    child.oid::regclass AS partition_name,
+    pg_size_pretty(pg_total_relation_size(child.oid)) AS total_size,
+    pg_size_pretty(pg_relation_size(child.oid)) AS table_size,
+    pg_size_pretty(pg_total_relation_size(child.oid) - pg_relation_size(child.oid)) AS index_size
+FROM
+    pg_inherits
+JOIN
+    pg_class child ON pg_inherits.inhrelid = child.oid
+JOIN
+    pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN
+    pg_namespace nsp ON parent.relnamespace = nsp.oid
+WHERE
+    parent.relname = 'a_claim_core'
+    AND nsp.nspname = 'claimsprocess'
+ORDER BY
+    pg_total_relation_size(child.oid) DESC;
+
+This query give the wrong result, it does not contain the toast info
+
+SELECT
+    child.oid::regclass AS partition_name,
+    pg_size_pretty(pg_total_relation_size(child.oid)) AS total_size
+FROM
+    pg_inherits
+JOIN
+    pg_class child ON pg_inherits.inhrelid = child.oid
+JOIN
+    pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN
+    pg_namespace nsp ON parent.relnamespace = nsp.oid
+WHERE
+    parent.relname = 'claim_core'
+    AND nsp.nspname = 'claimsprocess'
+ORDER BY
+    pg_total_relation_size(child.oid) DESC;
+
+THis one still give the wrong info
+
+DO $$
+DECLARE
+    part text;
+BEGIN
+    FOR part IN
+        SELECT quote_ident(nspname) || '.' || quote_ident(relname)
+        FROM pg_inherits
+        JOIN pg_class ON pg_class.oid = inhrelid
+        JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+        WHERE inhparent = 'claimsprocess.claim_error'::regclass
+    LOOP
+        EXECUTE 'ANALYZE VERBOSE ' || part;
+    END LOOP;
+END$$;
+
+WORKS: This one really work, it scan each of the partitions and give the size updated. 
+
+
+SELECT
+    child.oid::regclass AS partition_name,
+    pg_size_pretty(pg_total_relation_size(child.oid)) AS total_size,
+    pg_size_pretty(pg_relation_size(child.oid)) AS table_size,
+    pg_size_pretty(pg_total_relation_size(child.oid) - pg_relation_size(child.oid)) AS index_size
+FROM
+    pg_inherits
+JOIN
+    pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN
+    pg_class child ON pg_inherits.inhrelid = child.oid
+JOIN
+    pg_namespace nsp ON parent.relnamespace = nsp.oid
+WHERE
+    parent.relname = 'claim_core'
+    AND nsp.nspname = 'claimsprocess_humana'
+ORDER BY
+    pg_total_relation_size(child.oid) DESC;
+

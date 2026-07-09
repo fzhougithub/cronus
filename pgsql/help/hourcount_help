@@ -1,0 +1,1 @@
+ls -larth --time-style=+%Y-%m-%d_%H /apps/lib/pgsql/16/data/pg_wal|grep 2026-04-23|awk '{print $6}' |cut -d'_' -f2|sort|uniq -c

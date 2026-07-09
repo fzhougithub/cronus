@@ -1,3 +1,11 @@
+select application_name
+,state /* startup, backup, catchup */
+,sync_priority /* 0,1, or more */
+,sync_state /* async, sync or potential */
+from pg_stat_replication
+Order by sync_priority;
+
+
 CREATE PUBLICATION mypub FOR ALL TABLES IN SCHEMA finance_global;
 
 SELECT * FROM pg_hba_file_rules 

@@ -1,8 +1,144 @@
+ps -Lp 324368 -o pid,tid,pcpu,stat,wchan
+pidstat -t -p 324368 1
+top -H -p 324368
+
+In unix, the LWP, light weigh process, is thread, can be checked by 
+ps -L
+top -H
+But, the postgresql is not using thread, AI just showoff
+
+
+watch -n 1 "ps -o pid,ppid,%mem,rss,vsz,cmd -p <PID>"
+
+[postgres@odshumana-pg16-02-alma9-prod-drx-kc ~]$ ps -o pid,state,wchan,cmd -p 2042497
+    PID S WCHAN  CMD
+2042497 D folio_ postgres: prod_odshumana-db-01: ppdreporting ods_domani 10-173-16-115.ssnc-corp.cloud(41532) BIND
+
+
+
+ps -ef --forest | grep -A 3 1404124
+postgres 1684721 1527183  0 19:14 pts/1    00:00:00                          \_ grep --color=auto -A 3 1404124
+telegraf    2886       1  0 May03 ?        00:32:08 /usr/bin/telegraf -config /etc/telegraf/telegraf.conf -config-directory /etc/telegraf/telegraf.d
+root        2888       1  4 May03 ?        12:47:25 /opt/traps/bin/pmd
+root        7903    2888  0 May03 ?        00:00:28  \_ /opt/traps/bin/dypdng  -- 239
+--
+postgres 1404124 1404123  0 00:17 ?        00:00:00                  \_ SCREEN
+postgres 1404125 1404124  0 00:17 pts/5    00:00:00                      \_ /bin/bash
+postgres 1526813       1  0 14:59 ?        00:00:00 SCREEN -L
+postgres 1526814 1526813  0 14:59 pts/3    00:00:00  \_ /bin/bash
+postgres 1657346 1526814  0 18:35 pts/3    00:00:03      \_ psql -d ods_domani
+
 ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%cpu | head -20
 
 ps aux --sort=-%mem | head
 
 ps -u postgres -o pid,rss,vsz,command | grep postgres
 
+ps -eo pid,state,cmd | grep ' D'
+The D status
+D count Meaning
+0–2 Normal
+3–5 Heavy IO load
+>10 Possible IO saturation
+>50 System may become unresponsive
 
+
+📋 All possible process states
+
+Here is the complete list of process states in Linux (from man ps):
+
+State Name Meaning
+
+R Running Running or runnable (on run queue)
+S Sleeping Interruptible sleep (waiting for an event)
+D Disk sleep Uninterruptible sleep (waiting for IO)
+Z Zombie Process terminated, not reaped by parent
+T Stopped Stopped by job control signal (SIGSTOP)
+t Tracing stop Stopped by debugger
+X Dead Should never appear (internal kernel state)
+I Idle Kernel idle thread
+K Wakekill Kill on wakeup
+P Parked Parked by kernel
+W Waking Waking up (Linux 2.6+)
+< High priority High-priority process
+N Low priority Low-priority process
+L Has pages locked Pages locked into memory
+s Session leader Process is a session leader
+l Multi-threaded Process is multi-threaded
++ Foreground Running in foreground process group
+✅ The most important ones for PostgreSQL troubleshooting are:
+
+R, S, D, Z, T
+
+🔥 The ones you must know
+
+S
+• Waiting for:
+  • Network
+  • Locks
+  • Timers
+  • User input
+• Can be killed by signals
+✅ Most PostgreSQL backends are usually S.
+
+⚠️ D – Uninterruptible sleep (IO wait)
+D
+• Waiting for disk or storage
+• Cannot be killed
+• Cannot be interrupted
+
+✅ Expected during:
+• Autovacuum
+• Checkpoints
+• Large queries
+• WAL writes
+
+⚠️ Dangerous in large numbers or long duration.
+
+🚨 Z – Zombie
+Z
+• Process finished
+• Parent hasn’t read exit status
+✅ Usually harmless unless many zombies accumulate.
+
+🚨 T – Stopped
+T
+• Stopped by:
+  • SIGSTOP
+  • Debugger (gdb)
+  • Job control (Ctrl+Z)
+
+✅ Usually intentional.
+
+🧪 Why grep ' D' works
+
+This command:
+ps -eo pid,state,cmd | grep ' D'
+
+Finds:
+• Any line where state column contains D
+• That includes:
+  • D
+  • Ds (D + session leader)
+  • DL (D + locked pages)
+
+✅ It’s a safe, effective way to find IO-blocked processes.
+
+✅ PostgreSQL-specific cheat sheet
+
+Postgres process Typical state
+Autovacuum worker D
+Background writer S / D
+Checkpointer D
+User backend idle S
+Active query R / S
+Stuck backend D for long time ⚠️
+
+✅ Final summary
+✅ state = single-letter Linux process state  
+✅ D = waiting for disk IO (uninterruptible)  
+✅ S = normal sleep  
+✅ R = running  
+✅ Z = zombie  
+✅ T = stopped  
 

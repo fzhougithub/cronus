@@ -1,0 +1,73 @@
+fdisk -l /dev/sdb
+Disk /dev/sdb: 5.37 TiB, 5905580032000 bytes, 11534336000 sectors
+Disk model: Virtual disk
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+cat /sys/block/sdb/size
+11534336000
+
+echo 1 | sudo tee /sys/class/block/sdb/device/rescan
+
+fdisk -l /dev/sdb
+Disk /dev/sdb: 6.35 TiB, 6979321856000 bytes, 13631488000 sectors
+Disk model: Virtual disk
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+lsblk
+sdb                     8:16   0  6.3T  0 disk
+└─appsvg-appslv       253:4    0  5.4T  0 lvm  /apps
+
+
+pvresize /dev/sdb
+  Physical volume "/dev/sdb" changed
+  1 physical volume(s) resized or updated / 0 physical volume(s) not resized
+
+ pvs
+  PV         VG        Fmt  Attr PSize    PFree
+  /dev/sda2  rootvg    lvm2 a--   <51.27g    5.62g
+  /dev/sdb   appsvg    lvm2 a--    <6.35t 1000.00g
+  /dev/sdc   backupsvg lvm2 a--     4.88t       0
+  /dev/sdd   swapsvg   lvm2 a--  <192.00g       0
+  /dev/sde   logsvg    lvm2 a--    <1.47t       0
+
+[root@claims-pg16-01-alma9-uatpls-drx-kc ~]$ vgs
+  VG        #PV #LV #SN Attr   VSize    VFree
+  appsvg      1   1   0 wz--n-   <6.35t 1000.00g
+  backupsvg   1   1   0 wz--n-    4.88t       0
+  logsvg      1   1   0 wz--n-   <1.47t       0
+  rootvg      1   7   0 wz--n-  <51.27g    5.62g
+  swapsvg     1   1   0 wz--n- <192.00g       0
+
+lvextend -l +100%FREE /dev/mapper/appsvg-appslv
+
+lvextend -l +100%FREE /dev/mapper/appsvg-appslv
+  Size of logical volume appsvg/appslv changed from 5.37 TiB (1407999 extents) to <6.35 TiB (1663999 extents).
+  Logical volume appsvg/appslv successfully resized.
+
+[root@claims-pg16-01-alma9-uatpls-drx-kc ~]$ df -Th /apps
+Filesystem                Type  Size  Used Avail Use% Mounted on
+/dev/mapper/appsvg-appslv xfs   5.4T  5.4T  8.2M 100% /apps
+
+It is xfs, then
+
+xfs_growfs /apps
+meta-data=/dev/mapper/appsvg-appslv isize=512    agcount=6, agsize=268435455 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=1, sparse=1, rmapbt=0
+         =                       reflink=1    bigtime=1 inobtcount=1 nrext64=0
+data     =                       bsize=4096   blocks=1441790976, imaxpct=5
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0, ftype=1
+log      =internal log           bsize=4096   blocks=521728, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 1441790976 to 1703934976
+
+[root@claims-pg16-01-alma9-uatpls-drx-kc ~]$ df -h|grep apps
+/dev/mapper/appsvg-appslv        6.4T  5.4T  994G  85% /apps
+
+

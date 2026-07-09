@@ -1,0 +1,101 @@
+ls -larth|grep 716511
+-rw-------. 1 postgres postgres     0 May  7 22:23 716511
+
+ls -lZ 716511
+-rw-------. 1 postgres postgres system_u:object_r:unlabeled_t:s0 0 May  7 22:23 716511
+
+Should be good like system_u:object_r:postgresql_db_t:s0
+How to fix it? 
+1. Define the context
+semanage fcontext -a -t postgresql_db_t "/pg_tblspc_19(/.*)?"
+(Repeat for $PGDATAif needed.)
+2. apply label
+restorecon -Rv /pg_tblspc_19
+3. confirm change
+ls -lZ 716511
+
+
+
+getfattr -d -m  ".*" 716511
+# file: 716511
+security.selinux="system_u:object_r:unlabeled_t:s0"
+
+stat 716511
+  File: 716511
+  Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
+Device: fd15h/64789d	Inode: 4294980052  Links: 1
+Access: (0600/-rw-------)  Uid: (   26/postgres)   Gid: (567580/postgres)
+Context: system_u:object_r:unlabeled_t:s0
+Access: 2026-05-07 22:23:39.767006654 +0000
+Modify: 2026-05-07 22:23:39.767006654 +0000
+Change: 2026-05-07 22:23:39.767006654 +0000
+ Birth: 2026-05-07 22:23:39.767006654 +0000
+
+xfs_db -r  /dev/mapper/tblspc_19vg-tblspc_19lv
+xfs_db> inode 4294980052
+xfs_db> print
+core.magic = 0x494e
+core.mode = 0100600
+core.version = 3
+core.format = 2 (extents)
+core.onlink = 0
+core.uid = 26
+core.gid = 567580
+core.nlinkv2 = 1
+core.projid_lo = 0
+core.projid_hi = 0
+core.atime.sec = Thu May  7 22:23:39 2026
+core.atime.nsec = 767006654
+core.mtime.sec = Thu May  7 22:23:39 2026
+core.mtime.nsec = 767006654
+core.ctime.sec = Thu May  7 22:23:39 2026
+core.ctime.nsec = 767006654
+core.size = 0
+core.nblocks = 0
+core.extsize = 0
+core.nextents = 0
+core.naextents = 0
+core.forkoff = 24
+core.aformat = 1 (local)
+core.dmevmask = 0
+core.dmstate = 0
+core.newrtbm = 0
+core.prealloc = 0
+core.realtime = 0
+core.immutable = 0
+core.append = 0
+core.sync = 0
+core.noatime = 0
+core.nodump = 0
+core.rtinherit = 0
+core.projinherit = 0
+core.nosymlinks = 0
+core.extsz = 0
+core.extszinherit = 0
+core.nodefrag = 0
+core.filestream = 0
+core.gen = 151543364
+next_unlinked = null
+v3.crc = 0x66200b4f (correct)
+v3.change_count = 3
+v3.lsn = 0x100385146
+v3.flags2 = 0x8
+v3.cowextsize = 0
+v3.crtime.sec = Thu May  7 22:23:39 2026
+v3.crtime.nsec = 767006654
+v3.inumber = 4294980052
+v3.uuid = aa6f4c78-d7ea-4c8f-b1c3-15d001a11270
+v3.reflink = 0
+v3.cowextsz = 0
+v3.dax = 0
+v3.bigtime = 1
+v3.nrext64 = 0
+u3 = (empty)
+a.sfattr.hdr.totsize = 47
+a.sfattr.hdr.count = 1
+a.sfattr.list[0].namelen = 7
+a.sfattr.list[0].valuelen = 33
+a.sfattr.list[0].root = 0
+a.sfattr.list[0].secure = 1
+a.sfattr.list[0].name = "selinux"
+a.sfattr.list[0].value = "system_u:object_r:unlabeled_t:s0\000"

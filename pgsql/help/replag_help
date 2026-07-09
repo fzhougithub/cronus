@@ -1,0 +1,59 @@
+-- Primary
+SELECT
+    client_addr AS subscriber_ip,
+    application_name AS subscription_name,
+    state,
+    -- Lag in bytes between what publisher generated vs what was sent
+    pg_wal_lsn_diff(pg_current_wal_lsn(), sent_lsn) AS sent_lag_bytes,
+    -- Lag in bytes between what publisher generated vs what subscriber wrote to disk
+    pg_wal_lsn_diff(pg_current_wal_lsn(), write_lsn) AS write_lag_bytes,
+    -- Lag in bytes between what publisher generated vs what subscriber flushed to disk
+    pg_wal_lsn_diff(pg_current_wal_lsn(), flush_lsn) AS flush_lag_bytes,
+    -- Lag in bytes between what publisher generated vs what subscriber actually applied/replayed
+    pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS replay_lag_bytes,
+    -- Human-readable format of the total replication lag
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)) AS readable_replay_lag
+FROM pg_stat_replication;
+
+ subscriber_ip  |        subscription_name         |   state   | sent_lag_bytes | write_lag_bytes | flush_lag_bytes | replay_lag_bytes | readable_replay_lag
+----------------+----------------------------------+-----------+----------------+-----------------+-----------------+------------------+---------------------
+ 10.234.124.59  | proddr_pct-db-03                 | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.221.142.63  | odshumana_pg16_01_pct_global_sub | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.173.17.40   | prod_pct-db-02                   | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.221.142.63  | odshumana_pg16_01_pct_humana_sub | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.234.124.9   | proddr_pct-db-04                 | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.221.143.119 | prod_pct_other_sub               | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.221.143.119 | prod_pct_global_sub              | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.173.31.74   | odshumana_pg16_02_pct_humana_sub | streaming |              0 |               0 |               0 |                0 | 0 bytes
+ 10.173.31.74   | odshumana_pg16_02_pct_global_sub | streaming |              0 |               0 |               0 |                0 | 0 bytes
+(9 rows)
+
+-- subscriber
+
+SELECT
+    slot_name,
+    plugin,
+    active,
+    -- Total WAL size retained on disk on the publisher for this specific slot
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS retained_wal_bytes
+FROM pg_replication_slots;
+
+               slot_name               |  plugin  | active | retained_wal_bytes
+---------------------------------------+----------+--------+--------------------
+ odshumana_pg16_04_alma9_prod          |          | t      |
+ odshumana_pg16_03_alma9_prod          |          | t      |
+ odshumana_pg16_02_cust_and_global_sub | pgoutput | t      | 1682 MB
+(3 rows)
+
+
+
+
+replica:
+
+SELECT
+  pg_last_wal_receive_lsn(),
+  pg_last_wal_replay_lsn(),
+  pg_last_xact_replay_timestamp(),
+  now() - pg_last_xact_replay_timestamp() AS lag_time;
+
+

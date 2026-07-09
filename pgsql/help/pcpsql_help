@@ -1,0 +1,27 @@
+| Function                   | SQL (`psql`) | PCP |
+| -------------------------- | ------------ | --- |
+| View node status           | ✅            | ✅   |
+| View backend role          | ✅            | ✅   |
+| View replication delay     | ✅            | ✅   |
+| View pool processes        | ✅            | ✅   |
+| Attach node                | ❌            | ✅   |
+| Detach node                | ❌            | ✅   |
+| Promote/failover node      | ❌            | ✅   |
+| Recover node               | ❌            | ✅   |
+| Reload Pgpool config       | ❌            | ✅   |
+| Shutdown Pgpool            | ❌            | ✅   |
+| Watchdog status            | Partial      | ✅   |
+| PCP authentication testing | ❌            | ✅   |
+
+SHOW pool_nodes;
+SHOW pool_processes;
+SHOW pool_status;
+SHOW pool_health_check_stats;
+SHOW pool_cache;
+
+pcp_detach_node -h localhost -U pgpool -n 1
+pcp_attach_node
+pcp_recovery_node
+pcp_reload_config
+pcp_stop_pgpool
+

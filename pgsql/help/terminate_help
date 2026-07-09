@@ -1,3 +1,17 @@
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'claimsprocess'
+  AND usename = 'ppdclaimresearch'
+  AND state != 'idle'
+  AND now() - query_start > interval '1 hours'
+  AND usename NOT IN ('postgres')
+  AND pid <> pg_backend_pid();
+
+
+select pid from (select pid,usename,now()-xact_start from pg_stat_activity where state='active' and usename='ppdclaimresearch' and xact_start < now() - interval '2 hours' order by 3 desc);
+
+
+
 Run it on server login
 
 SELECT pg_terminate_backend(pid)

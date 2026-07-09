@@ -1,3 +1,17 @@
+SELECT
+    r.rolname,
+    s.setconfig
+FROM pg_db_role_setting s
+JOIN pg_roles r
+  ON r.oid = s.setrole
+WHERE r.rolname like '%reporting';
+
+   rolname    |              setconfig
+--------------+-------------------------------------
+ ppdreporting | {max_parallel_workers_per_gather=0}
+(1 row)
+
+
 -- List all objects in claimsprocess_humana schema with privileges for the target role
 SELECT
   n.nspname AS schema_name,

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 [query_file]"
+	echo "Example: $0 50-60.sql"
+	exit 1
+else
+	source=$1
+fi
+
+echo > ${source}_import.sql;export s=claimsprocess_humana;for i in $(cat ${source}|cut -d'|' -f1);do t=$(echo $i|cut -d'.' -f2);echo "import foreign schema claimsprocess_humana limit to ($t) FROM SERVER claimshumana_02 into claimsprocess_humana_02;" >> ${source}_import.sql;done
+
+echo > ${source}.sh;export s=claimsprocess_humana;for i in $(cat ${source}|cut -d'|' -f1);do t=$(echo $i|cut -d'.' -f2);echo "psql -d ods_domani -v ON_ERROR_STOP=1 -c 'insert into $i select * from claimsprocess_humana_02.$t'" >> ${source}.sh;done
+
+
+echo > ${source}_truncate.sql;export s=claimsprocess_humana;for i in $(cat ${source}|cut -d'|' -f1);do echo "truncate table $i restart identity cascade;" >> ${source}_truncate.sql;done
+
+echo "cat ${source}.sh | parallel -j 10 --joblog=${source}.log --results=${source}_results --eta --progress --line-buffer --keep-order 2>&1 | tee ${source}_master.log " > ${source}_p.sh
+

@@ -1,0 +1,13 @@
+systemd-resolve --flush-caches
+resolvectl flush-caches
+
+watch -d dig claimshumana-pg16-01-prod-drx-kc.ssnc-corp.cloud +short
+watch -d claimshumana-pg16-01-prod-drx-kc.ssnc-corp.cloud
+
+tmux new -s basebackup
+tmux a -t basebackup
+ll /usr/pgsql-16/bin/
+
+ssh-keygen -t rsa
+
+

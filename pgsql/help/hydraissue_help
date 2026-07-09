@@ -1,0 +1,359 @@
+ SELECT
+  l.pid,
+  COUNT(*) FILTER (WHERE am.amname = 'columnar') AS columnar_tables,
+  COUNT(*) FILTER (WHERE am.amname = 'heap') AS heap_tables,
+  COUNT(*) AS total
+FROM pg_locks l
+JOIN pg_class c ON l.relation = c.oid
+LEFT JOIN pg_am am ON c.relam = am.oid
+WHERE l.locktype = 'relation'
+GROUP BY l.pid
+ORDER BY total DESC;
+
+  pid   | columnar_tables | heap_tables | total
+--------+-----------------+-------------+-------
+  71191 |               0 |         495 |  2274
+  52335 |               0 |         494 |  2272
+ 279418 |              11 |           1 |    15
+ 279312 |               0 |           2 |     8
+(4 rows)
+ 
+
+SELECT
+  pid,
+  tables,
+  array_agg(rel_info) AS sample_tables
+FROM (
+  SELECT
+    a.pid,
+    COUNT(*) OVER (PARTITION BY a.pid) AS tables,
+    c.relname || ' [' || COALESCE(am.amname, 'unknown') || ']' AS rel_info,
+    ROW_NUMBER() OVER (PARTITION BY a.pid ORDER BY c.relname) AS rn
+  FROM pg_stat_activity a
+  JOIN pg_locks l ON a.pid = l.pid
+  JOIN pg_class c ON l.relation = c.oid
+  LEFT JOIN pg_am am ON c.relam = am.oid
+  WHERE l.locktype = 'relation'
+) t
+WHERE rn <= 5
+GROUP BY pid, tables
+ORDER BY tables DESC;
+
+ 3789602 |   9068 | {"claim_core_319 [unknown]","cdc_claim_core_2026_05_26_14_23_57_624591_05_u_datamart [heap]","claim_core [unknown]","claim_core_319_201511_customer_id_
+member_id_fill_dt_claim_i_idx [btree]","claim_core_319_201511 [heap]"}
+ 3790023 |   9066 | {"claim_core_319_201511 [heap]","cdc_claim_core_2026_05_26_08_45_42_426173_05_u_datamart [heap]","claim_core [unknown]","claim_core_319 [unknown]","cla
+im_core_319_201511_customer_id_member_id_fill_dt_claim_i_idx [btree]"}
+ 3790215 |   9066 | {"cdc_claim_core_2026_05_25_09_45_09_063737_05_u_datamart [heap]","claim_core_319_201511_customer_id_member_id_fill_dt_claim_i_idx [btree]","claim_core
+_319_201511 [heap]","claim_core_319 [unknown]","claim_core [unknown]"}
+
+SELECT
+  pid,
+  COUNT(*) FILTER (WHERE amname = 'columnar') AS columnar_tables,
+  COUNT(*) FILTER (WHERE amname = 'heap') AS heap_tables,
+  COUNT(*) AS total
+FROM (
+  SELECT
+    l.pid,
+    am.amname
+  FROM pg_locks l
+  JOIN pg_class c ON l.relation = c.oid
+  LEFT JOIN pg_am am ON c.relam = am.oid
+  WHERE l.locktype = 'relation'
+) t
+GROUP BY pid
+ORDER BY total DESC;
+
+
+SELECT
+  pid,
+  tables,
+  array_agg(relname) AS columnar_samples
+FROM (
+  SELECT
+    a.pid,
+    COUNT(*) OVER (PARTITION BY a.pid) AS tables,
+    c.relname,
+    ROW_NUMBER() OVER (PARTITION BY a.pid ORDER BY c.relname) AS rn
+  FROM pg_stat_activity a
+  JOIN pg_locks l ON a.pid = l.pid
+  JOIN pg_class c ON l.relation = c.oid
+  JOIN pg_am am ON c.relam = am.oid
+  WHERE l.locktype = 'relation'
+    AND am.amname = 'columnar'
+) t
+WHERE rn <= 5
+GROUP BY pid, tables
+ORDER BY tables DESC;
+
+SELECT
+  l.pid,
+  COUNT(*) FILTER (WHERE c.relname LIKE 'claim_core%') AS claim_core_tables,
+  COUNT(*) FILTER (WHERE c.relname LIKE 'claim_ccg%') AS columnar_tables,
+  COUNT(*) AS total
+FROM pg_locks l
+JOIN pg_class c ON l.relation = c.oid
+GROUP BY l.pid
+ORDER BY total DESC;
+   pid   | claim_core_tables | columnar_tables | total
+---------+-------------------+-----------------+-------
+ 3792753 |              9054 |               0 |  9068
+ 3792802 |              3009 |               0 |  3011
+ 3792803 |              3009 |               0 |  3011
+ 3792754 |                 0 |               0 |   308
+ 3793235 |                 0 |               0 |   168
+
+
+
+
+
+SELECT
+  a.pid,
+  now() - a.query_start AS duration,
+  l.lock_count,
+  a.application_name
+FROM pg_stat_activity a
+JOIN (
+    SELECT pid, COUNT(*) AS lock_count
+    FROM pg_locks
+    WHERE relation IS NOT NULL
+    GROUP BY pid
+) l ON a.pid = l.pid
+WHERE l.lock_count > 50;
+
+SELECT relname,
+       heap_blks_read,
+       heap_blks_hit
+FROM pg_statio_user_tables
+ORDER BY heap_blks_read DESC
+LIMIT 20;
+               relname                | heap_blks_read | heap_blks_hit
+--------------------------------------+----------------+---------------
+ cdc_claim_core                       |    10235566967 |   19127073670
+ cdc_claim_core_320                   |      501865282 |    2417030159
+ o58_320_2                            |      311759437 |     496493159
+ claim_extension_1_25                 |      214721893 |     917462725
+ claim_core_320_202605                |      151569779 |     336072863
+ o58_320_default                      |      130569004 |     161961861
+ chunk                                |      116178999 |    2241978401
+ claim_core_320_202604                |       88259709 |      34888971
+ claim_core_320_202601                |       86208061 |      27301179
+ claim_core_320_202603                |       83343877 |      31057613
+ claim_extension_1_45                 |       79769454 |     578804742
+ claim_component_block_information_25 |       69872359 |     258680110
+ claim_component_column_information   |       65907245 |    1584844864
+ claim_core_320_202602                |       65025995 |      25529040
+ cdc_claim_core_p                     |       59874688 |     872388729
+ claim_core_320_202301                |       59263510 |      13197732
+ claim_extension_1_24                 |       52810502 |     312931754
+ claim_core_320_202512                |       49849115 |      15479332
+ claim_extension_1_26                 |       47931721 |     369556082
+ claim_component_block_information_45 |       45527552 |     175717013
+(20 rows)
+
+SELECT a.pid,
+       now() - a.query_start AS duration,
+       l.lock_count,
+       a.application_name,
+       a.wait_event_type
+FROM pg_stat_activity a
+JOIN (
+    SELECT pid, COUNT(*) AS lock_count
+    FROM pg_locks
+    WHERE relation IS NOT NULL
+    GROUP BY pid
+) l USING (pid)
+WHERE l.lock_count > 500
+AND a.state = 'active';
+   pid   |    duration     | lock_count | application_name | wait_event_type
+---------+-----------------+------------+------------------+-----------------
+ 3773225 | 00:00:09.238579 |       3011 | psql             | IO
+ 3773227 | 00:00:09.200744 |       3011 | psql             | IPC
+ 3773132 | 00:00:09.200744 |       9074 | psql             | IO
+ 3773129 | 00:00:09.238579 |       9074 | psql             | IO
+ 3773226 | 00:00:09.200744 |       3011 | psql             | IPC
+(5 rows)
+
+--kill command, be careful
+
+SELECT pg_terminate_backend(pid)
+FROM (
+    SELECT pid, COUNT(*) AS lock_count
+    FROM pg_locks
+    WHERE relation IS NOT NULL
+    GROUP BY pid
+) t
+JOIN pg_stat_activity a USING (pid)
+WHERE lock_count > 2000
+AND application_name = 'psql';
+
+
+ods_domani=# SELECT pid, COUNT(DISTINCT relation)
+FROM pg_locks
+WHERE relation IS NOT NULL
+GROUP BY pid
+ORDER BY 2 DESC;
+   pid   | count
+---------+-------
+ 3779711 |  9071
+ 3779737 |  3011
+ 3779736 |  3011
+ 3779712 |   311
+ 3780185 |   220
+ 3780370 |   220
+ 3780194 |   171
+
+SELECT
+  a.pid,
+  a.application_name,
+  now() - a.query_start AS duration,
+  l.locktype,
+  l.mode,
+  COUNT(*) AS lock_count
+FROM pg_stat_activity a
+JOIN pg_locks l ON a.pid = l.pid
+GROUP BY a.pid, a.application_name, a.query_start, l.locktype, l.mode
+ORDER BY lock_count DESC;
+   pid   | application_name |        duration        |   locktype    |           mode           | lock_count
+---------+------------------+------------------------+---------------+--------------------------+------------
+ 3780808 | psql             | 00:01:45.623565        | relation      | AccessShareLock          |       9070
+ 3781289 | psql             | 00:00:31.536502        | relation      | AccessShareLock          |       9070
+ 3781039 | psql             | 00:01:09.132508        | relation      | AccessShareLock          |        621
+ 3781459 | psql             | 00:00:06.98665         | relation      | AccessShareLock          |        425
+ 3781497 | psql             | 00:00:03.485968        | relation      | AccessShareLock          |        425
+ 3781375 | psql             | 00:00:13.514452        | relation      | AccessShareLock          |        425
+ 3780809 | psql             | 00:01:45.622505        | relation      | AccessShareLock          |        308
+ 3780948 | psql             | 00:01:19.201725        | relation      | AccessShareLock          |        308
+ 3781436 | psql             | 00:00:09.059019        | relation      | AccessShareLock          |        221
+ 3781444 | psql             | 00:00:07.011087        | relation      | AccessShareLock          |        217
+
+
+ SELECT
+  a.pid,
+  COUNT(*) AS lock_count
+FROM pg_stat_activity a
+JOIN pg_locks l ON a.pid = l.pid
+GROUP BY a.pid
+HAVING COUNT(*) > 200
+ORDER BY lock_count DESC;
+   pid   | lock_count
+---------+------------
+ 3782201 |       9074
+ 3781978 |        629
+ 3781980 |        447
+ 3781997 |        430
+ 3782202 |        320
+ 3781985 |        226
+ 3781983 |        221
+ 3781984 |        221
+(8 rows)
+
+-- This is another keep tracking
+
+INSERT INTO lock_monitor_log
+SELECT now(), pid, count(*)
+FROM pg_locks
+GROUP BY pid
+HAVING count(*) > 200;
+
+
+SELECT
+  pid,
+  tables,
+  array_agg(relname) AS sample_tables
+FROM (
+  SELECT
+    a.pid,
+    COUNT(*) OVER (PARTITION BY a.pid) AS tables,
+    c.relname,
+    ROW_NUMBER() OVER (PARTITION BY a.pid) AS rn
+  FROM pg_stat_activity a
+  JOIN pg_locks l ON a.pid = l.pid
+  JOIN pg_class c ON l.relation = c.oid
+) t
+WHERE rn <= 5
+GROUP BY pid, tables
+ORDER BY tables DESC;
+   pid   | tables |                                                                                                                                                       s
+ample_tables
+---------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 3783611 |   9070 | {claim_core_829_201706_pharmacy_id_prescription_id_fill_dt_c_idx,claim_core_830_202206_customer_id_member_id_fill_dt_claim_i_idx,claim_core_319_203408_
+customer_id_member_id_fill_dt_claim_i_idx,claim_core_320_203810_npi_pharmacy_id_prescription_id_recei_idx,claim_core_828_202303}
+ 3783547 |    425 | {a_claim_core_544_8,a_claim_core_320_40_adjust_customer_id_adjust_claim_id_idx,a_claim_core_320_51,a_claim_core_828,a_claim_core_319_7_pkey}
+ 3783612 |    308 | {claim_extension_1_13_customer_id_dispense_event_id_idx,claim_extension_1_84_pkey,claim_extension_1_97_customer_id_dispense_event_id_idx,claim_extensio
+n_1_39_customer_id_dispense_event_id_idx,claim_extension_1_10_customer_id_dispense_event_id_idx}
+ 3782886 |    217 | {pg_class_relname_nsp_index,claim_component_block_information,claim_component_block_information_21_pkey,pg_class_tblspc_relfilenode_index,claim_compone
+nt_block_information_13}
+
+SELECT
+  a.pid,
+  COUNT(*) AS tables,
+  now() - a.query_start AS duration
+FROM pg_stat_activity a
+JOIN pg_locks l ON a.pid = l.pid
+WHERE l.locktype = 'relation'
+GROUP BY a.pid, a.query_start
+HAVING COUNT(*) > 1000
+ORDER BY tables DESC;
+   pid   | tables |    duration
+---------+--------+-----------------
+ 3783611 |   9082 | 00:00:30.773782
+(1 row)
+
+ SELECT pid, tables, relname
+FROM (
+  SELECT
+    a.pid,
+    COUNT(*) OVER (PARTITION BY a.pid) AS tables,
+    c.relname,
+    ROW_NUMBER() OVER (PARTITION BY a.pid ORDER BY c.relname) AS rn
+  FROM pg_stat_activity a
+  JOIN pg_locks l ON a.pid = l.pid
+  JOIN pg_class c ON l.relation = c.oid
+  WHERE l.locktype = 'relation'
+) t
+WHERE rn <= 5
+ORDER BY tables DESC, pid;
+``
+   pid   | tables |                             relname
+---------+--------+-----------------------------------------------------------------
+ 3788423 |    425 | a_claim_core_319_10_adjust_customer_id_adjust_claim_id_idx
+ 3788423 |    425 | a_claim_core
+ 3788423 |    425 | a_claim_core_319
+ 3788423 |    425 | a_claim_core_319_1
+ 3788423 |    425 | a_claim_core_319_10
+
+
+SELECT pid, tables, array_agg(relname) AS sample_tables
+FROM (
+  SELECT
+    a.pid,
+    COUNT(*) OVER (PARTITION BY a.pid) AS tables,
+    c.relname,
+    ROW_NUMBER() OVER (PARTITION BY a.pid ORDER BY c.relname) AS rn
+  FROM pg_stat_activity a
+  JOIN pg_locks l ON a.pid = l.pid
+  JOIN pg_class c ON l.relation = c.oid
+  WHERE l.locktype = 'relation'
+) t
+WHERE rn <= 5
+GROUP BY pid, tables
+ORDER BY tables DESC;
+   pid   | tables |                                                                                                                              sample_tables
+
+---------+--------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+ 3789024 |   9068 | {claim_core_319_201511_customer_id_member_id_fill_dt_claim_i_idx,cdc_claim_core_2026_05_26_08_41_44_62062_05_u_datamart,claim_core,claim_core_319,claim
+_core_319_201511}
+ 3789168 |   9066 | {claim_core_319_201511_customer_id_member_id_fill_dt_claim_i_idx,cdc_claim_core_2026_05_26_08_38_15_803175_05_u_datamart,claim_core,claim_core_319,clai
+m_core_319_201511}
+ 3789031 |   3011 | {cdc_claim_core_2026_05_26_08_41_44_62062_05_u_datamart,claim_core,claim_core_319,claim_core_319_201511,claim_core_319_201511_npi_pharmacy_id_fill_dt_c
+ustomer_id_idx}
+ 3789032 |   3011 | {cdc_claim_core_2026_05_26_08_41_44_62062_05_u_datamart,claim_core,claim_core_319,claim_core_319_201511,claim_core_319_201511_npi_pharmacy_id_fill_dt_c
+ustomer_id_idx}
+ 3789208 |    425 | {a_claim_core_319,a_claim_core,a_claim_core_319_10_adjust_customer_id_adjust_claim_id_idx,a_claim_core_319_10,a_claim_core_319_1}
+ 3789353 |    425 | {a_claim_core,a_claim_core_319,a_claim_core_319_1,a_claim_core_319_10,a_claim_core_319_10_adjust_customer_id_adjust_claim_id_idx}
+ 3788675 |    308 | {claim_extension_1,claim_extension_1_00_pkey,claim_extension_1_00_customer_id_dispense_event_id_idx,claim_extension_1_00,cdc_claim_core_2026_05_27_00_1
+7_55_456971_05_u_datamart}
+
+

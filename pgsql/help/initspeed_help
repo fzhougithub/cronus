@@ -1,0 +1,8 @@
+SELECT
+    SUM(bytes_processed)/1024/1024/1024 AS total_bytes_processed
+FROM pg_stat_progress_copy;
+
+ total_bytes_processed
+-----------------------
+   74.6565432297065850
+(1 row)

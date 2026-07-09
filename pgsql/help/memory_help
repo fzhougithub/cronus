@@ -1,3 +1,14 @@
+cat /proc/<PID>/smaps | grep -E "Size|Rss"
+
+
+ps -eo pid,rss,vsz,cmd --sort=-rss | head -20
+
+cat /proc/meminfo | egrep 'MemAvailable|SwapFree|SwapTotal|Committed_AS|CommitLimit'
+
+
+
+
+
 Great point! Let’s refine the memory sizing now that we clarified **`work_mem` is allocated on the database server side** (not on the client running `pg_dump` or `pg_restore`).
 
 ***

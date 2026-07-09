@@ -1,3 +1,13 @@
 /usr/pgsql-14/bin/pg_basebackup -D /apps/lib/pgsql/14/data -X s -R -v -c fast -h 10.222.79.110
 
+/usr/pgsql-16/bin/pg_basebackup \
+    --waldir=/pg_wal/16 \
+    -D /apps/lib/pgsql/16/data \
+    -X s -R -v -c fast \
+    -S claimshumana_pg16_02_standby \
+    -d "host=10.221.134.166 tcp_keepalives_idle=60 tcp_keepalives_interval=10 tcp_keepalives_count=5"
+
+With pre-created slot, 
+
+
 

@@ -1,0 +1,40 @@
+-- mce error: MCE = CPU-reported hardware error
+dmesg -T | grep -i "mce\|machine check\|hardware error\|memory error\|cache error"
+
+-- pci buss errror
+dmesg -T | grep -i "PCI error\|bus error\|parity\|uncorrectable"
+
+# In /etc/security/limits.d/99-postgres.conf or systemd service
+postgres soft stack 16384
+postgres hard stack 16384
+# systemd: LimitSTACK=16777216 (16 MB)
+
+ALTER SYSTEM SET max_stack_depth = '15MB';
+
+# /etc/systemd/system/postgresql-16.service.d/override.conf
+[Service]
+LimitSTACK=16777216
+
+
+MCE = CPU-reported hardware error
+Built into x86 CPUs​ (Intel/AMD)
+Reports:
+Memory DIMM errors (correctable / uncorrectable)
+Cache errors
+Bus errors
+CPU internal faults
+Handled by:
+Kernel (mcesubsystem)
+Userspace daemons (mcelog, rasdaemon)
+IPMI SEL (BMC logs)
+If PostgreSQL crashes due to hardware, you always​ see MCE entries.
+
+ipmitool sel list
+This queries BMC (Baseboard Management Controller)​ hardware logs.
+Looks for:
+Memory ECC errors
+DIMM failures
+Power faults
+Your command returned nothing​ → no hardware events
+
+

@@ -1,0 +1,74 @@
+SELECT
+    n.nspname AS schema_name,
+    p.proname AS function_name,
+    pg_catalog.pg_get_function_result(p.oid) AS result_type,
+    pg_catalog.pg_get_function_arguments(p.oid) AS argument_types,
+    CASE
+        WHEN p.prokind = 'f' THEN 'function'
+        WHEN p.prokind = 'p' THEN 'procedure'
+        WHEN p.prokind = 'a' THEN 'aggregate'
+        WHEN p.prokind = 'w' THEN 'window'
+    END AS type
+FROM pg_catalog.pg_proc p
+LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'columnar'
+ORDER BY function_name;
+
+ schema_name |           function_name            |   result_type    |                                                                                                 argu
+ment_types                                                                                                 |   type
+-------------+------------------------------------+------------------+-----------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------+----------
+ columnar    | _vacuum_internal                   | integer          | rel regclass, stripe_count integer
+                                                                                                           | function
+ columnar    | alter_columnar_table_reset         | void             | table_name regclass, chunk_group_row_limit boolean DEFAULT false, stripe_row_limit boolean DEFAULT f
+alse, compression boolean DEFAULT false, compression_level boolean DEFAULT false                           | function
+ columnar    | alter_columnar_table_set           | void             | table_name regclass, chunk_group_row_limit integer DEFAULT NULL::integer, stripe_row_limit integer D
+EFAULT NULL::integer, compression name DEFAULT NULL::name, compression_level integer DEFAULT NULL::integer | function
+ columnar    | alter_table_set_access_method      | boolean          | t text, method text
+                                                                                                           | function
+ columnar    | columnar_ensure_am_depends_catalog | void             |
+                                                                                                           | function
+ columnar    | columnar_handler                   | table_am_handler | internal
+                                                                                                           | function
+ columnar    | create_table_row_mask              | boolean          | table_name regclass
+                                                                                                           | function
+ columnar    | downgrade_columnar_storage         | void             | rel regclass
+                                                                                                           | function
+ columnar    | stats                              | SETOF record     | regclass, OUT stripeid bigint, OUT fileoffset bigint, OUT rowcount integer, OUT deletedrows integer,
+ OUT chunkcount integer, OUT datalength integer                                                            | function
+ columnar    | upgrade_columnar_storage           | void             | rel regclass
+                                                                                                           | function
+ columnar    | vacuum                             | integer          | tablename regclass, stripe_count integer DEFAULT 0
+                                                                                                           | function
+ columnar    | vacuum_full                        | void             | schema name DEFAULT 'public'::name, sleep_time real DEFAULT 0.1, stripe_count integer DEFAULT 25
+                                                                                                           | function
+(12 rows)
+
+
+
+
+
+fix corrupted table
+BEGIN;
+
+-- 1. Copy the data out into a temporary standard heap table
+CREATE TABLE backup_claim_heap AS 
+SELECT * FROM datamart_humana.claim_c_320_202512;
+
+-- 2. Drop the corrupted columnar table (this clears the bad rows in columnar.stripe/chunk)
+DROP TABLE datamart_humana.claim_c_320_202512;
+
+-- 3. Re-create the empty table with the columnar access method
+CREATE TABLE datamart_humana.claim_c_320_202512 (
+    LIKE backup_claim_heap INCLUDING ALL
+) USING columnar;
+
+-- 4. Repopulate the data (this generates clean, brand-new metadata entries)
+INSERT INTO datamart_humana.claim_c_320_202512 
+SELECT * FROM backup_claim_heap;
+
+-- 5. Drop the temporary backup table
+DROP TABLE backup_claim_heap;
+
+COMMIT;
+

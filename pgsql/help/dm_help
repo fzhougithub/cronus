@@ -1,3 +1,16 @@
+ dmsetup deps -o devname /dev/dm-20
+1 dependencies	: (sdy)
+
+
+ls -l /sys/block/dm-20/slaves/
+lrwxrwxrwx. 1 root root 0 May  3 07:15 sdy -> ../../../../pci0000:00/0000:00:18.0/0000:1b:00.0/host3/target3:0:2/3:0:2:0/block/sdy
+
+lsblk -o NAME,KNAME,MAJ:MIN,MOUNTPOINT|grep dm-20 -b2
+3180-sdy                             sdy    65:128
+3227:└─pg_tblspc_14vg-pg_tblspc_14lv dm-20 253:20  /pg_tblspc_14
+
+
+
 find /sys/class/block -type l -name "dm*" -exec bash -c 'printf "$(basename {}) -> "' \; -exec cat {}/dm/name \;
 
 ls -l /dev/mapper/

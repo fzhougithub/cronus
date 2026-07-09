@@ -1,0 +1,17 @@
+SELECT
+    relid::regclass,
+    n_tup_ins+n_tup_upd+n_tup_del as writes,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del,
+    n_tup_hot_upd,
+    n_live_tup,
+    n_dead_tup,
+    last_autovacuum,
+    autovacuum_count
+FROM pg_stat_user_tables
+-- ORDER BY (n_tup_ins + n_tup_upd + n_tup_del) DESC 
+ORDER BY  autovacuum_count DESC 
+limit 100;
+
+

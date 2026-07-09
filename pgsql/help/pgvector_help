@@ -1,0 +1,4 @@
+ods_domani=# ALTER EXTENSION vector SET SCHEMA ai;
+ALTER EXTENSION
+
+

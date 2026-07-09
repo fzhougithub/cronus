@@ -1,3 +1,14 @@
+SELECT indexrelid::regclass AS index_name,
+       indisvalid,
+       indisready,
+       indislive
+FROM pg_index
+WHERE indexrelid = 'claim_cover_idx1'::regclass;
+    index_name    | indisvalid | indisready | indislive
+------------------+------------+------------+-----------
+ claim_cover_idx1 | t          | t          | t
+(1 row)
+
 create index greatly lower down the CPU usage. 
 
 REINDEX INDEX CONCURRENTLY your_index_name_on_parent_table;

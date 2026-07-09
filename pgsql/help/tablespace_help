@@ -1,0 +1,6 @@
+
+SELECT
+  spcname,
+  pg_tablespace_size(oid)
+FROM pg_tablespace;
+

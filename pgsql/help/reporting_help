@@ -1,0 +1,3 @@
+Environment="PATH=/apps/lib/pgsql/16/scripts/datamart:/usr/pgsql-16/bin:/usr/local/bin:/usr/bin:/bin"
+
+Add it into service file 

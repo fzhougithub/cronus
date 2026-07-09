@@ -1,0 +1,21 @@
+ echo never > /sys/kernel/mm/transparent_hugepage/enabled
+ echo never > /sys/kernel/mm/transparent_hugepage/defrag
+
+
+cat <<EOF > /etc/systemd/system/postgres-hydra.slice
+[Slice]
+MemoryMax=200G
+CPUQuota=400%
+EOF
+
+systemd-cgls
+
+ps -ef | grep 3413948
+
+
+systemctl set-property --runtime \
+  user-$(id -u postgres).slice \
+  AllowedCPUs=0-15
+
+
+

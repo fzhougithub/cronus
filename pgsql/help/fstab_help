@@ -1,0 +1,17 @@
+UUID=xxxx-xxxx  /var/lib/pgsql/16/data  xfs  rw,noatime,nodiratime,nobarrier,allocsize=16m,inode64  0  0
+
+Option		 Meaning
+noatime		 Do not update file access time on reads
+nodiratime 	 Do not update directory access time on reads
+defaults 	 rw,suid,dev,exec,auto,nouser,async
+inode64          Allow inodes > 32‑bit (recommended for XFS)
+allocsize=16m    Preallocate large extents (helps sequential WAL/data)
+
+Apply without shutdown DB
+mount -o remount,noatime,nodiratime /var/lib/pgsql/16/data
+
+Confirm by 
+findmnt -o OPTIONS /var/lib/pgsql/16/data
+mount | grep -E 'pg_tblspc_.*noatime'
+
+

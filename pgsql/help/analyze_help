@@ -1,9 +1,60 @@
+EXPLAIN (ANALYZE, BUFFERS) SELECT Sum(claim_cnt), Sum(plan_ingredient_cost_amt), Sum(plan_total_cost_amt), customer_id, fill_dt FROM datamart_humana.claim_c_830_202512_p3 WHERE customer_id = 830 GROUP BY customer_id, fill_dt;
+                                                                    QUERY PLAN
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ HashAggregate  (cost=2080.65..2081.12 rows=31 width=80) (actual time=10.162..10.171 rows=31 loops=1)
+   Group Key: fill_dt
+   Batches: 1  Memory Usage: 48kB
+   Buffers: shared hit=1880
+   ->  Custom Scan (ColumnarScan) on claim_c_830_202512_p3  (cost=0.00..1907.77 rows=17288 width=24) (actual time=0.575..7.717 rows=17288 loops=1)
+         Columnar Projected Columns: customer_id, fill_dt, plan_ingredient_cost_amt, plan_total_cost_amt, claim_cnt
+         Columnar Chunk Group Filters: (customer_id = 830)
+         Columnar Chunk Groups Removed by Filter: 0
+         Columnar Vectorized Filter: (customer_id = 830)
+         Buffers: shared hit=1880
+ Planning:
+   Buffers: shared hit=6057
+ Planning Time: 27.816 ms
+ Execution Time: 14.586 ms
+(14 rows)
+
+ods_domani=# EXPLAIN (VERBOSE, FORMAT TEXT)
+SELECT claim_cnt, plan_ingredient_cost_amt, plan_total_cost_amt, customer_id, fill_dt
+FROM datamart_humana.claim_c_830_202512_p3
+WHERE customer_id = 830
+LIMIT 0;
+                                                     QUERY PLAN
+---------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..0.10 rows=1 width=24)
+   Output: claim_cnt, plan_ingredient_cost_amt, plan_total_cost_amt, customer_id, fill_dt
+   ->  Custom Scan (ColumnarScan) on datamart_humana.claim_c_830_202512_p3  (cost=0.00..1734.89 rows=17288 width=24)
+         Output: claim_cnt, plan_ingredient_cost_amt, plan_total_cost_amt, customer_id, fill_dt
+         Columnar Projected Columns: customer_id, fill_dt, plan_ingredient_cost_amt, plan_total_cost_amt, claim_cnt
+         Columnar Chunk Group Filters: (customer_id = 830)
+         Columnar Vectorized Filter: (customer_id = 830)
+ Query Identifier: 4731516909902495769
+(8 rows)
+
+
+SELECT avg(pg_column_size(ROW(claim_cnt, plan_ingredient_cost_amt, plan_total_cost_amt, customer_id, fill_dt))) AS avg_bytes
+FROM datamart_humana.claim_c_830_202512_p3
+WHERE customer_id = 830
+LIMIT 10000;
+      avg_bytes
+---------------------
+ 51.1154558074965294
+
 psql -At -c "
 SELECT inhrelid::regclass
 FROM pg_inherits
 WHERE inhparent = 'my_data'::regclass;
 " |
 parallel -j 4 'psql -c "ANALYZE {};"'
+
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT customer_id, claim_id, process_create_ts, process_update_ts
+FROM claimsprocess_humana.claim_core;
+
 
 
 
@@ -23,5 +74,16 @@ ext_stats_computed        | 0
 child_tables_total        | 0
 child_tables_done         | 0
 current_child_table_relid | 0
+
+
+SELECT
+    relname,
+    reltuples,
+    relpages,
+    last_analyze,
+    last_autoanalyze
+FROM pg_stat_user_tables
+WHERE schemaname = 'claimsprocess_humana'
+  AND relname = 'claim_extension_1_17';
 
 

@@ -1,0 +1,20 @@
+SELECT
+    slot_name,
+    slot_type,
+    active,
+    restart_lsn,
+    -- Calculate how much WAL data (in MB) this slot is holding back
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_wal,
+    active_pid
+FROM pg_replication_slots
+ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC;
+
+ odshumana_pg16_02_program_mandate_sub     | logical   | f      | 681/AE101FD8 | 63 GB        |
+ odshumana_pg16_02_lists_sub               | logical   | f      | 681/AF00EAC8 | 63 GB        |
+ odshumana_pg16_02_pharmacy_sub            | logical   | f      | 681/AF015BB8 | 63 GB        |
+ odshumana_pg16_02_planconfig_sub          | logical   | f      | 681/AF05AD48 | 63 GB        |
+ odshumana_pg16_02_eligibility_humana_sub  | logical   | f      | 681/AF0704E8 | 63 GB        |
+ debezium                                  | logical   | t      | 691/527C2268 | 238 MB       |    2051382
+ prod_pharmacy_sub                         | logical   | t      | 691/606248A0 | 16 MB        |    3220878
+ prod_eligibility_humana_sub               | logical   | t      | 691/606248A0 | 16 MB        |    3220879
+

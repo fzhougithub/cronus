@@ -1,0 +1,66 @@
+\pset format unaligned
+\pset tuples_only on
+
+SELECT string_agg(
+  format(
+    'CREATE TABLE %I.%I PARTITION OF %I FOR VALUES FROM (%L) TO (%L);',
+    'datamart_humana',
+    child.relname,
+    'datamart_humana.claim_core_keys_320',
+    to_char(to_date(right(child.relname,6),'YYYYMM'),'YYYY-MM-DD'),
+    to_char(to_date(right(child.relname,6),'YYYYMM')+interval '1 month','YYYY-MM-DD')
+  ),
+  E'\n'
+)
+FROM pg_inherits i
+JOIN pg_class child ON i.inhrelid = child.oid
+JOIN pg_class parent ON i.inhparent = parent.oid
+JOIN pg_namespace nsp ON parent.relnamespace = nsp.oid
+WHERE parent.relname = 'claim_core_320'
+  AND nsp.nspname = 'claimsprocess_humana'
+  AND child.relname ~ '_(\d{6})$';
+
+
+
+SELECT
+  format(
+$$
+CREATE TABLE %I.%I
+PARTITION OF %I
+FOR VALUES FROM ('%s') TO ('%s');
+$$,
+    'datamart_humana',
+    child.relname,
+    'datamart_humana.claim_core_keys_320',
+    to_char(to_date(right(child.relname, 6), 'YYYYMM'), 'YYYY-MM-DD'),
+    to_char(to_date(right(child.relname, 6), 'YYYYMM') + interval '1 month', 'YYYY-MM-DD')
+  ) AS create_sql
+FROM pg_inherits i
+JOIN pg_class child ON i.inhrelid = child.oid
+JOIN pg_class parent ON i.inhparent = parent.oid
+JOIN pg_namespace nsp ON parent.relnamespace = nsp.oid
+WHERE parent.relname = 'claim_core_320'
+  AND nsp.nspname = 'claimsprocess_humana'
+  AND child.relname ~ '_(\d{6})$'
+ORDER BY child.relname;
+
+
+SELECT string_agg(
+  format(
+    'CREATE TABLE %I.%I PARTITION OF %I FOR VALUES FROM (%L) TO (%L);',
+    'datamart_humana',
+    child.relname,
+    'datamart_humana.claim_core_keys_320',
+    to_char(to_date(right(child.relname,6),'YYYYMM'),'YYYY-MM-DD'),
+    to_char(to_date(right(child.relname,6),'YYYYMM')+interval '1 month','YYYY-MM-DD')
+  ),
+  E'\n'
+)
+FROM pg_inherits i
+JOIN pg_class child ON i.inhrelid = child.oid
+JOIN pg_class parent ON i.inhparent = parent.oid
+JOIN pg_namespace nsp ON parent.relnamespace = nsp.oid
+WHERE parent.relname = 'claim_core_320'
+  AND nsp.nspname = 'claimsprocess_humana'
+  AND child.relname ~ '_(\d{6})$';
+

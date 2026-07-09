@@ -1,0 +1,46 @@
+test3=# create extension columnar;
+CREATE EXTENSION
+test3=# create table  t (a INT) USING columnar;
+CREATE TABLE
+test3=# SELECT columnar.alter_table_set_access_method('t', 'columnar');
+
+SELECT columnar.alter_columnar_table_set('t', compression => 'none/zstd/pglz');
+
+SELECT columnar.alter_columnar_table_set('t', stripe_row_limit => 1000);
+
+SELECT columnar.alter_columnar_table_set('table_options', chunk_group_row_limit => 999);
+SELECT columnar.alter_columnar_table_set('table_options', chunk_group_row_limit => 100000001);
+
+SELECT columnar.alter_columnar_table_reset('table_options', chunk_group_row_limit => true);
+
+columnar_ensure_am_depends_catalog
+columnar_handler
+
+create_table_row_mask -- should not use it. 
+
+downgrade_columnar_storage
+
+columnar.stats --most useful function
+
+SELECT * FROM columnar.stats('schema.table_name');
+
+SELECT
+  relname,
+  (columnar.stats(relid)).*
+FROM pg_class
+WHERE relname LIKE 'member_%';
+
+SELECT * FROM columnar.stats('datamart_humana.member');
+
+upgrade_columnar_storage
+
+vacuum
+
+vacuum_full
+
+array_to_halfvec
+
+
+
+
+

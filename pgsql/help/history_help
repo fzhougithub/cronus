@@ -1,3 +1,15 @@
+export HISTFILE=~/.zsh_history
+export HISTSIZE=100000
+export SAVEHIST=100000
+
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_REDUCE_BLANKS
+
+
+
 The issue you're experiencing with iTerm2 on your MacBook, where the command history is limited, incomplete, or mixed between multiple windows or tabs, is a common frustration, especially when using zsh (the default shell on macOS). This behavior is often tied to how zsh handles command history by default, particularly when using tools like Oh My Zsh, and how iTerm2 interacts with the shell's history settings. Below, I’ll explain the likely causes and provide solutions to achieve a more isolated and reliable command history per tab or window in iTerm2.
 
 ---

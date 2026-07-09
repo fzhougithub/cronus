@@ -16,6 +16,52 @@ pg_database
  claimsprocess |          188446712 |        197711857 |                  1802288143
 (5 rows)
 
+-- Is replication slot hold the old xid? 
+SELECT
+    slot_name,
+    active,
+    xmin,
+    age(xmin) AS xmin_age,
+    restart_lsn
+FROM pg_replication_slots
+ORDER BY xmin_age DESC;
+          slot_name           | active |    xmin    | xmin_age  |  restart_lsn
+------------------------------+--------+------------+-----------+---------------
+ pg_basebackup_1101652        | t      |            |           | AAB7/EE000000
+ claimshumana_prod_002_sub    | t      |            |           | A65C/CCF9A3B0
+ claimshumana_pg16_02_standby | f      | 3276132873 | 234376148 | A5A3/3BA16000
+
+-- Use below to generate list
+SELECT n.nspname || '.' || c.relname AS relation,
+       c.relkind,
+       age(c.relfrozenxid),
+       pg_size_pretty(pg_total_relation_size(c.oid))
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relfrozenxid != 0  -- Skip relations without frozen XIDs (e.g., some system ones)
+  AND c.relkind='r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY age(c.relfrozenxid) desc;
+                              relation                               | frozen_age |    size
+---------------------------------------------------------------------+------------+------------
+ claimsprocess_humana.claim_dur_history_851_p19                      |  234375817 | 24 kB
+ claimsprocess_humana.a_claim_compound_ndc_details                   |  234375817 | 212 MB
+ realtimepricing.task_lock                                           |  234375817 | 8192 bytes
+ realtimepricing.task_task_batch                                     |  234375817 | 0 bytes
+ claimsprocess_humana.claim_dur_history_837_p92                      |  234375817 | 24 kB
+
+select
+    n.nspname || '.' || c.relname as relation,
+    c.relkind,
+    age(c.relfrozenxid) as frozen_age,
+    pg_size_pretty(pg_total_relation_size(c.oid)) as size
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where c.relkind = 'r'
+  and c.relfrozenxid <> 0
+  and n.nspname not in ('pg_catalog','information_schema')
+order by frozen_age desc;
+
 
 SELECT n.nspname || '.' || c.relname AS relation,
        c.relkind,

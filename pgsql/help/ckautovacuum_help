@@ -1,0 +1,51 @@
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    s.last_autovacuum,
+    s.n_dead_tup,
+    s.n_live_tup,
+    ROUND(
+        s.n_dead_tup * 100.0 / NULLIF(s.n_live_tup, 0),
+        2
+    ) AS dead_ratio,
+    c.reloptions
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+WHERE c.relkind = 'r'
+--AND c.relname LIKE 'claim_core_%'
+AND s.last_autovacuum IS NULL
+--ORDER BY dead_ratio DESC NULLS LAST;
+ORDER BY  pg_total_relation_size(c.oid) DESC NULLS LAST;
+
+
+
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_total_relation_size(c.oid)/1024/1024/1024 AS total_size_gb,
+    s.last_autovacuum,
+    s.n_dead_tup,
+    s.n_live_tup,
+    ROUND(
+        s.n_dead_tup * 100.0 / NULLIF(s.n_live_tup, 0),
+        2
+    ) AS dead_ratio,
+    opt.option AS autovacuum_option
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+LEFT JOIN LATERAL unnest(c.reloptions) AS opt(option)
+    ON opt.option LIKE 'autovacuum%'
+WHERE c.relkind = 'r'
+AND c.relname LIKE 'claim_core%'
+AND s.last_autovacuum IS NULL
+ORDER BY total_size_gb DESC;

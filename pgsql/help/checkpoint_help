@@ -1,3 +1,21 @@
+SELECT checkpoints_timed, checkpoints_req, checkpoint_write_time, checkpoint_sync_time, buffers_checkpoint, buffers_alloc FROM pg_stat_bgwriter;
+
+
+SELECT
+    checkpoints_timed,          -- 由 checkpoint_timeout 参数触发的检查点数量
+    checkpoints_req,           -- 强制触发的检查点数量（例如运行 CHECKPOINT 命令）
+    checkpoint_write_time,     -- 检查点期间写入数据到磁盘所花费的总时间（毫秒）
+    checkpoint_sync_time,      -- 检查点期间将文件同步到磁盘所花费的总时间（毫秒）
+    buffers_checkpoint,        -- 检查点写入的缓冲区数量
+    buffers_alloc              -- 总的已分配缓冲区数量
+FROM pg_stat_bgwriter;
+ checkpoints_timed | checkpoints_req | checkpoint_write_time | checkpoint_sync_time | buffers_checkpoint | buffers_alloc
+-------------------+-----------------+-----------------------+----------------------+--------------------+---------------
+               223 |              67 |            2266134564 |              5687778 |          882966166 |    5554708047
+(1 row)
+
+
+
 checkpoint_completion_target=0 + CHECKPOINT; -- = pg_basebackup -c fast
 
 SELECT checkpoints_timed, checkpoints_req, buffers_checkpoint, buffers_clean, buffers_backend, stats_reset FROM pg_stat_bgwriter;
@@ -41,5 +59,16 @@ SELECT
   ROUND((checkpoint_write_time/1000.0)::numeric, 2) AS write_seconds,
   ROUND((checkpoint_sync_time/1000.0)::numeric, 2) AS sync_seconds
 FROM pg_stat_bgwriter;
+
+         sample_time         | checkpoints_timed | checkpoints_req | buffers_checkpoint | write_seconds | sync_seconds
+-----------------------------+-------------------+-----------------+--------------------+---------------+--------------
+ 2026-07-02 20:17:55.7592-05 |              1064 |              29 |           31846928 |     337358.08 |        20.74
+(1 row)
+
+bad one claimshumana
+         sample_time          | checkpoints_timed | checkpoints_req | buffers_checkpoint | write_seconds | sync_seconds
+------------------------------+-------------------+-----------------+--------------------+---------------+--------------
+ 2026-07-02 20:20:28.95827-05 |              2251 |           33916 |         1101951901 |    4191028.48 |       168.14
+(1 row)
 
 

@@ -1,0 +1,50 @@
+SELECT
+    inhrelid::regclass AS partition,
+    EXISTS (
+        SELECT 1
+        FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indexrelid
+        WHERE i.indrelid = inhrelid
+          AND c.relname = 'a_claim_core_ix1'
+    ) AS has_index
+FROM pg_inherits
+WHERE inhparent = 'claimsprocess_humana.a_claim_core'::regclass;
+
+    partition     | has_index
+------------------+-----------
+ a_claim_core_319 | f
+ a_claim_core_320 | f
+ a_claim_core_829 | f
+ a_claim_core_830 | f
+ a_claim_core_851 | f
+ a_claim_core_544 | f
+ a_claim_core_828 | f
+(7 rows)
+
+
+SELECT format(
+  'CREATE INDEX ON %I.%I (customer_id, claim_id);',
+  n.nspname,
+  c.relname
+)
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.oid IN (
+  SELECT inhrelid
+  FROM pg_inherits
+  WHERE inhparent = 'claimsprocess_humana.a_claim_core'::regclass
+);"
+
+
+SELECT
+  format(
+    'CREATE INDEX ON %I.%I (customer_id, claim_id);',
+    n.nspname,
+    c.relname
+  )
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relispartition
+  AND c.relnamespace = 'claimsprocess_humana'::regnamespace
+  AND c.relname LIKE 'a_claim_core_%_%';
+

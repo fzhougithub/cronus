@@ -1,0 +1,28 @@
+SELECT
+  datname,
+  temp_files,
+  pg_size_pretty(temp_bytes) AS temp_written
+FROM pg_stat_database
+WHERE temp_files > 0;
+
+    datname    | temp_files | temp_written
+---------------+------------+--------------
+ postgres      |          9 | 243 MB
+ claimsprocess |        582 | 484 GB
+(2 rows)
+
+SELECT query, calls, total_exec_time, temp_blks_written
+FROM pg_stat_statements
+WHERE temp_blks_written > 0
+ORDER BY temp_blks_written DESC
+LIMIT 10;
+-- Above gave you the killer sql statement. 
+
+SELECT datname, temp_files, temp_bytes
+FROM pg_stat_database;
+
+SELECT pid, temp_blks_written
+FROM pg_stat_activity
+JOIN pg_stat_io USING (backend_type);
+
+

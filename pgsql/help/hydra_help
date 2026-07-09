@@ -4,10 +4,19 @@ https://pigsty.io/ext/olap/columnar/
 https://pigsty.cc/ext/olap/columnar/
 Get the rpm from the link above
 like
+
+yum-config-manager --disable pgdg13
+
+sudo yum-config-manager --disable pgdg13
+
 wget https://repo.pigsty.cc/yum/pgsql/el9.x86_64/hydra_16-1.1.2-1PIGSTY.el9.x86_64.rpm
+yum install hydra_16-1.1.2-1PIGSTY.el9.x86_64.rpm
+
 
 curl -s https://packagecloud.io/install/repositories/pigsty/pgsql/script.rpm.sh | sudo bash
+
 yum install hydra_14.x86_64 hydra_14-llvmjit.x86_64
+yum install pg_background_14.x86_64 pg_background_14-llvmjit.x86_64 -y
 
 psal -d ods_domani
 create extension columnar;

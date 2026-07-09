@@ -1,8 +1,301 @@
 SELECT
+    client_addr,
+    state,
+    sync_state,
+    write_lag,
+    flush_lag,
+    replay_lag,
+    pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS byte_lag
+FROM pg_stat_replication;
+  client_addr   |   state   | sync_state | write_lag | flush_lag | replay_lag | byte_lag
+----------------+-----------+------------+-----------+-----------+------------+----------
+ 10.221.143.123 | streaming | async      |           |           |            |        0
+ 10.221.143.126 | streaming | async      |           |           |            |        0
+ 10.173.35.55   | streaming | async      |           |           |            |        0
+(3 rows)
+Above is correct, should be nothing show up. 
+
+
+
+SELECT
+    pid,
+    relid::regclass AS table_name,
+    received_lsn,
+    last_msg_send_time,
+    latest_end_lsn
+FROM pg_stat_subscription
+WHERE subname = 'dev_drugmgmt_sub';
+
+-- table has no PK
+
+ SELECT
+    n.nspname,
+    c.relname
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_index i
+    ON c.oid = i.indrelid AND i.indisprimary
+WHERE c.relkind = 'r'
+  AND n.nspname = 'drugmgmt'
+  AND i.indrelid IS NULL
+ORDER BY 1,2;
+ nspname  |                 relname
+----------+------------------------------------------
+ drugmgmt | batch_job_execution_params
+ drugmgmt | databasechangelog
+ drugmgmt | dur_safety_dsdi_contraindications_drug
+ drugmgmt | dur_safety_dstt_vendor_def
+ drugmgmt | h_dur_safety_dsdi_contraindications_drug
+(5 rows)
+
+
+SELECT
+    sr.srrelid::regclass AS table_name,
+    sr.srsubstate
+FROM pg_subscription_rel sr
+JOIN pg_subscription s ON s.oid = sr.srsubid
+WHERE s.subname = 'dev_drugmgmt_sub'
+ORDER BY 2,1;
+                            table_name                            | srsubstate
+------------------------------------------------------------------+------------
+ drugmgmt.batch_job_instance                                      | f
+ drugmgmt.batch_step_execution_context                            | f
+ drugmgmt.cms_submission_request_error                            | f
+
+
+SELECT now() - pg_last_xact_replay_timestamp() AS replication_delay;
+
+receive → write → flush → confirmed_flush_lsn → restart_lsn → WAL removal
+                 ↑
+               (NOT apply!)
+
+
+ods_domani=# SELECT
+    s.subname,
+    s.pid,
+    a.state AS worker_state,
+    a.wait_event_type || ':' || a.wait_event AS current_wait_status,
+    s.received_lsn,
+    o.remote_lsn AS applied_lsn,
+    pg_size_pretty(pg_wal_lsn_diff(s.received_lsn, o.remote_lsn)) AS apply_queue_lag,
+    s.last_msg_send_time,
+    s.last_msg_receipt_time, -- Added network receipt timestamp
+    -- Network transit delta (should be milliseconds/seconds)
+    age(s.last_msg_receipt_time, s.last_msg_send_time) AS network_latency,
+    s.latest_end_time
+FROM pg_stat_subscription s
+JOIN pg_stat_activity a ON s.pid = a.pid
+LEFT JOIN pg_replication_origin_status o ON o.external_id = 'pg_' || s.subid
+WHERE s.subname = 'claimshumana_pg16_prod_ods_stby_02_sub';
+-[ RECORD 1 ]---------+---------------------------------------
+subname               | claimshumana_pg16_prod_ods_stby_02_sub
+pid                   | 1095401
+worker_state          | active
+current_wait_status   | IO:DataFileRead
+received_lsn          | B87F/F4009978
+applied_lsn           | B87F/F4009978
+apply_queue_lag       | 0 bytes
+last_msg_send_time    | 2026-05-16 09:46:49.568285-05
+last_msg_receipt_time | 2026-05-16 09:47:03.291383-05
+network_latency       | 00:00:13.723098
+latest_end_time       | 2026-05-16 02:35:45.660466-05
+
+
+
+SELECT
+    s.subid,
+    s.subname,
+    s.pid,
+    a.state AS worker_state,
+    a.wait_event_type,
+    a.wait_event,
+    s.received_lsn,
+    -- Calculates how long the process has been running this state
+    age(clock_timestamp(), a.state_change) AS state_duration,
+    s.last_msg_send_time,
+    s.latest_end_time,
+    a.query AS current_worker_activity
+FROM pg_stat_subscription s
+JOIN pg_stat_activity a ON s.pid = a.pid
+where s.subname='claimshumana_pg16_prod_ods_stby_02_sub';
+
+
+SELECT
+    s.subid,
+    s.subname,
+    s.pid,
+    a.state AS worker_state,
+    a.wait_event_type,
+    a.wait_event,
+    s.received_lsn,
+    -- Calculates how long the process has been running this state
+    age(clock_timestamp(), a.state_change) AS state_duration,
+    s.last_msg_send_time,
+    s.latest_end_time,
+    a.query AS current_worker_activity
+FROM pg_stat_subscription s
+JOIN pg_stat_activity a ON s.pid = a.pid
+ORDER BY s.subname;
+
+
+
+
+-- on ods
+SELECT 
+    subname,
+    pid,
+    -- If NULL, the worker has crashed or is disabled
+    CASE WHEN pid IS NULL THEN 'STOPPED/ERROR' ELSE 'RUNNING' END as status,
+    -- Time since the last message was received from the publisher
+    now() - last_msg_receipt_time AS replication_lag,
+    -- Processing gap: Time between publisher sending and subscriber receiving
+    last_msg_receipt_time - last_msg_send_time AS transport_delay,
+    received_lsn,
+    latest_end_lsn,
+    -- Flag problematic lag (e.g., more than 60 seconds)
+    CASE 
+        WHEN (now() - last_msg_receipt_time) > interval '60 seconds' THEN 'ALERT: HIGH LAG'
+        WHEN pid IS NULL THEN 'CRITICAL: WORKER DOWN'
+        ELSE 'HEALTHY'
+    END as health_check
+FROM pg_stat_subscription;
+
+           subname            |   pid   | status  | replication_lag | transport_delay | received_lsn | latest_end_lsn | health_check
+------------------------------+---------+---------+-----------------+-----------------+--------------+----------------+--------------
+ hpls_finance_global_sub      | 3005528 | RUNNING | 00:00:18.333185 | 00:00:00.000104 | 3/83000148   | 3/83000148     | HEALTHY
+ hpls_finance_humana_sub      | 3005529 | RUNNING | 00:00:18.336015 | 00:00:00.000129 | 3/83000148   | 3/83000148     | HEALTHY
+ hpls_finance_other_sub       | 3005531 | RUNNING | 00:00:18.333399 | 00:00:00.000146 | 3/83000148   | 3/83000148     | HEALTHY
+ hpls_pde_other_sub           | 3005532 | RUNNING | 00:00:21.069297 | 00:00:00.000079 | 4/2B000148   | 4/2B000148     | HEALTHY
+ hpls_pde_humana_sub          | 3005545 | RUNNING | 00:00:21.069487 | 00:00:00.000133 | 4/2B000148   | 4/2B000148     | HEALTHY
+ hpls_pde_global_sub          | 3005546 | RUNNING | 00:00:21.039631 | 00:00:00.000209 | 4/2B000148   | 4/2B000148     | HEALTHY
+ hpls_planconfig_sub          | 3005533 | RUNNING | 00:00:16.647279 | 00:00:00.000186 | 5F/5F000148  | 5F/5F000148    | HEALTHY
+ hpls_program_mandate_sub     | 3005535 | RUNNING | 00:00:16.769034 | 00:00:00.000175 | 5F/5F000148  | 5F/5F000148    | HEALTHY
+ hpls_lists_sub               | 3005536 | RUNNING | 00:00:16.743658 | 00:00:00.000176 | 5F/5F000148  | 5F/5F000148    | HEALTHY
+ hpls_drugmgmt_sub            | 3005537 | RUNNING | 00:00:16.769764 | 00:00:00.000187 | 5F/5F000148  | 5F/5F000148    | HEALTHY
+ hpls_foundations_builder_sub | 3005538 | RUNNING | 00:00:16.712314 | 00:00:00.00018  | 5F/5F000148  | 5F/5F000148    | HEALTHY
+ hpls_eligibility_humana_sub  | 3005539 | RUNNING | 00:00:16.770353 | 00:00:00.000183 | 5F/5F000148  | 5F/5F000148    | HEALTHY
+ hpls_pct_global_sub          | 3005540 | RUNNING | 00:00:18.41259  | 00:00:00.000086 | 7/90000148   | 7/90000148     | HEALTHY
+ hpls_pct_other_sub           | 3005541 | RUNNING | 00:00:18.413006 | 00:00:00.000079 | 7/90000148   | 7/90000148     | HEALTHY
+ hpls_pct_humana_sub          | 3005542 | RUNNING | 00:00:18.423456 | 00:00:00.000103 | 7/90000148   | 7/90000148     | HEALTHY
+ hpls_encounters_global_sub   | 3005543 | RUNNING | 00:00:22.120502 | 00:00:00.000186 | 7/9C000148   | 7/9C000148     | HEALTHY
+ hpls_encounters_other_sub    | 3005544 | RUNNING | 00:00:22.084783 | 00:00:00.000149 | 7/9C000148   | 7/9C000148     | HEALTHY
+ hpls_claims_humana_sub       | 3229972 | RUNNING | 00:00:00.607623 | 00:00:00.000542 | 656/8907E7A8 | 656/8907E7A8   | HEALTHY
+(18 rows)
+
+
+
+SELECT * FROM pg_stat_wal_receiver;
+
+replica:
+
+SELECT pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn(), pg_last_xact_replay_timestamp(),now() - pg_last_xact_replay_timestamp();
+ pg_last_wal_receive_lsn | pg_last_wal_replay_lsn | pg_last_xact_replay_timestamp |    ?column?
+-------------------------+------------------------+-------------------------------+-----------------
+ 24B/73E01268            | 24A/7C891100           | 2026-04-29 16:45:05.824536+00 | 00:41:45.330342
+
+SELECT pg_size_pretty(pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())) AS bytes_to_replay;
+ bytes_to_replay
+-----------------
+ 5389 MB
+(1 row)
+
+/usr/pgsql-16/bin/pg_waldump -p /pg_wal/16 -s 24A/93A58BE8 -n 100
+
+Primary:
+SELECT
+    client_addr,
+    state,
+    sent_lsn,
+    write_lsn,
+    flush_lsn,
+    replay_lsn,
+    now() - reply_time AS delay
+FROM pg_stat_replication;
+ client_addr  |   state   |   sent_lsn   |  write_lsn   |  flush_lsn   |  replay_lsn  |      delay
+--------------+-----------+--------------+--------------+--------------+--------------+-----------------
+ 10.173.43.78 | streaming | C03/59000000 | C03/59000000 | C03/59000000 | C03/59000000 | 00:00:02.115456
+(1 row)
+
+Replica:
+SELECT
     pg_last_wal_receive_lsn() AS last_received,
     pg_last_wal_replay_lsn()  AS last_replayed,
     pg_last_xact_replay_timestamp() AS last_replay_ts,
     now() - pg_last_xact_replay_timestamp() AS replication_delay;
+ last_received | last_replayed | last_replay_ts | replication_delay
+---------------+---------------+----------------+-------------------
+ C03/59000000  | C03/59000000  |                |
+(1 row)
 
+
+grep "logical replication worker" 
+
+
+
+Per the physical_replication
+
+SELECT
+    pid,
+    application_name,
+    client_addr,
+    state,
+    sync_state,
+
+    sent_lsn,
+    write_lsn,
+    flush_lsn,
+    replay_lsn,
+
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, write_lsn))  AS write_lag_bytes,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, flush_lsn))  AS flush_lag_bytes,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, replay_lsn)) AS replay_lag_bytes
+
+FROM pg_stat_replication;
+
+   pid   |           application_name            |  client_addr   |   state   | sync_state |   sent_lsn    |   write_lsn   |   flush_lsn   |  replay_lsn   | write_lag_bytes | flush_lag_bytes | replay_lag_bytes
+---------+---------------------------------------+----------------+-----------+------------+---------------+---------------+---------------+---------------+-----------------+-----------------+------------------
+ 2064145 | prod_odshumana-db-01                  | 10.173.39.40   | streaming | async      | 9700/A3CFFC90 | 9700/A3CFFC90 | 9700/A3CFFC90 | 96F6/FE46B50  | 0 bytes         | 0 bytes         | 42 GB
+ 3861325 | prod_odshumana-db-01                  | 10.221.136.121 | streaming | async      | 9700/A3CFFC90 | 9700/A3CFFC90 | 9700/A3CFFC90 | 96F6/22B2BD88 | 0 bytes         | 0 bytes         | 42 GB
+ 3098338 | odshumana_pg16_02_cust_and_global_sub | 10.173.31.74   | streaming | async      | 9700/A3CFFC90 | 9700/A3CFFC90 | 9700/A3CFFC90 | 9700/A3CFFC90 | 0 bytes         | 0 bytes         | 0 bytes
+(3 rows)
+
+
+SELECT
+    application_name,
+    write_lag,
+    flush_lag,
+    replay_lag
+FROM pg_stat_replication;
+           application_name            |    write_lag    |    flush_lag    |   replay_lag
+---------------------------------------+-----------------+-----------------+-----------------
+ prod_odshumana-db-01                  | 00:00:00.000301 | 00:00:00.00077  | 01:23:07.01143
+ prod_odshumana-db-01                  | 00:00:00.00026  | 00:00:00.000893 | 00:22:54.540837
+
+On standby side
+
+ods_domani=# SELECT
+    pg_is_in_recovery(),
+    pg_last_wal_receive_lsn(),
+    pg_last_wal_replay_lsn(),
+    pg_last_xact_replay_timestamp();
+ pg_is_in_recovery | pg_last_wal_receive_lsn | pg_last_wal_replay_lsn | pg_last_xact_replay_timestamp
+-------------------+-------------------------+------------------------+-------------------------------
+ t                 | 9700/BFE102A0           | 96F6/384371E0          | 2026-05-22 13:35:15.024741-05
+(1 row)
+
+ods_domani=# SELECT
+    slot_name,
+    active,
+    restart_lsn,
+    pg_size_pretty(
+        pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)
+    ) AS retained_wal
+FROM pg_replication_slots;
+               slot_name               | active |  restart_lsn  | retained_wal
+---------------------------------------+--------+---------------+--------------
+ odshumana_pg16_04_alma9_prod          | t      | 9700/DFC25100 | 60 kB
+ odshumana_pg16_03_alma9_prod          | t      | 9700/DFC25100 | 60 kB
+ odshumana_pg16_02_cust_and_global_sub | t      | 9700/DA4F8298 | 87 MB
+(3 rows)
 
 

@@ -1,0 +1,17 @@
+. ~/work/p3/bin/activate
+Still see the env
+/Users/fzhou/.pyenv/shims/pip3
+
+Reason, 
+pyenvinserts shim binaries the front of your PATH:
+
+/Users/fzhou/.pyenv/shims
+
+fix
+python -m pip install psycopg2
+
+pyenv shell --unset
+
+
+
+

@@ -7,6 +7,8 @@ Then, similar like below command to get the bad character.
 sed -n '9760729p' /pg_backups/pg2pg_init_23232025/claimsprocess_humana.claim_core_320_202305/*|isutf8
 sed -n '9760729p' /pg_backups/pg2pg_init_23232025/claimsprocess_humana.claim_core_320_202305/*|cut -c 2120-2130
 
+sed -n '61614518p' your_dump_file.sql | grep -obP '\xC1\x52'
+
 
 grep -r invalid /pg_backups/restorelogs.keep/*|cut -d: -f7|sort|uniq -c|sort -nr
     121  0xac

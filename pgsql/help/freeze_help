@@ -1,0 +1,57 @@
+DISABLE_PAGE_SKIPPING
+
+VACUUM (FREEZE, DISABLE_PAGE_SKIPPING, VERBOSE) claim_core;
+-- most aggresive, enforce traverse all of the pages, freeze data
+
+SELECT
+    n.nspname || '.' || c.relname AS relation,
+    age(c.relfrozenxid) AS age,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND age(c.relfrozenxid) > 100000000
+ORDER BY age DESC;
+                              relation                               |    age    |    size
+---------------------------------------------------------------------+-----------+------------
+ claimsprocess_humana.claim_dur_history_830_p115                     | 234376611 | 56 MB
+ claimsprocess_humana.claim_extension_2_25                           | 234376611 | 116 GB
+ claimsprocess_humana.claim_extension_2_45                           | 234376611 | 91 GB
+ claimsprocess_humana.claim_dur_history_830_p69                      | 234376611 | 56 MB
+ claimsprocess_humana.claim_core_320_203905                          | 234376611 | 48 kB
+
+                    relname                     |    age    |    size
+------------------------------------------------+-----------+------------
+ claim_dur_history_830_p115                     | 234376601 | 56 MB
+ claim_extension_2_25                           | 234376601 | 116 GB
+ claim_extension_2_45                           | 234376601 | 91 GB
+ claim_dur_history_830_p69                      | 234376601 | 56 MB
+ claim_core_320_203905                          | 234376601 | 48 kB
+ claim_core_320_203906                          | 234376601 | 48 kB
+ claim_dur_history_830_p70                      | 234376601 | 57 MB
+ claim_core_320_203907                          | 234376601 | 48 kB
+ claim_core_320_203908                          | 234376601 | 48 kB
+ claim_dur_history_830_p71                      | 234376601 | 57 MB
+ claim_core_320_203909                          | 234376601 | 48 kB
+
+-- Then, should grep GB level run first, they are finally blocker
+-- run the other in parallel also. 
+-- Should kickout the largest one at the begin, combine with the small , maybe largest 12, small 30?
+grep GB all_5 |awk '{print $1}' >big_5
+grep -v GB all_5 |awk '{print $1}' >small_5
+
+parallel -j 20 -q psql -h claimshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud -d claimsprocess -c "vacuum(freeze,DISABLE_PAGE_SKIPPING,verbose ) {}" :::: big_5
+
+-- Count the total number of tables need to be freezon
+select count(1) from (SELECT
+    n.nspname || '.' || c.relname AS relation,
+    age(c.relfrozenxid) AS age,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND age(c.relfrozenxid) > 100000000);
+
+

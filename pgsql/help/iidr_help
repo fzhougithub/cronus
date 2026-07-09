@@ -1,4 +1,6 @@
 #!/bin/bash
+# iidr_prod_ods_admin
+
 INSTANCE=iidr_admin
 PG_HOST=localhost
 PG_PORT=5432

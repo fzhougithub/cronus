@@ -1,3 +1,25 @@
+ psql -c "select slot_name, plugin, slot_type from pg_replication_slots ;" claimsprocess
+
+# Per the unapplied gap check
+
+SELECT
+    slot_name,
+    slot_type,
+    active,
+    restart_lsn,
+    confirmed_flush_lsn,
+    pg_current_wal_lsn() AS current_lsn,
+    pg_size_pretty(
+        pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)
+    ) AS wal_gap
+FROM pg_replication_slots;
+         slot_name         | slot_type | active |  restart_lsn  | confirmed_flush_lsn |  current_lsn  | wal_gap
+---------------------------+-----------+--------+---------------+---------------------+---------------+---------
+ claimshumana_prod_002_sub | logical   | t      | A65C/CCF9A3B0 | A68D/4C6F9F50       | AE86/9A4E6000 | 8359 GB
+(1 row)
+
+
+
 # Per streaming replication
 On the Primary, create a slot:
 SQL

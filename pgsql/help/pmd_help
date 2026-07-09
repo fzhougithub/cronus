@@ -1,0 +1,159 @@
+Based on what you've shown:
+
+```bash
+/proc/1580/exe -> /opt/traps/bin/pmd
+```
+
+and
+
+```bash
+rpm -qf /opt/traps/bin/pmd
+file /opt/traps/bin/pmd is not owned by any package
+```
+
+this is **not a standard RHEL/AlmaLinux component** and **not installed through RPM**. It was likely installed manually or by a third-party monitoring/security product.
+
+The path is the biggest clue:
+
+```text
+/opt/traps/bin/pmd
+```
+
+The name **Traps** strongly suggests it is related to **Palo Alto Networks Traps / Cortex XDR** endpoint protection software. Historically, Traps was Palo Alto's endpoint agent before it became Cortex XDR.
+
+To confirm:
+
+```bash
+ps -fp 1580
+```
+
+```bash
+systemctl | grep -i traps
+```
+
+```bash
+systemctl | grep -i cortex
+```
+
+```bash
+find /opt/traps -maxdepth 2 -type f | head -50
+```
+
+```bash
+strings /opt/traps/bin/pmd | grep -i -E 'palo|traps|cortex'
+```
+
+You can also inspect the process:
+
+```bash
+cat /proc/1580/status
+```
+
+```bash
+cat /proc/1580/cgroup
+```
+
+```bash
+lsof -p 1580 | head -50
+```
+
+and especially:
+
+```bash
+top -H -p 1580
+```
+
+to see whether one thread is spinning.
+
+---
+
+### Why 635% CPU?
+
+On a multi-core system, CPU can exceed 100%.
+
+For example:
+
+```text
+635% ≈ 6.35 cores fully utilized
+```
+
+Common reasons for endpoint agents consuming that much CPU:
+
+1. **Real-time file scanning**
+
+   * Large pg_dump
+   * VACUUM
+   * CREATE INDEX
+   * WAL generation
+
+2. **Behavioral analysis**
+
+   * Many PostgreSQL backends spawning
+   * Huge temporary files
+   * High I/O activity
+
+3. **Agent bug**
+
+   * I've seen security agents get stuck in loops after log rotation or filesystem events.
+
+---
+
+### Check whether PostgreSQL activity is triggering it
+
+Since you're on a PostgreSQL server, I'd check:
+
+```bash
+iotop -o
+```
+
+```bash
+pidstat -durh -p 1580 1
+```
+
+```bash
+strace -p 1580 -c
+```
+
+The last one is particularly useful. If after 30 seconds you see something like:
+
+```text
+90% futex
+```
+
+it's spinning on locks.
+
+If you see:
+
+```text
+80% read
+```
+
+it's scanning files.
+
+If you see:
+
+```text
+80% stat/openat
+```
+
+it's walking directories.
+
+---
+
+### I'd also look at the parent process
+
+```bash
+pstree -sp 1580
+```
+
+or
+
+```bash
+ps -o pid,ppid,cmd -p 1580
+ps -fp <PPID>
+```
+
+That often reveals the service name even when the binary name doesn't.
+
+My current guess is **Palo Alto Cortex XDR / Traps endpoint agent**, and the 635% CPU is likely from scanning PostgreSQL files (WALs, dumps, temp files, or index builds). The contents of `/opt/traps` and the output of `systemctl | grep -i traps` would confirm it.
+

@@ -1,0 +1,21 @@
+find /var/cache/dnf -name "pcp-libs*.rpm"
+/var/cache/dnf/ssnc-cloud_almalinux-9_appstream-0372d86e836ee286/packages/pcp-libs-6.3.7-5.el9.x86_64.rpm
+
+find /var/cache/dnf -name "pcp-conf*.rpm"
+/var/cache/dnf/ssnc-cloud_almalinux-9_appstream-0372d86e836ee286/packages/pcp-conf-6.3.7-5.el9.x86_64.rpm
+
+rpm -ivh --replacefiles  /var/cache/dnf/ssnc-cloud_almalinux-9_appstream-0372d86e836ee286/packages/pcp-libs-6.3.7-5.el9.x86_64.rpm /var/cache/dnf/ssnc-cloud_almalinux-9_appstream-0372d86e836ee286/packages/pcp-conf-6.3.7-5.el9.x86_64.rpm
+Verifying...                          ################################# [100%]
+Preparing...                          ################################# [100%]
+Updating / installing...
+   1:pcp-conf-6.3.7-5.el9             ################################# [ 50%]
+   2:pcp-libs-6.3.7-5.el9             ################################# [100%]
+
+dnf install sysstat
+
+
+The ldconfig will flush the value into /etc/ld.so.cache
+
+dnf download --destdir=/tmp/pcp_rpms pcp-libs pcp-conf sysstat
+
+

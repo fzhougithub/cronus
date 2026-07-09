@@ -1,0 +1,8 @@
+BEGIN;
+LOCK TABLE datamart_humana.claim_c_320_202512_p0 IN ACCESS EXCLUSIVE MODE;
+SELECT columnar.vacuum('datamart_humana.claim_c_320_202512_p0');
+COMMIT;
+
+select columnar.stats('datamart_humana.claim_c_320_202512_p0');
+
+

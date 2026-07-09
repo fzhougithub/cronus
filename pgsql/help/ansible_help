@@ -4,10 +4,11 @@ AWS_PROFILE='non-prod' terraform plan
 AWS_PROFILE="non-prod" terraform init
 AWS_PROFINE='non-prod' terraform apply
 
+unalias python3; unalias pip3
 pyenv activate venv
+export PATH=$(echo "$PATH" | sed 's|/Users/fzhou/.pyenv/shims:||')\n
 
-
-ansible-playbook playbook.yaml -l odshumana-pg16-02-alma9-prod-drx-kc.ssnc-corp.cloud --tag pg-base --diff
+ansible-playbook playbook.yaml -l odshumana-pg16-02-alma9-prod-drx-kc.ssnc-corp.cloud --tag pg-base --diff --check -u rundeck
 
 
 ansible-playbook ./playbook_claimshumana-db-03.yaml --diff --check > ~/Downloads/playbook_claimshumana-db-03.check

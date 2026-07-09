@@ -1,0 +1,14 @@
+\o truncate_pct_other.sql
+select 'truncate table pct_other.'||tablename||' restart identity cascade;' from pg_tables where schemaname='pct_other';
+\o
+
+SELECT 'CREATE SUBSCRIPTION ' || subname || 
+       ' CONNECTION ''' || subconninfo || 
+       ''' PUBLICATION ' || array_to_string(subpublications, ', ') || ';' 
+FROM pg_subscription 
+WHERE subname = 'uatpls_pct_other_sub';
+
+ CREATE SUBSCRIPTION uatpls_pct_other_sub CONNECTION 'host=10.222.194.61 dbname=pct port=5432' PUBLICATION uatpls_pct_other_pub;
+
+SELECT srsubid, srrelid::regclass, srsubstate, srsublsn FROM pg_subscription_rel where srsubstate <> 'r';
+

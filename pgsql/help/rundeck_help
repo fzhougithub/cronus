@@ -1,3 +1,8 @@
+to get the new server
+1. kubernetes:update_rundeck_node_reporting
+2. kuberneets:whitelist_rundeck_reporting
+
+
 ops-ctl-uat-drx-kc
 
 1. select the projects

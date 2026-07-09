@@ -1,0 +1,44 @@
+create extension buffercache;
+
+SELECT
+  c.relname,
+  COUNT(*) AS buffers_read
+FROM pg_buffercache b
+JOIN pg_class c ON b.relfilenode = c.relfilenode
+GROUP BY c.relname
+ORDER BY buffers_read DESC
+LIMIT 20;
+        relname        | buffers_read
+-----------------------+--------------
+ claim_core_320_202002 |       992592
+ claim_core_320_202001 |       846911
+ claim_core_320_202003 |       779566
+ claim_core_319_202509 |       768458
+ claim_core_319_202507 |       651232
+ claim_core_319_202603 |       633940
+ claim_core_319_202510 |       495581
+ claim_core_319_202601 |       491159
+ claim_core_319_202512 |       470653
+ claim_core_319_202602 |       467874
+ claim_core_319_202511 |       429352
+ claim_core_319_202508 |       396030
+ claim_core_319_202503 |       382143
+ claim_core_319_202504 |       378614
+ claim_core_319_202505 |       363007
+ claim_core_320_202006 |       349108
+ claim_core_319_202506 |       342908
+ claim_core_319_202502 |       334545
+ claim_core_320_202012 |       315994
+ claim_core_320_202004 |       306141
+(20 rows)
+
+SELECT
+  c.relname,
+  COUNT(*) AS buffers_read
+FROM pg_buffercache b
+JOIN pg_class c ON b.relfilenode = c.relfilenode
+GROUP BY c.relname
+ORDER BY buffers_read DESC
+LIMIT 20;
+
+

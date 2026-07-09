@@ -1,3 +1,14 @@
+SELECT
+    schemaname,
+    matviewname,
+    matviewowner
+FROM pg_matviews
+WHERE matviewname = 'mac_pricing_drug_list_entries_vw';
+ schemaname |           matviewname            | matviewowner
+------------+----------------------------------+--------------
+ misc       | mac_pricing_drug_list_entries_vw | datamart
+(1 row)
+
 SELECT nspname AS schema_name, 
        rolname AS owner_name
 FROM pg_namespace n

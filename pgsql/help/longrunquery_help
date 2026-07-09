@@ -6,6 +6,6 @@ SELECT
   s.query AS full_query
 FROM pg_stat_activity a
 JOIN pg_stat_statements s ON a.query_id = s.queryid
-WHERE a.pid = 108408;
+WHERE a.state='active' and now()-xact_start > interval '10 minutes';
 
 

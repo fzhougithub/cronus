@@ -1,0 +1,9 @@
+
+sudo su - postgres
+
+vi /apps/lib/pgsql/14/data/pg_hba.conf
+
+vi /apps/lib/pgsql/16/data/pg_hba.conf
+
+select pg_reload_conf();
+

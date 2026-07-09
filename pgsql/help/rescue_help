@@ -1,0 +1,8 @@
+-- wal 8.6TB accumulated, and sub dead already
+
+SELECT pg_replication_slot_advance(
+    'claimshumana_prod_002_sub',
+    pg_current_wal_lsn()
+);
+
+

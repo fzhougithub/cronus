@@ -1,4 +1,15 @@
+SELECT
+    pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_size,
+    SUM(pg_total_relation_size(c.oid)) / 1024 / 1024 / 1024 AS total_size_gb
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
 
+  AND c.relkind = 'r';
+ total_size |     total_size_gb
+------------+-----------------------
+ 3022 GB    | 3022.0493240356445313
+(1 row)
 SELECT n.nspname AS schema_name,
        c.relname AS table_name,
        t.spcname AS tablespace

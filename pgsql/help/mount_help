@@ -1,0 +1,7 @@
+mount -o remount,noatime,nodiratime /var/lib/pgsql/16/data
+mount -o remount,noatime,nodiratime /pg_wal
+mount -o remount,noatime,nodiratime /pg_tblspc_18
+
+findmnt -o OPTIONS /pg_tblspc_18
+
+

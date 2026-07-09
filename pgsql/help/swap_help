@@ -1,3 +1,27 @@
+cat /proc/xxxxxx/swape > file
+
+Add second swap file
+# 1. Create a second 96GB file (this takes a few moments)
+sudo fallocate -l 96G /swap/swapfile2
+
+# 2. Secure it (PostgreSQL/Linux will complain if permissions are too open)
+sudo chmod 600 /swap/swapfile2
+
+# 3. Format it for swap
+sudo mkswap /swap/swapfile2
+
+# 4. Activate it immediately
+sudo swapon /swap/swapfile2
+
+Later, you can remove this swap by
+
+sudo swapoff /swap/swapfile2
+sudo rm /swap/swapfile2
+
+
+
+
+
 sudo fuser -vm /swap
                      USER        PID ACCESS COMMAND
 /swap:               root     kernel swap  /swap/swapfile

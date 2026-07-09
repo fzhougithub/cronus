@@ -1,0 +1,13 @@
+track_activity_query_size=8192
+
+1024(default)
+OLTP, short queries
+4096
+Apps with ORM-generated long SQL
+8192
+Reporting, stored procs, long IN ()lists ✅
+16384
+Deeply nested CTEs / dynamic SQL
+32768+
+Only if you reallyneed it (monitor shared memory)
+

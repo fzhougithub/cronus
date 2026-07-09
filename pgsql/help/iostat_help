@@ -1,8 +1,6 @@
+iostat -xz 1 5 |awk '{if ($NF>90) print}'
+
 iostat -x 1 3
-
-
-
-
 
 PID 193683, 141050: ~54% CPU each (likely heavy queries)
 

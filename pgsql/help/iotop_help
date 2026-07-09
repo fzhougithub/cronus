@@ -1,4 +1,10 @@
+iotop -o -P # will filter idle process and show highest process at the top
+
 iotop -o $(pidof pg_dump | sed 's/\([0-9]\+\)/-p \1/g')
+
+iotop -o
+
+
 it change replace all of the number part to -p 4024795 -p 4024794 -p 4024793 -p 4024724
 
 for pid in $(pidof pg_dump); do iotop -o -p $pid; done

@@ -1,0 +1,14 @@
+yum-config-manager --disable pgdg13
+
+yum install pg_bulkload_14.x86_64 pg_bulkload_14-client.x86_64
+
+create extension pg_bulkload
+
+
+sudo -u postgres '/apps/lib/pgsql/16/scripts/exec_bulkload.sh -e https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud -p 443 -u s3://etl-prod-phi/prod/ -n etl_prod_phi -w /pg_bulkload -d claimsprocess -s claimsprocess_humana -l /pg_logs/pg_bulkload -a 2 -f EE1.UNLOAD.D260205.ZIP'
+
+sudo -u postgres '/apps/lib/pgsql/16/scripts/exec_bulkload.sh -e "https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud" -p 443 -u "s3://etl-prod-phi/prod/" -n etl_prod_phi -w "/pg_bulkload" -d claimsprocess -s claimsprocess_humana -l "/pg_logs/pg_bulkload" -a 2 -f "EE1.UNLOAD.D260205.ZIP"'
+
+sudo -u postgres /apps/lib/pgsql/16/scripts/exec_bulkload.sh -e "https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud" -p 443 -u "s3://etl-prod-phi/prod/" -n etl_prod_phi -w "/pg_bulkload" -d claimsprocess -s claimsprocess_humana -l "/pg_logs/pg_bulkload" -a 2 -f "EE1.UNLOAD.D260205.ZIP"
+
+

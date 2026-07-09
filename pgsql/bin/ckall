@@ -1,0 +1,18 @@
+#!/bin/bash
+
+sublist=$(psql -d ods_domani -At -c 'select subname from pg_subscription');
+
+cklist=ckall.cmdlist
+echo '' > $cklist
+
+for i in $sublist;
+do
+	sch=$(echo "$i" | sed -E 's/^[^_]+_//; s/_sub$//')
+	conn=$(psql -d ods_domani -At -c "select subconninfo from pg_subscription where subname='$i';")
+	eval $conn
+	f=$sch.tablist
+	./gen_full_tablist.sh ods_domani $sch > $f
+	echo "./check_counts.sh $f $host $dbname"  >> $cklist
+done
+
+cat $cklist

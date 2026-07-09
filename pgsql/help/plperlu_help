@@ -1,0 +1,19 @@
+dnf install postgresql14-plperl
+dnf install postgresql16-plperl
+
+create extension plperlu;
+
+CREATE OR REPLACE FUNCTION run_script(script_path TEXT) 
+RETURNS TEXT AS $$
+    my $cmd = $_[0];
+    my $output = `$cmd 2>&1`; -- Executes the shell script
+    return $output;
+$$ LANGUAGE plperlu;
+
+
+pg_dumpall -h 10.173.29.130 -s |psql -d ods_domani
+-- Pipe in all of the schemas to reporting server. 
+
+
+
+

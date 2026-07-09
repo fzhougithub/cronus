@@ -1,9 +1,92 @@
+SELECT c.relname AS table_name, opt.option_name, opt.option_value
+FROM
+    pg_class c,
+    LATERAL pg_options_to_table(c.reloptions) AS opt
+WHERE
+    c.relnamespace = 'claimsprocess_humana'::regnamespace;
+
+
 SELECT
-  relname AS table_name,
-  schemaname AS schema_name,
+    schemaname || '.' || relname AS table_full_name,
+    n_live_tup AS lives,
+    n_dead_tup AS deads,
+    n_mod_since_analyze AS mods_since_analyze,
+    -- Calculate Analyze Threshold
+    round(
+        current_setting('autovacuum_analyze_threshold')::float +
+        (current_setting('autovacuum_analyze_scale_factor')::float * n_live_tup)
+    ) AS analyze_trigger_at,
+    -- Calculate Vacuum Threshold
+    round(
+        current_setting('autovacuum_vacuum_threshold')::float +
+        (current_setting('autovacuum_vacuum_scale_factor')::float * n_live_tup)
+    ) AS vacuum_trigger_at
+FROM pg_stat_user_tables
+WHERE n_live_tup > 0
+ORDER BY analyze_trigger_at DESC;
+
+
+SELECT
+    substr(n.nspname||'.'||c.relname,1,50) AS table_name,
+    round(pg_total_relation_size(c.oid)/(1024.0^3), 2) AS size_gb,
+    s.last_autovacuum,
+    s.n_dead_tup,
+    round(
+        current_setting('autovacuum_vacuum_threshold')::float +
+        (current_setting('autovacuum_vacuum_scale_factor')::float * n_live_tup)
+    ) AS vacuum_at,
+    s.n_mod_since_analyze,
+    round(
+        current_setting('autovacuum_analyze_threshold')::float +
+        (current_setting('autovacuum_analyze_scale_factor')::float * n_live_tup)
+    ) AS analyze_at,
+    s.n_live_tup
+    -- opt.option AS autovacuum_option
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+LEFT JOIN LATERAL unnest(c.reloptions) AS opt(option)
+    ON opt.option LIKE 'autovacuum%'
+WHERE c.relkind = 'r'
+-- AND c.relname LIKE 'claim_core%'
+AND (s.last_autovacuum IS NULL or s.last_autovacuum<now()- interval '7 days')
+ORDER BY size_gb DESC;
+
+
+SELECT
+    n.nspname||'.'||c.relname AS table_name,
+    round(pg_total_relation_size(c.oid)/(1024.0^3), 2) AS total_size_gb,
+    s.last_autovacuum,
+    s.n_dead_tup,
+    s.n_live_tup,
+    ROUND(
+        s.n_dead_tup * 100.0 / NULLIF(s.n_live_tup, 0),
+        2
+    ) AS dead_ratio,
+    opt.option AS autovacuum_option
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+LEFT JOIN LATERAL unnest(c.reloptions) AS opt(option)
+    ON opt.option LIKE 'autovacuum%'
+WHERE c.relkind = 'r'
+-- AND c.relname LIKE 'claim_core%'
+AND (s.last_autovacuum IS NULL or s.last_autovacuum<now()- interval '7 days')
+ORDER BY total_size_gb DESC;
+
+
+SELECT
+  schemaname||'.'||relname as name,
   last_autovacuum,
   last_autoanalyze,
-  autovacuum_count,
-  autoanalyze_count
+  n_dead_tup,
+  n_live_tup
 FROM pg_stat_user_tables
-ORDER BY autovacuum_count DESC;
+where last_autovacuum is null
+ORDER BY n_live_tup DESC;

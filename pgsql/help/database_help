@@ -1,0 +1,1 @@
+create database ods_domani with encoding 'SQL_ASCII' TEMPLATE template0;

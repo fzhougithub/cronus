@@ -1,0 +1,13 @@
+curl -s http://localhost:9100/metrics \
+| grep 'node_cpu_seconds_total{mode="iowait"}' \
+> /tmp/iowait_before.txt
+
+wait for minutes
+
+curl -s http://localhost:9100/metrics \
+| grep 'node_cpu_seconds_total{mode="iowait"}' \
+> /tmp/iowait_after.txt
+
+diff /tmp/iowait_before.txt /tmp/iowait_after.txt
+
+

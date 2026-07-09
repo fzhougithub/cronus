@@ -1,0 +1,1 @@
+grep -i "ERROR\|FATAL\|PANIC" $(ls -larth |tail -1|awk '{print $NF}')

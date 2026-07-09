@@ -1,0 +1,79 @@
+select "member_vw"."address_line_txt_1" as "member_vw_address_line_txt_1", 
+"member_vw"."address_line_txt_2" as "member_vw_address_line_txt_2", 
+"member_vw"."address_line_txt_3" as "member_vw_address_line_txt_3", 
+"member_vw"."birth_dt" as "member_vw_birth_dt", 
+"member_vw"."city_nm" as "member_vw_city_nm", 
+"member_vw"."client_id" as "member_vw_client_id", 
+"member_vw"."cms_contract_id" as "member_vw_cms_contract_id", 
+"member_vw"."customer_id" as "member_vw_customer_id", 
+"member_vw"."external_group_id" as "member_vw_external_group_id", 
+"member_vw"."mbi_id" as "member_vw_mbi_id", 
+"member_vw"."member_benefit_period_effective_begin_dt_set" as "member_vw_member_benefit_period_effective_begin_dt_set", 
+"member_vw"."member_benefit_period_effective_end_dt_set" as "member_vw_member_benefit_period_effective_end_dt_set", 
+"member_vw"."member_first_nm" as "member_vw_member_first_nm", 
+"member_vw"."member_id" as "member_vw_member_id", 
+"member_vw"."member_last_nm" as "member_vw_member_last_nm", 
+"member_vw"."member_middle_initial" as "member_vw_member_middle_initial", 
+"member_vw"."member_miscellaneous_data_1" as "member_vw_member_miscellaneous_data_1", 
+"member_vw"."member_miscellaneous_data_2" as "member_vw_member_miscellaneous_data_2", 
+"member_vw"."member_miscellaneous_data_3" as "member_vw_member_miscellaneous_data_3", 
+"member_vw"."state_cd" as "member_vw_state_cd", 
+"member_vw"."zip_cd" as "member_vw_zip_cd", 
+"member_vw"."zip_plus4_cd" as "member_vw_zip_plus4_cd"
+from "misc_humana"."member_vw" "member_vw"
+where ("member_vw"."customer_set_id" in ('256','257','3','259','261','264','266','268','12','141','270','14','15','16','17','274','18','147','19','21','277','22','23','280','24','281','25','26','27','283','28','157','285','159','287','31','32','161','33','289','34','290','163','35','291','36','292','37','166','39','40','168','297','299','43','44','45','46','179','53','182','192','196','202','204','211','213','86','216','217','219','221','224','225','226','227','228','102','234','108','240','242','244','246','249','250','253') and 1 = 1 and 1 = 1 and ("member_vw"."customer_id" = 851))
+ limit 1048577 
+
+ SELECT                                                                                                                                            +
+     c.customer_id ,                                                                                                                               +
+     h87.full_title AS customer_name,                                                                                                              +
+      c.client_id ,                                                                                                                                +
+      cl.full_title as client_name,                                                                                                                +
+     trim(TO_CHAR(c.pharmacy_id, '0000000')) AS pharmacy_id,                                                                                       +
+    -- c.pharmacy_affiliation_id,                                                                                                                  +
+     c.npi_prescriber_id,                                                                                                                          +
+     c.fill_dt,                                                                                                                                    +
+     c.process_create_ts::date as processed_date,                                                                                                  +
+     c.prescription_id,                                                                                                                            +
+     c.specific_therapy_class_cd,                                                                                                                  +
+     c.gcn_id,                                                                                                                                     +
+     c.claim_status_cd,                                                                                                                            +
+     c.claim_id,                                                                                                                                   +
+     c.total_paid_amt,                                                                                                                             +
+   --  c.pharmacy_chain_id,                                                                                                                        +
+     (   SELECT                                                                                                                                    +
+             COALESCE(S50C.postal_st_cd, s.postal_st_cd)                                                                                           +
+         FROM customer.s50            s                                                                                                            +
+         LEFT OUTER JOIN customer.s50 S50C                                                                                                         +
+             ON  S50C.PHARMACY_ID = S.PHARMACY_ID                                                                                                  +
+             AND S50C.RECORD_TYPE_CD = 'C'                                                                                                         +
+             AND S50C.CUSTOMER_SET_ID = e21.customer_set_id                                                                                        +
+         WHERE s.pharmacy_id::INT = c.pharmacy_id                                                                                                  +
+         AND s.postal_st_cd IS NOT NULL                                                                                                            +
+         AND s.RECORD_TYPE_CD IN ( 'A',                                                                                                            +
+                                  'M' )                                                                                                            +
+         LIMIT 1) AS pharmacy_address_state                                                                                                        +
+ FROM claimsprocess_humana.claim_core     c                                                                                                        +
+ INNER JOIN customer.customr0 h87                                                                                                                  +
+     ON  h87.CUSTOMER_NO = c.customer_id                                                                                                           +
+ INNER JOIN customer.clients0 cl                                                                                                                   +
+     ON cl.customer_no = c.customer_id                                                                                                             +
+     and cl.client_no = c.client_id                                                                                                                +
+ INNER JOIN customer.e21 e21                                                                                                                       +
+     ON  e21.customer_id = c.customer_id                                                                                                           +
+     AND e21.customer_set_type_id = 2                                                                                                              +
+ WHERE 1 = 1                                                                                                                                       +
+          AND  c.customer_id IN ($1)                                                                                                               +
+          AND c.pharmacy_id > 0                                                                                                                    +
+          AND c.client_id IN ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) +
+     AND (c.claim_status_cd IN ('10', '11') and $27 = 'paid'                                                                                       +
+           or c.claim_status_cd in ('70', '71') and $28 = 'denied'                                                                                 +
+           or c.claim_status_cd  in ('10', '11', '70', '71') and $29 = 'all')                                                                      +
+            AND ( c.fill_dt >= $30 AND c.fill_dt <= $31 )                                                                                          +
+                                                                                                                                                   +
+                                                                                                                                                   +
+       ORDER BY customer_id ,  c.client_id ,                                                                                                       +
+     c.pharmacy_id,                                                                                                                                +
+     claim_id
+
+

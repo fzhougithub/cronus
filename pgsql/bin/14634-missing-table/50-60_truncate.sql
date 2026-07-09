@@ -1,0 +1,22 @@
+
+truncate table claimsprocess_humana.claim_core_320_202301 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_544_202511 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_319_202603 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_830_202412 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_830_202410 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_830_202407 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_830_202408 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_830_202411 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_830_202409 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_544_201602 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_544_201603 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_544_201608 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_544_201605 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_544_201604 restart identity cascade;
+truncate table claimsprocess_humana.claim_core_544_201607 restart identity cascade;
+truncate table claimsprocess_humana.claim_submission_clarification_codes_37 restart identity cascade;
+truncate table claimsprocess_humana.claim_submission_clarification_codes_39 restart identity cascade;
+truncate table claimsprocess_humana.claim_approved_message_57 restart identity cascade;
+truncate table claimsprocess_humana.a_claim_approved_message_07 restart identity cascade;
+truncate table claimsprocess_humana.claim_approved_message_60 restart identity cascade;
+truncate table claimsprocess_humana.claim_approved_message_35 restart identity cascade;

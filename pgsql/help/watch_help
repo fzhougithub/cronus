@@ -1,4 +1,40 @@
+watch -n 1 "psql -At -d ods_domani -c \"SELECT xact_commit+xact_rollback FROM pg_stat_database WHERE datname='ods_domani';\""
+
+watch -n 1 "cat /proc/meminfo | grep -E 'Dirty|Writeback'"
+psql -c " SELECT * FROM pg_stat_bgwriter; SELECT * FROM pg_stat_io; "
+
+psql -c "CHECKPOINT;"
+watch -n 1 'iostat -x 1 1 | tail -n 20'
+
+
 watch -n 10 "ls -lh /pg_backups/claimsprocess_pub_dump | wc -l"
 
 watch -n 2 "psql -At -d ods_domani -c \"SELECT now() - (substring(name FROM 'end_marker_(.*)')::timestamp) FROM finance_humana.t1 WHERE id = 1000001;\""
 
+watch -n 5 'psql -c "SELECT phase, pg_size_pretty(backup_total) AS total, pg_size_pretty(backup_streamed) AS streamed, round(100.0 * backup_streamed /
+watch -n 5 'psql -c "SELECT phase, pg_size_pretty(backup_total) AS total, pg_size_pretty(backup_streamed) AS streamed, round(100.0 * backup_streamed /
+watch -n 5 'psql -f /apps/lib/pgsql/16/scripts/base_backup_status.sql'
+
+cat /tmp/pgss.sql
+SELECT
+  left(query, 120) AS query,
+  calls,
+  total_exec_time
+FROM pg_stat_statements
+WHERE query LIKE '%stg_customer_320%'
+ORDER BY calls DESC
+LIMIT 5;
+
+watch -n 0.5 "psql -d claimsprocess -f /tmp/pgss.sql"
+Every 0.5s: psql -d claimsprocess -f /tmp/pgss.sql                                                  10-221-134-166.ssnc-corp.cloud: Mon Apr  6 23:01:32 2026
+
+                                                          query                                                           |  calls   |  total_exec_time
+--------------------------------------------------------------------------------------------------------------------------+----------+--------------------
+ SELECT "customer_id", "claim_id", "claim_error_ct", "last_mnt_ts", "last_mnt_opid", "claim_error_cd", "reject_occurrence | 41799473 |  1155253.485613562
+ INSERT INTO "stg_customer_320"."a10" ("customer_id", "claim_id", "claim_error_ct", "last_mnt_ts", "last_mnt_opid", "clai | 41798207 | 2912407.6721957712
+ UPDATE "stg_customer_320"."o59" SET "document_no" = $1, "cust_id" = $2, "clnt_id" = $3, "relationship" = $4, "ucf_tot_pr | 40724240 |  510726817.5061566
+ SELECT "customer_id", "claim_id", "prescribed_quantity_ct", "other_coverage_cd", "hic_external_seq_id", "last_mnt_ts", " | 33833879 |  5603772.494959845
+ SELECT "document_no", "cust_id", "clnt_id", "relationship", "ucf_tot_presc_cost", "rx_date_written", "ndc_label_name", " | 33360439 |  13145561.12934635
+(5 rows)
+
+watch -n 10 "iotop -p 402955"

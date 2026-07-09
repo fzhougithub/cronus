@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#echo "DEBUG: Detected $# arguments."
+#echo "DEBUG: Arg3 is [$3]"
+
+# This code is the framework to pipe source to the target
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <schemaname.tablename> <dry/run>"
+	echo "Example: $0 claimsprocess_humana.claim_core dry\""
+	exit 1
+else
+	sch=$(echo $1|cut -d. -f1)
+fi
+
+if [ $2 == 'dry' ];then
+	echo "pg_dump -h 10.221.136.121 -d ods_domani -t $1 --data-only --no-owner --no-privileges | psql -d ods_domani"
+	#echo "pg_dump -h 10.221.136.121 -d ods_domani -t $1 --data-only --no-owner --no-privileges --insert | psql -d ods_domani"
+elif [ $2 == 'run' ];then
+	pg_dump -h 10.221.136.121 -d ods_domani -t $1 --data-only --no-owner --no-privileges | psql -d ods_domani
+fi

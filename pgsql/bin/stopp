@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <pid>"
+  exit 1
+fi
+
+PID=$1
+t=0
+
+while true; do
+  # Try to terminate + cancel
+  psql -At -c "SELECT pg_terminate_backend($PID); SELECT pg_cancel_backend($PID);" >/dev/null 2>&1
+
+  # Check if PID still exists
+  EXISTS=$(psql -At -c "SELECT 1 FROM pg_stat_activity WHERE pid = $PID LIMIT 1;")
+
+  if [ "$EXISTS" != "1" ]; then
+    echo "PID $PID terminated successfully"
+    break
+  fi
+
+  # increment safely
+  t=$((t+1))
+  echo "PID $PID still alive, retrying $t"
+  sleep 1
+done

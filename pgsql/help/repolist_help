@@ -1,0 +1,36 @@
+   52  yum repolist all | grep pgdg
+   53  yum repolist all | grep pgdg|grep 16
+   54  dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+   55  dnf config-manager --enable pgdg16
+   56  yum repolist all | grep pgdg|grep 16
+   57  dnf list available | grep pg_background
+   58  dnf search pg_background
+   59  ``
+   60  dnf config-manager --enable pgdg16-updates-testing
+   61  yum install pg_background_16-1.3-1PGDG.rhel9.x86_64
+
+
+ls /var/cache/yum -R | grep pg_background
+ls: cannot access '/var/cache/yum': No such file or directory
+[root@odshumana-pg16-02-alma9-prod-drx-kc yum.repos.d]$ rpm -qi pg_background_16
+Name        : pg_background_16
+Version     : 1.3
+Release     : 1PGDG.rhel9
+Architecture: x86_64
+Install Date: Sun 01 Feb 2026 04:45:53 AM UTC
+Group       : Unspecified
+Size        : 56124
+License     : PostgreSQL
+Signature   : RSA/SHA256, Sat 02 Nov 2024 04:07:52 PM UTC, Key ID 40bca2b408b40d20
+Source RPM  : pg_background_16-1.3-1PGDG.rhel9.src.rpm
+Build Date  : Sat 02 Nov 2024 04:07:49 PM UTC
+Build Host  : pgrpms-rhel-9-x86-64-pgbuild
+Vendor      : PostgreSQL Global Development Group
+URL         : https://github.com/vibhorkum/pg_background
+Summary     : PostgreSQL Background Worker
+Description :
+This module allows user to arbitrary command in a background worker and
+gives capability to users to launch
+
+
+

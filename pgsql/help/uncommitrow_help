@@ -1,0 +1,31 @@
+-- Check specific tables for remaining issues
+SELECT 
+    'claim_message_tracking' as table_name,
+    COUNT(*) as problematic_rows
+FROM claimsprocess.claim_message_tracking 
+WHERE xmin::text::bigint >= 153750000 AND xmin::text::bigint <= 153760000
+
+UNION ALL
+
+SELECT 
+    'a_claim_extension_2 (other)' as table_name,
+    COUNT(*) as problematic_rows
+FROM claimsprocess_other.a_claim_extension_2 
+WHERE xmin::text::bigint >= 153750000 AND xmin::text::bigint <= 153760000
+
+UNION ALL
+
+SELECT 
+    'a_claim_extension_2 (humana)' as table_name,
+    COUNT(*) as problematic_rows
+FROM claimsprocess_humana.a_claim_extension_2 
+WHERE xmin::text::bigint >= 153750000 AND xmin::text::bigint <= 153760000;
+
+
+UPDATE claimsprocess.claim_message_tracking 
+SET customer_id = customer_id
+WHERE xmin::text::bigint >= 153750000 
+  AND xmin::text::bigint <= 153760000;
+
+ticket DEVOPS-15203
+

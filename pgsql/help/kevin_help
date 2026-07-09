@@ -1,0 +1,21 @@
+shared_buffers = '120GB'
+work_mem = '40MB'
+work_mem = '40MB'
+effective_io_concurrency = '64'
+ max_worker_processes = '128'
+max_parallel_workers_per_gather = '32'
+max_parallel_maintenance_workers = '16'
+max_parallel_workers = '16'
+max_wal_size = '256GB'
+min_wal_size = '10GB'
+max_wal_senders = '2500'
+max_replication_slots = '2500'
+wal_keep_size = 50000
+max_slot_wal_keep_size = -1
+max_standby_archive_delay = -1
+max_standby_streaming_delay = -1 
+hot_standby_feedback = on 
+max_logical_replication_workers = '128'
+max_sync_workers_per_subscription = '64'
+
+

@@ -1,0 +1,21 @@
+accumulator_humana=# select relkind,count(1) from pg_class where relnamespace=17155 group by relkind;
+ relkind | count
+---------+-------
+ r       |    24
+ i       |    24
+ p       |     6
+ S       |     5
+ I       |     6
+(5 rows)
+
+accumulator_humana=# SELECT tgenabled AS status, count(*) FROM pg_trigger t JOIN pg_class c ON t.tgrelid = c.oid WHERE c.relnamespace = 17155 GROUP BY tgenabled;
+ status | count
+--------+-------
+ O      |    17
+(1 row)
+
+accumulator_humana=# SELECT prokind, count(*) FROM pg_proc WHERE pronamespace = 17155 GROUP BY prokind;
+ prokind | count
+---------+-------
+ f       |     9
+(1 row)

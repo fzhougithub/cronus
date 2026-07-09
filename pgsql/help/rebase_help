@@ -1,0 +1,25 @@
+ git pull origin DEVOPS-16522-lower-down-shared-buffer-size-odshumana02 --rebase
+
+
+1. make sure you are in your branch
+git branch
+* DEVOPS-16522-lower-down-shared-buffer-size-odshumana02
+  main
+
+or
+ git checkout DEVOPS-16522-lower-down-shared-buffer-size-odshumana02
+
+2. get latest code
+git fetch origin
+
+3. stash your work
+git stash
+
+4. rebase
+git rebase origin
+or
+git pull --rebase origin main
+
+5. pop your stash back
+git stash pop
+ 

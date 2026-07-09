@@ -1,3 +1,12 @@
+git fetch
+git checkout DEVOPS-16447-dev-ods-pg14-pg16-upgrade
+# If need to add anything do
+git add filename
+git commit --amend --no-edit
+git push DEVOPS-16447-dev-ods-pg14-pg16-upgrade -f
+
+
+
 git log --oneline
 
 git log main..DEVOPS-12711-Setup-Citus-Cluster-HUAT --oneline
@@ -9,6 +18,7 @@ git ls-remote --heads origin
 git log develop..DEVOPS-12711-Setup-Citus-Cluster-HUAT --oneline
 
 
+git branch -D DEVOPS-14602-create-vm-odshumana-pg16-04-alma9-prod
 
 1. fetch branch from origin in the branch
 git fetch origin

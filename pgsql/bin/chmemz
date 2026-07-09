@@ -1,0 +1,10 @@
+#!/bin/bash
+
+CK=${1:-10}
+ps -eo pid,ppid,%cpu,%mem --sort=-%mem |head -$CK
+pids=$(ps -eo pid,%cpu,%mem --sort=-%cpu|egrep -v "PID|grep"|head -$CK|awk '{print $1}'|paste -sd, -)
+pidstr=$(echo $pids|sed 's/,/|/g')
+echo $pids
+echo $pidstr
+ps -ef|egrep "$pidstr"|egrep "checkpointer"
+psql -c "select pid,now()-xact_start,substr(query,1,80) from pg_stat_activity where pid in ($pids)"

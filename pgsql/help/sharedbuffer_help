@@ -1,0 +1,10 @@
+grep Huge /proc/meminfo
+AnonHugePages:    555008 kB
+ShmemHugePages:        0 kB
+FileHugePages:         0 kB
+HugePages_Total:   66440
+HugePages_Free:    14136
+HugePages_Rsvd:      146
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+Hugetlb:        136069120 kB

@@ -1,0 +1,32 @@
+curl http://localhost:9100/metrics | grep node_cpu_seconds_total
+curl http://localhost:9100/metrics | grep node_disk_io_time_seconds_total
+curl http://localhost:9100/metrics | grep 'node_cpu_seconds_total{.*mode="iowait"}'
+curl http://localhost:9100/metrics | node_disk_written_bytes_total
+curl http://localhost:9100/metrics | node_disk_read_bytes_total
+
+iostat -xk 1 10
+iostat -xtk 5 2
+
+
+
+curl http://localhost:9187/metrics | grep pg_stat_activity
+curl http://localhost:9187/metrics | grep pg_stat_autovacuum
+
+curl -s http://localhost:9100/metrics | grep 'node_disk_io_time_seconds_total{device="dm-10"}'
+node_disk_io_time_seconds_total{device="dm-10"} 3004.34
+
+curl -s http://localhost:9100/metrics | grep node_disk_io_now|grep -v '} 0'
+# HELP node_disk_io_now The number of I/Os currently in progress.
+# TYPE node_disk_io_now gauge
+node_disk_io_now{device="dm-10"} 9
+node_disk_io_now{device="sdn"} 48
+
+lsblk|grep sdn -A3
+sdn                               8:208  0  9.8T  0 disk
+└─pg_tblspc_08vg-pg_tblspc_08lv 253:10   0  9.8T  0 lvm  /pg_tblspc_08
+
+lsblk -o NAME,KNAME,PKNAME,MOUNTPOINT,SIZE|grep dm-10
+└─pg_tblspc_08vg-pg_tblspc_08lv dm-10 sdn    /pg_tblspc_08  9.8T
+
+-- will hang there when disk saturation. 
+ hdparm -tT /dev/sdn

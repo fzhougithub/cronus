@@ -1,0 +1,9 @@
+tmux new -s [ session name ] #create new session
+
+< ctrl+b> then <d> #put the session in the backgroud
+
+tmux ls #view any current sessions
+
+tmux attach -t [ session name ] #join a current session
+
+< ctrl+d > #exit/close session

@@ -1,0 +1,31 @@
+lsblk -no MOUNTPOINT "/dev/$i" | grep -v '^$' | head -n 1
+
+lvs -a -o lv_name,vg_name,seg_type,devices,stripes
+
+  LV           VG           Type   Devices          #Str
+  appslv       appsvg       linear /dev/sdi(0)         1
+  backupslv    backupsvg    linear /dev/sdo(0)         1
+  bulkloadslv  bulkloadsvg  linear /dev/sdg(0)         1
+  logslv       logsvg       linear /dev/sdq(0)         1
+  pg_walshiplv pg_walshipvg linear /dev/sdt(0)         1
+  pg_wallv     pg_walvg     linear /dev/sdb(0)         1
+  homevol      rootvg       linear /dev/sda2(11185)    1
+  logvol       rootvg       linear /dev/sda2(9185)     1
+  rootvol      rootvg       linear /dev/sda2(2560)     1
+  swap         rootvg       linear /dev/sda2(6685)     1
+  tmpvol       rootvg       linear /dev/sda2(6310)     1
+  trapsvol     rootvg       linear /dev/sda2(0)        1
+  vartmpvol    rootvg       linear /dev/sda2(7185)     1
+  swapslv      swapsvg      linear /dev/sdf(0)         1
+  tblspc_10lv  tblspc_10vg  linear /dev/sdl(0)         1
+  tblspc_11lv  tblspc_11vg  linear /dev/sde(0)         1
+  tblspc_12lv  tblspc_12vg  linear /dev/sdp(0)         1
+  tblspc_1lv   tblspc_1vg   linear /dev/sdd(0)         1
+  tblspc_2lv   tblspc_2vg   linear /dev/sdc(0)         1
+  tblspc_3lv   tblspc_3vg   linear /dev/sdh(0)         1
+  tblspc_4lv   tblspc_4vg   linear /dev/sdk(0)         1
+  tblspc_5lv   tblspc_5vg   linear /dev/sdn(0)         1
+  tblspc_6lv   tblspc_6vg   linear /dev/sdm(0)         1
+  tblspc_7lv   tblspc_7vg   linear /dev/sdj(0)         1
+  tblspc_8lv   tblspc_8vg   linear /dev/sds(0)         1
+  tblspc_9lv   tblspc_9vg   linear /dev/sdr(0)         1

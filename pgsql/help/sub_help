@@ -1,3 +1,7 @@
+ALTER SUBSCRIPTION claimshumana_prod_stby_002_v2_sub SET (streaming = parallel);
+
+select subname,count(1) from pg_stat_subscription group by 1 order by 2 desc;
+
 SELECT
   n.nspname || '.' || c.relname AS table_name,
   sr.srsubstate,

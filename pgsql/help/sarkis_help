@@ -1,0 +1,5 @@
+grep -iE "ERROR|FATAL|PANIC" /pg_logs/log/postgresql-14.log | grep -iE "logic|subscri|replica|worker|apply|tablesync" | tail -50
+
+grep -iE "slot|origin" /var/log/postgresql/postgresql-14-main.log | grep -iE "ERROR|FATAL|could not|missing|invalid" | tail -50
+
+

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# This code is the framework to pipe source to the target
+if [ $# -ne 1 ];then
+	echo "Usage: $0 <schemaname.tablename>
+	echo "Example: $0 datamart_humana.k_extension_2_26
+	exit 1
+fi
+
+pg_dump -h 10.173.29.130 -t 'datamart_humana.k_extension_2_26' --schema-only ods_domani| \
+psql -d ods_domani

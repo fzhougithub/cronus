@@ -1,3 +1,47 @@
+terraform state rm (in old project)
+terraform state import / mv (in new project)
+
+fzhou@DST-JXK2FKH0CK odshumana-pg16-alma9-drx % AWS_PROFILE='prod' terraform state list|grep template_file
+module.odshumana-pg16-01-prod-drx-kc.data.template_file.postgres_config
+module.odshumana-pg16-02-prod-drx-kc.data.template_file.postgres_config
+module.odshumana-pg16-03-prod-drx-kc.data.template_file.postgres_config
+module.odshumana-pg16-04-prod-drx-kc.data.template_file.postgres_config
+
+AWS_PROFILE='prod' terraform state replace-provider registry.terraform.io/hashicorp/template registry.terraform.io/hashicorp/null
+
+AWS_PROFILE="prod" terraform state replace-provider terraform.ssnc-corp.cloud/ssnc/ssccloud ssnc/ssccloud
+
+AWS_PROFILE="prod" terraform state replace-provider -auto-approve  terraform.ssnc-corp.cloud/ssnc/ssccloud ssnc/ssccloud
+
+AWS_PROFILE=non-prod terraform state replace-provider hashicorp/template cloudposse/template
+AWS_PROFILE=non-prod terraform state replace-provider terraform.ssnc-corp.cloud/ssnc/ssccloud ssnc/ssccloud
+
+AWS_PROFILE='prod' terraform init --upgrade
+
+terraform state pull > backup.tfstate
+-- Backup state
+terraform state list
+terraform state show
+terraform state pull > state.json
+-- 
+terraform state rm module.old_host
+terraform import module.new_host <resource-id>
+
+
+
+(venv) fzhou@DST-JXK2FKH0CK reporting-pg16-alma9-drx % AWS_PROFILE='prod' terraform state list
+local_file.reporting-pg16-01_vols
+module.reporting-pg16-01-prod-drx-kc.data.dns_a_record_set.db
+module.reporting-pg16-01-prod-drx-kc.data.template_file.postgres_config
+module.reporting-pg16-01-prod-drx-kc.data.vault_generic_secret.ssccloud_api_key
+module.reporting-pg16-01-prod-drx-kc.ssccloud_instance.postgres
+module.reporting-pg16-01-prod-drx-kc.ssccloud_volume.apps_volume_1
+module.reporting-pg16-01-prod-drx-kc.ssccloud_volume.volumes["pg_backups"]
+module.reporting-pg16-01-prod-drx-kc.ssccloud_volume.volumes["pg_logs"]
+module.reporting-pg16-01-prod-drx-kc.ssccloud_volume.volumes["swap"]
+
+
+
 AWS_PROFILE='non-prod' terraform state show module.pct-db-01-huat-drx-kc.ssccloud_volume.volumes\[\"pg_backups\"\]
 /usr/bin/rescan-scsi-bus.sh
 pvresize /dev/sdd

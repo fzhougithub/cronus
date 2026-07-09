@@ -1,0 +1,89 @@
+SELECT 
+    m.rolname AS member_user,
+    r.rolname AS role_group
+FROM pg_roles r
+JOIN pg_auth_members am ON r.oid = am.roleid
+JOIN pg_roles m ON am.member = m.oid
+WHERE r.rolname = 'pct_humana_ro';
+ member_user  |  role_group
+--------------+---------------
+ dt236607     | pct_humana_ro
+ dt235816     | pct_humana_ro
+ dt236763     | pct_humana_ro
+ dt234498     | pct_humana_ro
+ dt204295     | pct_humana_ro
+ all_ro_roles | pct_humana_ro
+ mnovarro     | pct_humana_ro
+ mlively      | pct_humana_ro
+
+SELECT 
+    r.rolname AS role_name, 
+    m.rolname AS granted_role,
+    am.admin_option
+FROM pg_roles r
+JOIN pg_auth_members am ON r.oid = am.member
+JOIN pg_roles m ON am.roleid = m.oid
+WHERE r.rolname = 'ab_claimsprocess_humana';
+
+        role_name        |      granted_role       | admin_option
+-------------------------+-------------------------+--------------
+ ab_claimsprocess_humana | claimsprocess_humana_ab | f
+(1 row)
+
+SELECT rolname
+FROM pg_user
+JOIN pg_auth_members ON (pg_user.usesysid = pg_auth_members.member)
+JOIN pg_roles ON (pg_roles.oid = pg_auth_members.roleid)
+WHERE pg_user.usename = 'ppdclaimresearch';
+         rolname
+-------------------------
+ claimsprocess_humana_ro
+ finance_global_ro
+ finance_humana_ro
+(3 rows)
+
+claimsprocess=# SELECT
+    table_schema,
+    table_name,
+    privilege_type
+FROM information_schema.role_table_grants
+WHERE grantee = 'ab_claimsprocess_humana';
+ table_schema |      table_name       | privilege_type
+--------------+-----------------------+----------------
+ ab_test      | airbyte_encoding_test | SELECT
+(1 row)
+
+SELECT
+    n.nspname AS schema_name,
+    has_schema_privilege('ab_claimsprocess_humana', n.nspname, 'USAGE') AS has_usage,
+    has_schema_privilege('ab_claimsprocess_humana', n.nspname, 'CREATE') AS has_create
+FROM pg_namespace n
+WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema';
+          schema_name          | has_usage | has_create
+-------------------------------+-----------+------------
+ iidr_prod_humana_claims_admin | f         | f
+ ab_test                       | t         | f
+ public                        | t         | t
+ realtimepricing               | f         | f
+ stg_customer_320              | f         | f
+ stg_customer_humana           | f         | f
+ stg_customer_initial          | f         | f
+ stg_global                    | f         | f
+ stg_global_humana             | f         | f
+ claimsprocess_humana          | t         | f
+(10 rows)
+
+SELECT
+    rolname,
+    rolreplication, -- Must be 't' for CDC
+    rolsuper,       -- Superuser status
+    rolcanlogin     -- Can actually connect
+FROM pg_roles
+WHERE rolname = 'ab_claimsprocess_humana';
+         rolname         | rolreplication | rolsuper | rolcanlogin
+-------------------------+----------------+----------+-------------
+ ab_claimsprocess_humana | t              | f        | t
+(1 row)
+
+
+

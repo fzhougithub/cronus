@@ -1,3 +1,14 @@
+ALTER TABLE mytable SET (
+  autovacuum_enabled = true,                   
+  autovacuum_vacuum_threshold = 5000,            
+  autovacuum_vacuum_scale_factor = 0.02,        
+  autovacuum_analyze_threshold = 5000,           
+  autovacuum_analyze_scale_factor = 0.005,       
+  autovacuum_vacuum_cost_delay = 3,           
+  autovacuum_vacuum_cost_limit = 3000,          
+  autovacuum_freeze_table_age = 120000000,     
+);
+For the table size bigger than 20GB. 
 
 ALTER TABLE mytable SET (
   autovacuum_enabled = true,                   -- on/off for autovacuum

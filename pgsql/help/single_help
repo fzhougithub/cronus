@@ -1,0 +1,3 @@
+sudo -u postgres postgres --single -D /var/lib/pgsql/16/data postgres
+
+

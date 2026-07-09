@@ -1,0 +1,17 @@
+[postgres@reporting-pg16-01-alma9-hpls-drx-kc datamart]$ cat cp_data
+#!/bin/bash
+
+# This code is the framework to pipe source to the target
+if [ $# -ne 3 ];then
+	echo "Usage: $0 <schemaname.tablename> <where clause> <dry/run>"
+	echo "Example: $0 claimsprocess.claim_core \"where process_create_ts between '2025-01-01' and '2025-01-31' dry\""
+	exit 1
+else
+	sch=$(echo $1|cut -d. -f1)
+fi
+
+if [ $3 == 'dry' ];then
+	echo "COPY (select * from $1 $2) TO STDOUT BINARY | COPY $1 FROM STDIN BINARY"
+elif [ $3 == 'run' ];then
+        psql -h 10.173.29.130 -d ods_domani -q -c "COPY (select * from $1 $2) TO STDOUT BINARY"|psql -d ods_domani -c "COPY $1 FROM STDIN BINARY"
+fi

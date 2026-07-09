@@ -1,0 +1,6 @@
+cat /proc/<pid>/status | grep -E 'SigPnd|ShdPnd'
+
+watch -n 0.2 "grep -E 'SigPnd|ShdPnd' /proc/<pid>/status"
+watch -n 0.2 "grep -E 'SigPnd|ShdPnd' /proc/1515595/status
+
+

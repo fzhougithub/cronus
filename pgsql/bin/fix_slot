@@ -1,0 +1,40 @@
+#!/bin/bash
+
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <dbname> <rep_prefix>"
+	echo "e.g: $0 ods_domani qc"
+	exit 1
+else
+	dbname=$1
+	prefix=$2
+fi
+
+~/ckrep > /tmp/ckrep.log
+
+echo ''>/tmp/sub_creation.sql
+echo ''>/tmp/sub_drop.sql
+rm -rf /tmp/truncate*.sql
+
+psql -d $dbname -At -c "select * from pg_subscription" > /tmp/sub_backup.sql
+
+grep "could not receive data from WAL stream" /tmp/ckrep.log|awk '{print $15}'|sed 's/"//g' > /tmp/issue_schema
+grep "cannot read from logical replication slot" /tmp/ckrep.log|awk '{print $NF}'|sed 's/"//g' >> /tmp/issue_schema
+grep "could not start WAL streaming" /tmp/ckrep.log|awk '{print $14}'|sed 's/"//g' >> /tmp/issue_schema
+
+for i in $(cat /tmp/issue_schema|sort|uniq);
+do
+	schema=$(echo $i | sed "s/^${prefix}_//;s/_sub$//;s/_pub$//")
+	echo "schema: $schema"
+	echo "psql -d $dbname -At -c \"select 'truncate ${schema}.'||tablename||' restart identity cascade;' from pg_tables where schemaname='$schema'\""
+	psql -d $dbname -At -c "select 'truncate ${schema}.'||tablename||' restart identity cascade;' from pg_tables where schemaname='$schema'" > /tmp/truncate_${schema}.sql
+
+	psql -d $dbname -At -c "select 'create subscription '||subname||' connection '''||subconninfo||''' publication '||array_to_string(subpublications, ',')||';' from pg_subscription where subname='${prefix}_${schema}_sub'" >> /tmp/sub_creation.sql
+	echo "drop subscription ${prefix}_${schema}_sub;" >> /tmp/sub_drop.sql
+
+done
+
+cat /tmp/sub_drop.sql
+
+for i in $(ls /tmp/truncate*.sql);do echo "\i $i --$(wc -l $i)";done
+
+cat /tmp/sub_creation.sql

@@ -1,0 +1,34 @@
+ods_domani=# SELECT
+    MAX(group_mb) AS max_group_mb,
+    AVG(group_mb) AS avg_group_mb
+FROM (
+    SELECT
+        storage_id,
+        stripe_num,
+        chunk_group_num,
+        SUM(value_decompressed_length)/1024/1024.0 AS group_mb
+    FROM columnar.chunk
+    GROUP BY
+        storage_id,
+        stripe_num,
+        chunk_group_num
+) s;
+    max_group_mb     |      avg_group_mb
+---------------------+-------------------------
+ 86.2155380249023438 | 17.17461243983134302439
+(1 row)
+
+SELECT
+    storage_id,
+    stripe_num,
+    chunk_group_num,
+    SUM(value_decompressed_length)/1024/1024/1024 AS total_decompressed
+FROM columnar.chunk
+GROUP BY
+    storage_id,
+    stripe_num,
+    chunk_group_num
+ORDER BY
+    total_decompressed DESC;
+
+

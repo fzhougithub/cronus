@@ -1,0 +1,17 @@
+getfattr -d -m  ".*" 716511
+# file: 716511
+security.selinux="system_u:object_r:unlabeled_t:s0"
+
+stat 716511
+  File: 716511
+  Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
+Device: fd15h/64789d	Inode: 4294980052  Links: 1
+Access: (0600/-rw-------)  Uid: (   26/postgres)   Gid: (567580/postgres)
+Context: system_u:object_r:unlabeled_t:s0
+Access: 2026-05-07 22:23:39.767006654 +0000
+Modify: 2026-05-07 22:23:39.767006654 +0000
+Change: 2026-05-07 22:23:39.767006654 +0000
+ Birth: 2026-05-07 22:23:39.767006654 +0000
+
+
+

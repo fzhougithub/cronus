@@ -1,0 +1,24 @@
+#!/bin/bash
+
+CK=${1:-6}
+
+# Get top MEMORY-consuming PIDs (since your ps command sorts by %mem)
+readarray -t pids < <(
+    ps -eo pid= --sort=-%mem | head -n "$CK" | tr -d ' '
+)
+
+if [ ${#pids[@]} -eq 0 ]; then
+    echo "No PIDs found"
+    exit 0
+fi
+
+# Join PIDs with commas for the SQL IN clause
+pid_list=$(IFS=,; echo "${pids[*]}")
+
+echo "Top Memory processes:"
+ps -o pid,ppid,%mem,%cpu,cmd -p "${pid_list//,/ }" --sort=-%mem
+
+echo "-----------------"
+
+# Fixed the quoting and the incomplete query
+psql -X -A -F'|' -c " SELECT pid,leader_pid as lpid,usename,now()-xact_start as du_x,now()-query_start as du_q ,now()-backend_start as du_b, query FROM pg_stat_activity WHERE pid IN ($pid_list) ORDER BY 6 DESC NULLS LAST;"

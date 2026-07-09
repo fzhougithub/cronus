@@ -1,3 +1,28 @@
+Best SELinux policy for PostgreSQL
+🔹 Correct file context
+Path 			Correct label
+$PGDATA			 postgresql_db_t
+$PGDATA/pg_wal		 postgresql_db_t
+Tablespaces		 postgresql_db_t
+PostgreSQL binaries	 postgresql_exec_t
+PostgreSQL config	 postgresql_conf_t
+
+
+ods-db-01-alma8-sit-drx-kc
+[postgres@ods-db-01-alma8-sit-drx-kc pg_logs]$ mv postgresql-03.log postgresql-03.log.devops-15748
+mv: cannot move 'postgresql-03.log' to 'postgresql-03.log.devops-15748': Operation not permitted
+
+[postgres@ods-db-01-alma8-sit-drx-kc pg_logs]$ lsattr postgresql-03.log
+----i--------------- postgresql-03.log
+[root@ods-db-01-alma8-sit-drx-kc ~]$ chattr -i -a /pg_logs/postgresql-03.log
+
+[root@ods-db-01-alma8-sit-drx-kc ~]$ lsattr /pg_logs/postgresql-03.log
+-------------------- /pg_logs/postgresql-03.log
+
+It is issue, why SElinux block the files
+
+
+
 [root@claimshumana-db-01-alma8-prod-drx-kc ~]$ sestatus
 SELinux status:                 enabled
 SELinuxfs mount:                /sys/fs/selinux

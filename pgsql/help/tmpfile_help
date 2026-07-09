@@ -1,0 +1,26 @@
+SELECT 
+    tmp.pid,
+    SUM(tmp.size)/1024/1024/1024 AS total_GB,
+    COUNT(*) AS total_files,
+    a.usename AS user,
+    a.query 
+FROM (
+    SELECT (regexp_matches(name, 'pgsql_tmp([0-9]+)'))[1]::int AS pid, size FROM pg_ls_tmpdir()
+) tmp
+JOIN pg_stat_activity a ON tmp.pid = a.pid
+where a.state='active'
+GROUP BY tmp.pid, a.usename, a.query
+ORDER BY SUM(tmp.size) DESC;
+
+
+
+
+SELECT 
+    (pg_ls_tmpdir()).name AS file_name,
+    (pg_ls_tmpdir()).size AS file_size_bytes,
+    pg_size_pretty((pg_ls_tmpdir()).size) AS file_size_pretty,
+    -- Extracting PID from the filename (format is usually pgsql_tmpPID.seq)
+    (regexp_matches((pg_ls_tmpdir()).name, 'pgsql_tmp([0-9]+)'))[1] AS pid,
+    (pg_ls_tmpdir()).modification AS last_modified
+FROM pg_ls_tmpdir()
+ORDER BY file_size_bytes DESC;

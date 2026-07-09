@@ -1,0 +1,20 @@
+ods_domani=# WITH RECURSIVE partitions AS (
+  SELECT inhrelid
+  FROM pg_inherits
+  WHERE inhparent = 'claimsprocess_humana.claim_core'::regclass
+
+  UNION ALL
+
+  SELECT i.inhrelid
+  FROM pg_inherits i
+  JOIN partitions p ON i.inhparent = p.inhrelid
+)
+SELECT
+  pg_size_pretty(SUM(pg_relation_size(inhrelid))) AS total_size
+FROM partitions;
+ total_size
+------------
+ 5696 GB
+(1 row)
+
+

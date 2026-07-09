@@ -1,0 +1,5 @@
+
+ANSIBLE_FORCE_COLOR=1 \
+ansible-playbook playbook.yaml --diff --check --tags pg-base -u rundeck \
+2>&1 | tee ansible_check.log
+

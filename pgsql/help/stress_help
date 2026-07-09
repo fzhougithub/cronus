@@ -1,0 +1,5 @@
+Use this way to test the swap usage
+it will spwan 4 workers, each allocate 40GB memory, run 60s, and stop. 
+
+stress --vm 4 --vm-bytes 40G --timeout 60s
+vmstat 1

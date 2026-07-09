@@ -1,0 +1,20 @@
+ods_domani=# SELECT
+    attrelid::regclass AS table,
+    attname,
+    atttypid,
+    atttypmod,
+    attlen,
+    attalign,
+    attstorage,
+    attnotnull
+FROM pg_attribute
+WHERE attrelid = 'datamart_humana.claim'::regclass
+  AND attnum > 0
+ORDER BY attnum;
+         table         |                     attname                     | atttypid | atttypmod | attlen | attalign | attstorage | attnotnull
+-----------------------+-------------------------------------------------+----------+-----------+--------+----------+------------+------------
+ datamart_humana.claim | process_refresh_create_ts                       |     1184 |         6 |      8 | d        | p          | f
+ datamart_humana.claim | process_refresh_create_by_program_id            |       25 |        -1 |     -1 | i        | x          | f
+ datamart_humana.claim | process_refresh_update_ts                       |       25 |        -1 |     -1 | i        | x          | f
+ datamart_humana.claim | customer_set_id                                 |     1700 |    327684 |     -1 | i        | m          | f
+ datamart_humana.claim | customer_id                                     |       23 |        -1 |      4 | i        | p          | t

@@ -1,0 +1,32 @@
+awk '
+/automatic vacuum of table/ {
+    ts=$1" "$2
+    match($0, /"([^"]+)"/)
+    table=substr($0,RSTART+1,RLENGTH-2)
+}
+/system usage:/ {
+    match($0, /elapsed: *([0-9.]+) s/, a)
+    printf "%.3f\t%s\t%s\n", a[1], ts, table
+}
+' postgresql-02.log | sort -nr
+
+1133.330	2026-07-02 13:23:41.706	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+937.480	2026-07-02 16:23:58.089	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+571.390	2026-07-02 02:31:24.802	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+558.080	2026-07-02 00:19:12.018	claimsprocess.stg_customer_humana.m93
+554.010	2026-07-02 14:39:06.329	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+553.950	2026-07-02 05:34:38.014	claimsprocess.pg_toast.pg_toast_3389467182
+542.680	2026-07-02 18:15:36.624	claimsprocess.claimsprocess_humana.claim_message
+542.320	2026-07-02 19:41:12.984	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+515.860	2026-07-02 09:48:45.903	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+509.000	2026-07-02 10:32:41.442	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+505.150	2026-07-02 11:58:07.920	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+500.290	2026-07-02 11:13:47.134	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+495.130	2026-07-02 06:23:53.266	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+477.410	2026-07-02 09:03:49.588	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+477.150	2026-07-02 08:24:20.018	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+463.630	2026-07-02 07:03:31.101	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+460.160	2026-07-02 12:39:25.835	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+450.280	2026-07-02 12:18:04.934	claimsprocess.claimsprocess_humana.a_claim_core_320_29
+438.510	2026-07-02 10:12:29.260	claimsprocess.iidr_prod_humana_claims_admin.ts_bookmark
+

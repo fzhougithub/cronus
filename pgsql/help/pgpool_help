@@ -1,0 +1,49 @@
+pgpool has two set of authentication system
+1. pgpool itself, follow psql → Pgpool → PostgreSQL, should use below pg_enc command to generate key and save it in password file
+2. pcp command, it only use the login config in pcp.conf file!!!
+
+So, per the password for pdp command
+pg_md5 RySQfic8iQo9rBHDKXmEQoY2y12kFo1M
+b6cd8142f64ebe391b94593eb3c9992b
+
+vi /etc/pgpool-II/pcp.conf
+postgres:b6cd8142f64ebe391b94593eb3c9992b
+
+Then, 
+pcp_node_count -h localhost -U postgres
+Password: < here, put the RySQfic8iQo9rBHDKXmEQoY2y12kFo1M>
+1
+
+
+pgpool need another set of password registration
+
+cat a
+pg_enc -m -f /etc/pgpool-II/pgpool.conf -k /var/lib/pgsql/.pgpoolkey -u datamart '1rGUOJN3F3TGUQVeBj1tBTHDfBE77I'
+pg_enc -m -f /etc/pgpool-II/pgpool.conf -k /var/lib/pgsql/.pgpoolkey -u pooltest 'lCJmfoLKHguyqJTR7oqZ25nYfQ8YP4'
+pg_enc -m -f /etc/pgpool-II/pgpool.conf -k /var/lib/pgsql/.pgpoolkey -u postgres 'RySQfic8iQo9rBHDKXmEQoY2y12kFo1M'
+
+
+cat /etc/pgpool-II/pool_passwd|egrep 'datamart|pooltest'
+datamart:AESr7tEc5dMpQRhLZwDZ0o89NwA99Hpsvoa2guLcoerc5E=
+pooltest:AES73cBjk+xNK4rtdhWY2y4dg9fUmeJ+B3dHDRqL0wzuBs=
+
+Then, you can login from remote!
+
+You have to use exactly same password as the backend password!
+
+this update /etc/pgpool2/pool_passwd
+
+in pgpool.conf
+
+enable_pool_hba = on
+pool_passwd = 'pool_passwd'
+
+Ensure your use is in pgpool pg_hba.conf
+host    all     xxx     0.0.0.0/0     scram-sha-256
+
+systemctl restart pgpool
+or
+pgpool reload
+
+
+

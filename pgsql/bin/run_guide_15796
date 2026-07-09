@@ -1,0 +1,13 @@
+time parallel -j 32 'echo "{}"' :::: claimsprocess_humana.key_claim_core-leaf-inserts.sql >check
+
+KEY_SCHEMA = os.getenv("KEY_SCHEMA", "datamart_humana")
+KEY_SCHEMA=datamart_humana python script.py ...
+
+change the target schema in this way. 
+
+
+KEY_SCHEMA='claimsprocess_humana' python3 get_key_creation_code.py claimsprocess_humana.claim_core
+more claimsprocess_humana.key_claim_core-creation.sql
+CREATE TABLE claimsprocess_humana.key_claim_core (
+......
+

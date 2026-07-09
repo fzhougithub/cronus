@@ -8,4 +8,4 @@ else
 	schema=$2
 fi
 
-PGOPTIONS="--search_path=${schema},public" psql -h $dbIP -d ods_domani
+PGOPTIONS="--search_path=${schema},public" PSQLRC=<(echo "SET ROLE postgres;") psql -h $dbIP -d ods_domani 

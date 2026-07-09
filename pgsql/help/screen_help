@@ -1,0 +1,12 @@
+screen -x 1404124.pts-2.10-173-31-74
+
+# Force the session to detach from its ghost viewer first
+screen -d 1404124.pts-2.10-173-31-74
+
+# Now kill the session cleanly without entering it
+screen -S 1404124.pts-2.10-173-31-74 -X quit
+
+kill 1404124
+
+
+

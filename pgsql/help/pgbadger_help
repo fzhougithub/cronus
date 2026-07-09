@@ -1,3 +1,56 @@
+curl -L https://github.com/darold/pgbadger/archive/refs/tags/v13.4.tar.gz -o pgbadger-13.4.tar.gz
+file pgbadger-13.4.tar.gz
+tar zxf pgbadger-13.4.tar.gz
+Or
+wget https://github.com/darold/pgbadger/archive/refs/tags/v13.4.tar.gz
+tar zxf pgbadger-13.4.tar.gz
+
+yum install pgbadger
+yum install -y perl-Parallel-ForkManager
+
+ perl -V | grep useithreads
+
+[postgres@ pg_logs]$ pgbadger -f stderr -v -j 4 /pg_logs/postgresql-23.log -o report.html
+DEBUG: pgBadger version 13.2.
+DEBUG: Output 'html' reports will be written to report.html
+DEBUG: BIN/HTML Retention cleanup: Initial cleanup flags - noclean=[0] - retention_bin=[5] - retention_html=[0] - saved_last_line{datetime}=[] - pgb_saved_last_line{datetime}=[] - all_outdir=[./]
+DEBUG: parallel processing is not supported on this plateform.
+DEBUG: Starting progressbar writer process
+DEBUG: pgBadger will use log format stderr to parse /pg_logs/postgresql-23.log.
+DEBUG: timezone not specified, using 0 seconds
+DEBUG: The following boundaries will be used to parse file /pg_logs/postgresql-23.log, 0|3345020
+DEBUG: Processing log file: /pg_logs/postgresql-23.log
+DEBUG: Starting reading file "/pg_logs/postgresql-23.log"...
+DEBUG: Start parsing postgresql log at offset 0 of file "/pg_logs/postgresql-23.log" to 3345020
+[========================>] Parsed 3345020 bytes of 3345020 (100.00%), queries: 59, events: 21
+DEBUG: the log statistics gathering took: 2 wallclock secs ( 0.02 usr  0.00 sys +  0.42 cusr  0.00 csys =  0.44 CPU)
+DEBUG: Output 'html' reports will be written to .//report.html
+LOG: Ok, generating html report...
+DEBUG: building reports took:  0 wallclock secs ( 0.00 usr +  0.00 sys =  0.00 CPU)
+DEBUG: the total execution time took:  2 wallclock secs ( 0.02 usr  0.00 sys +  0.42 cusr  0.00 csys =  0.44 CPU)
+
+split -l 50000 ../postgresql-18.log-20260519 postgresql-18.log-20260519_
+-rw-r--r--. 1 postgres postgres  88G May 23 07:58 postgresql-18.log-20260519_aa
+-rw-r--r--. 1 postgres postgres  35G May 23 07:59 postgresql-18.log-20260519_ab
+
+sed '1,100p' -n postgresql-18.log-20260519_aa|wc -L
+
+sed -n '2{p; q}' postgresql-18.log-20260519_aa > line2
+
+
+time pgbadger -f stderr -v -j 8 /pg_logs/postgresql-18.log-20260519 -o /pg_backups/tmp/report.html
+
+DEBUG: pgBadger version 13.2.
+DEBUG: Output 'html' reports will be written to /pg_backups/tmp/report.html
+DEBUG: BIN/HTML Retention cleanup: Initial cleanup flags - noclean=[0] - retention_bin=[5] - retention_html=[0] - saved_last_line{datetime}=[] - pgb_saved_last_line{datetime}=[] - all_outdir=[/pg_backups/tmp/]
+DEBUG: parallel processing is not supported on this plateform.
+DEBUG: pgBadger will use log format stderr to parse /pg_logs/postgresql-18.log-20260519.
+DEBUG: Starting progressbar writer process
+DEBUG: timezone not specified, using 0 seconds
+
+
+time pgbadger -f stderr -j 4 --tempdir=/pg_backups/tmp /pg_logs/postgresql-18.log-20260519 -o /pg_backups/tmp/postgresql-18.log-20260519-analysis.bin --outfile=bin
+
 pgbadger -f stderr -j 4 /pg_logs/postgresql-23.log-20250724 -o /tmp/pgbadger_report.txt --outfile text
 
 Finally, can run version

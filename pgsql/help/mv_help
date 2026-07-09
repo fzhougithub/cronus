@@ -1,4 +1,14 @@
 SELECT
+    schemaname,
+    matviewname,
+    definition
+FROM pg_matviews
+WHERE schemaname = 'misc'
+  AND matviewname = 'mac_pricing_drug_list_entries_vw';
+
+
+
+SELECT
   format(
     'CREATE MATERIALIZED VIEW %I.%I AS %s;',
     schemaname,

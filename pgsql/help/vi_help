@@ -1,3 +1,6 @@
+:%s/ \+/ /g 
+replace many space with one space in the line
+
 :16,113y
 copy line 16 to 113,then,move to the desired line
 p

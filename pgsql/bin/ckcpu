@@ -1,0 +1,22 @@
+#!/bin/bash
+
+CK=${1:-6}
+
+# Get top CPU-consuming PIDs (numeric only, no headers)
+readarray -t pids < <(
+  ps -eo pid=,%cpu= --sort=-%cpu | head -n "$CK" | awk '{print $1}'
+)
+
+if [ ${#pids[@]} -eq 0 ]; then
+  echo "No PIDs found"
+  exit 0
+fi
+
+pid_list=$(IFS=,; echo "${pids[*]}")
+
+echo "Top CPU processes:"
+ps -o pid,ppid,%cpu,%mem,cmd -p "$pid_list" --sort=-%cpu
+
+echo "-----------------"
+
+psql -X -A -F'|' -c " SELECT pid,usename,now()-xact_start,leader_pid,query FROM pg_stat_activity WHERE pid IN ($pid_list) order by 3 desc;"

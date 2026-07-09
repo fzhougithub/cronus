@@ -1,0 +1,2 @@
+pg_replication_slot_advance() Primary 端：推进 replication slot 的 LSN
+pg_replication_origin_advance() Subscriber 端：推进 replication origin 的 LSN

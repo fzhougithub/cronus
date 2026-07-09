@@ -1,3 +1,63 @@
+SELECT
+  c.oid,
+  c.relname,
+  c.relkind,
+  t.relname AS toast_relname
+FROM pg_class c
+LEFT JOIN pg_class t ON c.reltoastrelid = t.oid
+WHERE c.oid = 2833912438;
+
+
+
+-- how much dead ration
+
+SELECT
+    schemaname,
+    relname,
+    n_dead_tup,
+    n_live_tup,
+    n_dead_tup * 100.0 / NULLIF(n_live_tup,0) AS dead_ratio
+FROM pg_stat_all_tables
+ORDER BY dead_ratio DESC;
+
+-- toast size
+
+SELECT
+    c.relname AS main_table,
+    t.relname AS toast_table,
+    pg_size_pretty(pg_total_relation_size(t.oid)) AS toast_size
+FROM pg_class c
+JOIN pg_class t ON c.reltoastrelid = t.oid
+ORDER BY pg_total_relation_size(t.oid) DESC;
+
+-- fillfactor
+claimsprocess=# SELECT
+    relname,
+    reloptions
+FROM pg_class
+WHERE relname = 'c52';
+ relname |                                  reloptions
+---------+------------------------------------------------------------------------------
+ c52     | {autovacuum_vacuum_scale_factor=0.001,autovacuum_analyze_scale_factor=0.001}
+ c52     | {autovacuum_vacuum_scale_factor=0.050,autovacuum_analyze_scale_factor=0.025}
+(2 rows)
+
+claimsprocess=# SELECT
+    c.relname,
+    array_to_string(c.reloptions, ', ') AS storage_options
+FROM pg_class c
+WHERE c.relname = 'c52';
+ relname |                               storage_options
+---------+-----------------------------------------------------------------------------
+ c52     | autovacuum_vacuum_scale_factor=0.001, autovacuum_analyze_scale_factor=0.001
+ c52     | autovacuum_vacuum_scale_factor=0.050, autovacuum_analyze_scale_factor=0.025
+(2 rows)
+
+
+
+
+
+
 -- See how much data is being TOASTed and compression effectiveness
 SELECT
   n.nspname as schema,

@@ -1,0 +1,87 @@
+#!/bin/bash
+
+if [ $# -ne 4 ]; then
+	echo "Usage: $0 <host> <dbname> <parent_table_full_name> <check/run>"
+	echo "e.g.:  $0 odshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud ods_domani claimsprocess_humana.claim_core check" 
+	exit 1
+else
+	host=$1
+	db=$2
+	sch=$(echo $3|cut -d. -f1)
+	ptb=$(echo $3|cut -d. -f2)
+	ftb=$3
+fi
+
+listfile="check_list.sql"
+
+cat > $listfile << 'EOF'
+-- Generated: $(date)
+
+SELECT
+  c.oid::regclass AS partition_name
+FROM pg_inherits i
+JOIN pg_class c ON i.inhrelid = c.oid
+JOIN pg_class p ON i.inhparent = p.oid
+JOIN pg_namespace n ON p.relnamespace = n.oid
+WHERE p.relname = :'ptb'
+  AND n.nspname = :'sch'
+  AND c.relkind = 'p';
+EOF
+
+sizefile="leaf_size.sql"
+
+cat > $sizefile << 'EOF'
+-- leaf_sizes.sql
+
+SELECT
+    child.oid::regclass AS partition_name,
+    pg_size_pretty(pg_total_relation_size(child.oid)) AS total_size,
+    pg_size_pretty(pg_relation_size(child.oid)) AS table_size,
+    pg_size_pretty(pg_total_relation_size(child.oid) - pg_relation_size(child.oid)) AS index_size
+FROM
+    pg_inherits
+JOIN
+    pg_class child ON pg_inherits.inhrelid = child.oid
+JOIN
+    pg_class parent ON pg_inherits.inhparent = parent.oid
+JOIN
+    pg_namespace nsp ON parent.relnamespace = nsp.oid
+WHERE
+    parent.relname = :'ptb'
+    AND nsp.nspname = :'sch'
+ORDER BY
+    pg_total_relation_size(child.oid) DESC;
+EOF
+
+list=$(psql -h $host -d $db -tA -v ptb="$ptb" -v sch="$sch" -f "$listfile" |egrep -v 'SET')
+
+basesize="leaf_size"
+rm $basesize 2>/dev/null
+
+for i in $list;do 
+	ptb=$(echo $i|cut -d. -f2)
+	sch=$(echo $i|cut -d. -f1)
+	echo $ptb
+	#echo "psql -h $host -d $db --quiet -tA -v ptb=\"$ptb\" -v sch=\"$sch\" -f $sizefile >> $basesize" 
+	psql -h $host -d $db --quiet -tA -v ptb="$ptb" -v sch="$sch" -f $sizefile >> $basesize
+done
+
+egrep "kB|MB" $basesize | awk -F'|' '{print $1}' > smalllist
+egrep -v "kB|MB" $basesize| awk -F'|' '{print $1}' > largelist
+
+cat largelist|head -5
+echo ------------------
+cat smalllist|head -5
+
+if [ $4 == 'run' ]; then
+echo ==start==
+
+date
+
+time parallel -j 4 -q psql -h odshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud -d ods_domani -c "insert into datamart_humana.claim_core_keys select customer_id,claim_id,process_create_ts,process_update_ts from {}" :::: largelist && \
+time parallel -j 20 -q psql -h odshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud -d ods_domani -c "insert into datamart_humana.claim_core_keys select customer_id,claim_id,process_create_ts,process_update_ts from {}" :::: smalllist
+
+echo ==end==
+
+date
+fi

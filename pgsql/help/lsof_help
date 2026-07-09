@@ -1,0 +1,9 @@
+lsof -p 402955 | awk '$4 ~ /r$/'
+
+lsof -p 402955 | awk '$4 ~ /[uw]$/'
+
+lsof -p 402955 | grep '/apps/lib/pgsql/16/data/base' | awk '$4 ~ /[uw]$/'
+
+lsof -p 402955 | grep 'pg_tblspc' | awk '$4 ~ /[uw]$/'
+
+strace -p 402955 -e trace=open,openat,close

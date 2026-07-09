@@ -1,0 +1,77 @@
+--cleant refer to bottom of the file
+
+yum install -y pg_comparator_16.x86_64 pg_comparator_16-llvmjit.x86_64
+yum install -y pg_comparator_14.x86_64
+
+psql -d ods_domani -f /usr/pgsql-16/share/contrib/pgc_checksum.sql
+psql -d ods_domani -f /usr/pgsql-16/share/contrib/pgc_casts.sql
+
+psql -d ods_domani -f /usr/pgsql-14/share/contrib/pgc_checksum.sql
+psql -d ods_domani -f /usr/pgsql-14/share/contrib/pgc_casts.sql
+
+
+[driver://][login[:pass]@][host][:port]/[base/[[schema.]table[?key[:cols]]]]
+
+
+time /usr/pgsql-16/bin/pg_comparator -S "pgsql://postgres@10.173.29.130/ods_domani/claimsprocess_humana.claim_extension_1?customer_id,claim_id:process_update_ts" "pgsql://postgres@10.222.64.5/ods_domani/claimsprocess_humana.claim_extension_1" > /pg_logs/pg_comparator_10.173.29.130-10.222.64.5.ods_domani.claimsprocess_humana.claim_extension_1.log 2>&1
+
+/usr/pgsql-14/bin/pg_comparator   --report   --no-asynchronous   "pgsql://postgres@/ods_domani/datamart_humana.k_claim_p_2025?customer_id,claim_id,process_create_ts"   "pgsql://postgres@/ods_domani/datamart_humana.k_claim_p_2026"
+
+ 506269 | 00:07:01.269404 | CREATE TEMPORARY TABLE pgc_cmp_1_1 AS SELECT kcs & 536870784 AS kcs, SUM(tcs) AS tcs FROM pgc_cmp_1_0 GROUP BY kcs & 536870784
+
+SELECT kcs AS kcs, tcs AS tcs, pk0, pk1, pk2 FROM pgc_cmp_1_0 WHERE kcs & 536870784 IN (0,128,256,384,512,640,768,896,1024,1152,1280,1408,1536,1664,1792,1920,2048,2176,2304,2432,2560,2688,2816,2944,3072,3200,3328,3456,3584,3712,3840,3968,4096,4224,4352,4480,4608,4736,4864,4992,5120,5248,5376,5504,5632,5760,5888,6016,6144,6272,6400,6528,6656,6784,6912,7040,7168,7296,7424,7552,7680,7808,7936,8064,8192,8320,8448,8576,8704,8832,8960,9088,92
+16,9344,9472,9600,9728,9856,9984,10112,10240,10368,10496,10624,10752,10880,11008,11136,11264,11392,11520,11648,11776,11904,12032,12160,12288,12416,12544,126
+72,12800,12928,13056,13184,13312,13440,13568,13696,13824,13952,14080,14208,14336,14464,14592,14720,14848,14976,15104,15232,15360,15488,15616,15744,15872,160
+00,16128,16256,16384,16512,16640,16768,16896,17024,17152,17280,17408,17536,17664,17792,17920,18048,18176,18304,18432,18560,18688,18816,18944,19072,19200,193
+28,19456,19584,19712,19840,19968,20096,20224,20352,20480,20608,20736,20864,20992,21120,21248,21376,21504,21632,2176
+
+
+
+claimsprocess=# SELECT
+    n.nspname AS schema,
+    p.proname AS function,
+    pg_get_function_identity_arguments(p.oid) AS args,
+    pg_get_userbyid(p.proowner) AS owner
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.proname like 'cksum%';
+    schema     | function | args |  owner
+---------------+----------+------+----------
+ claimsprocess | cksum8   | text | postgres
+ claimsprocess | cksum4   | text | postgres
+ claimsprocess | cksum2   | text | postgres
+(3 rows)
+
+SELECT
+    n.nspname,
+    p.proname,
+    pg_get_function_identity_arguments(p.oid) AS args,
+    p.probin
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.probin LIKE '%pgc_casts%';
+    nspname    |   proname   |             args              |      probin
+---------------+-------------+-------------------------------+-------------------
+ claimsprocess | varbit      | bytea, integer, boolean       | $libdir/pgc_casts
+ claimsprocess | tobit       | bytea, integer, boolean       | $libdir/pgc_casts
+ claimsprocess | bytea       | bit varying, integer, boolean | $libdir/pgc_casts
+ claimsprocess | bytea       | bit, integer, boolean         | $libdir/pgc_casts
+ claimsprocess | varbit2int2 | bit varying, integer, boolean | $libdir/pgc_casts
+ claimsprocess | bit2int2    | bit, integer, boolean         | $libdir/pgc_casts
+(6 rows)
+
+DROP CAST IF EXISTS (bytea AS bit varying);
+DROP CAST IF EXISTS (bytea AS bit);
+DROP CAST IF EXISTS (bit varying AS bytea);
+DROP CAST IF EXISTS (bit AS bytea);
+DROP CAST IF EXISTS (bit varying AS smallint);
+DROP CAST IF EXISTS (bit AS smallint);
+
+DROP FUNCTION claimsprocess.varbit(bytea, integer, boolean);
+DROP FUNCTION claimsprocess.tobit(bytea, integer, boolean);
+DROP FUNCTION claimsprocess.bytea(bit varying, integer, boolean);
+DROP FUNCTION claimsprocess.bytea(bit, integer, boolean);
+DROP FUNCTION claimsprocess.varbit2int2(bit varying, integer, boolean);
+DROP FUNCTION claimsprocess.bit2int2(bit, integer, boolean);
+
+

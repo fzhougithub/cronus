@@ -1,3 +1,85 @@
+awk '
+/automatic vacuum of table/ {
+    ts=$1" "$2
+    match($0, /"([^"]+)"/)
+    table=substr($0,RSTART+1,RLENGTH-2)
+}
+/system usage:/ {
+    match($0, /elapsed: *([0-9.]+) s/, a)
+    printf "%.3f\t%s\t%s\n", a[1], ts, table
+}
+' postgresql-02.log | sort -nr|more
+
+
+
+
+
+
+
+
+
+grep ppdreporting issue_queries.log | awk -F'|' '
+
+function to_epoch(ts,   a) {
+    gsub(/[-:]/," ",ts)
+    sub(/\..*/,"",ts)        # remove fractional seconds
+    sub(/-.*/,"",ts)         # remove timezone
+    split(ts,a," ")
+    return mktime(a[1]" "a[2]" "a[3]" "a[4]" "a[5]" "a[6])
+}
+{
+    t1 = to_epoch($1)
+    t2 = to_epoch($12)
+    print $1, $12, (t1 - t2) " seconds"
+}'|sort -k5n
+
+2026-06-03 09:01:08.40393-05 2026-06-03 08:30:06.816337-05 1862 seconds
+2026-06-03 09:02:07.800089-05 2026-06-03 08:30:06.816337-05 1921 seconds
+2026-06-03 09:03:09.266089-05 2026-06-03 08:30:06.816337-05 1983 seconds
+2026-06-03 09:04:08.506902-05 2026-06-03 08:30:06.816337-05 2042 seconds
+2026-06-03 09:05:10.551252-05 2026-06-03 08:30:06.816337-05 2104 seconds
+2026-06-03 09:06:07.553732-05 2026-06-03 08:30:06.816337-05 2161 seconds
+2026-06-03 09:07:12.340154-05 2026-06-03 08:30:06.816337-05 2226 seconds
+2026-06-03 09:08:09.65906-05 2026-06-03 08:30:06.816337-05 2283 seconds
+2026-06-03 09:09:08.229382-05 2026-06-03 08:30:06.816337-05 2342 seconds
+2026-06-03 09:10:15.25829-05 2026-06-03 08:30:06.816337-05 2409 seconds
+2026-06-03 09:11:22.161166-05 2026-06-03 08:30:06.816337-05 2476 seconds
+
+tail -f issue_queries.log issue_queries.log | awk -F'|' '
+
+function to_epoch(ts,   a) {
+    gsub(/[-:]/," ",ts)
+    sub(/\..*/,"",ts)        # remove fractional seconds
+    sub(/-.*/,"",ts)         # remove timezone
+    split(ts,a," ")
+    return mktime(a[1]" "a[2]" "a[3]" "a[4]" "a[5]" "a[6])
+}
+{
+    t1 = to_epoch($1)
+    t2 = to_epoch($12)
+    print $1, $12, (t1 - t2) " seconds"
+}'|sort -k5n
+
+
+cat the_fact|awk -F'|' '{if ($2>=10.0) print}'
+
+awk -F'|' '{print $3}' size_big_5 | awk 'NR<=53 {s+=$1} END {print s}'
+awk -F'|' '{print $3}' size_big_5|awk '{s+=$1} END {print s}'
+
+awk '$NF>90 {print $1, $NF}'
+awk '$1=="sdb" && $NF>90'
+awk 'NF'
+awk 'NR==5'
+awk '!/^#/ && NF'
+awk '1' 打印所有行
+awk '0' 什么都不打印
+awk 'NR==5' 第 5 行
+awk 'NF' 非空行
+awk '$NF>90' 最后一列 > 90
+awk '!/^#/' 去掉注释行
+
+
+
 # Replace 'your_query.sql' with your actual SQL file path, or pipe SQL directly to this command
 awk '
     # Convert entire line to lowercase for case-insensitive matching

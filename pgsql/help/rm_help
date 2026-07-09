@@ -1,0 +1,16 @@
+ls -1tr | head -20 | xargs -r rm -rf --
+
+pgbackrest --stanza=10-173-43-78 expire
+
+--repo1-retention-full=2
+--repo1-retention-full-type=count
+--repo1-retention-archive=7
+
+
+pgbackrest --stanza=10-173-43-78 stop
+pgbackrest --stanza=10-173-43-78 stanza-delete --force
+
+pgbackrest --stanza=10-173-43-78 stanza-create
+/usr/bin/pgbackrest --stanza=10-173-43-78 --type=full backup
+
+

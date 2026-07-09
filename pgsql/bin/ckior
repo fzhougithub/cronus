@@ -1,0 +1,115 @@
+#!/bin/bash
+
+INTERVAL=1
+COUNT=10
+
+if [ $# -ne 2 ]; then
+    echo "$0 <dbname> <saturation_rate>"
+    echo "e.g: $0 claimsprocess 90"
+    exit 1
+else
+    dbname=$1
+    saturation_rate=$2
+fi
+
+echo "Checking ......"
+
+# ---------------------------------------------------------
+# Collect IO stats using iostat
+# ---------------------------------------------------------
+iostat -xz -y 1 10 | awk '
+BEGIN {
+    printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n",
+           "Device","r/s","w/s","rkB/s","wkB/s","await","svctm","%util"
+}
+/^Device/ { next }
+/^(avg-cpu|$)/ { next }
+
+$1 ~ /^[a-zA-Z0-9]/ {
+    dev=$1
+    rsr=$2
+    wsr=$3
+    rk=$4
+    wk=$5
+    util=$NF
+
+    await=0
+    svctm=0
+
+    if (rsr > 0 || wsr > 0 || util > 0) {
+        printf "%-10s %6.1f %6.1f %10.1f %10.1f %8.2f %8.2f %5.1f%%\n",
+               dev, rsr, wsr, rk, wk, await, svctm, util
+        print "---------------------------------------------------------------------------"
+    }
+}
+' > /tmp/ioissue
+
+# ---------------------------------------------------------
+# Detect saturated dm devices
+# ---------------------------------------------------------
+device=$(awk -v rate="$saturation_rate" '$1 ~ /^dm-/ && $NF+0 > rate {print $1}' /tmp/ioissue | sort -u)
+
+if [ -z "$device" ]; then
+    echo "No Saturation Device"
+    exit 2
+fi
+
+echo "Saturation Devices:"
+printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n" \
+"Device" "r/s" "w/s" "rkB/s" "wkB/s" "await" "svctm" "%util"
+
+grep -E "$(echo "$device" | sed 's/ /|/g')" /tmp/ioissue | sort
+
+# ---------------------------------------------------------
+# Investigation
+# ---------------------------------------------------------
+for i in $device; do
+
+    # safety check
+    if [ ! -b "/dev/$i" ]; then
+        echo "WARNING: skipping invalid device $i"
+        continue
+    fi
+
+    path=$(lsblk -no MOUNTPOINT "/dev/$i" | awk 'NF{print; exit}')
+    [ -z "$path" ] && continue
+
+    # -----------------------------------------------------
+    # Resolve physical disks (correct method: walk UP stack)
+    # -----------------------------------------------------
+    phys_devices=$(lsblk -nr -o NAME,TYPE -s "/dev/$i" 2>/dev/null | \
+        awk '$2=="disk"{print $1}' | sort -u | tr '\n' ',' | sed 's/,$//')
+
+    [ -z "$phys_devices" ] && phys_devices="UNKNOWN"
+
+    echo "========================================================================"
+    echo "MAP: DM=$i | DISK=$phys_devices | MOUNT=$path"
+    echo "------------------------------------------"
+
+    # -----------------------------------------------------
+    # PostgreSQL diagnostics (UNCHANGED)
+    # -----------------------------------------------------
+    psql -d "$dbname" -Axt <<EOF
+SELECT
+    a.pid,
+    a.backend_type,
+    a.state,
+    EXTRACT(epoch FROM (now() - a.query_start))::int AS duration_sec,
+    a.query
+FROM pg_stat_activity a
+WHERE (
+    a.state = 'active'
+    OR a.backend_type IN (
+        'autovacuum worker',
+        'background writer',
+        'checkpointer',
+        'walwriter',
+        'logical replication worker',
+        'parallel worker'
+    )
+)
+AND a.pid <> pg_backend_pid()
+ORDER BY duration_sec DESC;
+EOF
+
+done

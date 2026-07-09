@@ -1,0 +1,46 @@
+psql -d ods_domani -Atc "
+    WITH RECURSIVE parts AS (
+        SELECT c.oid, n.nspname, c.relname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.oid = 'datamart_humana.claim'::regclass
+
+        UNION ALL
+
+        SELECT c.oid, n.nspname, c.relname
+        FROM pg_inherits i
+        JOIN pg_class c ON c.oid = i.inhrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN parts p ON p.oid = i.inhparent
+    )
+    SELECT '-t ' || quote_ident(nspname)||'.'||quote_ident(relname)
+    FROM parts
+    WHERE NOT EXISTS (
+        SELECT 1 FROM pg_inherits i WHERE i.inhparent = parts.oid
+    );
+  "
+
+pg_dump -Fd -j 10 -d ods_domani -f /pg_backups/datamart_humana_claim \
+$(<above large table query)
+
+
+From schema dump 
+
+pg_restore -l /pg_backups/datamart_humana01 > toc.list
+grep 'datamart_humana.claim' toc.list > toc_leaf.list
+time pg_restore -v -d ods_domani -j 10 --data-only -L toc_leaf.list /pg_backups/datamart_humana01 > restore.log 2>&1
+real    43m10.129s
+user    36m40.591s
+sys     8m9.942s
+
+
+pg_restore -l /pg_backups/datamart_humana01 > toc.list
+grep 'datamart_humana.member' toc.list > toc.member
+time pg_restore -v -d ods_domani -j 10 --data-only -L toc.member /pg_backups/datamart_humana01 > restore_member.log 2>&1
+
+
+pg_restore -l /pg_backups/datamart_humana01 | grep 'claim_2025_06_p9' > toc_claim_2025_06_p9
+pg_restore -v -d ods_domani -j 1 --data-only -L toc_claim_2025_06_p9 /pg_backups/datamart_humana01
+psql -d ods_domani -Atc 'SELECT count(*) FROM datamart_humana.claim_2025_06_p9;'
+
+

@@ -1,0 +1,19 @@
+-- 1. Stop replication
+ALTER SUBSCRIPTION hpls_planconfig_sub DISABLE;
+
+-- 2. Remove table sync state
+DELETE FROM pg_subscription_rel
+WHERE srsubid = (
+    SELECT oid
+    FROM pg_subscription
+    WHERE subname = 'hpls_planconfig_sub'
+);
+
+-- 3. Re-enable subscription
+ALTER SUBSCRIPTION hpls_planconfig_sub ENABLE;
+
+-- 4. Now trigger real copy
+ALTER SUBSCRIPTION hpls_planconfig_sub
+REFRESH PUBLICATION WITH (copy_data = true);
+
+

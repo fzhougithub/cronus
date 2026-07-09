@@ -1,0 +1,28 @@
+ALTER ROLE hydra_user SET max_parallel_workers_per_gather = 0;
+ALTER ROLE hydra_user SET max_parallel_workers = 0;
+ALTER ROLE hydra_user SET force_parallel_mode = off;
+ALTER ROLE hydra_user SET enable_parallel_append = off;
+ALTER ROLE hydra_user SET enable_parallel_hash = off;
+ALTER ROLE hydra_user SET enable_parallel_merge = off;
+ALTER ROLE hydra_user SET enable_parallel_index_scan = off;
+
+ALTER ROLE hydra_user CONNECTION LIMIT 10;
+
+
+
+-- Hydra may execute outside PostgreSQL executor
+it may use its own:
+
+threads
+worker pool
+vector engine
+
+
+SELECT pid, backend_type, application_name, state, query
+FROM pg_stat_activity
+WHERE pid IN (<your workers>);
+
+If it is 'paraller worker, it is postgresql stuff
+if it is 'client backend', it is hydra stuff
+
+

@@ -1,0 +1,3 @@
+pg_dump -d ods_domani -s -t datamart_humana.claim*
+
+

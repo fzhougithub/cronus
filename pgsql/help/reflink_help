@@ -1,0 +1,39 @@
+bash
+# Create a test directory with a file
+mkdir /tmp/test_clone_demo
+cd /tmp/test_clone_demo
+echo "Hello World" > original.txt
+cat original.txt
+
+# Create a reflink clone (same as pg_upgrade --clone)
+cp --reflink=always original.txt clone.txt
+
+# Check inodes (different, just like your PostgreSQL files)
+ls -li original.txt clone.txt
+
+# Check physical disk usage before delete
+df -h /tmp
+
+# Delete the "original"
+rm original.txt
+
+# Check if clone still works!
+cat clone.txt  # Still shows "Hello World"!
+
+# Check disk usage - no change because blocks still exist
+df -h /tmp
+
+# Clean up
+rm clone.txt
+
+
+The pg14 directory is NOT the "real" data. It's just one of two references to the same physical data.
+
+Think of it like:
+
+A house (physical blocks) with two front doors (pg14 and pg16 directories)
+
+Removing one door doesn't demolish the house
+
+You can still enter through the other door
+

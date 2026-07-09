@@ -1,0 +1,11 @@
+SELECT * FROM pg_replication_origin_status;
+
+ SELECT pg_size_pretty(
+  pg_wal_lsn_diff(
+    'E2A/C4000060',   -- received
+    remote_lsn        -- applied
+  )
+)
+FROM pg_replication_origin_status;
+
+This confirm you have to check the error in log!

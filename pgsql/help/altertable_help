@@ -1,3 +1,11 @@
+ALTER TABLE "stg_customer_320"."c52"
+SET (
+    fillfactor = 70,
+    toast_tuple_target = 128
+);
+VACUUM FULL "stg_customer_320"."c52";
+
+
 pct=# alter publication pct_ddc_pub drop table pct_ddc.pct_file, pct_ddc.pct_data;
 ALTER PUBLICATION
 

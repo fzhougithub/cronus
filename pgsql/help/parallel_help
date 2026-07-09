@@ -1,3 +1,72 @@
+parallel -j 10 -q psql -d ods_domani -c "select count(1) from {}" :::: /tmp/claim.tablist > /tmp/check_claim.log 2>&1
+
+parallel -j 10 -q psql -d ods_domani -c"ANALYZE verbose {}" :::: claim.tablist
+
+/usr/bin/time parallel -j 32 'echo {}' :::: datamart_humana.key_claim_core-leaf-inserts.sql > check
+
+/usr/bin/time parallel -j 32 --tag '/usr/bin/time -f "%E" echo {}' :::: datamart_humana.key_claim_core-leaf-inserts.sql > check 2>&1
+
+
+(
+  /usr/bin/time parallel -j 32 --tag \
+  '/usr/bin/time -f "%E" psql -v ON_ERROR_STOP=1 -c "{}"' \
+  ::::
+  datamart_humana.key_claim_core-leaf-inserts.sql
+) > check 2>&1
+
+
+parallel -j 10 -q psql -h odshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud -d ods_domani -c "vacuum(freeze,analyze,verbose) {}" :::: claim_leaflist
+parallel -j 20 -q psql -h claimshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud -d claimsprocess -c "vacuum(freeze,DISABLE_PAGE_SKIPPING,verbose ) {}" :::: big_5
+
+你的命令拆解
+parallel -j 8 -q psql -d ods_domani -c {} :::: idx.sql
+逐项解释：
+部分
+	
+含义
+
+
+parallel
+	
+GNU parallel
+
+
+-j 8
+	
+同时跑 8 个任务
+
+
+psql -d ods_domani -c {}
+	
+每条命令模板
+
+
+{}
+	
+被替换为输入行
+
+
+:::: idx.sql
+	
+从 idx.sql读取每一行
+
+语法
+	
+含义
+
+
+:::
+	
+后面跟 参数列表​
+
+
+::::
+	
+后面跟 文件
+
+
+
+
 Let’s break down your command step by step:
 
 ```bash

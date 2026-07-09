@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <grep command get list> <IP>"
+	exit 1
+else
+	cmd="$1"
+	ip=$2
+	shopt -s expand_aliases
+	alias cn='cat ~/*nodes'
+fi
+
+echo $cmd
+
+#for i in $(eval $cmd);do echo $(ping -c 1 $i|grep $ip|wc -l) $(echo $i);done
+for i in $(eval $cmd);do a=$(ping -c 1 $i|grep $ip|wc -l); if [ $a -ne 0 ];then echo $a $(echo $i);fi;done

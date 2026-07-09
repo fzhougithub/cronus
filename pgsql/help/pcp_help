@@ -1,0 +1,48 @@
+psql -h localhost postgres -c "SHOW pool_nodes;"
+
+create .pcppass, it will work, keep the postgresql password there
+*:*:postgres:RySQfic8iQo9rBHDKXmEQoY2y12kFo1M
+
+pcp_node_count Shows total number of backend nodes.  pcp_node_count -h localhost -U postgres
+
+pcp_node_info Detailed info for a specific node ID.  pcp_node_info -h localhost -U postgres -n 0
+
+pcp_proc_count Shows number of active Pgpool processes.  pcp_proc_count -h localhost -U postgres
+
+pcp_proc_info Status of a specific child process.  pcp_proc_info -h localhost -U postgres -p 0
+
+pcp_pool_status Shows overall pool statistics/config.  pcp_pool_status -h localhost -U postgres
+
+#pcp_pool_status | awk '/^name/  {name=$3} /^value/ {value=$2} /^desc/  {desc=$2; print name " = " value " (" desc ")"}'
+#pcp_pool_status | awk ' /^name/  {name=$3} /^value/ {print name " = " $2} ' # this one just pick up one word
+# this one show all 
+pcp_pool_status | awk ' /^name/  {name=$3} /^value/ {sub(/^value:[[:space:]]*/, ""); print name " = " $0} '
+
+
+pcp_watchdog_info Status of HA/Watchdog cluster.  pcp_watchdog_info -h localhost -U postgres
+
+pcp_health_check_stats Shows health check history for a node.  pcp_health_check_stats -h localhost -U postgres -n 0
+
+2. Operational & Management Commands
+
+pcp_reload_config Reloads pgpool.conf without restarting.  pcp_reload_config -h localhost -U postgres
+
+pcp_log_rotate Forces Pgpool to rotate its log files.  pcp_log_rotate -h localhost -U postgres
+
+pcp_invalidate_query_cache Clears the in-memory query cache.  pcp_invalidate_query_cache -h localhost -U postgres
+
+wd_cli Interactive CLI for Watchdog status.  wd_cli -f /etc/pgpool-II/pgpool.conf -v
+
+3. Node Management (Use with caution in production)
+
+pcp_detach_node Take a backend node offline.  pcp_detach_node -h localhost -U postgres -n 1
+
+pcp_attach_node Bring a backend node back online.  pcp_attach_node -h localhost -U postgres -n 1
+
+pcp_promote_node Promote a standby to primary.  pcp_promote_node -h localhost -U postgres -n 1
+
+pcp_recovery_node Start online recovery for a node.  pcp_recovery_node -h localhost -U postgres -n 1
+
+4. Emergency Commands
+
+pcp_stop_pgpool Shuts down the entire Pgpool service.  pcp_stop_pgpool -h localhost -U postgres -m fast

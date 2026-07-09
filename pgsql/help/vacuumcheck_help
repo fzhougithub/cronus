@@ -1,0 +1,38 @@
+select schemaname,relname,n_tup_del,n_live_tup,last_autovacuum from pg_stat_user_tables where last_autovacuum>'2026-05-01' order by n_live_tup desc ;
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_total_relation_size(c.oid)/1024/1024/1024 AS total_size_gb,
+    s.last_autovacuum,
+    s.n_dead_tup,
+    s.n_live_tup,
+    ROUND(
+        s.n_dead_tup * 100.0 / NULLIF(s.n_live_tup, 0),
+        2
+    ) AS dead_ratio,
+    opt.option AS autovacuum_option
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+LEFT JOIN LATERAL unnest(c.reloptions) AS opt(option)
+    ON opt.option LIKE 'autovacuum%'
+WHERE c.relkind = 'r'
+-- AND c.relname LIKE 'claim_core%'
+AND s.last_autovacuum IS NULL
+ORDER BY total_size_gb DESC;
+
+
+
+SELECT p.pid, now() - a.xact_start AS duration, c.relname, p.phase, p.heap_blks_total, p.heap_blks_scanned, p.heap_blks_vacuumed, p.index_vacuum_count, p.max_dead_tuples FROM pg_stat_progress_vacuum p JOIN pg_stat_activity a ON p.pid = a.pid JOIN pg_class c ON p.relid = c.oid;
+
+  pid   |    duration     | relname |     phase      | heap_blks_total | heap_blks_scanned | heap_blks_vacuumed | index_vacuum_count | max_dead_tuples
+--------+-----------------+---------+----------------+-----------------+-------------------+--------------------+--------------------+-----------------
+ 977991 | 00:35:14.189413 | s23     | vacuuming heap |         8795816 |           8795816 |            4804576 |                  1 |       178956969
+ 978108 | 00:02:13.442711 | m93     | vacuuming heap |         6140466 |           6140466 |            4706251 |                  1 |       178956969
+(2 rows)
+
+

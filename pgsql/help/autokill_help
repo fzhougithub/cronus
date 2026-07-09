@@ -1,0 +1,10 @@
+ods_domani=# show statement_timeout;
+ statement_timeout
+-------------------
+ 0
+(1 row)
+
+
+ALTER SYSTEM SET statement_timeout = '5min';
+SELECT pg_reload_conf();
+

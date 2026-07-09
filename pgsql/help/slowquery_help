@@ -1,0 +1,365 @@
+ods_domani=# SELECT
+ods_domani-# left(query, 80) AS q,
+ods_domani-# md5(query) AS qhash,
+ods_domani-# count(*) AS cnt,
+ods_domani-# max(now() - query_start) AS max_runtime
+ods_domani-# FROM pg_stat_activity
+ods_domani-# WHERE datname = 'ods_domani'
+ods_domani-# AND state = 'active'
+ods_domani-# GROUP BY query
+ods_domani-# ORDER BY cnt DESC
+ods_domani-# LIMIT 10;
+ q | qhash | cnt | max_runtime
+----------------------------------------------------------------------------------+----------------------------------+-----+------------------
+ SELECT U79.RATESHEET_ID as rateSheetId | 45eda0e914f3a9fa135f3d03feb9fe7a | 60 | 00:00:00.088057
+ +| fe837cce7079102b218eff56d221c563 | 4 | 00:00:00.210261
+ +| | |
+ +| | |
+ SELECT S52.RELATIONSHIP_ID,B33.TAG_NM +| | |
+ FROM B33 B33 +| | |
+ INN | | |
+ SELECT BR7.PRIORITY_ID as priorityId, BR7.CONDITION_ID as conditionId, BR7.CON | f4dfcdec3fc3f84c777b1d5e80518722 | 2 | 00:00:00.010227
+ SELECT U79.RATESHEET_ID AS rateSheetId, U80.RATESHEET_SHORT_NM AS rateSheetSh | b912480d28eec2bbec7ebf884e667101 | 2 | -00:00:00.002196
+ SELECT +| 7fe3b91aefa30506452f74378b15b43e | 1 | 00:00:00
+ left(query, 80) AS q, +| | |
+ md5(query) AS qhash, +| | |
+ count(*) AS cnt, +| | |
+ | | |
+(5 rows)
+
+
+SELECT CC.CLAIM_ID,
+	CC.MEMBER_ID,
+	CC.PLAN_INGREDIENT_COST_AMT,
+	CC.PHARMACY_ID,
+	CC.NPI_PHARMACY_ID,
+	CC.NPI_PRESCRIBER_ID,
+	CC.NDC_ID,
+	CC.PLAN_PRESCRIBER_ID,
+	CC.HRA_APPLIED_AMT,
+	CC.FSA_APPLIED_AMT,
+	CC.HSA_APPLIED_AMT,
+	CC.ADJUDICATION_APPLIED_AMT,
+	CC.SPAP_APPLIED_AMT,
+	CC.SUBMITTED_INGREDIENT_COST_AMT,
+	CC.SUBMITTED_INCENTIVE_AMT,
+	CC.PLAN_DISPENSE_FEE_AMT,
+	CC.INCENTIVE_PAID_AMT,
+	CE1.PLAN_SALES_TAX_AMT,
+	CC.ALTERNATE_MEMBER_ID,
+	CC.DOSAGE_STRENGTH,
+	CE1.COST_SHARE_REDUCTION_VARIANCE_DED_AMT,
+	CC.PRESCRIPTION_ORIGIN_CD,
+	CC.PRESCRIPTION_REASON_CD,
+	CC.SUBMITTED_SALES_TAX_AMT,
+	CC.REPORT_EXCLUSION_IND,
+	CC.NETWORK_IND,
+	CC.PLAN_MAXIMUM_SPECIFIC_AMT,
+	CC.PRIOR_AUTHORIZATION_CD,
+	CC.SPECIALTY_DRUG_IND,
+	CC.PROCESS_UPDATE_TS,
+	CC.COMPOUND_CD,
+	CC.STANDARD_PACKAGE_IND,
+	CC.DEDUCTIBLE_STATUS_IND,
+	CC.DEDUCTIBLE_STATUS_IND_2,
+	CE1.COINSURANCE_AMT,
+	CC.PLAN_COPAY_AMT,
+	CC.COMPOUND_DOSAGE_DESCRIPTION_CD,
+	CC.TIER_NBR,
+	CC.FORMULARY_IND,
+	CC.RECORD_SOURCE_IND,
+	CC.DRUG_CLASS_CD,
+	CC.PROCESS_CREATE_BY_PROGRAM_ID,
+	CC.PROCESS_UPDATE_BY_PROGRAM_ID,
+	CE1.PLAN_HEADER_ID,
+	CE2.PARTD_M3P_ASSOCIATED_CLAIM_IND,
+	CC.CUSTOMER_ID,
+	CE2.PARTD_M3P_ASSOCIATED_CLAIM_ID,
+	CC.PCA_ALLOWANCE_AMT,
+	CC.PCA_ROLLOVER_AMT,
+	CC.THERAPY_PROTOCOL_NM,
+	CC.PROTOCOL_TYPE_CD_01,
+	CC.PROTOCOL_TYPE_CD_02,
+	CC.PROTOCOL_TYPE_CD_03,
+	CC.PROTOCOL_TYPE_CD_04,
+	CC.PROTOCOL_TYPE_CD_05,
+	CC.PROTOCOL_TYPE_CD_06,
+	CC.PROTOCOL_TYPE_CD_07,
+	CC.PROTOCOL_TYPE_CD_08,
+	CC.PROTOCOL_TYPE_CD_09,
+	CC.PROTOCOL_TYPE_CD_10,
+	CC.CLAIM_STATUS_CD,
+	CC.CICS_CLAIM_STATUS_CD,
+	CC.CUSTOMER_CALCULATED_COPAY_AMT,
+	CE1.PRESCRIBER_FIRST_NM,
+	CE1.PRESCRIBER_LAST_NM,
+	CE1.COMPOUND_TYPE_CD,
+	CC.POSTPAY_IND_1,
+	CC.GENERIC_PRODUCT_IND,
+	X80.GPI_CD,
+	CC.COMPOUND_DISPENSE_FORM_IND,
+	CC.SUBMITTED_TOTAL_PRESCRIPTION_COST_AMT,
+	CC.ADMINISTRATIVE_FEE_AMT,
+	CE2.COVID_INCENTIVE_PAID_AMT,
+	CC.COVERAGE_CD_1,
+	CC.COVERAGE_CD_2,
+	CC.PRESCRIPTION_ID,
+	CC.FILL_DT AS FILLDATE,
+	CC.MEMBER_BIRTH_DT,
+	CC.REFILL_NBR,
+	CC.SUBMITTED_PRESCRIBER_ID,
+	CC.PRESCRIBER_ID_QUALIFIER_CD,
+	CC.PHARMACY_ID_QUALIFIER,
+	CC.PRICE_SOURCE_IND,
+	CC.PROVIDER_STATUS_CD,
+	CC.NDC_LABEL_NM,
+	CC.GCN_ID,
+	CC.PLAN_METRIC_DECIMAL_QTY,
+	CC.PLAN_DAYS_SUPPLY_CNT,
+	CC.THERAPY_PROTOCOL_NM,
+	CC.PROTOCOL_TYPE_CD_01,
+	CC.USUAL_AND_CUSTOMARY_AMT,
+	CC.TOTAL_PLAN_LIABILITY_AMT,
+	CC.PLAN_CALCULATED_COPAY_PLUS_COINS_AMT,
+	CC.OTHER_TROOP_AMT,
+	CC.MEMBER_DEDUCTIBLE_APPLIED_AMT,
+	CC.MEMBER_PAY_DIFFERENCE_AMT,
+	CC.MOP_SPECIFIC_AMT,
+	CC.DEDUCTIBLE_SYSTEM_IND,
+	CC.TROOP_APPLIED_AMT,
+	CC.PLRO_AMT,
+	CC.LIS_AMT,
+	CC.RECEIVED_DT,
+	CC.TOTAL_PAID_AMT,
+	CC.ADJUDICATED_AMT,
+	CC.ALTERNATE_PATIENT_PAY_AMT,
+	CC.CLIENT_ID,
+	CC.ADJUSTED_DT,
+	CC.DEA_CD,
+	CE1.PRESCRIBER_INFORMATION_LEVEL_CD,
+	CE1.DISPENSE_EVENT_ID,
+	CE1.OTHER_COVERAGE_CD,
+	CC.GROUP_ID,
+	CC.MEMBER_GENDER,
+	CC.PROCESS_CREATE_BY_USER_ID,
+	COAP_SUM.TOTAL_CLAIM_OTHER_AMOUNT_PAID_AMT,
+	COACS_SUM.TOTAL_CLAIM_OTHER_AMOUNT_CLAIMED_SUBMITTED_AMT,
+	CC.CLAIM_SEQUENCE_ID
+FROM CLAIM_CORE CC
+LEFT JOIN CLAIM_EXTENSION_1 CE1 ON CE1.CUSTOMER_ID = CC.CUSTOMER_ID
+AND CE1.CLAIM_ID = CC.CLAIM_ID
+LEFT JOIN CLAIM_EXTENSION_2 CE2 ON CE2.CUSTOMER_ID = CC.CUSTOMER_ID
+AND CE2.CLAIM_ID = CC.CLAIM_ID
+LEFT JOIN
+	(SELECT CUSTOMER_ID,
+			CLAIM_ID,
+			SUM(CLAIM_OTHER_AMOUNT_PAID_AMT) AS TOTAL_CLAIM_OTHER_AMOUNT_PAID_AMT
+		FROM CLAIM_OTHER_AMOUNT_PAID
+		GROUP BY CUSTOMER_ID,
+			CLAIM_ID) COAP_SUM ON COAP_SUM.CUSTOMER_ID = CC.CUSTOMER_ID
+AND COAP_SUM.CLAIM_ID = CC.CLAIM_ID
+LEFT JOIN
+	(SELECT CUSTOMER_ID,
+			CLAIM_ID,
+			SUM(CLAIM_OTHER_AMOUNT_CLAIMED_SUBMITTED_AMT) AS TOTAL_CLAIM_OTHER_AMOUNT_CLAIMED_SUBMITTED_AMT
+		FROM CLAIM_OTHER_AMOUNT_CLAIMED_SUBMITTED
+		GROUP BY CUSTOMER_ID,
+			CLAIM_ID) COACS_SUM ON COACS_SUM.CUSTOMER_ID = CC.CUSTOMER_ID
+AND COACS_SUM.CLAIM_ID = CC.CLAIM_ID
+LEFT JOIN GLOBAL.X80 X80 ON X80.NDC_ID = CC.NDC_ID
+WHERE CC.CUSTOMER_ID = 320
+	AND CC.MEMBER_ID IN ('000000037742743400')
+	AND CC.FILL_DT BETWEEN '2025-09-08' AND '2026-03-07'
+ORDER BY CC.CUSTOMER_ID,
+	CC.MEMBER_ID,
+	CC.FILL_DT,
+	CC.CLAIM_ID DESC;
+
+
+select distinct jsonb_build_object('searchCriteria',jsonb_build_object(\r+
+ | 'customerId',cc.customer_id,\r +
+ | 'clientId',cc.client_id,\r +
+ | 'memberId',cc.member_id,\r +
+ | 'groupExternalId',cc.used_external_group,\r +
+ | 'familyIndividualIndicator','I',\r +
+ | 'source',cc.record_source_ind,\r +
+ | 'fillStartDate','2024-01-01',\r +
+ | 'fillEndDate','2026-03-07',\r +
+ | 'claimTypes', 'ALL',\r +
+ | 'ytdSummaryFlag', true,\r +
+ | 'searchAcross', true,\r +
+ | 'errorCodeFlag', false))\r +
+ | from claimsprocess_humana.claim_core cc \r +
+ | inner join claimsprocess_humana.claim_dur_history cdh \r +
+ | on cc.member_id = cdh.member_id\r +
+ | where cdh.member_id in(SELECT cdh.member_id \r +
+ | FROM claimsprocess_humana.claim_dur_history cdh \r +
+ | GROUP BY cdh.member_id \r +
+ | HAVING COUNT(*) > 100)\r +
+ | and cc.used_external_group IS NOT null\r +
+ | and cc.record_source_ind not in ('')\r +
+ | limit 100
+
+select distinct 
+pcd1_0.finance_claim_id,
+pcd1_0.adjudication_process_create_ts,
+pcd1_0.amount_type,
+pcd1_0.cics_claim_status_cd,
+pcd1_0.claim_data_json,
+pcd1_0.claim_id,
+pcd1_0.claim_sequence_id,
+pcd1_0.claim_status_cd,
+pcd1_0.claim_type_cd,
+pcd1_0.client_id,
+pcd1_0.create_dt,
+pcd1_0.customer_id,
+pcd1_0.cycle_id,
+pcd1_0.domani_ind,
+pcd1_0.financial_cutoff_dt,
+pcd1_0.funding_cycle_id,
+pcd1_0.funding_schedule_id,
+pcd1_0.ledger_account_id,
+pcd1_0.master_customer_set_id,
+pcd1_0.pct_amt,
+pcd1_0.pct_claim_type_cd,
+pcd1_0.pct_group_id,
+pcd1_0.pharmacy_id,
+pcd1_0.process_create_by_program_id,
+pcd1_0.process_create_by_user_id,
+pcd1_0.process_create_ts,
+pcd1_0.process_update_by_program_id,
+pcd1_0.process_update_by_user_id,
+pcd1_0.process_update_ts 
+from 
+pct_consolidated_claim_data pcd1_0 
+where 
+pcd1_0.master_customer_set_id=$1 
+and pcd1_0.funding_cycle_id=$2 
+and pcd1_0.financial_cutoff_dt=to_timestamp($3,'yyyy-MM-dd') 
+and pcd1_0.pharmacy_id is not null 
+offset $4 rows fetch first $5 rows only;
+
+query | SELECT A20.CMS_PLAN_BENEFIT_PACKAGE_ID as cmsPlanBenefitPackageId, + | A19.CMS_CONTRACT_ID as cmsContractId, + | A19.EXTERNAL_CMS_CONTRACT_ID as externalCmsContractId, + | A20.CMS_PBP_EXTERNAL_ID as cmsPbpExternalId + | FROM A19 A19 + | INNER JOIN A20 A20 ON A20.CMS_CONTRACT_ID = A19.CMS_CONTRACT_ID + | WHERE A19.EXTERNAL_CMS_CONTRACT_ID = $1 + | AND A20.CMS_PLAN_BNFT_PKGE_EFFV_DT <= $2 + | AND A20.CMS_PLN_BNFT_PKGE_TERMTN_DT >= $3 + | AND A19.CMS_CONTRACT_EFFECTIVE_DT <= $4 + | AND A19.CMS_CONTRACT_TERMINATION_DT >= $5
+
+
+Most used statements
+ 1417364490 | SELECT U79.RATESHEET_ID as rateSheetId                                          ,U80.CUSTOMER_SET_ID as customerSetId
+          ,U80.RATESHEET_SHORT_NM as rateSheetShortName                           ,CI1.NETWORK_SUITE_ID as networkSuiteId
+               ,CI0.EFFECTIVE_DT as effectiveDate                                                      ,CI0.TERMINATION_DT as terminationDate
+                                     ,U78.NETWORK_SUITE_SHT_NM as networkSuiteShortName                                              ,U78.PHARMACY_NETWORK_I
+D as pharmacyNetworkId                                               ,CI1.PRIORITY_ID as priorityId                                                       ,U
+79.NTWK_STE_RATESHEET_PRIY_CT as networkSteRateSheetPriorityCt                                  ,CI1.IN_NETWORK_CD as inNetworkCode
+                            ,CI1.PREFERRED_CD as preferredCode                                                      ,U86.EFFECTIVE_DT as associationEffDate
+                                                     ,U86.TERMINATION_DT as associationTermDate                                                   FROM CI0 C
+I0                                                    INNER JOIN CI1 CI1                                                   ON CI1.PHARMACY_COMPONENT_ID
+                                            = CI0.PHARMACY_COMPONENT_ID                                       AND CI1.EFFECTIVE_PHARMACY_CMPT_ID
+                                = CI0.EFFECTIVE_PHARMACY_CMPT_ID                                INNER JOIN U92 AS U92
+         ON U92.PHARMACY_COMPONENT_ID                                             = CI0.PHARMACY_COMPONENT_ID                                          INNER
+ JOIN U78 U78                                                    ON U78.NETWORK_SUITE_ID                                                      =  CI1.NETWORK
+_SUITE_ID                                         INNER JOIN U91 AS U91                                                ON  U91.NETWORK_SUITE_ID
+                                         = CI1.NETWORK_SUITE_ID                                          INNER JOIN U79 U79
+                  ON U79.EFFECTIVE_NETWORK_SUITE_ID =                                       U91.EFFECTIVE_NETWORK_SUITE_ID
+   INNER JOIN V90 AS V90                                                ON U79.RATESHEET_ID =                                                      V90.RATES
+HEET_ID                                                   INNER JOIN U86 U86                                                   ON  U86.EFFECTIVE_CUSTOM_GROU
+P_ID                                             = V90.EFFECTIVE_CUSTOM_GROUP_ID                                 INNER JOIN U85 AS U85
+                          ON  U85.CUSTOM_GROUP_ID                                                       = U86.CUSTOM_GROUP_ID
+            INNER JOIN U80 U80                                                   ON U80.RATESHEET_ID =
+V90.RATESHEET_ID                                                   WHERE (U91.EFFECTIVE_DT      <= $1                            AND  U91.TERMINATION_DT
+>= $2)                            AND (U86.EFFECTIVE_DT      <= $3                           AND  U86.TERMINATION_DT    >= $4)                            AN
+D (CI0.EFFECTIVE_DT      <= $5                           AND  CI0.TERMINATION_DT    >= $6)                            AND U92.CUSTOMER_SET_ID =
+                                      $7                                                AND CI0.PHARMACY_COMPONENT_ID =
+        $8                                 AND CI1.NETWORK_SUITE_ID                                                  = $9
+             AND V90.EFFECTIVE_CUSTOM_GROUP_ID =                                         $10                        ORDER BY CI1.PRIORITY_ID
+                                        ,U79.NTWK_STE_RATESHEET_PRIY_CT
+  324067041 | select A20.cms_plan_benefit_package_id AS cmsPlanBenefitPackageId  from A19 inner join A20 ON A20.CMS_CONTRACT_ID = A19.CMS_CONTRACT_ID WHERE
+ A19.external_cms_contract_id = $1 and A20.cms_pbp_external_id  = $2  and A20.cms_plan_bnft_pkge_effv_dt  <= $3  and A20.cms_pln_bnft_pkge_termtn_dt  > $4
+and A19.cms_contract_effective_dt   <= $5  and A19.cms_contract_termination_dt  > $6
+  262400920 | SELECT U79.RATESHEET_ID as rateSheetId,U80.RATESHEET_SHORT_NM as rateSheetShortName,CI1.NETWORK_SUITE_ID as networkSuiteId,CI0.EFFECTIVE_DT as
+ effectiveDate,CI0.TERMINATION_DT as terminationDate,  U78.NETWORK_SUITE_SHT_NM as networkSuiteShortName,U78.PHARMACY_NETWORK_ID as pharmacyNetworkId,U80.CU
+STOMER_SET_ID as customerSetId,CI1.PRIORITY_ID as priorityId,U79.NTWK_STE_RATESHEET_PRIY_CT as networkSteRateSheetPriorityCt,  CI1.IN_NETWORK_CD as inNetwor
+kCode,CI1.PREFERRED_CD as preferredCode ,W85.EFFECTIVE_DT as associationEffDate, W85.TERMINATION_DT as associationTermDate FROM CI0 INNER JOIN CI1 AS CI1 ON
+  CI1.PHARMACY_COMPONENT_ID = CI0.PHARMACY_COMPONENT_ID  AND CI1.EFFECTIVE_PHARMACY_CMPT_ID  = CI0.EFFECTIVE_PHARMACY_CMPT_ID   INNER JOIN U92 AS U92   ON U
+92.PHARMACY_COMPONENT_ID = CI0.PHARMACY_COMPONENT_ID  INNER JOIN U78 AS U78   ON  U78.NETWORK_SUITE_ID = CI1.NETWORK_SUITE_ID   INNER JOIN U91 AS U91   ON U
+91.NETWORK_SUITE_ID  = CI1.NETWORK_SUITE_ID  INNER JOIN U79 AS U79   ON  U79.EFFECTIVE_NETWORK_SUITE_ID = U91.EFFECTIVE_NETWORK_SUITE_ID  INNER JOIN W85 W85
+ ON W85.CUSTOMER_SET_ID = U78.CUSTOMER_SET_ID   INNER JOIN V89 AS V89  ON V89.EFFECTIVE_PHARMACY_ID  = W85.EFFECTIVE_PHARMACY_ID  AND V89.RATESHEET_ID  = U7
+9.RATESHEET_ID INNER JOIN U80 U80   ON U80.RATESHEET_ID = V89.RATESHEET_ID  WHERE (U91.EFFECTIVE_DT   <= $1  AND  U91.TERMINATION_DT >= $2) AND (W85.EFFECTI
+VE_DT   <= $3  AND  W85.TERMINATION_DT >= $4)  AND (CI0.EFFECTIVE_DT   <= $5      AND  CI0.TERMINATION_DT >= $6)  AND CI0.PHARMACY_COMPONENT_ID =
+ $7  AND U92.CUSTOMER_SET_ID = $8  AND CI1.NETWORK_SUITE_ID = $9 AND  W85.PHARMACY_ID    = $10  ORDER BY U79.NTWK_STE_RATESHEET_PRIY_CT
+  239832816 | SELECT U79.RATESHEET_ID AS rateSheetId,    U80.RATESHEET_SHORT_NM AS rateSheetShortName,    U80.CUSTOMER_SET_ID AS customerSetId,    CI1.NETWO
+RK_SUITE_ID AS networkSuiteId,    CI0.EFFECTIVE_DT AS effectiveDate,    CI0.TERMINATION_DT AS terminationDate,    CI1.PRIORITY_ID AS priorityId,    U79.NTWK
+_STE_RATESHEET_PRIY_CT AS networkSteRateSheetPriorityCt,    CI1.IN_NETWORK_CD AS inNetworkCode,    CI1.PREFERRED_CD AS preferredCode,    W83.RELATIONSHIP_ID
+ AS relationshipId,    U78.NETWORK_SUITE_SHT_NM AS networkSuiteShortName,    U78.PHARMACY_NETWORK_ID AS pharmacyNetworkId,    W83.EFFECTIVE_DT AS associatio
+nEffDate,    W83.TERMINATION_DT AS associationTermDate FROM S56 S56    INNER JOIN customer.W83 W83 ON W83.RELATIONSHIP_ID = S56.RELATIONSHIP_ID    INNER JOI
+N customer.V88 AS V88 ON V88.EFFECTIVE_RELATIONSHIP_ID = W83.EFFECTIVE_RELATIONSHIP_ID    INNER JOIN customer.U80 AS U80 ON U80.RATESHEET_ID = V88.RATESHEET
+_ID   INNER JOIN customer.U79 AS U79 ON V88.RATESHEET_ID = U79.RATESHEET_ID    INNER JOIN customer.U91 AS U91 ON U79.EFFECTIVE_NETWORK_SUITE_ID = U91.EFFECT
+IVE_NETWORK_SUITE_ID    INNER JOIN customer.CI1 AS CI1 ON U91.NETWORK_SUITE_ID = CI1.NETWORK_SUITE_ID     INNER JOIN customer.CI0 AS CI0 ON CI0.EFFECTIVE_PH
+ARMACY_CMPT_ID = CI1.EFFECTIVE_PHARMACY_CMPT_ID    AND CI0.PHARMACY_COMPONENT_ID = CI1.PHARMACY_COMPONENT_ID      INNER JOIN customer.U92 AS U92 ON U92.PHAR
+MACY_COMPONENT_ID = CI0.PHARMACY_COMPONENT_ID      INNER JOIN customer.U78 AS U78 ON U78.NETWORK_SUITE_ID = CI1.NETWORK_SUITE_ID     AND W83.CUSTOMER_SET_ID
+ = U78.CUSTOMER_SET_ID WHERE S56.PHARMACY_ID = $1    AND S56.RELATIONSHIP_ID IS NOT NULL    AND (        S56.RELSHP_EFFV_DTE <= $2        AND S56.RELSHP_TER
+MTN_DTE >= $3    )    AND (        W83.EFFECTIVE_DT <= $4        AND W83.TERMINATION_DT >= $5    )    AND (        CI0.EFFECTIVE_DT <= $6        AND CI0.TER
+MINATION_DT >= $7    )    AND (        U91.EFFECTIVE_DT <= $8        AND U91.TERMINATION_DT >= $9    )    AND U92.CUSTOMER_SET_ID = $10    AND CI0.PHARMACY_
+COMPONENT_ID = $11    AND CI1.NETWORK_SUITE_ID = $12    AND NOT EXISTS (        SELECT $16        FROM S56 S56A1        WHERE S56A1.PHARMACY_ID = S56.PHARMA
+CY_ID            AND S56A1.RELATIONSHIP_ID = S56.RELATIONSHIP_ID            AND (                S56A1.RELSHP_EFFV_DTE >= $13                OR S56A1.RELSHP
+_TERMTN_DTE <= $14            )            AND S56A1.PHARMACY_CUSTOMER_SET_ID = $15            AND (                (                    S56.PHARM_RCRD_TYP_
+CD = $17                    AND S56A1.PHARM_RCRD_TYP_CD = $18                )                OR (                    S56.PHARM_RCRD_TYP_CD = $19
+         AND S56A1.PHARM_RCRD_TYP_CD IN ($20, $21)                )            )    ) ORDER BY CI1.PRIORITY_ID,    U79.NTWK_STE_RATESHEET_PRIY_CT
+  113821334 | SELECT U87.EFFECTIVE_RATESHEET_ID as effectiveRateSheetId                                            ,COALESCE(U87.COVERAGE_COMPONENT_ID,$4) a
+s coverageComponentId                                 ,COALESCE(CAST(F70.COVERAGE_COMPONENT_SHT_NM AS VARCHAR(10)), $5) as coverageComponentShortName
+                 ,COALESCE(U87.CONDITION_ID,$6) as conditionId                                          ,U87.CONDITION_MET_CD as conditionMetCode
+                                       ,COALESCE(CAST(O42.CONDITION_SHORT_NM AS VARCHAR(10)), $7) as conditionShortName                               ,U87.M
+INIMUM_AT as minimumAt                                                        ,U87.MAXIMUM_AT as maximumAt
+      ,U87.DISPENSING_FEE_AT as dispensingFeeAt                                                 ,U87.EFFECTIVE_DT as effectiveDate
+                  ,U87.TERMINATION_DT as terminationDate                                          ,U90.RATE_SHEET_TYPE_ID as rateSheetTypeId
+                                ,U90.RATE_SHEET_TYPE_LNG_NM as rateSheetTypeLongName                                            ,U80.RATESHEET_SHORT_NM as r
+ateSheetShortName                                                  ,U90.RATE_SHEET_TYPE_CTGY_CD as rateSheetTypeCategoryCode
+            ,COALESCE(U87.MAC_PRICE_COMPONENT_ID,$8) as macPriceComponentId                                 ,COALESCE(U87.MAC_REIMB_COMPONENT_ID,$9) as macR
+eimbursementComponentId                                ,COALESCE(CAST(BQ8.MAC_PRICE_CMPONT_SHT_NM AS VARCHAR(10)), $10) as macPriceComponentShortName
+                    ,COALESCE(U87.NET_DIFF_RATESHEET_ID,$11) as netDifferenceRateSheetId                                 ,COALESCE(U87.MFP_RATESHEET_ID,$12)
+ as mfpRateSheetId                                 ,COALESCE(U87.DS_RULE_CONDITION_ID,$13) as dsRuleConditionId                                  ,COALESCE(C
+AST(O42D.CONDITION_SHORT_NM AS VARCHAR(10)), $14) as conditionShortName2                              ,U87.RS_QUALITY_NTWK_IND as qualityNetworkIndicator
+                  ,U87.RS_CHECK_SUPPRESS_IND as  checkSuppressIndicator                     ,U87.DISPENSING_FEE_ALLOWED_IND as dispensingFeeAllowedIndicator
+                                                 ,U87.SCC_CD as submissionClarificationCode                                                 ,U87.LOOK_BACK_P
+ARAMETER_ID as lookBackParameterId                                           FROM U87 AS U87                                                    LEFT OUTER J
+OIN F70 AS F70                                             ON F70.COVERAGE_COMPONENT_ID =                                             U87.COVERAGE_COMPONENT
+_ID                                          LEFT OUTER JOIN BQ8 AS BQ8                                             ON BQ8.MAC_PRICE_COMPONENT_ID =
+                                    U87.MAC_PRICE_COMPONENT_ID                                       INNER JOIN U80 AS U80
+                ON U87.RATESHEET_ID = U80.RATESHEET_ID                              INNER JOIN global.U90 AS U90
+      ON U80.RATE_SHEET_TYPE_ID  =                                               U90.RATE_SHEET_TYPE_ID                                           LEFT OUTER
+ JOIN O42 AS O42                                             ON U87.CONDITION_ID        =                                               O42.CONDITION_ID
+                                                AND O42.CONDITION_SEQUENCE_ID IN ($15,$16)                               LEFT OUTER JOIN O42 AS O42D
+                                    ON U87.DS_RULE_CONDITION_ID =                                              O42D.CONDITION_ID
+                       AND O42D.CONDITION_SEQUENCE_ID IN ($17,$18)                              WHERE U87.RATESHEET_ID = $1                        AND U87.E
+FFECTIVE_DT <= $2                                     AND U87.TERMINATION_DT >= $3                                ORDER BY
+                                    U87.LAST_MNT_TS DESC                                              FETCH FIRST $19 ROW ONLY
+   90069296 | WITH S50M AS (  SELECT S50.PHARMACY_ID  ,S50.CLOSE_DT  ,S50.POSTAL_ST_CD  ,S50.PAYER_TYPE_CD  ,S50.CUSTOMER_SET_ID  ,S50.PRIMARY_PROVIDER_TYPE
+_CD  ,S50.SECONDARY_PROVIDER_TYPE_CD  ,S50.TERTIARY_PROVIDER_TYPE_CD  FROM S50 S50  WHERE S50.PHARMACY_ID = CAST($1 AS bpchar)  AND S50.CUSTOMER_SET_ID = $2
+  AND S50.RECORD_TYPE_CD = $3 )  SELECT   COALESCE(S50A.CLOSE_DT, S50M.CLOSE_DT, $4) as closeDt,   COALESCE(CAST(S50A.POSTAL_ST_CD AS VARCHAR(2)), CAST(S50M
+.POSTAL_ST_CD AS VARCHAR(2)) , $5) as postalStCd,   COALESCE(CAST(S50A.PAYER_TYPE_CD as VARCHAR(1)), CAST(S50M.PAYER_TYPE_CD as VARCHAR(1)), $6) as payerTyp
+eCd,   COALESCE(CAST(S50A.PRIMARY_PROVIDER_TYPE_CD as VARCHAR(2)), CAST(S50M.PRIMARY_PROVIDER_TYPE_CD as VARCHAR(2)), $7) as primaryProviderTypeCd,   COALES
+CE(CAST(S50A.SECONDARY_PROVIDER_TYPE_CD as VARCHAR(2)), CAST(S50M.SECONDARY_PROVIDER_TYPE_CD as VARCHAR(2)), $8) as secondaryProviderTypeCd,   COALESCE(CAST
+(S50A.TERTIARY_PROVIDER_TYPE_CD as VARCHAR(2)), CAST(S50M.TERTIARY_PROVIDER_TYPE_CD as VARCHAR(2)), $9) as tertiaryProviderTypeCd   FROM S50M S50M   LEFT OU
+TER JOIN S50 S50A   ON S50A.PHARMACY_ID = S50M.PHARMACY_ID   AND S50A.RECORD_TYPE_CD = $10   AND S50A.CUSTOMER_SET_ID = S50M.CUSTOMER_SET_ID
+   82847967 | SELECT U81.PERCENTAGE_ADJUSTMENT_RT as percentageAdjustmentRt       ,U81.DISPENSING_FEE_AT as dispensingFeeAt       ,COALESCE(U81.VENDOR_BENCH
+MARK_ID,$2) as vendorBenchmarkId       ,U81.VACCINE_ADMIN_FEE_AT as vaccineAdminFeeAt   FROM U81 U81  WHERE U81.RATESHEET_PRIORITY_ID = $1
+   75921118 | SELECT U80.RATE_SHEET_TYPE_ID as rateSheetTypeId ,CAST(U80.RATESHEET_SHORT_NM AS VARCHAR(10)) as ratesheetShortNm  ,CAST(U80.RATESHEET_LONG_NM
+  AS VARCHAR(35)) as ratesheetLongNm  ,COALESCE(U87.CONDITION_ID,$4) as conditionId  ,CAST(U87.CONDITION_MET_CD AS CHARACTER) as conditionMetCd  ,COALESCE(C
+AST(F70.COVERAGE_COMPONENT_SHT_NM AS VARCHAR(10)), $5) as coverageComponentShtNm ,COALESCE(U87.DISPENSING_FEE_AT,$6) as dispensingFeeAt  ,COALESCE(U87.MINIM
+UM_AT,$7) as MinimumAt  ,COALESCE(U87.MAXIMUM_AT,$8) as MaximumAt  ,U87.EFFECTIVE_RATESHEET_ID as effectiveRatesheetId  ,COALESCE(U87.MAC_PRICE_COMPONENT_ID
+,$9) as macPriceComponentId  ,COALESCE(CAST(BQ8.MAC_PRICE_CMPONT_SHT_NM AS VARCHAR(10)), $10) as macPriceCmpontShtNm  ,COALESCE(U87.DS_RULE_CONDITION_ID,$11
+) as dsRuleConditionId  FROM U80 U80  INNER JOIN U87 U87  ON U80.RATESHEET_ID = U87.RATESHEET_ID  LEFT OUTER JOIN BQ8 AS BQ8  ON BQ8.MAC_PRICE_COMPONENT_ID
+= U87.MAC_PRICE_COMPONENT_ID  LEFT OUTER JOIN F70 AS F70  ON F70.COVERAGE_COMPONENT_ID = U87.COVERAGE_COMPONENT_ID  WHERE U80.RATESHEET_ID = $1  AND U80.RAT
+ESHEET_STATUS_CD = $12  AND U87.EFFECTIVE_DT <= $2  AND U87.TERMINATION_DT >= $3
+   65016969 | SELECT U82.FEE_AT AS feeAt        FROM U82 U82        INNER JOIN "global".U77 U77           ON U82.FEE_ID  = U77.FEE_ID         AND U77.FEE_AB
+BREVIATION_NM = CAST($1 AS bpchar)       INNER JOIN U91 U91           ON U91.EFFECTIVE_NETWORK_SUITE_ID =              U82.EFFECTIVE_NETWORK_SUITE_ID
+ INNER JOIN U78 U78           ON U78.NETWORK_SUITE_ID = U91.NETWORK_SUITE_ID        INNER JOIN C76 C76           ON U78.CUSTOMER_SET_ID = C76.CUSTOMER_SET_I
+D        INNER JOIN E21 E21           ON E21.CUSTOMER_SET_ID = C76.CUSTOMER_SET_ID          AND E21.CUSTOMER_ID = $2          AND E21.CUSTOMER_SET_TYPE_ID =
+ +$6        WHERE U91.EFFECTIVE_DT   <= $3          AND U91.TERMINATION_DT >= $4          AND U91.NETWORK_SUITE_ID = $5
+   64681514 | SELECT U83.FEE_AT as feeAt     FROM U83 U83    INNER JOIN "global".U77 U77       ON U83.FEE_ID  = U77.FEE_ID      AND U77.FEE_ABBREVIATION_NM
+= CAST($1 as bpchar)    INNER JOIN U87 U87       ON U87.EFFECTIVE_RATESHEET_ID = U83.EFFECTIVE_RATESHEET_ID    WHERE U87.EFFECTIVE_RATESHEET_ID = $2
+(10 rows)
+
+
+
+
+
+

@@ -1,0 +1,6 @@
+SELECT 'ALTER SUBSCRIPTION ' || quote_ident(subname) || ' SET(slot_name=none);'
+FROM pg_subscription
+WHERE subenabled = false
+  AND subdbid = (SELECT oid FROM pg_database WHERE datname = current_database());
+
+

@@ -1,0 +1,28 @@
+SELECT
+    pt.parentrelid::regclass AS parent_table,
+    pt.relid::regclass       AS leaf_table,
+    COALESCE(ts.spcname, 'pg_default') AS tablespace_name
+FROM pg_partition_tree('claim') pt
+JOIN pg_class c ON pt.relid = c.oid
+LEFT JOIN pg_tablespace ts ON c.reltablespace = ts.oid
+WHERE pt.isleaf
+ORDER BY leaf_table;
+
+
+SELECT
+    parent.relname      AS parent_table,
+    child.relname       AS leaf_table,
+    COALESCE(ts.spcname, 'pg_default') AS tablespace_name
+FROM pg_inherits inh
+JOIN pg_class parent ON inh.inhparent = parent.oid
+JOIN pg_class child  ON inh.inhrelid  = child.oid
+LEFT JOIN pg_tablespace ts ON child.reltablespace = ts.oid
+WHERE NOT EXISTS (
+    -- filter only leaf partitions (no further children)
+    SELECT 1
+    FROM pg_inherits sub
+    WHERE sub.inhparent = child.oid
+)
+ORDER BY parent.relname, child.relname;
+
+

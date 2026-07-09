@@ -1,0 +1,381 @@
+SELECT
+    n.nspname,
+    c.relname,
+    c.reloptions
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE EXISTS (
+    SELECT 1
+    FROM unnest(coalesce(c.reloptions, ARRAY[]::text[])) r
+    WHERE r LIKE 'autovacuum%'
+)
+ORDER BY n.nspname, c.relname;
+            nspname            |                 relname                 |                                                                                                     reloptions
+-------------------------------+-----------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ claimsprocess_humana          | a_claim_address                         | {autovacuum_vacuum_scale_factor=0.002,autovacuum_vacuum_threshold=2000,autovacuum_analyze_scale_factor=0.001,autovacuum_analyze_threshold=2000,autovacuum_vacuum_cost_limit=1000,autovacuum_vacuum_cost_delay=10}
+ claimsprocess_humana          | a_claim_component_block_information     | {autovacuum_vacuum_scale_factor=0.002,autovacuum_vacuum_threshold=2000,autovacuum_analyze_scale_factor=0.001,autovacuum_analyze_threshold=2000,autovacuum_vacuum_cost_limit=1000,autovacuum_vacuum_cost_delay=10}
+ claimsprocess_humana          | a_claim_core_320_1                      | {autovacuum_vacuum_scale_factor=0.002,autovacuum_vacuum_threshold=2000,autovacuum_analyze_scale_factor=0.001,autovacuum_analyze_threshold=2000,autovacuum_vacuum_cost_limit=1000,autovacuum_vacuum_cost_delay=10}
+
+
+
+-- SELECT relname, reloptions FROM pg_class WHERE relname IN (SELECT relname FROM a) AND relname NOT IN ('s23','a_claim_core_320_23','ee4');
+
+                 relname                 |                                                                                                    reloptions
+-----------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ a_claim_core_320_40                     | {autovacuum_vacuum_scale_factor=0.002,autovacuum_vacuum_threshold=2000,autovacuum_analyze_scale_factor=0.001,autovacuum_analyze_threshold=2000,autovacuum_vacuum_cost_limit=1000,autovacuum_vacuum_cost_delay=10}
+ claim_extension_1_53                    | {autovacuum_vacuum_scale_factor=0.002,autovacuum_vacuum_threshold=2000,autovacuum_analyze_scale_factor=0.001,autovacuum_analyze_threshold=2000,autovacuum_vacuum_cost_limit=1000,autovacuum_vacuum_cost_delay=10}
+
+
+
+
+
+auto analyze: Threshold = autovacuum_analyze_threshold + (autovacuum_analyze_scale_factor X n_live_tup)
+
+ALTER TABLE claimsprocess_humana.claim_core_320_202312 SET (
+  autovacuum_vacuum_scale_factor = 0.002,
+  autovacuum_vacuum_threshold = 2000,
+  autovacuum_analyze_scale_factor = 0.001,
+  autovacuum_analyze_threshold = 2000,           -- Adding the base analyze threshold
+  autovacuum_vacuum_cost_limit = 1000,
+  autovacuum_vacuum_cost_delay = 10
+);
+
+DO $$
+DECLARE
+    row record;
+BEGIN
+    FOR row IN 
+        SELECT st.schemaname, st.relname
+        FROM pg_stat_user_tables st
+        JOIN pg_class c ON st.relid = c.oid
+        WHERE ((pg_total_relation_size(c.oid) > 10 * 1024^3) -- Larger than 10GB
+           OR (st.n_live_tup > 5000000))                   -- More than 5M live tuples
+           AND st.last_autovacuum IS NULL
+    LOOP
+        EXECUTE format('ALTER TABLE %I.%I SET (
+            autovacuum_vacuum_scale_factor = 0.002,
+            autovacuum_vacuum_threshold = 50,
+            autovacuum_analyze_scale_factor = 0.001,
+            autovacuum_analyze_threshold = 50,
+            autovacuum_vacuum_cost_limit = 1000,
+            autovacuum_vacuum_cost_delay = 10
+        )', row.schemaname, row.relname);
+        
+        RAISE NOTICE 'Applied autovacuum settings to %.%', row.schemaname, row.relname;
+    END LOOP;
+END $$;
+
+claimsprocess=# \copy a FROM 'temp.csv' WITH (FORMAT csv, DELIMITER ',', HEADER false);
+COPY 314
+
+select a.schemaname,a.relname,a.n_live_tup from pg_stat_user_tables a join a as temp on a.schemaname=temp.schemaname and a.relname=temp.relname where n_live_tup=0;
+-- n_live_tup should be caused by the table never got analyed. will check later. 
+
+DO $$
+DECLARE
+    row record;
+BEGIN
+    FOR row IN SELECT schemaname, relname FROM a where relname not in ('s23','a_claim_core_320_23','ee4') LOOP
+        EXECUTE format('ALTER TABLE %I.%I SET (
+            autovacuum_vacuum_scale_factor = 0.002,
+            autovacuum_vacuum_threshold = 2000,
+            autovacuum_analyze_scale_factor = 0.001,
+            autovacuum_analyze_threshold = 2000,
+            autovacuum_vacuum_cost_limit = 1000,
+            autovacuum_vacuum_cost_delay = 10
+        )', row.schemaname, row.relname);
+    END LOOP;
+END $$;
+
+SELECT 
+    relname, 
+    reloptions 
+FROM pg_class 
+WHERE relname IN (SELECT relname FROM a)
+  AND relname NOT IN ('s23','a_claim_core_320_23','ee4');
+
+
+
+SELECT 
+    p.pid, 
+    now() - a.xact_start AS duration,
+    p.phase, 
+    p.heap_blks_total, 
+    p.heap_blks_scanned, 
+    p.heap_blks_vacuumed,
+    p.index_vacuum_count,
+    p.max_dead_tuples
+FROM pg_stat_progress_vacuum p
+JOIN pg_stat_activity a ON p.pid = a.pid;
+
+SELECT 
+    p.pid, 
+    now() - a.xact_start AS duration,
+    p.phase, 
+    p.sample_blks_total, 
+    p.sample_blks_scanned, 
+    p.ext_stats_computed,
+    p.child_tables_total,
+    p.child_tables_done
+FROM pg_stat_progress_analyze p
+JOIN pg_stat_activity a ON p.pid = a.pid;
+
+
+
+SELECT 
+    relname, 
+    last_vacuum,        -- Tracks your manual 'VACUUM'
+    last_autovacuum,    -- Tracks background 'autovacuum'
+    last_analyze,       -- Tracks your manual 'ANALYZE'
+    last_autoanalyze,   -- Tracks background 'autoanalyze'
+    n_dead_tup, 
+    n_live_tup
+FROM pg_stat_user_tables
+WHERE relname = 'claim_core_320_202312';
+
+        relname        |          last_vacuum          | last_autovacuum |         last_analyze          | last_autoanalyze | n_dead_tup | n_live_tup
+-----------------------+-------------------------------+-----------------+-------------------------------+------------------+------------+------------
+ claim_core_320_202312 | 2026-04-28 12:03:07.359985-05 |                 | 2026-04-28 12:27:02.440693-05 |                  |     366012 |   54513046
+(1 row)
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_total_relation_size(c.oid)/1024/1024/1024 AS total_size_gb,
+    s.last_autovacuum,
+    s.n_dead_tup,
+    s.n_live_tup,
+    ROUND(
+        s.n_dead_tup * 100.0 / NULLIF(s.n_live_tup, 0),
+        2
+    ) AS dead_ratio,
+    opt.option AS autovacuum_option
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+LEFT JOIN LATERAL unnest(c.reloptions) AS opt(option)
+    ON opt.option LIKE 'autovacuum%'
+WHERE c.relkind = 'r'
+AND c.relname LIKE 'claim_core%'
+AND s.last_autovacuum IS NULL
+ORDER BY total_size_gb DESC;
+
+     schema_name      |       table_name       | total_size_gb | last_autovacuum | n_dead_tup | n_live_tup | dead_ratio |           autovacuum_option
+
+----------------------+------------------------+---------------+-----------------+------------+------------+------------+-----------------------------------
+----
+ claimsprocess_humana | claim_core_320_202312  |           279 |                 |        109 |          0 |            | autovacuum_analyze_scale_factor=0.
+005
+ claimsprocess_humana | claim_core_320_202312  |           279 |                 |        109 |          0 |            | autovacuum_vacuum_scale_factor=0.0
+10
+ claimsprocess_humana | claim_core_320_202306  |           278 |                 |         96 |          0 |            | autovacuum_vacuum_scale_factor=0.0
+10
+
+ALTER TABLE claimsprocess_humana.claim_core_320_202312
+SET (
+  autovacuum_enabled = true,
+  autovacuum_vacuum_scale_factor = 0.05,
+  autovacuum_vacuum_threshold = 1000,
+  autovacuum_analyze_scale_factor = 0.02
+);
+
+SET vacuum_cost_limit = 0; 
+VACUUM (ANALYZE, VERBOSE) claimsprocess_humana.claim_core_320_202312;
+-- make it without cost limit, run with disk speed. 
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    s.last_autovacuum,
+    s.n_dead_tup,
+    s.n_live_tup,
+    ROUND(
+        s.n_dead_tup * 100.0 / NULLIF(s.n_live_tup, 0),
+        2
+    ) AS dead_ratio
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+WHERE c.relkind = 'r'
+AND c.relname LIKE 'claim_core_%'
+AND s.last_autovacuum IS NULL
+ORDER BY dead_ratio DESC NULLS LAST;
+
+     schema_name      |       table_name       | total_size | last_autovacuum | n_dead_tup | n_live_tup | dead_ratio
+----------------------+------------------------+------------+-----------------+------------+------------+------------
+ claimsprocess_humana | claim_core_320_202001  | 14 GB      |                 |         10 |          4 |     250.00
+ claimsprocess_humana | claim_core_320_202002  | 16 GB      |                 |         14 |          6 |     233.33
+ claimsprocess_humana | claim_core_320_202109  | 1199 MB    |                 |         27 |         13 |     207.69
+ claimsprocess_humana | claim_core_320_202106  | 757 MB     |                 |         17 |          9 |     188.89
+ claimsprocess_humana | claim_core_320_202111  | 425 MB     |                 |         34 |         19 |     178.95
+ claimsprocess_humana | claim_core_320_202103  | 482 MB     |                 |         21 |         12 |     175.00
+ claimsprocess_humana | claim_core_320_202101  | 1000 MB    |                 |         33 |         19 |     173.68
+
+
+
+
+
+SELECT
+    c.relname,
+    opt.option
+FROM pg_class c
+CROSS JOIN LATERAL unnest(c.reloptions) AS opt(option)
+WHERE c.relkind = 'r'
+AND opt.option LIKE 'autovacuum%';
+
+                 relname                 |                option
+-----------------------------------------+---------------------------------------
+ a_domani_migration_count_2025           | autovacuum_vacuum_scale_factor=0.005
+ a_domani_migration_count_2025           | autovacuum_analyze_scale_factor=0.003
+ o60                                     | autovacuum_vacuum_scale_factor=0.001
+
+SELECT
+    c.relname,
+    o.option
+FROM pg_class c
+JOIN (
+    SELECT
+        c2.oid,
+        unnest(c2.reloptions) AS option
+    FROM pg_class c2
+    WHERE c2.relkind = 'r'
+) o ON o.oid = c.oid
+WHERE o.option LIKE 'autovacuum%';
+
+                 relname                 |                option
+-----------------------------------------+---------------------------------------
+ a_domani_migration_count_2025           | autovacuum_vacuum_scale_factor=0.005
+ a_domani_migration_count_2025           | autovacuum_analyze_scale_factor=0.003
+ o60                                     | autovacuum_vacuum_scale_factor=0.001
+
+SELECT
+    c.relname,
+    opt.option
+FROM pg_class c
+CROSS JOIN LATERAL unnest(c.reloptions) AS opt(option)
+WHERE c.relname LIKE 'claim_approved_message%'
+AND opt.option LIKE 'autovacuum%';
+
+                             relname
+-----------------------------------------------------------------
+ claim_core_319_202511
+ claim_core_319_202511_customer_id_member_id_fill_dt_claim_i_idx
+ claim_core_319_202511_npi_pharmacy_id_fill_dt_customer_id_idx
+ claim_core_319_202511_npi_pharmacy_id_prescription_id_recei_idx
+ claim_core_319_202511_pharmacy_id_prescription_id_fill_dt_c_idx
+ claim_core_319_202511_pkey
+ claim_core_320_202511
+
+
+
+
+SELECT c.relname, c.reloptions FROM pg_class c WHERE c.relkind = 'r' AND c.reloptions IS NOT NULL;
+
+                 relname                 |                                  reloptions
+-----------------------------------------+------------------------------------------------------------------------------
+ a_domani_migration_count_2025           | {autovacuum_vacuum_scale_factor=0.005,autovacuum_analyze_scale_factor=0.003}
+ o60                                     | {autovacuum_vacuum_scale_factor=0.001,autovacuum_analyze_scale_factor=0.001}
+ ee1                                     | {autovacuum_vacuum_scale_factor=0.005,autovacuum_analyze_scale_factor=0.003}
+ ee2                                     | {autovacuum_vacuum_scale_factor=0.005,autovacuum_analyze_scale_factor=0.003}
+ a_domani_migration_count                | {autovacuum_vacuum_scale_factor=0.005,autovacuum_analyze_scale_factor=0.003}
+ a_domani_migration_error_o59            | {autovacuum_vacuum_scale_factor=0.050,autovacuum_analyze_scale_factor=0.025}
+
+
+SELECT
+    pid,
+    datname,
+    relid::regclass AS table_name,
+    phase,
+    heap_blks_total,
+    heap_blks_scanned,
+    heap_blks_vacuumed
+FROM pg_stat_progress_vacuum
+WHERE datname = current_database();
+  pid   |    datname    |                 table_name                 |     phase     | heap_blks_total | heap_blks_scanned | heap_blks_vacuumed
+--------+---------------+--------------------------------------------+---------------+-----------------+-------------------+--------------------
+ 522332 | claimsprocess | stg_customer_320.o59                       | scanning heap |        16773443 |          11791677 |                  0
+ 522455 | claimsprocess | claimsprocess_humana.claim_core_320_202604 | scanning heap |        21735439 |           4338832 |                  0
+ 522414 | claimsprocess | pg_toast.pg_toast_3389469480               | scanning heap |         4223451 |           3901461 |                  0
+(3 rows)
+
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+    s.last_autovacuum,
+    s.autovacuum_count,
+    s.n_dead_tup,
+    s.n_live_tup,
+    ROUND(s.n_dead_tup * 100.0 / NULLIF(s.n_live_tup,0), 2) AS dead_ratio
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_stat_user_tables s
+    ON s.schemaname = n.nspname
+   AND s.relname = c.relname
+WHERE c.relkind = 'r'
+ORDER BY dead_ratio DESC NULLS LAST;
+          schema_name          |                   table_name                   | total_size |        last_autovacuum        | autovacuum_count | n_dead_tup
+ | n_live_tup | dead_ratio
+-------------------------------+------------------------------------------------+------------+-------------------------------+------------------+-----------
+-+------------+-------------
+ iidr_prod_humana_claims_admin | ts_bookmark                                    | 275 MB     | 2026-04-28 10:58:06.391565-05 |             2947 |    1245751
+ |          9 | 13841677.78
+ claimsprocess_humana          | claim_approved_message_65                      | 12 MB      |                               |                0 |         71
+ |          1 |     7100.00
+ claimsprocess_humana          | claim_approved_message_25                      | 2499 MB    |                               |                0 |      18595
+ |        453 |     4104.86
+ claimsprocess_humana          | claim_approved_message_55                      | 706 MB     |                               |                0 |       4618
+
+
+ALTER TABLE your_table_name SET (autovacuum_enabled = true);
+
+
+ |        122 |     3785.25
+ claimsprocess_humana          | claim_additional_message_44                    | 31 GB      |                               |                0 |        144
+ |          4 |     3600.00
+ claimsprocess_humana          | claim_approved_message_45                      | 2269 MB    |                               |                0 |      14818
+ |        424 |     3494.81
+
+
+
+SELECT
+  relname,
+  last_autovacuum,
+  last_autoanalyze,
+  n_dead_tup,
+  n_mod_since_analyze
+FROM pg_stat_user_tables
+WHERE relname = 'c52';
+``
+
+-----------Check the change, the a contain all of the last_autovacuum is null table list, result show 15 tables worked. the rest will coming in. 
+create temp table a(schemaname varchar(60),relname varchar(60));
+\copy a FROM 'temp.csv' WITH (FORMAT csv, DELIMITER ',', HEADER false);
+select s.schemaname,s.relname,s.n_tup_del,s.n_live_tup,s.last_autovacuum,s.last_vacuum from pg_stat_user_tables as s join a as t on s.schemaname=t.schemaname and s.relname=t.relname where s.last_autovacuum>'2026-05-01' order by s.n_live_tup desc ;
+
+also, 
+claimsprocess=# select pid,now()-xact_start,query from pg_stat_activity where state='active' and query like 'auto%';
+  pid   |    ?column?     |                                         query
+--------+-----------------+---------------------------------------------------------------------------------------
+ 977991 | 00:19:06.615295 | autovacuum: VACUUM ANALYZE claimsprocess_humana.claim_extension_1_55
+ 977950 | 00:01:27.719332 | autovacuum: ANALYZE claimsprocess_humana.a_claim_core_320_37
+ 978108 | 00:03:30.549839 | autovacuum: VACUUM ANALYZE claimsprocess_humana.claim_generic_reporting_indicators_25
+(3 rows)
+
+claimsprocess=# select * from a where relname in ('claim_extension_1_55','a_claim_core_320_37','claim_generic_reporting_indicators_25');
+      schemaname      |                relname
+----------------------+---------------------------------------
+ claimsprocess_humana | claim_extension_1_55
+ claimsprocess_humana | claim_generic_reporting_indicators_25
+ claimsprocess_humana | a_claim_core_320_37
+(3 rows)
+
+This show the rule of autovacuum is always go to never autovacuumed first, then, compare the timestamp. So, just add them. 

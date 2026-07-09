@@ -1,3 +1,35 @@
+ods_domani=# SELECT 43304::regclass, 43388::regclass, 43542::regclass;
+        regclass         |        regclass         |        regclass
+-------------------------+-------------------------+-------------------------
+ pg_toast.pg_toast_43299 | pg_toast.pg_toast_43383 | pg_toast.pg_toast_43537
+(1 row)
+
+SELECT 
+    n.nspname AS schema_name,
+    p.relname AS parent_table,
+    p.reltoastrelid::regclass AS toast_table_name
+FROM pg_class p
+JOIN pg_namespace n ON n.oid = p.relnamespace
+WHERE p.reltoastrelid IN ('pg_toast.pg_toast_43304'::regclass, 
+                          'pg_toast.pg_toast_43388'::regclass, 
+                          'pg_toast.pg_toast_43542'::regclass);
+
+ods_domani=# SELECT
+    n.nspname AS schema_name,
+    p.relname AS parent_table,
+    p.reltoastrelid::regclass AS toast_table_name
+FROM pg_class p
+JOIN pg_namespace n ON n.oid = p.relnamespace
+WHERE p.reltoastrelid IN (43304,43383,43537);
+     schema_name      |     parent_table      |    toast_table_name
+----------------------+-----------------------+-------------------------
+ claimsprocess_humana | claim_core_320_202210 | pg_toast.pg_toast_43299
+(1 row)
+
+ods_domani=# alter table claimsprocess_humana.claim_core_320_202210 SET (autovacuum_vacuum_cost_delay = 0,autovacuum_vacuum_cost_limit = 2000);
+ALTER TABLE
+
+
 test=# SELECT oid, datname FROM pg_database;
   oid   |    datname
 --------+---------------

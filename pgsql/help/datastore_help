@@ -1,0 +1,74 @@
+Managing a PostgreSQL instance with 20 mount points mapped to a virtualized environment means you are dealing with a massive amount of concurrent I/O streams. Datastore contention at this scale occurs when your 20 separate virtual mount points map down to the exact same physical disk arrays, queues, or physical HBA ports, creating a massive bottleneck during intense database operations like checkpoints, autovacuuming, or heavy reporting workloads.
+
+To fix datastore contention across a 20-device configuration, you must systematically eliminate queues and physical resource sharing.
+
+1. Distribute across Multiple PVSCSI Controllers (Crucial)
+A single VMware Paravirtual SCSI (PVSCSI) controller has its own queue limit. If all 20 of your mount points are stacked onto SCSI Controller 0, they are all fighting for the same exact queue slot pool, even if they point to different disks.
+
+The Fix: A single VM can have up to 4 Virtual SCSI Controllers (Controller 0, 1, 2, and 3).
+
+Spreading your 20 mount points evenly across all 4 controllers (5 disks per controller) significantly expands your queue depth capabilities.
+
+How to map them:
+
+Controller 0: OS, Postgres Binaries, Logs.
+
+Controller 1: Write-Ahead Logs (pg_wal) and high-churn Temp tablespaces.
+
+Controller 2: High-IOPS core data tablespaces (e.g., datamart, cdc).
+
+Controller 3: Historical or lower-priority reporting tablespaces.
+
+2. Deepen the Guest OS & VMware Queue Depths
+When 20 mount points simultaneously flood the hypervisor with I/O requests, the default VMware queue sizes will cause requests to back up instantly, driving up disk service latency.
+
+You must widen the pipeline at three distinct levels:
+
+Level A: Increase the PVSCSI Queue Depth in VMware
+By default, a PVSCSI controller limits individual disk queues to 64 and total controller queues to 256. For a 20-disk database setup, you must increase this via the ESXi host advanced settings or VM advanced parameters:
+
+Set RequestRingPages to 32 (raises per-disk queue limit to 256).
+
+Set MaxQueueDepth to 254.
+
+Level B: Increase the Linux Guest OS Queue Depth
+Inside your PostgreSQL VM, the kernel defaults for disk queue depths are often too shallow for enterprise storage. Adjust this for your 20 block devices (e.g., /dev/sdX or /dev/nvmeXnY).
+Add a custom udev rule or execute during startup to bump the execution queue limit:
+
+Bash
+# Run for each of your 20 database block devices (example for /dev/sdb)
+echo 256 > /sys/block/sdb/queue/nr_requests
+echo 256 > /sys/block/sdb/queue/queue_depth
+3. Resolve Underlying SAN & LUN Consolidation
+If your 20 VMDK files (mount points) are all sitting inside the same single VMware Datastore, they are ultimately bound to the same backend physical LUN and storage array ports.
+
+Storage vMotion (Isolation): Isolate your most aggressive database directories. Your pg_wal mount point and your primary active data mount points should live on completely separate underlying physical Datastores/LUNs.
+
+Avoid Storage DRS (SDRS) Automated Triggers: Turn off or switch Storage DRS to "Manual" for this specific database VM. If Storage DRS detects high latency during a heavy database operation (like a checkpoint), it may try to trigger a live Storage vMotion of a multi-terabyte disk mid-workload, completely crippling your storage array's performance.
+
+4. Optimize Pathing for All 20 Devices
+As established with your workload, leaving ESXi at its default multipathing setting means your 20 devices will congest physical lines sequentially.
+
+Ensure all 20 devices are explicitly updated on your ESXi hosts to use Round Robin with an IOPS switch limit of 1. This ensures that as your 20 separate mount points send concurrent requests down, the hypervisor balances those tasks seamlessly across all active physical paths to the fabric.
+
+Bash
+# Must be executed on the ESXi host terminal for the backend device IDs matching your 20 mount points
+esxcli storage nmp psp roundrobin device config set --type=iops --iops=1 --device=naa.<your_device_id>
+5. Postgres Configurations to Ease Storage Strain
+If your virtual hardware is optimally distributed and you are still hitting datastore contention thresholds, you need to soften how aggressively PostgreSQL flushes data to those 20 devices:
+
+Spread out the Checkpointer: If checkpointer is slamming your storage array during spikes, widen the window it uses to write dirty buffers.
+
+SQL
+-- Increase the checkpoint interval to reduce frequency (e.g., 30 min to 1 hour)
+ALTER SYSTEM SET checkpoint_timeout = '30min';
+-- Set completion target close to 0.9 or 0.95 to spread the writes smoothly across the full timeout window
+ALTER SYSTEM SET checkpoint_completion_target = 0.9;
+SELECT pg_reload_conf();
+Review backend_flush_after: Force backend writers to issue small, incremental flushes to the OS page cache rather than dumping a massive cluster of dirty blocks all at once, which saturates SAN queues.
+
+SQL
+ALTER SYSTEM SET backend_flush_after = '256kB';
+ALTER SYSTEM SET bgwriter_flush_after = '512kB';
+ALTER SYSTEM SET checkpoint_flush_after = '1MB';
+SELECT pg_reload_conf();

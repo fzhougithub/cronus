@@ -1,0 +1,13 @@
+postgres=# SELECT
+  r.rolname,
+  r.rolconnlimit,
+  COUNT(a.pid) AS current_connections
+FROM pg_roles r
+LEFT JOIN pg_stat_activity a
+  ON a.usename = r.rolname
+WHERE r.rolname = 'dt204295'
+GROUP BY r.rolname, r.rolconnlimit;
+ rolname  | rolconnlimit | current_connections
+----------+--------------+---------------------
+ dt204295 |           -1 |                   3
+(1 row)

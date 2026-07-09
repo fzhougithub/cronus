@@ -1,0 +1,10 @@
+To add odshumana to monitoring
+https://code.ssnc.dev/pharmacy/domanirx-infra/blob/main/kubernetes/environments/domanirx-prod/prod/devops-1/prometheus-operator/kube-prometheus-stack-values.yaml#L189
+ 
+
+helmfile -f kube-prometheus-stack-helmfile.yaml diff
+helmfile -f kube-prometheus-stack-helmfile.yaml apply
+
+systemctl list-units | grep exporter
+
+

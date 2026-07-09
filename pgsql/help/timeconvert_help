@@ -1,0 +1,7 @@
+TZ=America/Los_Angeles date -d '2026-03-12 16:26:57.177'
+
+This can be used to check the logfile and get the local time
+
+You can setup log timezone in config!
+log_timezone = 'America/Los_Angeles'
+timezone = 'America/Los_Angeles'

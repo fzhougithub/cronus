@@ -1,3 +1,20 @@
+ssh rundeck@sftp-huat-drx-kc.ssnc-corp.cloud
+
+
+ls -larth /apps/files/export_domani_*
+-rw-r--r--. 1 dt42486 osg  75M May  1 15:58 /apps/files/export_domani_patients_0319.csv
+-rw-r--r--. 1 dt42486 osg  15M May  1 15:59 /apps/files/export_domani_patients_0320.csv
+-rw-r--r--. 1 dt42486 osg  21G May 12 18:54 /apps/files/export_domani_medical_claims_0319.csv
+-rw-r--r--. 1 dt42486 osg 3.7G May 12 18:56 /apps/files/export_domani_medical_claims_0320.csv
+
+aws s3 ls --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 s3://db-backup-hpls/  --profile db-backup-hpls --no-verify-ssl
+aws s3 mb s3://db-backup-hpls   --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021   --profile db-backup-hpls   --no-verify-ssl
+ for f in export_domani*;do aws s3 cp $f s3://db-backup-hpls/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-hpls --no-verify-ssl;done
+
+then, on benefits-db-01-alma8-hpls-drx-kc
+
+ benefits=# \copy drugmgmt.stg_irx_medical_claim FROM '/pg_backups/domani_medical_claims_0319_v2.csv' WITH (FORMAT csv, header true);
+
 sftp wdc
 get *
 bye

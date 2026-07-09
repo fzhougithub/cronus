@@ -1,0 +1,530 @@
+coredumpctl gdb 384336
+
+
+(gdb) bt
+#0  0x000070d2b836f37c in __strlen_evex () from /lib64/libc.so.6
+#1  0x0000000000764188 in _copyIndexElem ()
+#2  0x0000000000779b8c in list_copy_deep ()
+#3  0x000000000076918d in _copyPlannedStmt ()
+#4  0x0000000000779b8c in list_copy_deep ()
+#5  0x0000000000a232ec in BuildCachedPlan ()
+#6  0x0000000000a235a4 in GetCachedPlan ()
+#7  0x00000000008d3dee in PostgresMain ()
+#8  0x00000000008438f4 in ServerLoop.lto_priv.0 ()
+#9  0x000000000083a32d in PostmasterMain ()
+#10 0x000000000051dd6c in main ()
+
+
+(gdb) frame 1
+#1  0x0000000000764188 in _copyIndexElem ()
+
+(gdb) info locals
+No symbol table info available.
+(gdb) info args
+No symbol table info available.
+
+repeat until all frame, for example, frame 10
+
+(gdb) info sharedlibrary
+From                To                  Syms Read   Shared Object Library
+0x000070d2b951be00  0x000070d2b95bad32  Yes (*)     /lib64/libzstd.so.1
+0x000070d2b94f5730  0x000070d2b9510271  Yes (*)     /lib64/liblz4.so.1
+0x000070d2b9398990  0x000070d2b949c023  Yes (*)     /lib64/libxml2.so.2
+0x000070d2b9359a50  0x000070d2b9361bd6  Yes (*)     /lib64/libpam.so.0
+0x000070d2b9281b30  0x000070d2b931b96e  Yes (*)     /lib64/libssl.so.3
+0x000070d2b8cdd440  0x000070d2b90228a0  Yes (*)     /lib64/libcrypto.so.3
+0x000070d2b9213dd0  0x000070d2b924bae8  Yes (*)     /lib64/libgssapi_krb5.so.2
+0x000070d2b91ee5f0  0x000070d2b91fb7bb  Yes (*)     /lib64/libz.so.1
+0x000070d2b8b32390  0x000070d2b8ba1648  Yes (*)     /lib64/libm.so.6
+0x000070d2b8ad4d90  0x000070d2b8b0e28c  Yes (*)     /lib64/libldap.so.2
+0x000070d2b86e2af0  0x000070d2b8866c64  Yes (*)     /lib64/libicui18n.so.67
+0x000070d2b84798d0  0x000070d2b8562b37  Yes (*)     /lib64/libicuuc.so.67
+0x000070d2b89fb7f0  0x000070d2b8a7e776  Yes (*)     /lib64/libsystemd.so.0
+0x000070d2b8229780  0x000070d2b839c26d  Yes (*)     /lib64/libc.so.6
+
+(gdb) info files
+Symbols from "/usr/pgsql-16/bin/postgres".
+Local core dump file:
+	`/var/tmp/coredump-5mwACR', file type elf64-x86-64.
+	0x0000000000400000 - 0x0000000000401000 is load1a
+	0x0000000000401000 - 0x0000000000491000 is load1b
+	0x0000000000491000 - 0x0000000000ab4000 is load2
+	0x0000000000ab4000 - 0x0000000000d86000 is load3
+	0x0000000000d86000 - 0x0000000000da6000 is load4
+	0x0000000000da6000 - 0x0000000000dbf000 is load5
+	0x0000000000dbf000 - 0x0000000000df5000 is load6
+	0x00000000010db000 - 0x00000000011c4000 is load7
+	0x00000000011c4000 - 0x00000000030f8000 is load8
+	0x000070bb931db000 - 0x000070bb935dc000 is load9
+	0x000070bb937dd000 - 0x000070bb939de000 is load10
+	0x000070bb93adf000 - 0x000070bb93be0000 is load11
+--Type <RET> for more, q to quit, c to continue without paging--
+
+(gdb) disassemble _copyIndexElem
+Dump of assembler code for function _copyIndexElem:
+   0x0000000000764150 <+0>:	push   %r13
+   0x0000000000764152 <+2>:	mov    $0x40,%esi
+   0x0000000000764157 <+7>:	push   %r12
+   0x0000000000764159 <+9>:	push   %rbp
+   0x000000000076415a <+10>:	push   %rbx
+   0x000000000076415b <+11>:	mov    %rdi,%rbx
+   0x000000000076415e <+14>:	sub    $0x8,%rsp
+   0x0000000000764162 <+18>:	mov    0x65b42f(%rip),%rdi        # 0xdbf598 <CurrentMemoryContext>
+   0x0000000000764169 <+25>:	call   0xa67610 <MemoryContextAllocZeroAligned>
+   0x000000000076416e <+30>:	movl   $0x53,(%rax)
+   0x0000000000764174 <+36>:	mov    0x8(%rbx),%rbp
+   0x0000000000764178 <+40>:	mov    %rax,%r12
+   0x000000000076417b <+43>:	test   %rbp,%rbp
+   0x000000000076417e <+46>:	je     0x7641ac <_copyIndexElem+92>
+--Type <RET> for more, q to quit, c to continue without paging--c
+   0x0000000000764180 <+48>:	mov    %rbp,%rdi
+   0x0000000000764183 <+51>:	call   0x493b80 <strlen@plt>
+   0x0000000000764188 <+56>:	mov    0x65b409(%rip),%rdi        # 0xdbf598 <CurrentMemoryContext>
+   0x000000000076418f <+63>:	lea    0x1(%rax),%r13
+   0x0000000000764193 <+67>:	mov    %r13,%rsi
+   0x0000000000764196 <+70>:	call   0xa671a0 <MemoryContextAlloc>
+   0x000000000076419b <+75>:	mov    %rbp,%rsi
+   0x000000000076419e <+78>:	mov    %r13,%rdx
+   0x00000000007641a1 <+81>:	mov    %rax,%rdi
+   0x00000000007641a4 <+84>:	call   0x493390 <memcpy@plt>
+   0x00000000007641a9 <+89>:	mov    %rax,%rbp
+   0x00000000007641ac <+92>:	mov    %rbp,0x8(%r12)
+   0x00000000007641b1 <+97>:	mov    0x10(%rbx),%rdi
+   0x00000000007641b5 <+101>:	call   0x75f760 <copyObjectImpl>
+   0x00000000007641ba <+106>:	mov    %rax,0x10(%r12)
+   0x00000000007641bf <+111>:	mov    0x18(%rbx),%rbp
+   0x00000000007641c3 <+115>:	test   %rbp,%rbp
+   0x00000000007641c6 <+118>:	je     0x7641f4 <_copyIndexElem+164>
+   0x00000000007641c8 <+120>:	mov    %rbp,%rdi
+   0x00000000007641cb <+123>:	call   0x493b80 <strlen@plt>
+   0x00000000007641d0 <+128>:	mov    0x65b3c1(%rip),%rdi        # 0xdbf598 <CurrentMemoryContext>
+   0x00000000007641d7 <+135>:	lea    0x1(%rax),%r13
+   0x00000000007641db <+139>:	mov    %r13,%rsi
+   0x00000000007641de <+142>:	call   0xa671a0 <MemoryContextAlloc>
+   0x00000000007641e3 <+147>:	mov    %rbp,%rsi
+   0x00000000007641e6 <+150>:	mov    %r13,%rdx
+   0x00000000007641e9 <+153>:	mov    %rax,%rdi
+   0x00000000007641ec <+156>:	call   0x493390 <memcpy@plt>
+   0x00000000007641f1 <+161>:	mov    %rax,%rbp
+   0x00000000007641f4 <+164>:	mov    %rbp,0x18(%r12)
+   0x00000000007641f9 <+169>:	mov    0x20(%rbx),%rdi
+   0x00000000007641fd <+173>:	call   0x75f760 <copyObjectImpl>
+   0x0000000000764202 <+178>:	mov    %rax,0x20(%r12)
+   0x0000000000764207 <+183>:	mov    0x28(%rbx),%rdi
+   0x000000000076420b <+187>:	call   0x75f760 <copyObjectImpl>
+   0x0000000000764210 <+192>:	mov    %rax,0x28(%r12)
+   0x0000000000764215 <+197>:	mov    0x30(%rbx),%rdi
+   0x0000000000764219 <+201>:	call   0x75f760 <copyObjectImpl>
+   0x000000000076421e <+206>:	mov    %rax,0x30(%r12)
+   0x0000000000764223 <+211>:	mov    0x38(%rbx),%eax
+   0x0000000000764226 <+214>:	mov    %eax,0x38(%r12)
+   0x000000000076422b <+219>:	mov    0x3c(%rbx),%eax
+   0x000000000076422e <+222>:	mov    %eax,0x3c(%r12)
+   0x0000000000764233 <+227>:	add    $0x8,%rsp
+   0x0000000000764237 <+231>:	mov    %r12,%rax
+   0x000000000076423a <+234>:	pop    %rbx
+   0x000000000076423b <+235>:	pop    %rbp
+   0x000000000076423c <+236>:	pop    %r12
+   0x000000000076423e <+238>:	pop    %r13
+   0x0000000000764240 <+240>:	ret
+End of assembler dump.
+
+(gdb) x/20i $pc-32
+   0x70d2b836f35c:	add    %cl,(%rdi)
+   0x70d2b836f35e:	(bad)
+   0x70d2b836f35f:	add    %dh,%bl
+   0x70d2b836f361 <__strlen_evex+1>:	nop    %edx
+   0x70d2b836f364 <__strlen_evex+4>:	mov    %edi,%eax
+   0x70d2b836f366 <__strlen_evex+6>:	vpxorq %xmm16,%xmm16,%xmm16
+   0x70d2b836f36c <__strlen_evex+12>:	and    $0xfff,%eax
+   0x70d2b836f371 <__strlen_evex+17>:	cmp    $0xfe0,%eax
+   0x70d2b836f376 <__strlen_evex+22>:	ja     0x70d2b836f4b0 <__strlen_evex+336>
+=> 0x70d2b836f37c <__strlen_evex+28>:	vpcmpeqb (%rdi),%ymm16,%k0
+   0x70d2b836f383 <__strlen_evex+35>:	kmovd  %k0,%eax
+   0x70d2b836f387 <__strlen_evex+39>:	test   %eax,%eax
+   0x70d2b836f389 <__strlen_evex+41>:	je     0x70d2b836f3e0 <__strlen_evex+128>
+   0x70d2b836f38b <__strlen_evex+43>:	tzcnt  %eax,%eax
+   0x70d2b836f38f <__strlen_evex+47>:	ret
+--Type <RET> for more, q to quit, c to continue without paging--c
+   0x70d2b836f390 <__strlen_evex+48>:	tzcnt  %eax,%eax
+   0x70d2b836f394 <__strlen_evex+52>:	sub    %edx,%edi
+   0x70d2b836f396 <__strlen_evex+54>:	lea    0x20(%rdi,%rax,1),%eax
+   0x70d2b836f39a <__strlen_evex+58>:	ret
+   0x70d2b836f39b <__strlen_evex+59>:	nopl   0x0(%rax,%rax,1)
+(gdb)
+
+(gdb) info registers
+rax            0x5c                92
+rbx            0x29fba00           44022272
+rcx            0x2f6a7c8           49719240
+rdx            0x40                64
+rsi            0x0                 0
+rdi            0x20000005c         8589934684
+rbp            0x20000005c         0x20000005c
+rsp            0x7ffc4519cdc8      0x7ffc4519cdc8
+r8             0x2f6a788           49719176
+r9             0x78                120
+r10            0x9b                155
+r11            0x70d2b83faca0      124050336623776
+r12            0x2f6a788           49719176
+r13            0x29fb008           44019720
+r14            0x9288              37512
+--Type <RET> for more, q to quit, c to continue without paging--c
+r15            0x180d610           25220624
+rip            0x70d2b836f37c      0x70d2b836f37c <__strlen_evex+28>
+eflags         0x10283             [ CF SF IF RF ]
+cs             0x33                51
+ss             0x2b                43
+ds             0x0                 0
+es             0x0                 0
+fs             0x0                 0
+gs             0x0                 0
+k0             0xffeecee0          4293840608
+k1             0xffff              65535
+k2             0xfc800000          4236247040
+k3             0xffffffc0          4294967232
+k4             0x0                 0
+k5             0x9040              36928
+k6             0x2000000000        137438953472
+k7             0x0                 0
+fs_base        0x70d2b840e940      124050336704832
+gs_base        0x0                 0
+
+(gdb) p/x $rdi
+$1 = 0x20000005c
+
+(gdb) x/s $rdi
+0x20000005c:	<error: Cannot access memory at address 0x20000005c>
+
+(gdb) p/x $rbx
+$2 = 0x29fba00
+
+(gdb) x/8gx $rbx
+0x29fba00:	0x00d1534000000053	0x000000020000005c
+0x29fba10:	0x0000000000000000	0x0000000000000000
+0x29fba20:	0x0000000000000000	0x0000000000000000
+0x29fba30:	0x0000000000000000	0x0000000100000000
+
+(gdb) x/16gx $rbx
+0x29fba00:	0x00d1534000000053	0x000000020000005c
+0x29fba10:	0x0000000000000000	0x0000000000000000
+0x29fba20:	0x0000000000000000	0x0000000000000000
+0x29fba30:	0x0000000000000000	0x0000000100000000
+0x29fba40:	0x0000000000000000	0x0000000000000000
+0x29fba50:	0x0000000000000000	0x0000000000000000
+0x29fba60:	0x0000000000000000	0x0000000000000000
+0x29fba70:	0x0000000000000000	0x0000000000000000
+
+(gdb) x/32gx $rbx
+0x29fba00:	0x00d1534000000053	0x000000020000005c
+0x29fba10:	0x0000000000000000	0x0000000000000000
+0x29fba20:	0x0000000000000000	0x0000000000000000
+0x29fba30:	0x0000000000000000	0x0000000100000000
+0x29fba40:	0x0000000000000000	0x0000000000000000
+0x29fba50:	0x0000000000000000	0x0000000000000000
+0x29fba60:	0x0000000000000000	0x0000000000000000
+0x29fba70:	0x0000000000000000	0x0000000000000000
+0x29fba80:	0x0000000000000000	0x0000000000000000
+0x29fba90:	0x0000000000000000	0x0000000000000000
+0x29fbaa0:	0x0000000000000000	0x0000000000000000
+0x29fbab0:	0x0000000000000000	0x0000000000000000
+0x29fbac0:	0x0000000000000000	0x000000000137dd88
+0x29fbad0:	0x0000000000010000	0x0000000000000000
+0x29fbae0:	0x0000000000000000	0x0000000000000000
+
+Why I suspect offset +8 is name
+
+Looking at PostgreSQL 16 source, IndexElem is defined in parsenodes.h.
+
+(gdb) x/16gx $rbx
+0x29fba00:	0x00d1534000000053	0x000000020000005c
+0x29fba10:	0x0000000000000000	0x0000000000000000
+0x29fba20:	0x0000000000000000	0x0000000000000000
+0x29fba30:	0x0000000000000000	0x0000000100000000
+0x29fba40:	0x0000000000000000	0x0000000000000000
+0x29fba50:	0x0000000000000000	0x0000000000000000
+0x29fba60:	0x0000000000000000	0x0000000000000000
+0x29fba70:	0x0000000000000000	0x0000000000000000
+
+(gdb) p *(Node *)$rbx
+No symbol "Node" in current context.
+
+(gdb) p *(Node *)$rbx
+No symbol "Node" in current context.
+(gdb) p *(HeapTupleHeaderData *)$rbx
+p *(varlena *)$rbx
+``
+No symbol "HeapTupleHeaderData" in current context.
+(gdb) p *(varlena *)$rbx
+No symbol "varlena" in current context.
+
+(gdb) info proc mappings
+Mapped address spaces:
+
+Start Addr         End Addr           Size               Offset             File
+0x0000000000400000 0x0000000000491000 0x91000            0x0                /usr/pgsql-16/bin/postgres
+0x0000000000491000 0x0000000000ab4000 0x623000           0x91000            /usr/pgsql-16/bin/postgres
+0x0000000000ab4000 0x0000000000d86000 0x2d2000           0x6b4000           /usr/pgsql-16/bin/postgres
+0x0000000000d86000 0x0000000000da6000 0x20000            0x986000           /usr/pgsql-16/bin/postgres
+0x0000000000da6000 0x0000000000dbf000 0x19000            0x9a6000           /usr/pgsql-16/bin/postgres
+0x000070bb93ce2000 0x000070bb940e2000 0x400000           0x0                /dev/shm/PostgreSQL.2240012438
+0x000070bb940e2000 0x000070bb942e2000 0x200000           0x0                /dev/shm/PostgreSQL.462760002
+0x000070bb942e2000 0x000070bb943e2000 0x100000           0x0                /dev/shm/PostgreSQL.316676
+0x000070bb943e2000 0x000070bb947e2000 0x400000           0x0                /dev/shm/PostgreSQL.2379245786
+0x000070bb947e2000 0x000070bb949e2000 0x200000           0x0                /dev/shm/PostgreSQL.968916658
+0x000070bb94c00000 0x000070d2b5c00000 0x1721000000       0x0                /anon_hugepage (deleted)
+0x000070d2b5c15000 0x000070d2b5c20000 0xb000             0x0                /usr/pgsql-16/lib/columnar.so
+--Type <RET> for more, q to quit, c to continue without paging--c
+0x000070d2b5c20000 0x000070d2b5c46000 0x26000            0xb000             /usr/pgsql-16/lib/columnar.so
+0x000070d2b5c46000 0x000070d2b5c51000 0xb000             0x31000            /usr/pgsql-16/lib/columnar.so
+0x000070d2b5c51000 0x000070d2b5c52000 0x1000             0x3b000            /usr/pgsql-16/lib/columnar.so
+0x000070d2b5c52000 0x000070d2b5c53000 0x1000             0x3c000            /usr/pgsql-16/lib/columnar.so
+0x000070d2b5cda000 0x000070d2b5dab000 0xd1000            0x0                /dev/shm/PostgreSQL.3187131434
+0x000070d2b5dab000 0x000070d2b5e00000 0x55000            0x0                /usr/lib/locale/C.utf8/LC_CTYPE
+0x000070d2b5e00000 0x000070d2b6078000 0x278000           0x0                /usr/lib/locale/en_US.utf8/LC_COLLATE
+0x000070d2b609e000 0x000070d2b60a3000 0x5000             0x0                /usr/lib64/libnss_myhostname.so.2
+0x000070d2b60a3000 0x000070d2b60b4000 0x11000            0x5000             /usr/lib64/libnss_myhostname.so.2
+0x000070d2b60b4000 0x000070d2b60bf000 0xb000             0x16000            /usr/lib64/libnss_myhostname.so.2
+0x000070d2b60bf000 0x000070d2b60c3000 0x4000             0x21000            /usr/lib64/libnss_myhostname.so.2
+0x000070d2b60c3000 0x000070d2b60c4000 0x1000             0x25000            /usr/lib64/libnss_myhostname.so.2
+0x000070d2b60c4000 0x000070d2b60d2000 0xe000             0x0                /usr/lib64/libgcrypt.so.20.4.0
+0x000070d2b60d2000 0x000070d2b61b8000 0xe6000            0xe000             /usr/lib64/libgcrypt.so.20.4.0
+0x000070d2b61b8000 0x000070d2b61f6000 0x3e000            0xf4000            /usr/lib64/libgcrypt.so.20.4.0
+0x000070d2b61f6000 0x000070d2b61fb000 0x5000             0x132000           /usr/lib64/libgcrypt.so.20.4.0
+0x000070d2b61fb000 0x000070d2b61ff000 0x4000             0x137000           /usr/lib64/libgcrypt.so.20.4.0
+0x000070d2b6200000 0x000070d2b6201000 0x1000             0x0                /usr/lib64/libicudata.so.67.1
+0x000070d2b6201000 0x000070d2b6202000 0x1000             0x1000             /usr/lib64/libicudata.so.67.1
+0x000070d2b6202000 0x000070d2b7d17000 0x1b15000          0x2000             /usr/lib64/libicudata.so.67.1
+0x000070d2b7d17000 0x000070d2b7d18000 0x1000             0x1b16000          /usr/lib64/libicudata.so.67.1
+0x000070d2b7d3e000 0x000070d2b7d40000 0x2000             0x0                /usr/lib64/libpcre2-8.so.0.11.0
+0x000070d2b7d40000 0x000070d2b7dad000 0x6d000            0x2000             /usr/lib64/libpcre2-8.so.0.11.0
+0x000070d2b7dad000 0x000070d2b7dd8000 0x2b000            0x6f000            /usr/lib64/libpcre2-8.so.0.11.0
+0x000070d2b7dd8000 0x000070d2b7dd9000 0x1000             0x99000            /usr/lib64/libpcre2-8.so.0.11.0
+0x000070d2b7dd9000 0x000070d2b7dda000 0x1000             0x9a000            /usr/lib64/libpcre2-8.so.0.11.0
+0x000070d2b7dda000 0x000070d2b7dde000 0x4000             0x0                /usr/lib64/libgpg-error.so.0.32.0
+0x000070d2b7dde000 0x000070d2b7df4000 0x16000            0x4000             /usr/lib64/libgpg-error.so.0.32.0
+0x000070d2b7df4000 0x000070d2b7dfd000 0x9000             0x1a000            /usr/lib64/libgpg-error.so.0.32.0
+0x000070d2b7dfd000 0x000070d2b7dfe000 0x1000             0x23000            /usr/lib64/libgpg-error.so.0.32.0
+0x000070d2b7dfe000 0x000070d2b7dff000 0x1000             0x23000            /usr/lib64/libgpg-error.so.0.32.0
+0x000070d2b7dff000 0x000070d2b7e00000 0x1000             0x24000            /usr/lib64/libgpg-error.so.0.32.0
+0x000070d2b7e00000 0x000070d2b7e99000 0x99000            0x0                /usr/lib64/libstdc++.so.6.0.29
+0x000070d2b7e99000 0x000070d2b7fa5000 0x10c000           0x99000            /usr/lib64/libstdc++.so.6.0.29
+0x000070d2b7fa5000 0x000070d2b8018000 0x73000            0x1a5000           /usr/lib64/libstdc++.so.6.0.29
+0x000070d2b8018000 0x000070d2b8025000 0xd000             0x217000           /usr/lib64/libstdc++.so.6.0.29
+0x000070d2b8025000 0x000070d2b8026000 0x1000             0x224000           /usr/lib64/libstdc++.so.6.0.29
+0x000070d2b8036000 0x000070d2b8039000 0x3000             0x0                /usr/pgsql-16/lib/pg_stat_statements.so
+0x000070d2b8039000 0x000070d2b803e000 0x5000             0x3000             /usr/pgsql-16/lib/pg_stat_statements.so
+0x000070d2b803e000 0x000070d2b803f000 0x1000             0x8000             /usr/pgsql-16/lib/pg_stat_statements.so
+0x000070d2b803f000 0x000070d2b8040000 0x1000             0x9000             /usr/pgsql-16/lib/pg_stat_statements.so
+0x000070d2b8040000 0x000070d2b8041000 0x1000             0xa000             /usr/pgsql-16/lib/pg_stat_statements.so
+0x000070d2b8041000 0x000070d2b8048000 0x7000             0x0                /usr/lib64/gconv/gconv-modules.cache
+0x000070d2b8048000 0x000070d2b804a000 0x2000             0x0                /usr/lib64/libcrypt.so.2.0.0
+0x000070d2b804a000 0x000070d2b805e000 0x14000            0x2000             /usr/lib64/libcrypt.so.2.0.0
+0x000070d2b805e000 0x000070d2b8077000 0x19000            0x16000            /usr/lib64/libcrypt.so.2.0.0
+0x000070d2b8077000 0x000070d2b8078000 0x1000             0x2f000            /usr/lib64/libcrypt.so.2.0.0
+0x000070d2b8078000 0x000070d2b8079000 0x1000             0x2f000            /usr/lib64/libcrypt.so.2.0.0
+0x000070d2b8082000 0x000070d2b8088000 0x6000             0x0                /usr/lib64/libselinux.so.1
+0x000070d2b8088000 0x000070d2b80a3000 0x1b000            0x6000             /usr/lib64/libselinux.so.1
+0x000070d2b80a3000 0x000070d2b80ab000 0x8000             0x21000            /usr/lib64/libselinux.so.1
+0x000070d2b80ab000 0x000070d2b80ac000 0x1000             0x28000            /usr/lib64/libselinux.so.1
+0x000070d2b80ac000 0x000070d2b80ad000 0x1000             0x29000            /usr/lib64/libselinux.so.1
+0x000070d2b80af000 0x000070d2b80b2000 0x3000             0x0                /usr/lib64/libgcc_s-11-20240719.so.1
+0x000070d2b80b2000 0x000070d2b80c6000 0x14000            0x3000             /usr/lib64/libgcc_s-11-20240719.so.1
+0x000070d2b80c6000 0x000070d2b80ca000 0x4000             0x17000            /usr/lib64/libgcc_s-11-20240719.so.1
+0x000070d2b80ca000 0x000070d2b80cb000 0x1000             0x1a000            /usr/lib64/libgcc_s-11-20240719.so.1
+0x000070d2b80cc000 0x000070d2b80da000 0xe000             0x0                /usr/lib64/libevent-2.1.so.7.0.1
+0x000070d2b80da000 0x000070d2b810e000 0x34000            0xe000             /usr/lib64/libevent-2.1.so.7.0.1
+0x000070d2b810e000 0x000070d2b8121000 0x13000            0x42000            /usr/lib64/libevent-2.1.so.7.0.1
+0x000070d2b8121000 0x000070d2b8122000 0x1000             0x55000            /usr/lib64/libevent-2.1.so.7.0.1
+0x000070d2b8122000 0x000070d2b8124000 0x2000             0x55000            /usr/lib64/libevent-2.1.so.7.0.1
+0x000070d2b8124000 0x000070d2b8125000 0x1000             0x57000            /usr/lib64/libevent-2.1.so.7.0.1
+0x000070d2b8125000 0x000070d2b8147000 0x22000            0x0                /usr/lib64/libkrb5.so.3.3
+0x000070d2b8147000 0x000070d2b81b1000 0x6a000            0x22000            /usr/lib64/libkrb5.so.3.3
+0x000070d2b81b1000 0x000070d2b81f0000 0x3f000            0x8c000            /usr/lib64/libkrb5.so.3.3
+0x000070d2b81f0000 0x000070d2b81fe000 0xe000             0xca000            /usr/lib64/libkrb5.so.3.3
+0x000070d2b81fe000 0x000070d2b81ff000 0x1000             0xd8000            /usr/lib64/libkrb5.so.3.3
+0x000070d2b8200000 0x000070d2b8229000 0x29000            0x0                /usr/lib64/libc.so.6
+0x000070d2b8229000 0x000070d2b839e000 0x175000           0x29000            /usr/lib64/libc.so.6
+0x000070d2b839e000 0x000070d2b83f6000 0x58000            0x19e000           /usr/lib64/libc.so.6
+0x000070d2b83f6000 0x000070d2b83fa000 0x4000             0x1f6000           /usr/lib64/libc.so.6
+0x000070d2b83fa000 0x000070d2b83fc000 0x2000             0x1fa000           /usr/lib64/libc.so.6
+0x000070d2b8417000 0x000070d2b8479000 0x62000            0x0                /usr/lib64/libicuuc.so.67.1
+0x000070d2b8479000 0x000070d2b8563000 0xea000            0x62000            /usr/lib64/libicuuc.so.67.1
+0x000070d2b8563000 0x000070d2b85eb000 0x88000            0x14c000           /usr/lib64/libicuuc.so.67.1
+0x000070d2b85eb000 0x000070d2b85fd000 0x12000            0x1d4000           /usr/lib64/libicuuc.so.67.1
+0x000070d2b85fd000 0x000070d2b85fe000 0x1000             0x1e6000           /usr/lib64/libicuuc.so.67.1
+0x000070d2b8600000 0x000070d2b86de000 0xde000            0x0                /usr/lib64/libicui18n.so.67.1
+0x000070d2b86de000 0x000070d2b8867000 0x189000           0xde000            /usr/lib64/libicui18n.so.67.1
+0x000070d2b8867000 0x000070d2b88f4000 0x8d000            0x267000           /usr/lib64/libicui18n.so.67.1
+0x000070d2b88f4000 0x000070d2b8904000 0x10000            0x2f4000           /usr/lib64/libicui18n.so.67.1
+0x000070d2b8904000 0x000070d2b8905000 0x1000             0x304000           /usr/lib64/libicui18n.so.67.1
+0x000070d2b8907000 0x000070d2b8909000 0x2000             0x0                /usr/lib64/libcap-ng.so.0.0.0
+0x000070d2b8909000 0x000070d2b890c000 0x3000             0x2000             /usr/lib64/libcap-ng.so.0.0.0
+0x000070d2b890c000 0x000070d2b890d000 0x1000             0x5000             /usr/lib64/libcap-ng.so.0.0.0
+0x000070d2b890d000 0x000070d2b890e000 0x1000             0x6000             /usr/lib64/libcap-ng.so.0.0.0
+0x000070d2b890e000 0x000070d2b890f000 0x1000             0x6000             /usr/lib64/libcap-ng.so.0.0.0
+0x000070d2b8910000 0x000070d2b8912000 0x2000             0x0                /usr/lib64/libcap.so.2.48
+0x000070d2b8912000 0x000070d2b8916000 0x4000             0x2000             /usr/lib64/libcap.so.2.48
+0x000070d2b8916000 0x000070d2b8918000 0x2000             0x6000             /usr/lib64/libcap.so.2.48
+0x000070d2b8918000 0x000070d2b8919000 0x1000             0x7000             /usr/lib64/libcap.so.2.48
+0x000070d2b8919000 0x000070d2b891a000 0x1000             0x8000             /usr/lib64/libcap.so.2.48
+0x000070d2b891c000 0x000070d2b8921000 0x5000             0x0                /usr/lib64/libsasl2.so.3.0.0
+0x000070d2b8921000 0x000070d2b8934000 0x13000            0x5000             /usr/lib64/libsasl2.so.3.0.0
+0x000070d2b8934000 0x000070d2b893a000 0x6000             0x18000            /usr/lib64/libsasl2.so.3.0.0
+0x000070d2b893a000 0x000070d2b893b000 0x1000             0x1d000            /usr/lib64/libsasl2.so.3.0.0
+0x000070d2b893b000 0x000070d2b893c000 0x1000             0x1e000            /usr/lib64/libsasl2.so.3.0.0
+0x000070d2b893c000 0x000070d2b8940000 0x4000             0x0                /usr/lib64/liblber.so.2.0.200
+0x000070d2b8940000 0x000070d2b8948000 0x8000             0x4000             /usr/lib64/liblber.so.2.0.200
+0x000070d2b8948000 0x000070d2b894b000 0x3000             0xc000             /usr/lib64/liblber.so.2.0.200
+0x000070d2b894b000 0x000070d2b894c000 0x1000             0xf000             /usr/lib64/liblber.so.2.0.200
+0x000070d2b894c000 0x000070d2b894d000 0x1000             0x10000            /usr/lib64/liblber.so.2.0.200
+0x000070d2b894d000 0x000070d2b8951000 0x4000             0x0                /usr/lib64/libresolv.so.2
+0x000070d2b8951000 0x000070d2b895a000 0x9000             0x4000             /usr/lib64/libresolv.so.2
+0x000070d2b895a000 0x000070d2b895d000 0x3000             0xd000             /usr/lib64/libresolv.so.2
+0x000070d2b895d000 0x000070d2b895e000 0x1000             0xf000             /usr/lib64/libresolv.so.2
+0x000070d2b895e000 0x000070d2b895f000 0x1000             0x10000            /usr/lib64/libresolv.so.2
+0x000070d2b8963000 0x000070d2b8965000 0x2000             0x0                /usr/lib64/libkeyutils.so.1.10
+0x000070d2b8965000 0x000070d2b8967000 0x2000             0x2000             /usr/lib64/libkeyutils.so.1.10
+0x000070d2b8967000 0x000070d2b8968000 0x1000             0x4000             /usr/lib64/libkeyutils.so.1.10
+0x000070d2b8968000 0x000070d2b8969000 0x1000             0x4000             /usr/lib64/libkeyutils.so.1.10
+0x000070d2b896a000 0x000070d2b896e000 0x4000             0x0                /usr/lib64/libkrb5support.so.0.1
+0x000070d2b896e000 0x000070d2b8976000 0x8000             0x4000             /usr/lib64/libkrb5support.so.0.1
+0x000070d2b8976000 0x000070d2b8979000 0x3000             0xc000             /usr/lib64/libkrb5support.so.0.1
+0x000070d2b8979000 0x000070d2b897a000 0x1000             0xe000             /usr/lib64/libkrb5support.so.0.1
+0x000070d2b897a000 0x000070d2b897b000 0x1000             0xf000             /usr/lib64/libkrb5support.so.0.1
+0x000070d2b897b000 0x000070d2b897d000 0x2000             0x0                /usr/lib64/libcom_err.so.2.1
+0x000070d2b897d000 0x000070d2b897f000 0x2000             0x2000             /usr/lib64/libcom_err.so.2.1
+0x000070d2b897f000 0x000070d2b8980000 0x1000             0x4000             /usr/lib64/libcom_err.so.2.1
+0x000070d2b8980000 0x000070d2b8981000 0x1000             0x4000             /usr/lib64/libcom_err.so.2.1
+0x000070d2b8981000 0x000070d2b8982000 0x1000             0x5000             /usr/lib64/libcom_err.so.2.1
+0x000070d2b8982000 0x000070d2b8985000 0x3000             0x0                /usr/lib64/libaudit.so.1.0.0
+0x000070d2b8985000 0x000070d2b8993000 0xe000             0x3000             /usr/lib64/libaudit.so.1.0.0
+0x000070d2b8993000 0x000070d2b89a8000 0x15000            0x11000            /usr/lib64/libaudit.so.1.0.0
+0x000070d2b89a8000 0x000070d2b89a9000 0x1000             0x26000            /usr/lib64/libaudit.so.1.0.0
+0x000070d2b89a9000 0x000070d2b89aa000 0x1000             0x27000            /usr/lib64/libaudit.so.1.0.0
+0x000070d2b89b6000 0x000070d2b89b9000 0x3000             0x0                /usr/lib64/liblzma.so.5.2.5
+0x000070d2b89b9000 0x000070d2b89d4000 0x1b000            0x3000             /usr/lib64/liblzma.so.5.2.5
+0x000070d2b89d4000 0x000070d2b89df000 0xb000             0x1e000            /usr/lib64/liblzma.so.5.2.5
+0x000070d2b89df000 0x000070d2b89e0000 0x1000             0x29000            /usr/lib64/liblzma.so.5.2.5
+0x000070d2b89e0000 0x000070d2b89e1000 0x1000             0x29000            /usr/lib64/liblzma.so.5.2.5
+0x000070d2b89e2000 0x000070d2b89f8000 0x16000            0x0                /usr/lib64/libsystemd.so.0.35.0
+0x000070d2b89f8000 0x000070d2b8a7f000 0x87000            0x16000            /usr/lib64/libsystemd.so.0.35.0
+0x000070d2b8a7f000 0x000070d2b8ab2000 0x33000            0x9d000            /usr/lib64/libsystemd.so.0.35.0
+0x000070d2b8ab2000 0x000070d2b8abd000 0xb000             0xd0000            /usr/lib64/libsystemd.so.0.35.0
+0x000070d2b8abd000 0x000070d2b8abe000 0x1000             0xdb000            /usr/lib64/libsystemd.so.0.35.0
+0x000070d2b8abf000 0x000070d2b8ad0000 0x11000            0x0                /usr/lib64/libldap_r.so.2.0.200
+0x000070d2b8ad0000 0x000070d2b8b0f000 0x3f000            0x11000            /usr/lib64/libldap_r.so.2.0.200
+0x000070d2b8b0f000 0x000070d2b8b20000 0x11000            0x50000            /usr/lib64/libldap_r.so.2.0.200
+0x000070d2b8b20000 0x000070d2b8b22000 0x2000             0x61000            /usr/lib64/libldap_r.so.2.0.200
+0x000070d2b8b22000 0x000070d2b8b23000 0x1000             0x63000            /usr/lib64/libldap_r.so.2.0.200
+0x000070d2b8b25000 0x000070d2b8b32000 0xd000             0x0                /usr/lib64/libm.so.6
+0x000070d2b8b32000 0x000070d2b8ba2000 0x70000            0xd000             /usr/lib64/libm.so.6
+0x000070d2b8ba2000 0x000070d2b8bfe000 0x5c000            0x7d000            /usr/lib64/libm.so.6
+0x000070d2b8bfe000 0x000070d2b8bff000 0x1000             0xd8000            /usr/lib64/libm.so.6
+0x000070d2b8bff000 0x000070d2b8c00000 0x1000             0xd9000            /usr/lib64/libm.so.6
+0x000070d2b8c00000 0x000070d2b8cdc000 0xdc000            0x0                /usr/lib64/libcrypto.so.3.5.1
+0x000070d2b8cdc000 0x000070d2b9023000 0x347000           0xdc000            /usr/lib64/libcrypto.so.3.5.1
+0x000070d2b9023000 0x000070d2b9146000 0x123000           0x423000           /usr/lib64/libcrypto.so.3.5.1
+0x000070d2b9146000 0x000070d2b91bd000 0x77000            0x545000           /usr/lib64/libcrypto.so.3.5.1
+0x000070d2b91bd000 0x000070d2b91c0000 0x3000             0x5bc000           /usr/lib64/libcrypto.so.3.5.1
+0x000070d2b91c3000 0x000070d2b91c8000 0x5000             0x0                /usr/lib64/libk5crypto.so.3.1
+0x000070d2b91c8000 0x000070d2b91d5000 0xd000             0x5000             /usr/lib64/libk5crypto.so.3.1
+0x000070d2b91d5000 0x000070d2b91d9000 0x4000             0x12000            /usr/lib64/libk5crypto.so.3.1
+0x000070d2b91d9000 0x000070d2b91db000 0x2000             0x15000            /usr/lib64/libk5crypto.so.3.1
+0x000070d2b91dc000 0x000070d2b91de000 0x2000             0x0                /usr/lib64/libeconf.so.0.4.1
+0x000070d2b91de000 0x000070d2b91e3000 0x5000             0x2000             /usr/lib64/libeconf.so.0.4.1
+0x000070d2b91e3000 0x000070d2b91e5000 0x2000             0x7000             /usr/lib64/libeconf.so.0.4.1
+0x000070d2b91e5000 0x000070d2b91e6000 0x1000             0x8000             /usr/lib64/libeconf.so.0.4.1
+0x000070d2b91eb000 0x000070d2b91ee000 0x3000             0x0                /usr/lib64/libz.so.1.2.11
+0x000070d2b91ee000 0x000070d2b91fc000 0xe000             0x3000             /usr/lib64/libz.so.1.2.11
+0x000070d2b91fc000 0x000070d2b9202000 0x6000             0x11000            /usr/lib64/libz.so.1.2.11
+0x000070d2b9202000 0x000070d2b9203000 0x1000             0x17000            /usr/lib64/libz.so.1.2.11
+0x000070d2b9203000 0x000070d2b9204000 0x1000             0x17000            /usr/lib64/libz.so.1.2.11
+0x000070d2b9205000 0x000070d2b9211000 0xc000             0x0                /usr/lib64/libgssapi_krb5.so.2.2
+0x000070d2b9211000 0x000070d2b924c000 0x3b000            0xc000             /usr/lib64/libgssapi_krb5.so.2.2
+0x000070d2b924c000 0x000070d2b9258000 0xc000             0x47000            /usr/lib64/libgssapi_krb5.so.2.2
+0x000070d2b9258000 0x000070d2b925a000 0x2000             0x53000            /usr/lib64/libgssapi_krb5.so.2.2
+0x000070d2b925a000 0x000070d2b925b000 0x1000             0x55000            /usr/lib64/libgssapi_krb5.so.2.2
+0x000070d2b925b000 0x000070d2b927d000 0x22000            0x0                /usr/lib64/libssl.so.3.5.1
+0x000070d2b927d000 0x000070d2b931c000 0x9f000            0x22000            /usr/lib64/libssl.so.3.5.1
+0x000070d2b931c000 0x000070d2b9346000 0x2a000            0xc1000            /usr/lib64/libssl.so.3.5.1
+0x000070d2b9346000 0x000070d2b9350000 0xa000             0xeb000            /usr/lib64/libssl.so.3.5.1
+0x000070d2b9350000 0x000070d2b9354000 0x4000             0xf5000            /usr/lib64/libssl.so.3.5.1
+0x000070d2b9356000 0x000070d2b9359000 0x3000             0x0                /usr/lib64/libpam.so.0.85.1
+0x000070d2b9359000 0x000070d2b9362000 0x9000             0x3000             /usr/lib64/libpam.so.0.85.1
+0x000070d2b9362000 0x000070d2b9366000 0x4000             0xc000             /usr/lib64/libpam.so.0.85.1
+0x000070d2b9366000 0x000070d2b9367000 0x1000             0xf000             /usr/lib64/libpam.so.0.85.1
+0x000070d2b9367000 0x000070d2b9368000 0x1000             0x10000            /usr/lib64/libpam.so.0.85.1
+0x000070d2b9368000 0x000070d2b9397000 0x2f000            0x0                /usr/lib64/libxml2.so.2.9.13
+0x000070d2b9397000 0x000070d2b949d000 0x106000           0x2f000            /usr/lib64/libxml2.so.2.9.13
+0x000070d2b949d000 0x000070d2b94e7000 0x4a000            0x135000           /usr/lib64/libxml2.so.2.9.13
+0x000070d2b94e7000 0x000070d2b94f0000 0x9000             0x17e000           /usr/lib64/libxml2.so.2.9.13
+0x000070d2b94f0000 0x000070d2b94f1000 0x1000             0x187000           /usr/lib64/libxml2.so.2.9.13
+0x000070d2b94f2000 0x000070d2b94f5000 0x3000             0x0                /usr/lib64/liblz4.so.1.9.3
+0x000070d2b94f5000 0x000070d2b9511000 0x1c000            0x3000             /usr/lib64/liblz4.so.1.9.3
+0x000070d2b9511000 0x000070d2b9514000 0x3000             0x1f000            /usr/lib64/liblz4.so.1.9.3
+0x000070d2b9514000 0x000070d2b9515000 0x1000             0x21000            /usr/lib64/liblz4.so.1.9.3
+0x000070d2b9516000 0x000070d2b951b000 0x5000             0x0                /usr/lib64/libzstd.so.1.5.5
+0x000070d2b951b000 0x000070d2b95bb000 0xa0000            0x5000             /usr/lib64/libzstd.so.1.5.5
+0x000070d2b95bb000 0x000070d2b95cb000 0x10000            0xa5000            /usr/lib64/libzstd.so.1.5.5
+0x000070d2b95cb000 0x000070d2b95cc000 0x1000             0xb5000            /usr/lib64/libzstd.so.1.5.5
+0x000070d2b95ce000 0x000070d2b95cf000 0x1000             0x0                /SYSV800047c1 (deleted)
+0x000070d2b95cf000 0x000070d2b95d0000 0x1000             0x0                /usr/lib/locale/en_US.utf8/LC_TIME
+0x000070d2b95d0000 0x000070d2b95d1000 0x1000             0x0                /usr/lib/locale/en_US.utf8/LC_NUMERIC
+0x000070d2b95d1000 0x000070d2b95d2000 0x1000             0x0                /usr/lib/locale/en_US.utf8/LC_MONETARY
+0x000070d2b95d2000 0x000070d2b95d3000 0x1000             0x0                /usr/lib/locale/en_US.utf8/LC_MESSAGES/SYS_LC_MESSAGES
+0x000070d2b95d5000 0x000070d2b95d7000 0x2000             0x0                /usr/lib64/ld-linux-x86-64.so.2
+0x000070d2b95d7000 0x000070d2b95ff000 0x28000            0x2000             /usr/lib64/ld-linux-x86-64.so.2
+0x000070d2b95ff000 0x000070d2b960b000 0xc000             0x2a000            /usr/lib64/ld-linux-x86-64.so.2
+0x000070d2b960b000 0x000070d2b960d000 0x2000             0x36000            /usr/lib64/ld-linux-x86-64.so.2
+0x000070d2b960d000 0x000070d2b960f000 0x2000             0x38000            /usr/lib64/ld-linux-x86-64.so.2
+
+(gdb) bt full
+#0  0x000070d2b836f37c in __strlen_evex () from /lib64/libc.so.6
+No symbol table info available.
+#1  0x0000000000764188 in _copyIndexElem ()
+No symbol table info available.
+#2  0x0000000000779b8c in list_copy_deep ()
+No symbol table info available.
+#3  0x000000000076918d in _copyPlannedStmt ()
+No symbol table info available.
+#4  0x0000000000779b8c in list_copy_deep ()
+No symbol table info available.
+#5  0x0000000000a232ec in BuildCachedPlan ()
+No symbol table info available.
+#6  0x0000000000a235a4 in GetCachedPlan ()
+No symbol table info available.
+#7  0x00000000008d3dee in PostgresMain ()
+--Type <RET> for more, q to quit, c to continue without paging--c
+No symbol table info available.
+#8  0x00000000008438f4 in ServerLoop.lto_priv.0 ()
+No symbol table info available.
+#9  0x000000000083a32d in PostmasterMain ()
+No symbol table info available.
+#10 0x000000000051dd6c in main ()
+No symbol table info available.
+
+(gdb) list
+warning: 1	errlist.c: No such file or directory
+
+(gdb) x/gx $rbx+0x10
+0x29fba10:	0x0000000000000000
+(gdb) x/gx $rbx+0x18
+0x29fba18:	0x0000000000000000
+(gdb) x/gx $rbx+0x20
+0x29fba20:	0x0000000000000000
+
+(gdb) p MemoryContextStats(TopMemoryContext)
+'TopMemoryContext' has unknown type; cast it to its declared type
+
+(gdb) x/4gx $rbx
+0x29fba00:	0x00d1534000000053	0x000000020000005c
+0x29fba10:	0x0000000000000000	0x0000000000000000
+
+(gdb) x/gx $rbx+0x8
+0x29fba08:	0x000000020000005c
+
+(gdb) b _copyIndexElem
+Breakpoint 1 at 0x764150
+
+

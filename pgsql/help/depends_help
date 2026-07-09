@@ -1,0 +1,54 @@
+SELECT
+    n.nspname AS schema,
+    c.relname AS matview,
+    d.refobjid::regclass AS referenced_object
+FROM pg_depend d
+JOIN pg_class c ON d.objid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE c.relname = 'mac_pricing_drug_list_entries_vw'
+  AND c.relkind = 'm';
+
+ schema |             matview              | referenced_object
+--------+----------------------------------+-------------------
+ misc   | mac_pricing_drug_list_entries_vw | 804088610
+
+WITH RECURSIVE deps AS (
+    SELECT
+        c.oid,
+        c.relname,
+        0 AS depth
+    FROM pg_class c
+    WHERE relkind = 'm'
+
+    UNION ALL
+
+    SELECT
+        c.oid,
+        c.relname,
+        d.depth + 1
+    FROM pg_depend dep
+    JOIN pg_class c ON dep.objid = c.oid
+    JOIN deps d ON dep.refobjid = d.oid
+)
+SELECT relname, max(depth)
+FROM deps
+GROUP BY relname
+ORDER BY max(depth);
+                             relname                             | max
+-----------------------------------------------------------------+-----
+ pharmacy_ancillary_vw                                           |   0
+ pharmacy_network_list_vw                                        |   0
+ pharmacy_relationship_vw                                        |   0
+ mac_pricing_drug_list_entries_vw                                |   0
+ member_ohi_information_vw                                       |   0
+ member_dual_coverage_data_vw                                    |   0
+ pharmacy_ratesheet_condition_vw                                 |   0
+ bulk_pharmacy_network_vw                                        |   0
+ pharmacy_specific_pricing_vw                                    |   0
+ mac_pricing_rate_sheet_vw                                       |   0
+ bulk_pharmacy_network_vw_relation_effective_end_dt_idx          |   1
+ pharmacy_ancillary_vw_pharmacy_id_idx                           |   1
+ pg_toast_804108123                                              |   1
+ pg_toast_804108058                                              |   1
+ mac_pricing_rate_sheet_vw_mac_price_component_short_nm_idx      |   1
+ pg_toast_804107642                                              |   1

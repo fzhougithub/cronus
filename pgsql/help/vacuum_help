@@ -1,3 +1,52 @@
+SELECT
+    'alter table '||n.nspname||'.'||p.relname||' SET (autovacuum_vacuum_cost_delay = 0,autovacuum_vacuum_cost_limit = 2000);',
+    n.nspname AS schema_name,
+    p.relname AS parent_table,
+    p.reltoastrelid::regclass AS toast_table_name
+FROM pg_class p
+JOIN pg_namespace n ON n.oid = p.relnamespace
+WHERE p.reltoastrelid IN (select relid from pg_stat_progress_vacuum);
+
+     parent_table      |    toast_table_name
+------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+ alter table claimsprocess_humana.claim_core_320_202309 SET (autovacuum_vacuum_cost_delay = 0,autovacuum_vacuum_cost_limit = 2000); | claimsprocess_humana |
+ claim_core_320_202309 | pg_toast.pg_toast_43376
+ alter table claimsprocess_humana.claim_core_320_202308 SET (autovacuum_vacuum_cost_delay = 0,autovacuum_vacuum_cost_limit = 2000); | claimsprocess_humana |
+ claim_core_320_202308 | pg_toast.pg_toast_43369
+(2 rows)
+
+
+
+SELECT
+    n.nspname AS schema_name,
+    p.relname AS parent_table,
+    p.reltoastrelid::regclass AS toast_table_name
+FROM pg_class p
+JOIN pg_namespace n ON n.oid = p.relnamespace
+WHERE p.reltoastrelid IN (select relid from pg_stat_progress_vacuum);
+     schema_name      |     parent_table      |    toast_table_name
+----------------------+-----------------------+-------------------------
+ claimsprocess_humana | claim_core_320_202302 | pg_toast.pg_toast_43327
+ claimsprocess_humana | claim_core_320_202406 | pg_toast.pg_toast_43439
+ claimsprocess_humana | claim_core_320_202409 | pg_toast.pg_toast_43460
+(3 rows)
+
+ods_domani=# alter table claimsprocess_humana.claim_core_320_202309 SET (autovacuum_vacuum_cost_delay = 0,autovacuum_vacuum_cost_limit = 2000);
+ALTER TABLE
+
+
+
+select relid::regclass from pg_stat_progress_vacuum;
+          relid
+-------------------------
+ pg_toast.pg_toast_43439
+ pg_toast.pg_toast_43313
+ pg_toast.pg_toast_43327
+(3 rows)
+
+
+
+
 📌 Summary Operation	Frees Space	Updates n_dead_tup?	Updates Planner Stats
 VACUUM		✅ (partially)	✅ Yes			❌ No
 ANALYZE		❌		❌ No			✅ Yes

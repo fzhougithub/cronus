@@ -1,0 +1,6 @@
+pg_dumpall -h 10.173.29.130 -s |psql -d ods_domani
+-- Pipe in all of the schemas to reporting server.
+
+pg_dumpall -h 10.173.29.130 --global-only |psql -d ods_domani
+
+

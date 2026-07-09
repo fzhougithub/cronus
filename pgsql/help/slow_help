@@ -1,0 +1,17 @@
+SELECT
+    d.datname,
+    r.rolname,
+    s.calls,
+    ROUND(s.total_exec_time/1000,2) total_sec,
+    ROUND(s.mean_exec_time,2) avg_ms,
+    s.rows,
+    LEFT(s.query,300) query
+FROM pg_stat_statements s
+JOIN pg_database d
+  ON d.oid = s.dbid
+JOIN pg_roles r
+  ON r.oid = s.userid
+ORDER BY s.total_exec_time DESC
+LIMIT 50;
+
+

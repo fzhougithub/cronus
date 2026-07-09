@@ -1,0 +1,28 @@
+#!/bin/bash
+
+lsblk -ndo NAME,TYPE | awk '$2=="disk" || $2=="lvm" || $2=="mpath" {print $1}' | while read dev; do
+
+    echo "=========================================="
+    echo " Device: $dev"
+    echo "=========================================="
+
+    awk -v d="$dev" '
+    $3 == d {
+        printf "%-18s %s\n", "Major:", $1
+        printf "%-18s %s\n", "Minor:", $2
+        printf "%-18s %s\n", "Read Completed:", $4
+        printf "%-18s %s\n", "Read Merged:", $5
+        printf "%-18s %s\n", "Read Sectors:", $6
+        printf "%-18s %s\n", "Read Ms:", $7
+        printf "%-18s %s\n", "Write Completed:", $8
+        printf "%-18s %s\n", "Write Merged:", $9
+        printf "%-18s %s\n", "Write Sectors:", $10
+        printf "%-18s %s\n", "Write Ms:", $11
+        printf "%-18s %s\n", "IO In Progress:", $12
+        printf "%-18s %s\n", "IO Ms:", $13
+        printf "%-18s %s\n", "IO Ms Weighted:", $14
+    }
+    ' /proc/diskstats
+
+    echo
+done

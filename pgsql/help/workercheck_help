@@ -1,0 +1,8 @@
+SELECT
+    srrelid::regclass,
+    srsubstate,
+    srsublsn
+FROM pg_subscription_rel
+ORDER BY 2,1;
+
+

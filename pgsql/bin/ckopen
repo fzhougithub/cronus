@@ -1,0 +1,58 @@
+#!/bin/bash
+
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <dbname> <num_open_columnar_tables>"
+	echo "e.g.: $0 ods_domani 10"
+	exit 1
+else
+	db=$1
+	threshold=$2
+	log=/pg_logs/issue_queris.log
+fi
+
+get_info(){
+echo "========" >> $log
+echo "$result" >> $log
+psql -d $db -At -c "
+select now(),* from pg_stat_activity where pid=$PID;
+" >> $log
+}
+
+terminate(){
+echo "--------" >> $log
+sql="
+select pg_terminate_backend($PID);
+select pg_cancel_backend($PID);
+"
+echo $sql >> $log
+
+psql -d $db -At -c "$sql" >> $log
+echo "" >> $log
+}
+
+result=$(psql -d $db -At -c "
+ SELECT l.pid, COUNT(*) FILTER (WHERE am.amname = 'columnar') AS columnar_tables, COUNT(*) FILTER (WHERE am.amname = 'heap') AS heap_tables, COUNT(*) AS total
+FROM pg_locks l
+JOIN pg_class c ON l.relation = c.oid
+LEFT JOIN pg_am am ON c.relam = am.oid
+WHERE l.locktype = 'relation'
+GROUP BY l.pid
+HAVING COUNT(*) FILTER (WHERE am.amname = 'columnar') > 0
+ORDER BY total DESC limit 1;
+")
+
+if [ -n "$result" ]; then
+	columnar=$(echo "$result" | cut -d'|' -f2)
+	PID=$(echo "$result" |cut -d'|' -f1)
+
+	if [ "$columnar" -gt "$threshold" ];then
+		echo "CRITICAL"
+		echo "$result PID:$PID opened:$columnar"
+		get_info
+		terminate
+		exit 1
+	fi
+else
+	echo OK
+	exit 0
+fi

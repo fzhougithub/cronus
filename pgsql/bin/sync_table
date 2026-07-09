@@ -1,0 +1,116 @@
+#!/bin/bash
+
+#echo "DEBUG: Detected $# arguments."
+#echo "DEBUG: Arg3 is [$3]"
+
+if [ -f /usr/pgsql-16/bin/pg_comparator ];then
+    COMPARATOR=/usr/pgsql-16/bin/pg_comparator
+elif [ -f /usr/pgsql-14/bin/pg_comparator ]; then
+    COMPARATOR=/usr/pgsql-14/bin/pg_comparator
+else
+    echo "Please install pg_comparator"
+    exit 2
+fi
+
+check_leaf() {
+    echo "================"
+    is_parent=$(psql -h "$sourceIP" -d "$dbname" -tA -c "
+        SELECT EXISTS (
+            SELECT 1 FROM pg_inherits WHERE inhparent = '$fullname'::regclass
+            UNION
+            SELECT 1 FROM pg_class WHERE oid = '$fullname'::regclass AND relkind = 'p'
+        );")
+
+    if [ "$is_parent" == "t" ]; then
+        echo "ERROR: $fullname is a Parent/Partitioned table, not a leaf."
+        exit 3
+    fi
+
+    has_data=$(psql -h "$sourceIP" -d "$dbname" -tA -c "SELECT EXISTS (SELECT 1 FROM $fullname LIMIT 1);")
+
+    if [ "$has_data" != "t" ]; then
+        echo "$fullname does not contain data"
+        exit 3
+    fi
+
+    echo "VALIDATED: $fullname is a populated leaf partition."
+    echo ""
+}
+
+table_status_check() {
+
+    echo "--- Table Size Check for $fullname ---"
+
+    src_cnt=$(psql -h "$sourceIP" -d "$dbname" -tA -c "SELECT reltuples::bigint FROM pg_class WHERE oid = '$fullname'::regclass;")
+
+    tgt_cnt=$(psql -h "$targetIP" -d "$dbname" -tA -c "SELECT reltuples::bigint  FROM pg_class WHERE oid = '$fullname'::regclass;")
+
+    echo "Source Rows Estimate: $src_cnt" "Target Row Estimate: $tgt_cnt"
+
+    if [ $src_cnt -eq -1 ]; then
+	    echo "There is no statistic data on source, please run analyze"
+	    echo "psql -h $sourceIP -d $dbname -c \"analyze $fullname\""
+    elif [ $tgt_cnt -eq -1 ]; then
+	    echo "There is no statistic data on target, please run analyze"
+	    echo "psql -h $targetIP -d $dbname -c \"analyze $fullname\""
+    fi
+
+    diff=$(( src_cnt - tgt_cnt ))
+    if [ $diff -lt 0 ]; then diff=$(( diff * -1 )); fi
+
+    if [ $src_cnt -le 0 -o $tgt_cnt -le 0 ];then
+        echo "Difference is too big, Please check and sync data using pg_dump/pg_restore"
+	echo "./cp_table $sourceIP $targetIP $dbname $fullname"
+        exit 4
+    elif [ $src_cnt -gt $tgt_cnt ]; then
+    	divider=$src_cnt
+    else
+	divider=$tgt_cnt
+    fi
+    pct=$(($diff*100/divider))
+
+    if [ $pct -gt 20 ];then
+        echo "Difference is $pct%, please check, dump and load data to make them comparable, then, use this tool again to fix the gap"
+	echo "./cp_table $sourceIP $targetIP $dbname $fullname"
+        exit 6
+    fi
+
+    echo "RESULT: $fullname status is comparable. Safe to proceed."
+}
+
+
+# This code is the framework to pipe source to the target
+if [ $# -ne 7 ];then
+    echo "Usage: $0 <sourceIP> <targetIP> <dbname> <schemaname.tablename> \"PK fields\" <compare_column> <check/run>"
+    echo "Example: $0 10.173.29.130 10.222.64.5 ods_domani claimsprocess.claim_extension_1 \"customer_id,claim_id\" process_update_ts check\""
+    exit 1
+else
+	sourceIP=$1
+	targetIP=$2
+	dbname=$3
+	fullname=$4
+	sch=$(echo $4|cut -d. -f1)
+	tabname=$(echo $4|cut -d. -f2)
+	pk=$5
+	compare_key=$6
+	action=$7
+	log=/pg_logs/pg_comparator_$sourceIP-$targetIP.$dbname.$fullname.log
+fi
+
+
+if [ $action == 'check' ];then
+	check_leaf
+	table_status_check
+	#echo "time $COMPARATOR -S --max-ratio 1.0 --max-report 100000000 \"pgsql://postgres@$sourceIP/$dbname/$fullname?$pk:$compare_key\" \"pgsql://postgres@$targetIP/$dbname/$fullname\" > $log 2>&1"
+	time $COMPARATOR -S --max-ratio 1.0 --max-report 100000000 "pgsql://postgres@$sourceIP/$dbname/$fullname?$pk:$compare_key" "pgsql://postgres@$targetIP/$dbname/$fullname" > $log 2>&1
+	echo "$log"
+	echo "------------"
+	echo "INSERT: $(grep -i insert $log)"
+	echo "UPDATE: $(grep -i update $log)"
+	echo "DELETE: $(grep -i delete $log)"
+
+elif [ $action == 'run' ];then
+	check_leaf
+	table_status_check
+	#time $COMPARATOR -S --max-ratio 1.0 --max-report 100000000 \"pgsql://postgres@$sourceIP/$dbname/$fullname?$pk:$compare_key\" \"pgsql://postgres@$targetIP/$dbname/$fullname\" > $log 2>&1
+fi

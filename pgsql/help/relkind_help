@@ -1,0 +1,41 @@
+SELECT
+    n.nspname AS schema_name,
+    c.relkind,
+    CASE c.relkind
+        WHEN 'r' THEN 'table'
+        WHEN 'p' THEN 'partitioned table'
+        WHEN 'i' THEN 'index'
+        WHEN 'I' THEN 'partitioned index'
+        WHEN 'S' THEN 'sequence'
+        WHEN 't' THEN 'toast table'
+        WHEN 'v' THEN 'view'
+        WHEN 'm' THEN 'materialized view'
+        WHEN 'c' THEN 'composite type'
+        WHEN 'f' THEN 'foreign table'
+        ELSE 'other'
+    END AS relkind_desc,
+    COUNT(*) AS object_count
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'drugmgmt'
+GROUP BY n.nspname, c.relkind
+ORDER BY c.relkind;
+
+SELECT
+    n.nspname AS schema_name,
+    c.relkind,
+    COUNT(*) AS object_count
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'drugmgmt'   -- replace your schema
+GROUP BY n.nspname, c.relkind
+ORDER BY c.relkind;
+ schema_name | relkind | object_count
+-------------+---------+--------------
+ drugmgmt    | S       |          163
+ drugmgmt    | i       |          536
+ drugmgmt    | r       |          283
+ drugmgmt    | v       |            1
+(4 rows)
+
+

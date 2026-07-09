@@ -1,0 +1,26 @@
+psql -At -F"," -c "
+SELECT format(
+  'vacuum (freeze,analyze) %I.%I;',
+  n.nspname,
+  c.relname
+)
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.oid IN (
+  SELECT inhrelid
+  FROM pg_inherits
+  WHERE inhparent IN (
+    SELECT inhrelid
+    FROM pg_inherits
+    WHERE inhparent = 'a_claim_core'::regclass
+  )
+);"
+
+parallel -j 8 psql -d ods_domani -c {} :::: vacuum_cmds.txt
+
+for t in $(psql -At -c "SELECT inhrelid::regclass FROM ..."); do
+  psql -d ods_domani -c "VACUUM (FREEZE,ANALYZE) $t" &
+done
+wait
+
+

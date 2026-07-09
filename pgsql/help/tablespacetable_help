@@ -1,0 +1,102 @@
+SELECT 
+    t.tablename, 
+    s.tablespacename 
+FROM pg_tables t
+LEFT JOIN pg_tablespaces s ON t.tablespace = s.tablespacename
+WHERE schemaname = 'claimsprocess_humana' 
+  AND tablename = 'claim_core_320_202604';
+
+SELECT
+    relname,
+    n_live_tup
+FROM pg_stat_user_tables
+WHERE relname IN (
+    'claim_core_320_202603',
+    'claim_core_320_202604'
+);
+        relname        | n_live_tup
+-----------------------+------------
+ claim_core_320_202603 |   67997596
+ claim_core_320_202604 |   66304446
+
+SELECT
+    relname,
+    pg_size_pretty(pg_total_relation_size(oid))
+FROM pg_class
+WHERE relname IN (
+    'claim_core_320_202603',
+    'claim_core_320_202604'
+);
+
+        relname        | pg_size_pretty
+-----------------------+----------------
+ claim_core_320_202603 | 214 GB
+ claim_core_320_202604 | 228 GB
+(2 rows)
+
+SELECT
+    relname,
+    pg_size_pretty(pg_total_relation_size(oid))
+FROM pg_class
+WHERE relname LIKE 'claim_core_320_%'
+ORDER BY pg_total_relation_size(oid) DESC
+LIMIT 10;
+
+        relname        | pg_size_pretty
+-----------------------+----------------
+ claim_core_320_202604 | 228 GB
+ claim_core_320_202603 | 214 GB
+ claim_core_320_202601 | 198 GB
+ claim_core_320_202602 | 189 GB
+ claim_core_320_202512 | 178 GB
+ claim_core_320_202310 | 174 GB
+ claim_core_320_202501 | 172 GB
+ claim_core_320_202410 | 171 GB
+ claim_core_320_202303 | 166 GB
+ claim_core_320_202210 | 166 GB
+
+SELECT
+    c.relname,
+    ts.spcname
+FROM pg_class c
+LEFT JOIN pg_tablespace ts ON ts.oid = c.reltablespace
+WHERE c.relname IN (
+    'claim_core_320_202603',
+    'claim_core_320_202604'
+);
+        relname        |  spcname
+-----------------------+-----------
+ claim_core_320_202603 | tblspc_14
+ claim_core_320_202604 | tblspc_7
+(2 rows)
+
+SELECT
+    relname,
+    n_dead_tup,
+    last_vacuum,
+    last_autovacuum
+FROM pg_stat_user_tables
+WHERE relname IN (
+    'claim_core_320_202603',
+    'claim_core_320_202604'
+);
+        relname        | n_dead_tup | last_vacuum |        last_autovacuum
+-----------------------+------------+-------------+-------------------------------
+ claim_core_320_202603 |    4644233 |             | 2026-03-31 13:25:19.294348-05
+ claim_core_320_202604 |    3703065 |             | 2026-04-30 18:31:36.756869-05
+(2 rows)
+
+SELECT
+    pid,
+    now() - query_start,
+    wait_event_type,
+    wait_event
+FROM pg_stat_activity
+WHERE query LIKE '%claim_core_320_202603%';
+  pid   |    ?column?     | wait_event_type |  wait_event
+--------+-----------------+-----------------+--------------
+ 887666 | 01:09:08.197869 | IO              | DataFileRead
+ 897506 | 00:00:00        |                 |
+(2 rows)
+
+

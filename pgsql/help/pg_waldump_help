@@ -1,3 +1,15 @@
+/usr/pgsql-14/bin/pg_waldump -p /apps/lib/pgsql/14/data/pg_wal -s 24A/93A58BE8 -n 100
+
+rmgr: Heap        len (rec/tot):    290/   290, tx:  846360586, lsn: 24A/93A58BE8, prev 24A/93A58BB8, desc: INSERT+INIT off 1 flags 0x08, blkref #0: rel 1663/16386/16718 blk 1526548
+rmgr: Btree       len (rec/tot):     64/    64, tx:  846360586, lsn: 24A/93A58D10, prev 24A/93A58BE8, desc: INSERT_LEAF off 212, blkref #0: rel 1663/16386/16721 blk 150363
+rmgr: Btree       len (rec/tot):     80/    80, tx:  846360586, lsn: 24A/93A58D50, prev 24A/93A58D10, desc: INSERT_LEAF off 67, blkref #0: rel 1663/16386/16723 blk 113160
+rmgr: Btree       len (rec/tot):     72/    72, tx:  846360586, lsn: 24A/93A58DA0, prev 24A/93A58D50, desc: INSERT_LEAF off 163, blkref #0: rel 1663/16386/16724 blk 63727
+rmgr: Btree       len (rec/tot):     80/    80, tx:  846360586, lsn: 24A/93A58DE8, prev 24A/93A58DA0, desc: INSERT_LEAF off 78, blkref #0: rel 1663/16386/16725 blk 132398
+
+blkref #0: rel 1663/16386/16718
+Tablespace OID / Database OID / Relation OID
+
+
 for i in $(ls -larth|grep '10:22'|awk '{print $9}');do echo $i;/usr/pgsql-14/bin/pg_waldump --stats=record /apps/lib/pgsql/14/data/pg_wal/$i;done|more
 Type                                           N      (%)          Record size      (%)             FPI size      (%)        Combined size      (%)
 ----                                           -      ---          -----------      ---             --------      ---        -------------      ---

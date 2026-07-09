@@ -1,0 +1,57 @@
+Replaced legacy/private provider source:
+terraform.ssnc-corp.cloud/ssnc/ssccloud
+
+
+With:
+ssnc/ssccloud
+
+Cleaned deprecated provider usage
+
+AWS_PROFILE='prod' terraform state replace-provider hashicorp/template cloudposse/template
+
+
+Below is the method works, but we will never use, the local replacement part
+Replaced template_file usage with:
+templatefile() + locals
+
+
+Removed dependency on unsupported template provider (not available on darwin_arm64)
+
+
+Cleaned state provider metadata
+
+Ran:
+
+Shellterraform state replace-provider \  registry.terraform.io/hashicorp/template \  registry.terraform.io/hashicorp/nullShow more lines
+👉 Purpose:
+
+Remove outdated provider references from state
+Allow terraform init to succeed
+
+Removed the module from old state
+Command:
+terraform state rm module.odshumana-pg16-02-prod-drx-kc``
+
+terraform plan
+
+terraform apply
+
+nodes 01, 03, 04
+
+2, Add the node 2 into new folder
+
+terraform state mv -state=/Users/fzhou/repos/domanirx-infra/terraform/environments/reporting_analysis-prod/prod/databases/odshumana-pg16-02-prod-drx-kc/backup.tfstate -state-out=/Users/fzhou/repos/domanirx-infra/terraform/environments/reporting_analysis-prod/prod/databases/odshumana-pg16-02-prod-drx-kc/node02.tfstate module.odshumana-pg16-02-prod-drx-kc module.odshumana-pg16-02-prod-drx-kc
+Move "module.odshumana-pg16-02-prod-drx-kc" to "module.odshumana-pg16-02-prod-drx-kc"
+
+AWS_PROFILE='prod' terraform state push node02.tfstate
+
+AWS_PROFILE='prod' terraform state rm \
+module.odshumana-pg16-02-prod-drx-kc.data.template_file.postgres_config
+Removed module.odshumana-pg16-02-prod-drx-kc.data.template_file.postgres_config
+Successfully removed 1 resource instance(s).
+
+AWS_PROFILE='prod' terraform apply
+
+Then, the migration completed!!
+
+

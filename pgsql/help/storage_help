@@ -1,0 +1,85 @@
+It is incredibly common for DevOps and Database engineers to be abstracted away from the physical layer when using Terraform. You define a vshere_virtual_disk or an AWS/Azure volume, and it just "appears."
+
+However, when you are pushing production databases to their limit (like hitting 200+ MB/s and choking on checkpoints), you have to pierce that abstraction layer.
+
+Here is your step-by-step roadmap to map your infrastructure from inside your Linux VM all the way down to the physical SAN controller, followed by how top-tier engineering organizations manage this.
+
+Part 1: How to Trace from the VM to the SAN Controller
+You can trace the entire path right from your command line and your infrastructure-as-code files.
+
+Step 1: Map the Linux Device to the Virtual SCSI Controller
+First, look at your VM's block devices to see how they are distributed. Run this inside your Linux VM:
+
+Bash
+lsblk -S
+What you are looking for: You want to see the TRAN (transport) and driver type. If it says msdos or lpfc under a generic driver, or if all 20 devices share the exact same controller prefix (e.g., all are on lpfc controller 0), you have a virtual queue bottleneck.
+
+Target: You want to see pvscsi listed as the driver for your database disks.
+
+Step 2: Read Your Terraform Code to Check the Virtual Layout
+Open the Terraform repository used to provision that specific database VM. Look for the vsphere_virtual_machine resource block and inspect how the disks are attached:
+
+Terraform
+# Example of what to look for in your TF code
+resource "vsphere_virtual_machine" "pg_db" {
+  # ...
+  
+  # Look at the scsi_controller_count
+  scsi_controller_count = 4 
+
+  disk {
+    label        = "disk0"
+    size         = 100
+    unit_number  = 0 # Controller 0, Slot 0 (Usually OS)
+  }
+
+  disk {
+    label        = "disk1"
+    size         = 2000
+    unit_number  = 15 # CRITICAL: 15 belongs to Controller 1!
+  }
+}
+The Rule: In VMware, unit_number 0–14 belong to Controller 0. Numbers 15–29 belong to Controller 1. Numbers 30–44 belong to Controller 2.
+
+If your Terraform files show 20 disk blocks and their unit_number values are just 0, 1, 2, 3 ... 14, then all your disks are crammed onto one controller. You need to modify your Terraform to distribute them across all 4 controllers.
+
+Step 3: Find the Physical SAN Back-End (The "WWN")
+To map your Linux disk to an actual physical LUN on a SAN controller, you need its World Wide Name (WWN) or Network Address Authority (NAA) ID. Run this inside Linux:
+
+Bash
+ls -l /dev/disk/by-id/
+You will see output mapping your device names (sdb, sdc) to strings like this:
+
+Plaintext
+wwn-0x6000d310002b540000000000000012a4 -> ../../sdb
+6000d310002b540000000000000012a4 is the exact, unique hardware identifier of the volume on the physical SAN storage array.
+
+Copy this ID. Hand it to your Infrastructure/Storage team and say: "This is the disk experiencing datastore contention. What physical pool, controller ports, and RAID group does this NAA ID map to?"
+
+Part 2: How "Giant Companies" Handle This Effort
+At hyper-scale tech companies (Netflix, Uber, Apple) or enterprise financial institutions managing multi-petabyte database fleets, the absolute separation between "DevOps/DBA" and "Storage Admins" is eliminated through strict architecture patterns:
+
+1. Dedicated Hardware (Bare Metal or Local NVMe)
+For core tier-0 high-scale databases (like a 100TB Citus or large PostgreSQL cluster), giant companies completely avoid standard virtual SAN architectures.
+
+Instead, they deploy databases on Bare Metal servers or specialized VM instances featuring Local NVMe SSDs physically attached directly to the motherboard (e.g., AWS i3en instances or on-prem equivalent servers).
+
+Why? It bypasses the VMware scheduler, hypervisor queues, physical Fibre Channel switches, and SAN controller caches entirely. I/O latency drops from 2–5 milliseconds down to microseconds.
+
+2. Infrastructure-as-Code Injects Custom Tags
+If they do use a shared SAN fabric, the storage team builds pre-optimized storage profiles inside VMware. The DevOps team doesn't just provision a "disk"; they pass a highly specific storage policy variable in their Terraform code:
+
+Terraform
+storage_policy_id = data.vsphere_storage_policy.database_ultra_low_latency.id
+Under the hood, that single tag automatically forces VMware and the SAN controller to provision the disk on isolated flash arrays, lock in a 10,000+ IOPS guarantee, and isolate the paths away from noisy neighbors.
+
+3. Unified Observability (OpenTelemetry / Prometheus)
+Giant companies do not look at iotop in a vacuum. They bridge the gap using end-to-end monitoring stacks:
+
+The VM exports metrics via pg_stat_database and node-exporter to Prometheus.
+
+VMware exports datastore latency metrics via vRealize or specialized exporters.
+
+The SAN exports controller port saturation metrics.
+
+All of these are overlaid on a single Grafana dashboard. When Postgres latency spikes, engineers can instantly see if the spike matches a SAN controller port utilization cliff, completely skipping the finger-pointing between teams.

@@ -1,0 +1,23 @@
+SELECT pg_stat_reset_shared('bgwriter');
+
+ods_domani=# SELECT
+  (buffers_checkpoint - lag(buffers_checkpoint) OVER (ORDER BY stats_reset)) AS checkpoint,
+  (buffers_clean - lag(buffers_clean) OVER (ORDER BY stats_reset)) AS clean,
+  (buffers_backend - lag(buffers_backend) OVER (ORDER BY stats_reset)) AS backend
+FROM pg_stat_bgwriter;
+-[ RECORD 1 ]
+checkpoint |
+clean      |
+backend    |
+
+ods_domani=# SELECT
+  (buffers_checkpoint - lag(buffers_checkpoint) OVER (ORDER BY stats_reset)) AS checkpoint,
+  (buffers_clean - lag(buffers_clean) OVER (ORDER BY stats_reset)) AS clean,
+  (buffers_backend - lag(buffers_backend) OVER (ORDER BY stats_reset)) AS backend
+FROM pg_stat_bgwriter;
+-[ RECORD 1 ]
+checkpoint |
+clean      |
+backend    |
+
+Because you have to cron keep the records there, and then, compare. 

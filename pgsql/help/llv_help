@@ -1,0 +1,10 @@
+-- increase the volume without restart vm
+
+/usr/bin/rescan-scsi-bus.sh --rescan
+ 
+sudo rescan-scsi-bus.sh --resize
+sudo pvresize /dev/sdb
+sudo vgs # Confirm the volume group shows
+sudo lvextend -r -L +50G /dev/mapper/appsvg-appslv
+sudo lvextend -r -l +100%FREE /dev/mapper/appsvg-appslv
+ 

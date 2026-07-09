@@ -1,0 +1,13 @@
+SELECT
+  format(
+    n.nspname||'.'||
+    c.relname
+  )
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relispartition
+  AND c.relnamespace = 'claimsprocess_humana'::regnamespace
+  AND c.relname LIKE 'a_claim_core_%_%'
+  AND c.relkind='r';
+
+

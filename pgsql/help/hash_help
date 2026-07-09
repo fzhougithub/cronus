@@ -1,0 +1,24 @@
+SELECT pg_get_partkeydef('datamart_humana.claim_ccg_2025_10_p7'::regclass);
+-------------------
+
+(1 row)
+
+ods_domani=# SELECT pg_get_partkeydef('datamart_humana.claim_ccg_2025_10'::regclass);
+            pg_get_partkeydef
+-----------------------------------------
+ HASH (customer_id, client_id, group_id)
+(1 row)
+
+
+SELECT
+    tableoid::regclass AS actual_partition,
+    (
+        hashint4(customer_id)::bigint
+      # hashint4(client_id)::bigint
+      # hashint4(group_id)::bigint
+    ) % 16 AS calc_partition
+FROM datamart_humana.claim
+WHERE claim_id = '256960000511'
+AND customer_id = 319;
+
+

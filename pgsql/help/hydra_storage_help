@@ -1,0 +1,165 @@
+Short answer
+
+Hydra columnar compresses data at the chunk level: each column's "value buffer" for a chunk is (optionally) compressed when the chunk is serialized. The null/exists bitmap (existsBuffer) is kept uncompressed and the compressed value buffers are written into the stripe section of the data file. Decompression happens per chunk when that chunk is read.
+What I checked (what I did)
+
+I searched and inspected the extension code (writer, reader, and compression modules) and the README/options. Key files I looked at:
+columnar/src/backend/columnar/columnar_writer.c — SerializeChunkData / FlushStripe (where chunks are serialized, compressed, and written into a stripe)
+https://github.com/hydradatabase/columnar/blob/d1f7657ee82265b2b9f1c06fda929bb5b942411b/columnar/src/backend/columnar/columnar_writer.c
+columnar/src/backend/columnar/columnar_compression.c — CompressBuffer / DecompressBuffer (supported algorithms: none, pglz, lz4, zstd)
+https://github.com/hydradatabase/columnar/blob/d1f7657ee82265b2b9f1c06fda929bb5b942411b/columnar/src/backend/columnar/columnar_compression.c
+columnar/src/backend/columnar/columnar_reader.c — DeserializeChunkData (where a chunk's value buffer is decompressed and deserialized)
+https://github.com/hydradatabase/columnar/blob/d1f7657ee82265b2b9f1c06fda929bb5b942411b/columnar/src/backend/columnar/columnar/columnar_reader.c
+README/options — documents compression option behavior (affects newly-inserted data only)
+https://github.com/hydradatabase/columnar/blob/d1f7657ee82265b2b9f1c06fda929bb5b942411b/columnar/src/backend/columnar/README.md
+Details / evidence (how it works)
+
+Granularity: per chunk
+The writer serializes rows into chunk-sized buffers (default chunk_group_row_limit / chunkRowCount — default 10000 rows). When a chunk is serialized (SerializeChunkData) the code attempts to CompressBuffer() the chunk's serialized value buffer. If compression succeeds, the compressed buffer replaces the serialized buffer for storage and the chunk's metadata records the compression type and decompressed size. See SerializeChunkData and the CompressBuffer call in columnar_writer.c.
+What is compressed
+The column value buffer for each chunk (valueBuffer) is the thing that is compressed. The existsBuffer (null bitmap) is serialized separately and is not compressed (SerializeBoolArray -> existsBuffer is written unchanged).
+Where compressed bytes are stored
+Compressed value buffers (and uncompressed ones, when compression didn't help) are written into the stripe's "data section" in the relation file when the stripe is flushed (FlushStripe writes all exists buffers then value buffers). Stripe metadata and per-chunk skip nodes record offsets/lengths and compression metadata so reads can find & decompress each chunk.
+Decompression
+On read, DeserializeChunkData gets the chunkBuffers for a column/chunk and calls DecompressBuffer(chunkBuffers->valueBuffer, chunkBuffers->valueCompressionType, chunkBuffers->decompressedValueSize) to obtain the uncompressed chunk contents; deserialization then proceeds per chunk.
+Metadata stored per chunk
+Per-chunk skip node stores valueCompressionType, valueCompressionLevel, decompressedValueSize, offsets and lengths. That proves compression metadata is tracked at chunk granularity.
+Supported algorithms and settings
+Supported compression types (build-time): none, pglz, lz4, zstd (controlled by columnar.compression and columnar.compression_level GUCs or alter_columnar_table_set). Default is zstd if compiled in. See columnar_compression.c and columnar.c for GUC defaults.
+When compression applies
+Compression is applied when chunks are serialized (i.e., on writes/flush). The README notes the compression option affects newly-inserted data only; existing stripes/chunks are not automatically recompressed by changing the option.
+Chunk / stripe size defaults (relevant to compression frequency)
+Defaults in code: chunk_group_row_limit (chunk rows) default 10000; stripe_row_limit default 150000. These determine how often chunks and stripes are created and thus how often compression happens.
+Short summary answer to your phrasing
+
+Is it per stripe? No — compression is per chunk inside a stripe (each column's chunk value buffer).
+Is it per chunk group? The code groups chunks into chunk groups and records chunk group row counts, but compression is applied to each chunk's value buffer individually.
+Is it per data file or per table? No — compressed data is stored in the table's per-stripe data file, but compression decisions/metadata are recorded per chunk (not a single table-level/whole-file compression).
+Does it address stripe/striping? Stripes are containers of chunks and the file layout is stripe‑oriented; compression occurs at chunk granularity within those stripes.
+If you want next
+
+I can point to the exact lines where:
+CompressBuffer/DecompressBuffer implement each algorithm,
+SerializeChunkData calls CompressBuffer and stores chunk metadata, and
+DeserializeChunkData invokes DecompressBuffer on read.
+Or I can produce a small diagram showing stripe → chunks → column/value/exist buffers, and where compression is applied and metadata recorded. Which would you prefer?
+
+Short answer
+
+Hydra columnar reads and decompresses only the columns and chunk groups it needs for the query — it does not blindly decompress the whole table. Work is done stripe-by-stripe and chunk-by-chunk: the reader loads only projected columns and only the chunks that cannot be skipped by the skip-list/min-max checks, and decompression is done per chunk when that chunk is deserialized.
+Memory usage depends on: (a) how many columns are projected, (b) how many chunks (in the stripe(s)) are selected, (c) compressed sizes and decompressed sizes of those chunks, and (d) the planner’s aggregation memory (hash table / work_mem) and any caching settings.
+Why (what the code does)
+
+Column projection: the reader builds a projected-column mask from the query’s target list; only those columns are loaded for a stripe (see ProjectedColumnMask).
+Chunk skipping: before reading chunk data, Hydra builds a SelectedChunkMask using per-chunk skip nodes (min/max) and query predicates. Any chunk whose min/max refute the WHERE conditions is skipped entirely — no read, no decompression for that chunk.
+Loading buffers: for each projected column in a stripe, the code reads the per-chunk "exists" buffer and the per-chunk "value" buffer (the stored bytes). These are stored in ColumnBuffers for the stripe.
+Decompression granularity: when a chunk is actually deserialized, the extension calls DecompressBuffer(...) for that chunk’s value buffer and then DeserializeDatumArray(...) to get column values. Decompression happens per chunk (not per whole stripe or table).
+Caching: there is an optional page cache feature (columnar_enable_page_cache) that, if enabled, can keep decompressed chunk buffers in a cache so repeat reads don’t recompress; by default it’s disabled. Cache size and behavior are controlled by GUCs.
+Implications for GROUP BY / aggregate queries
+
+If the GROUP BY and aggregates only reference N columns, the engine will only load/decompress those N columns (for the chunks that must be scanned).
+If there are useful predicates on columns with min/max statistics, many chunks may be skipped entirely and won’t be read/decompressed.
+If there are no predicates (full scan) and the GROUP BY references many columns (or the query planner needs many columns), the reader will load the selected columns’ chunk buffers for all chunks in each stripe it scans; then it will decompress per chunk as it processes the stripe.
+Aggregation memory (hash aggregates) is separate: even if column decompression is limited, a large GROUP BY (many distinct groups) can cause large in-memory hash tables which are governed by PostgreSQL memory behavior (work_mem, spilling to disk for sorts in some plans). Parallel workers will multiply memory consumption per worker.
+Practical details about memory footprint (important)
+
+Compressed buffers are read from disk into memory (rawValueBuffer->len = compressed length). DecompressBuffer then allocates a decompressed buffer sized to the recorded decompressed size. During decompression you therefore may briefly have both compressed and decompressed buffers in memory. After decompression the decompressed buffer is kept in chunkData->valueBufferArray for that chunk until it’s freed at next chunk read; the original compressed buffer is kept with the ColumnChunkBuffers for the stripe metadata until the stripe is released.
+Because LoadColumnBuffers reads compressed value buffers for all selected chunks of a projected column up front, the in-memory compressed footprint can be: sum(compressed sizes of selected chunks × projected columns) for the stripe(s) being processed.
+The decompressed footprint is roughly: for the chunk(s) currently being deserialized, sum(decompressed sizes for those columns). Peak memory can be compressed + decompressed buffers together.
+Limits/checks in code:
+Chunk/value serialization enforces per-chunk size checks (e.g. ~1 GB guards and a per-datum 256 MB limit), but these are high; with many columns or many chunks you can easily reach large total memory usage.
+Defaults: chunk_group_row_limit ≈ 10k rows, stripe_row_limit ≈ 150k rows. Bigger chunks/stripes → fewer I/O ops but larger per-chunk memory.
+Recommendations to avoid OOM on large GROUP BYs
+
+Project only the columns needed by the GROUP BY and aggregates.
+Add selective WHERE predicates (on columns that have min/max stored) so SelectedChunkMask can skip chunks.
+Reduce chunk / stripe sizes (columnar.chunk_group_row_limit, columnar.stripe_row_limit) to limit per-chunk/decompressed size (trade-off: more I/O overhead).
+Use compression that yields smaller compressed sizes (zstd) to lower I/O and compressed-memory footprint (but decompressed size is unchanged).
+Be careful with columnar_enable_page_cache: caching decompressed buffers reduces repeated decompression but increases resident memory use.
+Tune PostgreSQL memory settings (work_mem, max_parallel_workers_per_gather) to control aggregate/hash memory and parallel-worker multiplication.
+If possible, run heavy aggregations on fewer columns or push partial aggregation down / use GROUP BY on pre-aggregated data / increase node RAM.
+If you want I can
+
+Point to the exact functions/files where each step happens (I already inspected them: SelectedChunkMask, LoadColumnBuffers, DecompressBuffer, DeserializeChunkData, SerializeChunkData, FlushStripe), or
+Estimate a rough worst-case memory usage for your dataset given: number of projected columns, average compressed size per chunk, decompressed size per chunk, chunks per stripe, and number of stripes concurrently scanned
+
+There is no one-size-fits-all: prefer many smaller columnar leaf partitions when most queries can be pruned to a small subset of partitions (so each query touches few tables/stripes/chunks). Prefer fewer larger columnar tables when queries routinely must scan most of the data (many partitions would only add planning and metadata overhead without saving memory).
+In practice, if you can partition by a predicate users almost always filter on (time range, customer_id, etc.), make partitions small enough that a typical query touches only a few leaf tables — that will minimize reads/decompression and reduce memory pressure. If queries are global scans across time/customers, consolidate into fewer larger columnar tables and instead reduce stripe/chunk sizes and other memory settings.
+Why — how hydra’s reader/writer behavior drives this tradeoff
+
+Decompression and I/O are done per chunk (per column chunk inside a stripe). The system:
+Loads only projected columns (ProjectedColumnMask).
+Uses per-chunk min/max skip nodes to skip chunks when predicates allow (SelectedChunkMask).
+Reads the compressed value buffer for every selected chunk of each projected column, then calls DecompressBuffer(chunk) and deserializes that chunk.
+Memory usage per query therefore depends on:
+how many partitions/leaf tables the planner selects,
+how many stripes and chunks in those partitions are selected,
+how many columns are projected, and
+compressed and decompressed sizes of those chunks.
+If partitioning lets the planner prune most partitions, the query will only read/decompress a small set of chunks → low memory. If pruning fails and the query scans many partitions, the memory footprint grows accordingly.
+Concrete trade-offs
+
+Many small partitions (pros)
+Strong partition pruning reduces reads and decompression for targeted queries.
+Smaller partitions → fewer rows per stripe/chunk (if stripes/chunks are similar), so smaller per-chunk decompressed memory.
+Many small partitions (cons)
+Planner overhead and longer planning times if queries touch many partitions.
+More catalog metadata, more files/stripes to manage, more I/O metadata scanning.
+If a query must touch many partitions, you may have to open/read many small files/chunks which can increase peak memory and I/O overhead.
+Few large partitions (pros)
+Lower catalog/planning overhead and fewer files to manage.
+Better streaming/sequential I/O when you must scan everything.
+Few large partitions (cons)
+If queries typically target small ranges, you can’t prune and will read/decompress more data than necessary.
+Practical knobs and heuristics to control memory
+
+Use partitioning that matches query filters
+
+Partition by the column most commonly used in WHERE/GROUP BY (time, customer_id).
+Ensure planners can do partition pruning (use native Postgres partitioning, avoid constructs that defeat pruning).
+Tune chunk/stripe sizes so per-chunk decompressed memory is reasonable
+
+Defaults: chunk_group_row_limit ≈ 10,000 rows; stripe_row_limit ≈ 150,000 rows.
+The code already prevents single-value buffers > ~1GB and uses ~1GB thresholds internally; that’s high — aim much lower.
+Rule of thumb: choose chunk/stripe sizes so the decompressed size you actually need to hold in memory for a chunk (per projected column) is comfortably below available RAM. Example: if avg row size per column is 100 B and chunk rows = 10k → ~1 MB per column per chunk; multiply by number of projected columns to estimate peak decompressed chunk memory.
+If your GROUP BY touches many columns, reduce chunk_row_count (columnar.chunk_group_row_limit) and/or stripe_row_limit to limit per-chunk decompressed buffers.
+Compression and cache
+
+Use zstd if available (smaller compressed read footprint reduces memory used for compressed buffers); set compression_level appropriately.
+columnar_enable_page_cache can cache decompressed chunk buffers — this saves repeated decompression but increases resident memory. Leave it off if you’re memory-limited.
+PostgreSQL planner / executor memory
+
+Aggregation memory (hash tables) is separate from compression memory. Tune work_mem and parallelism:
+Reduce max_parallel_workers_per_gather or columnar_min_parallel_processes so you don’t multiply memory usage across many parallel workers.
+Ensure work_mem is sized so hash aggregates don’t consume excessive memory (or they’ll spill to disk but that costs I/O).
+Monitor stripe / chunk stats and inspect storage
+
+Use columnar.stats(rel) and columnar_storage_info() UDFs to see stripe sizes, chunk counts and per-stripe dataLength.
+Query columnar.options and GUCs: SELECT * FROM columnar.options; show columnar.compression, columnar.stripe_row_limit, etc.
+Balance partition count limits
+
+Thousands of partitions is feasible, but planning and catalog bloat are real: if queries frequently scan many partitions, that kills planning time and increases metadata memory. If you already have ~1k partitions (you said ~1053 tables earlier), ensure typical queries prune to a small subset; otherwise consider fewer partitions or subpartitioning strategies.
+Concrete suggested approach (step-by-step)
+
+Measure: run columnar.stats() on sample partitions to get typical stripe/chunk compressed and decompressed sizes and rows per stripe.
+Calculate typical per-query projected columns and average row size per projected column; estimate compressed + decompressed per-chunk memory.
+If a typical query targets only a small time range / customer:
+Use smaller partitions (e.g., monthly/daily) so pruning limits touched partitions to a few.
+Keep default chunk/stripe settings or reduce chunk_group_row_limit to limit per-chunk decompression.
+If typical queries scan broad ranges:
+Consolidate to fewer partitions (quarterly/yearly), but reduce stripe_row_limit and chunk_group_row_limit so chunks are smaller and per-chunk memory is lower.
+Tune compression: use zstd and increase compression_level to reduce compressed read footprint (but decomposition still needs decompressed RAM).
+Limit parallel workers for heavy queries and tune work_mem.
+Example numbers (for sizing only)
+
+Suppose avg row across the projected columns is 200 bytes, chunk_row_count = 10,000 → decompressed ≈ 2 MB per column per chunk. If your query projects 200 columns, decompressed = 400 MB per chunk; if multiple chunks are processed concurrently (or multiple partitions), this multiplies. So reducing columns, chunk rows, or stripe rows will reduce peak memory.
+Aim to keep peak decompressed memory per process well below available RAM (and remember multiple worker processes will multiply usage).
+What I inspected / where to look in code
+
+I reviewed the reader/writer and compression code to confirm:
+per-chunk compression & metadata (SerializeChunkData -> CompressBuffer in columnar_writer.c),
+per-chunk read + decompression (LoadColumnBuffers -> DecompressBuffer -> DeserializeChunkData in columnar_reader.c),
+chunk/stripe size defaults and GUCs (columnar.c and README).
+Useful files: columnar_writer.c, columnar_reader.c, columnar_compression.c, columnar.c, README.md.
+
+
