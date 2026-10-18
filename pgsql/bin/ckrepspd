@@ -1,0 +1,115 @@
+#!/bin/bash
+
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 <dbname> <slotname> <interval>"
+    echo "Example:"
+    echo "  $0 claimsprocess rtlhumana_claimsprocess_humana_sub 10"
+    exit 1
+fi
+
+DBNAME="$1"
+SLOT_NAME="$2"
+INTERVAL="$3"
+
+get_metrics()
+{
+psql -X -A -t -d "$DBNAME" <<EOF
+WITH slot_info AS (
+    SELECT confirmed_flush_lsn
+    FROM pg_replication_slots
+    WHERE slot_name='${SLOT_NAME}'
+),
+repl_info AS (
+    SELECT
+        sent_lsn,
+        replay_lsn
+    FROM pg_stat_replication
+    WHERE application_name='${SLOT_NAME}'
+)
+SELECT
+    slot_info.confirmed_flush_lsn,
+    repl_info.replay_lsn,
+    pg_current_wal_lsn(),
+    pg_wal_lsn_diff(repl_info.sent_lsn,repl_info.replay_lsn)
+FROM slot_info,repl_info;
+EOF
+}
+
+readarray -t vals < <(get_metrics)
+
+if [ ${#vals[@]} -eq 0 ]; then
+    echo "ERROR: subscription/slot not found"
+    exit 1
+fi
+
+IFS='|' read prev_confirmed prev_replay prev_current prev_sendlag <<< "${vals[0]}"
+
+printf "%-8s %9s %9s %12s %12s %10s %10s\n" \
+       "TIME" \
+       "XFER" \
+       "APPLY" \
+       "TOTAL_LAG" \
+       "SLOT_LAG" \
+       "REDUCED" \
+       "ETA(H)"
+
+while true
+do
+    sleep "$INTERVAL"
+
+    readarray -t vals < <(get_metrics)
+
+    if [ ${#vals[@]} -eq 0 ]; then
+        echo "$(date '+%F %T') replication disconnected"
+        continue
+    fi
+
+    IFS='|' read curr_confirmed curr_replay curr_current curr_sendlag <<< "${vals[0]}"
+
+    metrics=$(psql -X -A -t -d "$DBNAME" <<EOF
+SELECT
+    pg_wal_lsn_diff('${curr_confirmed}','${prev_confirmed}'),
+    pg_wal_lsn_diff('${curr_replay}','${prev_replay}'),
+    pg_wal_lsn_diff('${curr_current}','${curr_replay}'),
+    pg_wal_lsn_diff('${curr_current}','${curr_confirmed}');
+EOF
+)
+
+    IFS='|' read transfer_bytes apply_bytes total_lag slot_lag <<< "$metrics"
+
+    prev_total_lag=$(psql -X -A -t -d "$DBNAME" \
+        -c "SELECT pg_wal_lsn_diff('${prev_current}','${prev_replay}')")
+
+    lag_reduced=$(awk "BEGIN {printf \"%.0f\", $prev_total_lag-$total_lag}")
+
+    transfer_speed=$(awk "BEGIN {printf \"%.3f\", $transfer_bytes/1024/1024/$INTERVAL}")
+    apply_speed=$(awk "BEGIN {printf \"%.3f\", $apply_bytes/1024/1024/$INTERVAL}")
+
+    total_lag_mb=$(awk "BEGIN {printf \"%.2f\", $total_lag/1024/1024}")
+    slot_lag_mb=$(awk "BEGIN {printf \"%.2f\", $slot_lag/1024/1024}")
+    reduced_mb=$(awk "BEGIN {printf \"%.2f\", $lag_reduced/1024/1024}")
+    send_lag_mb=$(awk "BEGIN {printf \"%.2f\", $curr_sendlag/1024/1024}")
+
+    eta_hours=$(awk "BEGIN {
+        spd=$apply_bytes/1024/1024/$INTERVAL;
+        if (spd > 0)
+            printf \"%.2f\", ($total_lag/1024/1024)/spd/3600;
+        else
+            printf \"INF\";
+    }")
+
+    printf "%-8s %9s %9s %10.2fMB %10.2fMB %8.2fMB %10s\n" \
+           "$(date '+%H:%M:%S')" \
+           "$transfer_speed" \
+           "$apply_speed" \
+           "$total_lag_mb" \
+           "$slot_lag_mb" \
+           "$reduced_mb" \
+           "$eta_hours"
+
+    prev_confirmed="$curr_confirmed"
+    prev_replay="$curr_replay"
+    prev_current="$curr_current"
+    prev_sendlag="$curr_sendlag"
+
+done

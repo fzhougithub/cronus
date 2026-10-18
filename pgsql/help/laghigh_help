@@ -1,0 +1,40 @@
+SELECT subname, pid,
+    -- If NULL, the worker has crashed or is disabled
+    CASE WHEN pid IS NULL THEN 'STOPPED/ERROR' ELSE 'RUNNING' END as status,
+    -- Time since the last message was received from the publisher
+    now() - last_msg_receipt_time AS replication_lag,
+    -- Processing gap: Time between publisher sending and subscriber receiving
+    last_msg_receipt_time - last_msg_send_time AS transport_delay, received_lsn, latest_end_lsn,
+    -- Flag problematic lag (e.g., more than 60 seconds)
+    CASE
+        WHEN (now() - last_msg_receipt_time) > interval '60 seconds' THEN (now() - last_msg_receipt_time)::text
+        WHEN pid IS NULL THEN 'CRITICAL: WORKER DOWN'
+        ELSE 'HEALTHY'
+    END as health_check
+FROM pg_stat_subscription;
+
+                 subname                  |   pid   | status  | replication_lag  | transport_delay  | received_lsn  | latest_end_lsn |  health_check
+------------------------------------------+---------+---------+------------------+------------------+---------------+----------------+-----------------
+ claimshumana_pg16_prod_ods_stby_02_sub   |    4923 | RUNNING | -00:00:00.006547 | 00:00:00.431216  | DB1D/4D7B82C8 | DB1D/4D7B82C8  | HEALTHY
+ odshumana_pg16_02_landingpage_sub        |    4924 | RUNNING | 00:00:00.034532  | -00:00:00.000041 | 1DB/A40F1CA0  | 1DB/A40F1CA0   | HEALTHY
+ odshumana_pg16_02_lists_sub              |    4925 | RUNNING | 07:35:29.255835  | 00:00:00.000367  | 738/11000000  | 738/11000000   | 07:35:29.255835
+ odshumana_pg16_02_pct_global_sub         |    4926 | RUNNING | 00:00:00.017732  | -00:00:00.000015 | 5FF/3E28F010  | 5FF/3E28F010   | HEALTHY
+ odshumana_pg16_02_pharmacy_sub           |    4930 | RUNNING | 07:35:29.255963  | 00:00:00.000213  | 738/11000000  | 738/11000000   | 07:35:29.255963
+ odshumana_pg16_02_planconfig_sub         |    4936 | RUNNING | 07:35:29.255956  | 00:00:00.000217  | 738/11000000  | 738/11000000   | 07:35:29.255956
+ odshumana_pg16_02_program_mandate_sub    |    4942 | RUNNING | 07:35:29.255913  | 00:00:00.000261  | 738/11000000  | 738/11000000   | 07:35:29.255913
+ odshumana_pg16_02_pde_other_sub          |   38069 | RUNNING | 00:00:00.139296  | -00:00:00.00004  | 24/C777E28    | 24/C777E28     | HEALTHY
+ odshumana_pg16_02_pde_global_sub         |   38070 | RUNNING | 00:00:00.13941   | -00:00:00.000051 | 24/C777E28    | 24/C777E28     | HEALTHY
+ odshumana_pg16_02_drugmgmt_sub           |    4965 | RUNNING | 07:35:29.255873  | 00:00:00.00033   | 738/11000000  | 738/11000000   | 07:35:29.255873
+ odshumana_pg16_02_eligibility_humana_sub |    4968 | RUNNING | 07:35:29.255942  | 00:00:00.000232  | 738/11000000  | 738/11000000   | 07:35:29.255942
+ odshumana_pg16_02_cust_and_global_sub    |    4969 | RUNNING | -00:00:00.007019 | 00:00:00.000161  | C324/8BDD8A10 | C324/8BDD8A10  | HEALTHY
+ odshumana_pg16_02_audit_event_sub        |    4970 | RUNNING | 00:00:00.03445   | 00:00:00.000064  | 1DB/A40F1CA0  | 1DB/A40F1CA0   | HEALTHY
+ odshumana_pg16_02_finance_global_sub     |    4979 | RUNNING | 00:01:51.265935  | 00:00:00.00003   | 1AE/64000000  | 1AE/64000000   | 00:01:51.265935
+ odshumana_pg16_02_pde_humana_sub         |   38071 | RUNNING | 00:00:00.13873   | 00:00:00.000468  | 24/C777E28    | 24/C777E28     | HEALTHY
+ odshumana_pg16_02_pct_humana_sub         | 1170341 | RUNNING | 00:00:00.017173  | 00:00:00.000408  | 5FF/3E28F010  | 5FF/3E28F010   | HEALTHY
+ odshumana_pg16_02_finance_humana_sub     | 1010810 | RUNNING | -00:00:00.007182 | 00:00:18.17486   | 115/A25E3D70  | 115/A209A440   | HEALTHY
+ odshumana_pg16_02_pct_humana_sub         | 1170348 | RUNNING | 00:37:50.026495  | 00:00:00         |               |                | 00:37:50.026495
+ odshumana_pg16_02_pct_humana_sub         | 1170358 | RUNNING | 00:37:49.970103  | 00:00:00         |               |                | 00:37:49.970103
+(19 rows)
+
+
+

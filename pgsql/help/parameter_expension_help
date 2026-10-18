@@ -1,0 +1,82 @@
+Bash parameter expansion
+
+echo "${table#*.}" # The part after first . The # removes the shortest match from the left, *. represent all before .
+
+table="run_datamart_humana.claim_320_2022"
+echo "${table#*.}"
+claim_320_2022
+
+echo "${path##*.}" # Remove longest matching prefix: ##, 
+
+path="a.b.c.d"
+echo "${path##*.}"
+d
+
+compare with 
+echo "${path#*.}"   # b.c.d
+echo "${*ath*#*.}"  # d
+
+echo "${name%_*}" # Remove shortest matching suffix: %
+
+name="claim_320_2022"
+echo "${name%_*}"
+
+claim_320
+
+
+echo "${name%%_*}" # Remove longest matching suffix: %%
+
+name="claim_320_2022"
+echo "${name%%_*}"
+
+claim
+
+echo *${var:0:**" # Substring Extraction, start:length* 
+
+var="abcdefg"
+echo *${var:0:**"
+
+abc
+*
+
+echo *${var:2*"    *#*cdefg
+echo "${var:2:2}"  # cd
+
+echo "${#table}" : string length
+tab*e="run_datamart_humana.claim_320_2*22"
+echo "${#table}"
+35
+
+echo "${VAR:-default}" : Default value
+unset VAR*
+echo "${VAR:-hello}"
+hello
+
+VAR=*orld*
+echo "${VAR:-hello}"
+world
+
+: "${VAR:=hello*"  # Assign default value
+unset VAR=*ello*
+VAR=*ello*
+
+echo "${table/da*amart_humana/run}" # Replace text
+tabl*="dat*m*rt_humana.claim"
+echo "${table/da*amart_humana/run}"
+run.claim
+
+echo "${table/*a/A*"
+dAtAmArt*h*mAnA.cl*im
+
+
+Pattern	Meaning
+*	Any number of chars
+?	One char
+[abc]	a or b or c
+[0-9]	Any digit
+
+file="claim*320_2022.csv"
+echo*"${file%.csv}"
+claim_320_2022
+
+

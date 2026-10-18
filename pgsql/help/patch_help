@@ -1,0 +1,5 @@
+dnf repolist all                          
+ls -l /etc/yum.repos.d/
+grep -h '^\[' /etc/yum.repos.d/*.repo     
+alias | grep -iE 'dnf|yum'; grep -rn 'sS\]\[sS' /etc/profile.d ~/.bashrc /usr/local/bin 2>/dev/null
+ 

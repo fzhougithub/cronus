@@ -1,3 +1,62 @@
+select n.nspname                         as schema,
+       p.proname                         as name,
+       case p.prokind when 'f' then 'function'
+                      when 'p' then 'procedure'
+                      when 'a' then 'aggregate'
+                      when 'w' then 'window' end as kind,
+       pg_get_function_identity_arguments(p.oid) as arguments,
+       pg_get_function_result(p.oid)     as returns,
+       l.lanname                         as language,
+       p.proowner::regrole               as owner,
+       p.provolatile                     as volatility,   -- i=immutable, s=stable, v=volatile
+       p.prosecdef                       as security_definer
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+join pg_language  l on l.oid = p.prolang
+where n.nspname = 'customer'
+  and not exists (select 1 from pg_depend d
+                  where d.objid = p.oid and d.deptype = 'e')   -- skip extension-owned
+order by kind, name, arguments;
+  schema  |     name      |   kind   | arguments | returns | language |  owner   | volatility | security_definer
+----------+---------------+----------+-----------+---------+----------+----------+------------+------------------
+ customer | fn_trg_o58_iu | function |           | trigger | plpgsql  | dt204295 | v          | f
+(1 row)
+
+select p.oid::regprocedure as routine,
+       case p.prokind when 'f' then 'function' when 'p' then 'procedure'
+                      when 'a' then 'aggregate' when 'w' then 'window' end as kind
+from pg_proc p
+where p.pronamespace = 'customer'::regnamespace
+order by 2, 1;
+     routine     |   kind
+-----------------+----------
+ fn_trg_o58_iu() | function
+(1 row)
+
+select case p.prokind when 'f' then 'function' when 'p' then 'procedure'
+                      when 'a' then 'aggregate' when 'w' then 'window' end as kind,
+       count(*)
+from pg_proc p
+where p.pronamespace = 'customer'::regnamespace
+group by 1 order by 1;
+   kind   | count
+----------+-------
+ function |     1
+(1 row)
+
+select p.oid::regprocedure as trigger_function
+from pg_proc p
+where p.pronamespace = 'customer'::regnamespace
+  and p.prorettype = 'trigger'::regtype
+order by 1;
+ trigger_function
+------------------
+ fn_trg_o58_iu()
+(1 row)
+
+
+
+
 SELECT n.nspname AS schema_name,
        p.proname AS procedure_name,
        r.rolname AS role_name

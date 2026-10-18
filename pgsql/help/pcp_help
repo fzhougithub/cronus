@@ -2,8 +2,16 @@ psql -h localhost postgres -c "SHOW pool_nodes;"
 
 create .pcppass, it will work, keep the postgresql password there
 *:*:postgres:RySQfic8iQo9rBHDKXmEQoY2y12kFo1M
+*:*:pgpool:fyion2zythgjuogd4f22qjd3kskeutfm4
 
-pcp_node_count Shows total number of backend nodes.  pcp_node_count -h localhost -U postgres
+cat ~/.pcppass
+*:*:pgpool:fyion2zythgjuogd4f22qjd3kskeutfm4
+
+cat /etc/pgpool-II/pcp.conf|grep -v '#'
+pgpool:8f6ec53876e211ca79b745ab6d864f91
+
+
+pcp_node_count Shows total number of backend nodes.  pcp_node_count -h localhost -U pgpool
 
 pcp_node_info Detailed info for a specific node ID.  pcp_node_info -h localhost -U postgres -n 0
 

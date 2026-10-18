@@ -1,12 +1,12 @@
-SELECT
-    client_addr,
-    state,
-    sync_state,
-    write_lag,
-    flush_lag,
-    replay_lag,
-    pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS byte_lag
+select subname,pid,received_lsn,latest_end_lsn,pg_wal_lsn_diff(received_lsn,latest_end_lsn) 
+from pg_stat_subscription 
+where subname='odshumana_pg16_02_finance_humana_sub';
+
+
+-- as primary, check the replica lag
+SELECT client_addr, state, sync_state, write_lag, flush_lag, replay_lag, pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS byte_lag
 FROM pg_stat_replication;
+
   client_addr   |   state   | sync_state | write_lag | flush_lag | replay_lag | byte_lag
 ----------------+-----------+------------+-----------+-----------+------------+----------
  10.221.143.123 | streaming | async      |           |           |            |        0
@@ -16,29 +16,23 @@ FROM pg_stat_replication;
 Above is correct, should be nothing show up. 
 
 
-
-SELECT
-    pid,
-    relid::regclass AS table_name,
-    received_lsn,
-    last_msg_send_time,
-    latest_end_lsn
+-- check the logical replication lag
+SELECT pid, relid::regclass AS table_name, received_lsn, last_msg_send_time, latest_end_lsn,pg_wal_lsn_diff(received_lsn,latest_end_lsn)
 FROM pg_stat_subscription
-WHERE subname = 'dev_drugmgmt_sub';
+WHERE subname = 'odshumana_pg16_02_finance_humana_sub';
+   pid   | table_name | received_lsn |      last_msg_send_time       | latest_end_lsn | pg_wal_lsn_diff
+---------+------------+--------------+-------------------------------+----------------+-----------------
+ 1010810 |            | 115/7F769BE0 | 2026-08-09 12:15:44.647341-05 | 115/7F769BE0   |               0
+(1 row)
 
 -- table has no PK
-
- SELECT
-    n.nspname,
-    c.relname
+SELECT n.nspname, c.relname
 FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
 LEFT JOIN pg_index i
     ON c.oid = i.indrelid AND i.indisprimary
-WHERE c.relkind = 'r'
-  AND n.nspname = 'drugmgmt'
-  AND i.indrelid IS NULL
-ORDER BY 1,2;
+WHERE c.relkind = 'r' AND i.indrelid IS NULL AND n.nspname = 'finance_humana';
+
  nspname  |                 relname
 ----------+------------------------------------------
  drugmgmt | batch_job_execution_params
@@ -49,13 +43,12 @@ ORDER BY 1,2;
 (5 rows)
 
 
-SELECT
-    sr.srrelid::regclass AS table_name,
-    sr.srsubstate
+SELECT sr.srrelid::regclass AS table_name, sr.srsubstate
 FROM pg_subscription_rel sr
 JOIN pg_subscription s ON s.oid = sr.srsubid
 WHERE s.subname = 'dev_drugmgmt_sub'
 ORDER BY 2,1;
+
                             table_name                            | srsubstate
 ------------------------------------------------------------------+------------
  drugmgmt.batch_job_instance                                      | f
@@ -70,23 +63,26 @@ receive → write → flush → confirmed_flush_lsn → restart_lsn → WAL remo
                (NOT apply!)
 
 
-ods_domani=# SELECT
-    s.subname,
-    s.pid,
-    a.state AS worker_state,
-    a.wait_event_type || ':' || a.wait_event AS current_wait_status,
-    s.received_lsn,
-    o.remote_lsn AS applied_lsn,
-    pg_size_pretty(pg_wal_lsn_diff(s.received_lsn, o.remote_lsn)) AS apply_queue_lag,
-    s.last_msg_send_time,
-    s.last_msg_receipt_time, -- Added network receipt timestamp
-    -- Network transit delta (should be milliseconds/seconds)
-    age(s.last_msg_receipt_time, s.last_msg_send_time) AS network_latency,
-    s.latest_end_time
+SELECT s.subname, s.pid, a.state AS worker_state, a.wait_event_type || ':' || a.wait_event AS current_wait_status, s.received_lsn, o.remote_lsn AS applied_lsn, pg_size_pretty(pg_wal_lsn_diff(s.received_lsn, o.remote_lsn)) AS apply_queue_lag, s.last_msg_send_time, s.last_msg_receipt_time, age(s.last_msg_receipt_time, s.last_msg_send_time) AS network_latency, s.latest_end_time
 FROM pg_stat_subscription s
 JOIN pg_stat_activity a ON s.pid = a.pid
 LEFT JOIN pg_replication_origin_status o ON o.external_id = 'pg_' || s.subid
-WHERE s.subname = 'claimshumana_pg16_prod_ods_stby_02_sub';
+WHERE s.subname = 'odshumana_pg16_02_finance_humana_sub';
+
+-[ RECORD 1 ]---------+-------------------------------------
+subname               | odshumana_pg16_02_finance_humana_sub
+pid                   | 1010810
+worker_state          | active
+current_wait_status   |
+received_lsn          | 115/94A46A00
+applied_lsn           | 115/93C4F5A0
+apply_queue_lag       | 14 MB
+last_msg_send_time    | 2026-08-09 12:34:07.384642-05
+last_msg_receipt_time | 2026-08-09 12:34:24.953509-05
+network_latency       | 00:00:17.568867
+latest_end_time       | 2026-08-09 12:33:48.040171-05
+
+
 -[ RECORD 1 ]---------+---------------------------------------
 subname               | claimshumana_pg16_prod_ods_stby_02_sub
 pid                   | 1095401
@@ -99,7 +95,6 @@ last_msg_send_time    | 2026-05-16 09:46:49.568285-05
 last_msg_receipt_time | 2026-05-16 09:47:03.291383-05
 network_latency       | 00:00:13.723098
 latest_end_time       | 2026-05-16 02:35:45.660466-05
-
 
 
 SELECT
@@ -141,17 +136,13 @@ ORDER BY s.subname;
 
 
 -- on ods
-SELECT 
-    subname,
-    pid,
+SELECT subname, pid,
     -- If NULL, the worker has crashed or is disabled
     CASE WHEN pid IS NULL THEN 'STOPPED/ERROR' ELSE 'RUNNING' END as status,
     -- Time since the last message was received from the publisher
     now() - last_msg_receipt_time AS replication_lag,
     -- Processing gap: Time between publisher sending and subscriber receiving
-    last_msg_receipt_time - last_msg_send_time AS transport_delay,
-    received_lsn,
-    latest_end_lsn,
+    last_msg_receipt_time - last_msg_send_time AS transport_delay, received_lsn, latest_end_lsn,
     -- Flag problematic lag (e.g., more than 60 seconds)
     CASE 
         WHEN (now() - last_msg_receipt_time) > interval '60 seconds' THEN 'ALERT: HIGH LAG'

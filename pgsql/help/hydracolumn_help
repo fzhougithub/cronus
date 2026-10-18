@@ -1,0 +1,183 @@
+SELECT attname
+FROM pg_attribute
+WHERE attrelid = 'datamart_humana.claim_320_2026'::regclass
+  AND attnum = 827
+  AND NOT attisdropped;
+
+       attname
+----------------------
+ fdb_package_size_cnt
+
+
+SELECT DISTINCT column_count
+FROM columnar.stripe
+WHERE storage_id = 10000000000;
+ column_count
+--------------
+         1118
+         1120
+(2 rows)
+
+pg_attribute is system catalog table. 
+
+SELECT o.regclass, c.oid, c.relnatts
+FROM columnar.options o
+JOIN pg_class c
+  ON c.oid = o.regclass::oid
+ORDER BY c.relnatts DESC;
+
+SELECT (minimum_value, maximum_value), count(*)
+FROM columnar.chunk
+WHERE attr_num = 5
+  AND minimum_value IS NOT NULL
+GROUP BY 1
+ORDER BY count(*) DESC;
+                      row                      | count
+-----------------------------------------------+-------
+ ("\\x40010000","\\x40010000")                 | 84715
+ ("\\x3f010000","\\x3e030000")                 | 46084
+ ("\\x40010000","\\x20020000")                 | 23372
+ ("\\x2000000000801600","\\x2000000000801600") |  7415
+ ("\\x3f010000","\\x20020000")                 |  4730
+ ("\\x3f010000","\\x40010000")                 |  3609
+ ("\\x3f010000","\\x3c030000")                 |  2700
+ ("\\x3f010000","\\x3d030000")                 |  2562
+ ("\\x40010000","\\x3e030000")                 |  2331
+ ("\\x3f010000","\\x3f010000")                 |  1413
+ ("\\x3c030000","\\x3c030000")                 |  1050
+ ("\\x20020000","\\x20020000")                 |   591
+ ("\\x3e030000","\\x3e030000")                 |   549
+ ("\\x40010000","\\x3c030000")                 |   279
+ ("\\x3d030000","\\x3d030000")                 |   220
+ ("\\x40010000","\\x3d030000")                 |   154
+ ("\\x20020000","\\x3e030000")                 |    11
+ ("\\x3d030000","\\x3e030000")                 |     9
+ ("\\x3c030000","\\x3e030000")                 |     2
+ ("\\x3f010000","\\x53030000")                 |     1
+ ("\\x3c030000","\\x3d030000")                 |     1
+(21 rows)
+
+SELECT (minimum_value, maximum_value), count(*)
+FROM columnar.chunk
+WHERE attr_num = 2
+  AND minimum_value IS NOT NULL
+GROUP BY 1 ORDER BY count(*) DESC;
+                                                                                                    row
+                                | count
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------+--------
+ ("\\x94000000646174616d6172742e646174616d6172745f636c61696d5f6865616465725f666e","\\x94000000646174616d6172742e646174616d6172745f636c61696d5f6865616465725f666e")
+                                | 170726
+ ("\\x94000000646174616d6172742e646174616d6172745f6d656d6265725f6275696c645f666e","\\x94000000646174616d6172742e646174616d6172745f6d656d6265725f6275696c645f666e")
+                                |   7415
+ ("\\xbc000000646174616d6172742e646174616d6172745f636c61696d5f61646a7573746d656e745f6275696c645f666e","\\xbc000000646174616d6172742e646174616d6172745f636c61696d5f61646a757
+3746d656e745f6275696c645f666e") |   3656
+(3 rows)
+
+Time: 102.873 ms
+
+
+So, this is the only weapon that we can use 
+
+SELECT (minimum_value, maximum_value), count(*)
+FROM columnar.chunk
+WHERE attr_num = 5
+  AND minimum_value IS NOT NULL
+GROUP BY 1 ORDER BY count(*) DESC;
+
+SELECT c.storage_id, c.stripe_num, c.chunk_group_num,c.attr_num,s.first_row_number, s.row_count, s.column_count, s.chunk_group_count, c.value_count, c.minimum_value, c.maximum_value
+FROM columnar.chunk c
+JOIN columnar.stripe s
+  ON s.storage_id = c.storage_id
+ AND s.stripe_num = c.stripe_num
+WHERE c.storage_id = 10000000000
+  AND c.attr_num = 1120
+ORDER BY c.attr_num,c.stripe_num, c.chunk_group_num;
+
+ storage_id  | stripe_num | chunk_group_num | attr_num | first_row_number | row_count | column_count | chunk_group_count | value_count | minimum_value  | maximum_value
+-------------+------------+-----------------+----------+------------------+-----------+--------------+-------------------+-------------+----------------+----------------
+ 10000000000 |      12058 |               0 |     1120 |       1808550001 |    150000 |         1120 |                15 |       10000 |                |
+ 10000000000 |      12058 |               1 |     1120 |       1808550001 |    150000 |         1120 |                15 |       10000 |                |
+ 10000000000 |      12058 |               2 |     1120 |       1808550001 |    150000 |         1120 |                15 |       10000 |                |
+
+SELECT
+    c.storage_id,
+    c.stripe_num,
+    c.chunk_group_num,
+    r.start_row_number,
+    r.end_row_number,
+    r.deleted_rows,
+    c.attr_num,
+    c.minimum_value,
+    c.maximum_value
+FROM columnar.chunk c
+JOIN columnar.row_mask r
+  ON r.storage_id = c.storage_id
+ AND r.stripe_id = c.stripe_num
+ AND r.chunk_id = c.chunk_group_num
+WHERE c.storage_id = 10000000002
+  AND c.attr_num = 5;
+
+ storage_id  | stripe_num | first_row_number | row_count | column_count | chunk_group_count | attr_num | chunk_group_num | value_count | minimum_value  | maximum_value
+-------------+------------+------------------+-----------+--------------+-------------------+----------+-----------------+-------------+----------------+----------------
+ 10000000000 |      12058 |       1808550001 |    150000 |         1120 |                15 |     1120 |               0 |       10000 |                |
+ 10000000000 |      12058 |       1808550001 |    150000 |         1120 |                15 |     1120 |               1 |       10000 |                |
+
+
+SELECT
+    c.storage_id,
+    c.stripe_num,
+    c.chunk_group_num,
+    r.start_row_number,
+    r.end_row_number,
+    r.deleted_rows,
+    c.attr_num,
+    c.minimum_value,
+    c.maximum_value
+FROM columnar.chunk c
+JOIN columnar.row_mask r
+  ON r.storage_id = c.storage_id
+ AND r.stripe_id = c.stripe_num
+ AND r.chunk_id = c.chunk_group_num
+WHERE c.storage_id = 10000000002
+  AND c.attr_num = 5;
+
+ storage_id  | stripe_num | chunk_group_num | start_row_number | end_row_number | deleted_rows | attr_num |   minimum_value    |   maximum_value
+-------------+------------+-----------------+------------------+----------------+--------------+----------+--------------------+--------------------
+ 10000000002 |          1 |               0 |                1 |          10000 |            0 |        5 | \x2000000000801600 | \x2000000000801600
+ 10000000002 |          1 |               1 |            10001 |          20000 |            0 |        5 | \x2000000000801600 | \x2000000000801600
+ 10000000002 |          1 |               2 |            20001 |          30000 |            0 |        5 | \x2000000000801600 | \x2000000000801600
+ 10000000002 |          1 |               3 |            30001 |          40000 |            0 |        5 | \x2000000000801600 | \x2000000000801600
+ 10000000002 |          1 |               4 |            40001 |          50000 |            0 |        5 | \x2000000000801600 | \x2000000000801600
+ 10000000002 |          1 |               5 |            50001 |          60000 |            0 |        5 | \x2000000000801600 | \x2000000000801600
+
+
+
+SELECT
+    a.attname,
+    x.*
+FROM (
+    SELECT
+        attr_num,
+        count(*) AS chunks,
+        count(minimum_value) AS non_null_chunks,
+        count(distinct (minimum_value,maximum_value)) AS range_count
+    FROM columnar.chunk
+    GROUP BY attr_num
+) x
+JOIN pg_attribute a
+  ON a.attrelid =
+     'datamart_humana.claim_320_2026'::regclass
+ AND a.attnum = x.attr_num
+ORDER BY range_count;
+
+SELECT
+    attr_num,
+    count(*)                                        AS chunks,
+    count(minimum_value)                            AS non_null_chunks,
+    count(distinct (minimum_value,maximum_value))   AS range_count,
+    sum(value_count)                                AS rows
+FROM columnar.chunk
+GROUP BY attr_num
+ORDER BY range_count;
+

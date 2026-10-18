@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 <hostname>"
+	exit 1
+else
+	host=$1
+fi
+
+ssh rundeck@$host

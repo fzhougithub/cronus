@@ -1,0 +1,28 @@
+#!/bin/bash
+# The command just generate relavant fix command, should review and then, run them
+# Usage: for i in $(psql -d ods_domani -At -c "select 'claimsprocess_humana.'||tablename from pg_tables where schemaname='claimsprocess_humana' and tablename like 'claim_core_319_%'");do bash fixreset rtlhumana_claimsprocess_humana_sub rtlhumana_claimsprocess_humana_pub $i >> fixlist;done
+
+if [ $# -ne 3 ]; then
+	echo "$0 <subname>,<pubname> <fulltable_name>"
+	echo "e.g: $0 rtlhumana_claimsprocess_humana_sub rtlhumana_claimsprocess_humana_pub claimsprocess_humana.claim_core_319_202507"
+	exit 1
+else
+	sub=$1
+	pub=$2
+	tbl=$3
+fi
+
+pubip=$(psql -d ods_domani -At -c "SELECT (regexp_match(subconninfo, 'host=([^ ]+)'))[1] AS host FROM pg_subscription WHERE subname = '$sub'")
+pubdb=$(psql -d ods_domani -At -c "SELECT (regexp_match(subconninfo, 'dbname=([^ ]+)'))[1] AS host FROM pg_subscription WHERE subname = '$sub'")
+pubconn="psql -h $pubip -d $pubdb -At -c "
+subconn="psql -d ods_domani -At -c "
+
+reset_table() {
+echo "$pubconn 'alter publication $pub drop table $tbl'"
+echo "$subconn 'alter subscription $sub refresh publication'"
+echo "$subconn 'truncate table $tbl'"
+echo "$pubconn 'alter publication $pub add table $tbl'"
+echo "$subconn 'alter subscription $sub refresh publication'"
+}
+
+reset_table

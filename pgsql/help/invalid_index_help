@@ -1,0 +1,39 @@
+SELECT
+    n.nspname,
+    c.relname AS index_name,
+    t.relname AS table_name,
+    i.indisvalid,
+    i.indisready,
+    i.indislive
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+JOIN pg_class t ON t.oid = i.indrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE NOT i.indisvalid;
+
+       nspname        |                 index_name                  |    table_name     | indisvalid | indisready | indislive
+----------------------+---------------------------------------------+-------------------+------------+------------+-----------
+ claimsprocess_other  | a_claim_core_ix1                            | a_claim_core      | f          | t          | t
+ claimsprocess_other  | claim_extension_1_dispense_event_search_idx | claim_extension_1 | f          | t          | t
+ claimsprocess_humana | claim_extension_1_dispense_event_search_idx | claim_extension_1 | f          | t          | t
+(3 rows)
+
+To get the corrupted index, have to use extension
+CREATE EXTENSION IF NOT EXISTS amcheck;
+
+SELECT bt_index_check(indexrelid)
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+JOIN pg_am am ON am.oid = c.relam
+WHERE am.amname = 'btree';
+
+SELECT format(
+    'SELECT bt_index_check(''%s''::regclass);',
+    indexrelid::regclass
+)
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+JOIN pg_am am ON am.oid = c.relam
+WHERE am.amname = 'btree';
+
+

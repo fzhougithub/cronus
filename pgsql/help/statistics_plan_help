@@ -1,0 +1,91 @@
+
+⏺ Since you are using PostgreSQL, it is important to understand a fundamental difference: PostgreSQL does not have "Plan Baselines" or "Stored Outlines" (like Oracle or
+  SQL Server) that you can export as a file and import into another environment.
+
+  In Postgres, the plan is generated dynamically based on statistics. To "keep" a tuned plan and move it to another environment, you aren't moving the plan itself, but
+  rather the configurations and statistics that force the optimizer to choose that plan.
+
+  Here is how to handle this in PostgreSQL:
+
+  ---
+
+  1. The "Native" Way: Handle Data Skew with SET STATISTICS
+
+  If customer_id=544 is slow because the database doesn't realize how unique that value's distribution is, you need to increase the granularity of the statistics for that
+  specific column.
+
+  The Fix:
+  Increase the statistics target for the customer_id column. The default is 100; increasing it to 1000 or more tells Postgres to create a more detailed histogram of the
+  values.
+
+  -- Increase the sampling size for this column
+  ALTER TABLE your_table_name ALTER COLUMN customer_id SET STATISTICS 1000;
+
+  -- You MUST run ANALYZE to apply the change
+  ANALYZE your_table_name;
+
+  How to move this to other envs:
+  Include the ALTER TABLE ... SET STATISTICS and ANALYZE commands in your database migration scripts (Liquibase, Flyway, or raw SQL scripts).
+
+  ---
+
+  2. The "Force" Way: Using pg_hint_plan
+
+  If you have identified the exact index or join order that makes the query fast and you want to force Postgres to use it regardless of the environment, you need the
+  pg_hint_plan extension. Postgres does not support hints (like FORCE INDEX) by default.
+
+  The Fix:
+  Once the extension is installed, you add a comment to your SQL query:
+
+  /*+ IndexScan(your_table your_index_name) */
+  SELECT * FROM your_table WHERE customer_id = 544;
+
+  How to move this to other envs:
+  Since the hint is inside the SQL code itself, it moves automatically when you deploy your application code.
+  - Requirement: The pg_hint_plan extension must be installed on all target database servers.
+
+  ---
+
+  3. The "Architectural" Way: Fix Generic vs. Custom Plans
+
+  If you are using Prepared Statements (common in Java/Python/Node apps), Postgres uses two types of plans:
+  1. Custom Plan: Optimized for the specific value (e.g., 544).
+  2. Generic Plan: A "one size fits all" plan used after the query has been executed 5 times.
+
+  If Postgres switches to a Generic Plan that is great for small customers but terrible for customer 544, you will see this exact behavior.
+
+  The Fix:
+  You can force Postgres to always use a custom plan for the session:
+  SET plan_cache_mode = force_custom_plan;
+
+  How to move this to other envs:
+  Set this in your database connection pool configuration or as a database-level parameter in postgresql.conf:
+  ALTER DATABASE your_db_name SET plan_cache_mode = force_custom_plan;
+
+  ---
+
+  4. Summary: How to migrate the "Tune"
+
+  Since you cannot "copy-paste" a plan, follow this migration checklist:
+
+  ┌───────────────────┬──────────────────────────────────────────────────────────────────────────────┐
+  │ What you changed  │                    How to move it to another Environment                     │
+  │     changed     │                                                                                                                                                  │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ SET STATISTICS  │ Add ALTER TABLE...SET STATISTICS to your migration scripts.                                                                                      │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Indexes         │ Add CREATE INDEX to your migration scripts.                                                                                                      │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ pg_hint_plan    │ Install extension on DB $\rightarrow$ Put hints in the application SQL code.                                                                     │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Plan Cache Mode │ Add ALTER DATABASE...SET plan_cache_mode to your setup script.                                                                                   │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Data            │ Crucial: Ensure your staging/test envs have a "heavy" customer. If the test DB has no skewed data, the optimizer will never choose the "tuned"   │
+  │ Distribution    │ plan, and you won't know it's broken until it hits Production.                                                                                   │
+  └─────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  My Recommendation for your specific case:
+
+  1. First, try ALTER TABLE ... SET STATISTICS 1000 followed by ANALYZE. This is the cleanest, most "Postgres" way to fix data skew.
+  2. If that fails, and you have the authority to install extensions, use pg_hint_plan to hard-code the index usage.
+  3. Always include these changes in your version-controlled migration scripts so every environment is identical.

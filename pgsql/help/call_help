@@ -1,0 +1,7 @@
+select userid,calls,total_exec_time,mean_exec_time,substr(query,1,80) 
+from pg_stat_statements 
+where userid= 506605776 and query not like 'SET %' and query not like 'COMMIT%' and query not like 'BEGIN%' and query not like 'SHOW%' order by calls desc limit 20;
+
+
+
+

@@ -1,5 +1,18 @@
 SELECT pg_stat_reset_shared('bgwriter');
 
+SELECT
+checkpoints_timed,
+checkpoints_req,
+buffers_checkpoint,
+buffers_backend,
+buffers_backend_fsync
+FROM pg_stat_bgwriter;
+
+ checkpoints_timed | checkpoints_req | buffers_checkpoint | buffers_backend | buffers_backend_fsync
+-------------------+-----------------+--------------------+-----------------+-----------------------
+               384 |              17 |          327839012 |       605947655 |                     0
+(1 row)
+
 ods_domani=# SELECT
   (buffers_checkpoint - lag(buffers_checkpoint) OVER (ORDER BY stats_reset)) AS checkpoint,
   (buffers_clean - lag(buffers_clean) OVER (ORDER BY stats_reset)) AS clean,

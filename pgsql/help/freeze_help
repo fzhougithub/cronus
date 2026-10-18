@@ -3,6 +3,25 @@ DISABLE_PAGE_SKIPPING
 VACUUM (FREEZE, DISABLE_PAGE_SKIPPING, VERBOSE) claim_core;
 -- most aggresive, enforce traverse all of the pages, freeze data
 
+SELECT relname, age(relfrozenxid)
+  FROM pg_class
+  WHERE relkind = 'r'
+  ORDER BY 2 DESC LIMIT 10;
+
+          relname           |    age
+----------------------------+-----------
+ claim_extension_2_51       | 199734534
+ claim_dur_history_830_p140 | 198231668
+ claim_dur_history_829_p194 | 198231408
+ claim_dur_history_829_p93  | 198231408
+ claim_dur_history_829_p37  | 198085676
+ claim_dur_history_829_p127 | 197959015
+ claim_dur_history_829_p80  | 197709783
+ n00                        | 196913958
+ claim_dur_history_829_p81  | 196908540
+ claim_dur_history_829_p63  | 196671441
+
+
 SELECT
     n.nspname || '.' || c.relname AS relation,
     age(c.relfrozenxid) AS age,
@@ -54,4 +73,49 @@ WHERE c.relkind = 'r'
   AND n.nspname NOT IN ('pg_catalog', 'information_schema')
   AND age(c.relfrozenxid) > 100000000);
 
+Normal fix, the size should be less than 100MB. 
+---------------------
+SELECT
+    'vacuum(freeze,analyze,verbose) '||n.nspname || '.' || c.relname||'; --'||age(c.relfrozenxid)||','||pg_size_pretty(pg_total_relation_size(c.oid)) FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND age(c.relfrozenxid) > 100000000
+  AND pg_total_relation_size(c.oid)/1024/1024<1024
+ORDER BY age(c.relfrozenxid) DESC limit 10;
 
+--------------------------------------------------------------------------------------------------------
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_829_p122; --191395293,31 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.a_claim_compound_client_pricing; --191309860,32 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_830_p131; --190858458,62 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_830_p134; --190858458,62 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_830_p92; --190858458,62 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_829_p199; --190858264,31 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_829_p192; --190858264,31 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_829_p49; --190400220,31 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.a_claim_extension_2_75; --190244491,35 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_dur_history_829_p165; --190072293,31 MB
+(10 rows)
+
+The large maintenance should be 
+
+SELECT
+    'vacuum(freeze,analyze,verbose) '||n.nspname || '.' || c.relname||'; --'||age(c.relfrozenxid)||','||pg_size_pretty(pg_total_relation_size(c.oid)) FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND age(c.relfrozenxid) > 100000000
+  AND pg_total_relation_size(c.oid)/1024/1024>1024
+ORDER BY age(c.relfrozenxid) DESC limit 10;
+
+------------------------------------------------------------------------------------------------------------------
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_fee_component; --195028037,1870 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_core_828_202511; --194878054,7491 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.a_claim_extension_2_50; --191755971,1133 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_core_830_202605; --188689186,1114 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_core_830_202604; --188683015,1057 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.claim_core_828_202601; --187204643,5778 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.a_claim_generic_reporting_indicators_39; --183657911,5308 MB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.a_claim_extension_1_39; --183657911,30 GB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.a_claim_extension_1_20; --183657911,40 GB
+ vacuum(freeze,analyze,verbose) claimsprocess_humana.a_claim_extension_2_19; --183657911,9688 MB

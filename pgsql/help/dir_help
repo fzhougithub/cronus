@@ -1,0 +1,16 @@
+ods_domani=# SELECT name, setting
+FROM pg_settings
+WHERE name IN
+(
+ 'data_directory',
+ 'log_directory',
+ 'temp_tablespaces'
+);
+       name       |         setting
+------------------+-------------------------
+ data_directory   | /apps/lib/pgsql/16/data
+ log_directory    | /pg_logs
+ temp_tablespaces |
+(3 rows)
+
+

@@ -1,3 +1,143 @@
+iostat -x 1
+sar -d 1 
+vmstat 1 # b field, busy
+ 
+hot table
+
+SELECT
+    schemaname,
+    relname,
+    heap_blks_read,
+    heap_blks_hit,
+    round(
+      100.0*heap_blks_hit/
+      NULLIF(heap_blks_hit+heap_blks_read,0)
+    ,2) cache_hit_pct
+FROM pg_statio_user_tables
+ORDER BY heap_blks_read DESC
+LIMIT 20;
+      schemaname      |        relname        | heap_blks_read | heap_blks_hit | cache_hit_pct
+----------------------+-----------------------+----------------+---------------+---------------
+ customer             | w15                   |     2534932801 |      40168564 |          1.56
+ claimsprocess_humana | claim_extension_1_26  |       19690699 |     100459199 |         83.61
+ claimsprocess_humana | claim_extension_1_25  |       18083609 |      13914473 |         43.49
+ claimsprocess_humana | claim_extension_1_46  |       16898501 |     194998488 |         92.03
+ claimsprocess_humana | claim_extension_1_24  |        7122168 |       5156308 |         41.99
+......
+(20 rows)
+
+Hot table space tables
+SELECT
+    schemaname,
+    relname,
+    heap_blks_read,
+    heap_blks_hit,
+    round(
+      100.0*heap_blks_hit/
+      NULLIF(heap_blks_hit+heap_blks_read,0)
+    ,2) cache_hit_pct
+FROM pg_statio_user_tables
+ORDER BY heap_blks_read DESC
+LIMIT 20;
+
+      schemaname      |        relname        | heap_blks_read | heap_blks_hit | cache_hit_pct
+----------------------+-----------------------+----------------+---------------+---------------
+ customer             | w15                   |     2534932801 |      40168564 |          1.56
+ claimsprocess_humana | claim_extension_1_26  |       19690699 |     100459199 |         83.61
+ claimsprocess_humana | claim_extension_1_25  |       18083609 |      13914473 |         43.49
+ claimsprocess_humana | claim_extension_1_46  |       16898501 |     194998488 |         92.03
+
+
+
+SELECT queryid,calls,mean_exec_time,shared_blks_read,substr(query,1,90) FROM pg_stat_statements
+ORDER BY shared_blks_read DESC
+LIMIT 20;
+       queryid        |  calls  |   mean_exec_time   | shared_blks_read |                                           substr
+----------------------+---------+--------------------+------------------+--------------------------------------------------------------------------------------------
+  1185741689265817134 |    1056 |   9611.65178456343 |       1482872029 | SELECT * FROM misc_humana.t_humana_claim_report($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+  2334279523767288469 |     129 |  47555.48481028679 |        901848598 | SELECT COUNT(*) FROM (SELECT * FROM misc_humana.t_humana_claim_report($1,$2,$3,$4,$5,$6,$7
+  4059896471547327871 | 1453330 | 1236.0411874015767 |        524256280 | SELECT cc.claim_id, cc.member_id, cc.plan_ingredient_cost_amt, cc.pharmacy_id, cc.npi_phar
+  4792722513124025833 | 1125188 | 204.47653992917114 |        105438974 | SELECT                                                                                    +
+                      |         |                    |                  |         c.customer_id,                                                                    +
+                      |         |                    |                  |         c.claim_id,                                                                       +
+                      |         |                    |                  |         c.claim_error_cd,              -
+
+
+
+SELECT
+relname,
+heap_blks_read,
+heap_blks_hit,
+idx_blks_read,
+idx_blks_hit
+FROM pg_statio_user_tables
+WHERE schemaname LIKE 'finance%'
+ORDER BY heap_blks_read DESC
+LIMIT 30;
+
+              relname              | heap_blks_read | heap_blks_hit | idx_blks_read | idx_blks_hit
+-----------------------------------+----------------+---------------+---------------+--------------
+ finance_claim                     |        3912189 |       8733034 |        110756 |     83699679
+ outbound_payment                  |        3143191 |   49828097032 |        863539 |   1939396388
+ adjudicated_claim_payload         |        1435738 |       6781099 |         40125 |     14675967
+ pharmacy_cycle_balance_amount     |         449400 |       4271797 |          2148 |       817114
+
+SELECT
+sum(heap_blks_read) reads,
+sum(heap_blks_hit) hits,
+round(
+100.0*sum(heap_blks_hit)/
+nullif(sum(heap_blks_hit)+sum(heap_blks_read),0),
+2
+) cache_hit_pct
+FROM pg_statio_user_tables;
+   reads    |     hits     | cache_hit_pct
+------------+--------------+---------------
+ 7908825453 | 335057310066 |         97.69
+(1 row)
+
+SELECT
+    round(
+      100.0 * sum(heap_blks_hit) /
+      nullif(sum(heap_blks_hit)+sum(heap_blks_read),0),
+      2
+    ) AS heap_cache_hit_pct,
+    sum(heap_blks_read) AS heap_reads,
+    sum(heap_blks_hit) AS heap_hits
+FROM pg_statio_user_tables;
+ heap_cache_hit_pct | heap_reads |  heap_hits
+--------------------+------------+--------------
+              97.70 | 7908954568 | 335426925549
+(1 row)
+
+SELECT
+    round(
+      100.0 * sum(idx_blks_hit) /
+      nullif(sum(idx_blks_hit)+sum(idx_blks_read),0),
+      2
+    ) AS index_cache_hit_pct,
+    sum(idx_blks_read) AS index_reads,
+    sum(idx_blks_hit) AS index_hits
+FROM pg_statio_user_indexes;
+ index_cache_hit_pct | index_reads |  index_hits
+---------------------+-------------+--------------
+               99.91 |   159109757 | 176226093840
+(1 row)
+
+
+
+SELECT
+pid,
+backend_xid,
+wait_event,
+query
+FROM pg_stat_activity
+WHERE backend_type='logical replication worker'
+AND wait_event='DataFileRead';
+
+
+
+
 ods_domani=# select * from pg_stat_database where datname='ods_domani';
 -[ RECORD 1 ]------------+---------------
 datid                    | 713574

@@ -1,0 +1,39 @@
+ When people refer to OBT (One Big Table) in the context of Alibaba's data architecture (especially within their real-time data warehouse and OLAP stacks), they are
+  usually referring to a design pattern rather than a single standalone software product.
+
+  The "OBT" approach is a denormalization strategy: instead of using a Star Schema (Fact tables joined to Dimension tables), you flatten everything into one massive table
+  to eliminate joins at query time, which is critical for sub-second latency on billions of rows.
+
+  To make OBT work in real-time, Alibaba's implementation is primarily based on the following Apache projects:
+
+  1. Apache Flink (The Engine)
+
+  This is the most critical project. You cannot maintain a "One Big Table" in real-time without a powerful stream processing engine.
+  - The Role: Flink is used to perform the Real-time Flattening. As data flows in from various sources (MySQL bins, Kafka streams), Flink performs the joins between the
+    "fact" stream and the "dimension" streams on the fly.
+  - The Result: Flink outputs a single, wide, denormalized record that is written directly into the OBT storage. This moves the "computational cost" from the Query Phase
+    (where the user is waiting) to the Ingestion Phase.
+
+  2. Apache Kafka (The Transport)
+
+  - The Role: Kafka acts as the buffer and the "source of truth" for the streams that Flink processes. All the raw data that eventually ends up in the OBT is typically
+    streamed through Kafka.
+
+  3. Apache Parquet / ORC (The Storage Format)
+
+  While the OBT is often stored in proprietary Alibaba engines (like Hologres or MaxCompute), the underlying storage philosophy is based on the columnar formats pioneered
+  by the Apache ecosystem.
+  - The Role: Because an OBT can have hundreds or thousands of columns, Columnar Storage is mandatory. Reading a "One Big Table" using a row-based format would be
+    impossibly slow. Parquet and ORC provide the blueprint for how these columnar files are structured.
+
+  4. Apache Hive (The Metadata/Schema)
+
+  - The Role: For the batch-processing side of OBT (initial loads or historical backfills), Alibaba's systems often leverage Hive-compatible metastores to manage the
+    massive schemas associated with these wide tables.
+
+  Summary of the OBT Pipeline:
+
+  Source Data $\rightarrow$ Apache Kafka $\rightarrow$ Apache Flink (The Joiner) $\rightarrow$ Columnar Storage (OBT) $\rightarrow$ Fast Query
+
+  In short: If you are looking for the "brain" behind Alibaba's OBT implementation, it is Apache Flink. Flink provides the state management and windowing capabilities
+  required to join disparate data streams into a single wide table in real-time.

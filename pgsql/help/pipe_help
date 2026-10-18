@@ -1,0 +1,10 @@
+set -o pipefail
+
+psql srcdb -c "COPY mytable TO STDOUT" |
+psql tgtdb -c "COPY mytable FROM STDIN"
+
+echo "${PIPESTATUS[@]}"
+
+141 1
+141 = source COPY TO got SIGPIPE (broken pipe)
+1 = destination COPY FROM failed

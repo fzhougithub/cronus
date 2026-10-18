@@ -1,0 +1,18 @@
+sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//' lumi_queries.sql > lumi_read.sql
+awk '{ print length($0) }' lumi_read.sql | sort -nr | head
+
+awk '
+{
+    len=length($0)
+    if (len>max) {
+        max=len
+        line=NR
+    }
+}
+END {
+    print "Line:", line
+    print "Length:", max
+}' postgresql-29.log-20260730
+Line: 20001614
+Length: 773496
+

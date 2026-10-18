@@ -1,0 +1,245 @@
+0: in emergency that the slot cycling timeout, run below on primary
+01: large transaction
+
+SELECT pid, backend_xid, xact_start, now()-xact_start AS age FROM pg_stat_activity
+WHERE backend_type='logical replication worker' and backend_xid is not null;
+
+  pid   | backend_xid |          xact_start           |       age
+--------+-------------+-------------------------------+-----------------
+ 296757 |   191586089 | 2026-07-17 04:20:11.804602-05 | 00:00:09.015345
+(1 row)
+
+
+SELECT pg_terminate_backend(pid) FROM pg_stat_replication WHERE application_name = 'rtl_claimsprocess_humana_sub';
+
+
+1. Network/tranfer lag: PUB
+
+1.1 How far the wal accumulated in publication side
+
+SELECT application_name, client_addr, state, pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)/1024/1024 as lag_MB
+FROM pg_stat_replication;
+
+           application_name           |  client_addr  |   state   |         lag_mb
+--------------------------------------+---------------+-----------+------------------------
+ proddr_financehumana-db-04           | 10.234.121.75 | streaming | 0.00000000000000000000
+ proddr_financehumana-db-03           | 10.234.124.75 | streaming | 0.00000000000000000000
+ prod_financehumana-db-02             | 10.173.40.116 | streaming | 0.00000000000000000000
+ odshumana_pg16_01_finance_humana_sub | 10.221.142.63 | catchup   |     19051.485664367676
+ odshumana_pg16_02_finance_humana_sub | 10.173.31.74  | streaming |     11400.137573242188
+(5 rows)
+
+
+SELECT slot_name, confirmed_flush_lsn, pg_current_wal_lsn(), pg_size_pretty( pg_wal_lsn_diff( pg_current_wal_lsn(), confirmed_flush_lsn)) AS lag_bytes
+FROM pg_replication_slots WHERE slot_type = 'logical';
+
+              slot_name               | confirmed_flush_lsn | pg_current_wal_lsn | lag_bytes
+--------------------------------------+---------------------+--------------------+-----------
+ odshumana_pg16_01_finance_humana_sub | 31/73EA10B8         | 36/76790A08        | 20 GB
+ odshumana_pg16_02_finance_humana_sub | 33/51E23CE0         | 36/76790A08        | 13 GB
+(2 rows)
+
+SELECT pid, application_name, state, sent_lsn, write_lsn, flush_lsn, replay_lsn, pg_size_pretty(pg_wal_lsn_diff(sent_lsn,replay_lsn)) AS send_lag
+FROM pg_stat_replication;
+   pid   |           application_name            |   state   |   sent_lsn    |   write_lsn   |   flush_lsn   |  replay_lsn   | send_lag
+---------+---------------------------------------+-----------+---------------+---------------+---------------+---------------+-----------
+    9396 | prod_odshumana-db-01                  | streaming | A411/B1348000 | A411/B1348000 | A411/B1348000 | A411/B1347C40 | 960 bytes
+ 1340867 | prod_odshumana-db-01                  | streaming | A411/B1348000 | A411/B1348000 | A411/B1348000 | A411/B1347C40 | 960 bytes
+  795145 | odshumana_pg16_02_cust_and_global_sub | streaming | A411/B1347C40 | A411/B1347C40 | A411/B1347C40 | A411/B1347C40 | 0 bytes
+(3 rows)
+
+
+SELECT pg_size_pretty( pg_wal_lsn_diff( '834/9A5BB810', '832/94DE4310'));
+
+ pg_size_pretty
+----------------
+ 8280 MB
+(1 row)
+
+
+SELECT min(srsublsn), max(srsublsn), pg_size_pretty( pg_wal_lsn_diff( max(srsublsn), min(srsublsn))) AS spread
+FROM pg_subscription_rel
+WHERE srsubstate='s';
+
+     min      |     max      | spread
+--------------+--------------+--------
+ 834/9A560C40 | 834/9A5BCE08 | 368 kB
+(1 row)
+
+
+How about the wal transaction status
+
+SELECT slot_name, spill_txns, spill_count, spill_bytes, stream_txns, stream_count, stream_bytes, total_txns, total_bytes,total_bytes/total_txns
+FROM pg_stat_replication_slots;
+
+              slot_name               | spill_txns | spill_count | spill_bytes | stream_txns | stream_count | stream_bytes | total_txns | total_bytes | ?column?
+--------------------------------------+------------+-------------+-------------+-------------+--------------+--------------+------------+-------------+----------
+ odshumana_pg16_01_finance_humana_sub |          0 |           0 |           0 |           0 |            0 |            0 |        651 |  3213390843 |  4936084
+ odshumana_pg16_02_finance_humana_sub |          0 |           0 |           0 |           0 |            0 |            0 |        595 |  2425127982 |  4075845
+(2 rows)
+
+financials=# SELECT application_name, state, sent_lsn, write_lsn, flush_lsn, replay_lsn, reply_time, now() - reply_time AS reply_age
+FROM pg_stat_replication;
+           application_name           |   state   |  sent_lsn   |  write_lsn  |  flush_lsn  | replay_lsn  |          reply_time           |    reply_age
+--------------------------------------+-----------+-------------+-------------+-------------+-------------+-------------------------------+-----------------
+ proddr_financehumana-db-04           | streaming | 39/9C0DAFA8 | 39/9BEB8000 | 39/9BD78000 | 39/9BCABFF0 | 2026-07-17 07:54:55.115472+00 | 00:00:00.00971
+ proddr_financehumana-db-03           | streaming | 39/9C0DAFA8 | 39/9BE78000 | 39/9BE78000 | 39/9BD04460 | 2026-07-17 07:54:55.120548+00 | 00:00:00.004634
+ prod_financehumana-db-02             | streaming | 39/9C0DAFA8 | 39/9BCF8000 | 39/9BCF8000 | 39/9BC98000 | 2026-07-17 07:54:55.104131+00 | 00:00:00.021051
+ odshumana_pg16_01_finance_humana_sub | catchup   | 31/AEFD6F98 | 31/ACACABF0 | 31/ACACABF0 | 31/ACACABF0 | 2026-07-17 07:54:25.240061+00 | 00:00:29.885121
+ odshumana_pg16_02_finance_humana_sub | streaming | 33/8C364998 | 33/8B0E1520 | 33/8B0E1520 | 33/8B0E1520 | 2026-07-17 07:54:43.902624+00 | 00:00:11.222558
+(5 rows)
+
+SELECT
+    application_name,
+    client_addr,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, write_lsn))  AS write_lag,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, flush_lsn))  AS flush_lag,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, replay_lsn)) AS replay_lag
+FROM pg_stat_replication;
+
+         application_name          |  client_addr   | write_lag | flush_lag | replay_lag
+-----------------------------------+----------------+-----------+-----------+------------
+ claimshumana_prod_stby_002_v2_sub | 10.221.142.63  | 0 bytes   | 153 kB    | 0 bytes
+ claimshumana_prod_stby_001_v2_sub | 10.221.142.63  | 176 kB    | 176 kB    | 176 kB
+ prod_realtimepricing_sub          | 10.221.143.119 | 0 bytes   | 0 bytes   | 0 bytes
+ prod_claimshumana-pg16-03         | 10.222.108.163 | 0 bytes   | 1630 kB   | 2015 kB
+ proddr_claimshumana-pg16-04       | 10.234.109.159 | 2142 kB   | 2142 kB   | 2144 kB
+ prod_claimshumana-pg16-01         | 10.221.152.148 | 0 bytes   | 0 bytes   | 2014 kB
+(6 rows)
+
+
+1.2 How far behind is the subscriber from what the walsender has already transmitted?
+
+SELECT pid, application_name, state, sent_lsn, write_lsn, flush_lsn, replay_lsn, pg_size_pretty(pg_wal_lsn_diff(sent_lsn,replay_lsn)) AS send_lag
+FROM pg_stat_replication where application_name='rtl_claimsprocess_humana_sub';
+
+   pid   |          application_name          |  state  |   sent_lsn   |  write_lsn   |  flush_lsn   |  replay_lsn  |  send_lag
+---------+------------------------------------+---------+--------------+--------------+--------------+--------------+------------
+ 3429357 | rtlhumana_claimsprocess_humana_sub | catchup | 832/9839A1C8 | 832/983999D0 | 832/983999D0 | 832/983999D0 | 2040 bytes
+(1 row)
+
+SELECT pg_size_pretty(
+  pg_wal_lsn_diff(
+    '832/A2D6C730',
+    '832/94DE4310'
+  )
+);
+
+ pg_size_pretty
+----------------
+ 224 MB
+(1 row)
+
+SELECT srsubstate, count(*) FROM pg_subscription_rel GROUP BY 1 ORDER BY 1;
+
+ srsubstate | count
+------------+-------
+ r          |  4397
+ s          |   101
+(2 rows)
+
+SELECT srrelid::regclass, srsubstate, srsublsn
+FROM pg_subscription_rel
+WHERE srsubstate='s'
+LIMIT 20;
+                   srrelid                   | srsubstate |   srsublsn
+---------------------------------------------+------------+--------------
+ claimsprocess_humana.replication_heartbeat  | s          | 834/9A560C40
+ claimsprocess_humana.a_claim_extension_1_29 | s          | 834/9A5BB810
+ claimsprocess_humana.a_claim_extension_1_70 | s          | 834/9A5BB848
+ claimsprocess_humana.a_claim_extension_1_35 | s          | 834/9A5BB880
+ claimsprocess_humana.a_claim_extension_1_48 | s          | 834/9A5BB928
+ claimsprocess_humana.a_claim_extension_1_75 | s          | 834/9A5BB960
+ claimsprocess_humana.a_claim_extension_1_51 | s          | 834/9A5BB8F0
+ claimsprocess_humana.a_claim_extension_1_24 | s          | 834/9A5BBA08
+ claimsprocess_humana.a_claim_extension_1_28 | s          | 834/9A5BB9D0
+ claimsprocess_humana.a_claim_extension_1_39 | s          | 834/9A5BB998
+ claimsprocess_humana.a_claim_extension_1_55 | s          | 834/9A5BBA78
+ claimsprocess_humana.a_claim_extension_1_57 | s          | 834/9A5BBA40
+ claimsprocess_humana.a_claim_extension_1_81 | s          | 834/9A5BBAB0
+ claimsprocess_humana.a_claim_extension_1_02 | s          | 834/9A5BBAE8
+ claimsprocess_humana.a_claim_extension_1_62 | s          | 834/9A5BBB20
+ claimsprocess_humana.a_claim_extension_1_64 | s          | 834/9A5BBB58
+ claimsprocess_humana.a_claim_extension_1_76 | s          | 834/9A5BBBC8
+ claimsprocess_humana.a_claim_extension_1_18 | s          | 834/9A5BBB90
+ claimsprocess_humana.a_claim_extension_1_71 | s          | 834/9A5BBC00
+ claimsprocess_humana.a_claim_extension_1_03 | s          | 834/9A5BBC38
+
+SELECT
+    relname,
+    pg_size_pretty(pg_total_relation_size(c.oid))
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid=c.relnamespace
+WHERE n.nspname='claimsprocess_humana'
+  AND relname LIKE 'a_claim_extension_1_%'
+ORDER BY pg_total_relation_size(c.oid) DESC
+LIMIT 20;
+
+           relname           | pg_size_pretty
+-----------------------------+----------------
+ a_claim_extension_1_25      | 25 GB
+ a_claim_extension_1_45      | 16 GB
+ a_claim_extension_1_55      | 6615 MB
+ a_claim_extension_1_26      | 2265 MB
+ a_claim_extension_1_24      | 1595 MB
+ a_claim_extension_1_25_pkey | 1287 MB
+ a_claim_extension_1_56      | 1225 MB
+
+SELECT
+    schemaname,
+    tablename,
+    count(*) indexes
+FROM pg_indexes
+WHERE schemaname='claimsprocess_humana'
+  AND tablename LIKE 'a_claim_extension_1_%'
+GROUP BY 1,2
+ORDER BY 3 DESC
+LIMIT 20;
+      schemaname      |       tablename        | indexes
+----------------------+------------------------+---------
+ claimsprocess_humana | a_claim_extension_1_01 |       1
+ claimsprocess_humana | a_claim_extension_1_02 |       1
+ claimsprocess_humana | a_claim_extension_1_03 |       1
+
+
+
+
+
+2. Apply Lag: SUB
+SELECT
+    subname,
+    latest_end_lsn,
+    latest_end_time
+FROM pg_stat_subscription;
+
+3. Recommend Approach:
+
+Maintain a dedicated heartbeat table:
+
+CREATE TABLE replication_heartbeat (id int primary key,ts timestamptz);
+
+Publisher updates every few seconds:
+
+UPDATE replication_heartbeat SET ts = clock_timestamp() WHERE id = 1;
+
+Subscriber measures:
+SELECT clock_timestamp() - ts AS replication_delay FROM replication_heartbeat WHERE id = 1;
+
+This provides the actual end-to-end latency experienced by applications:
+
+Commit on publisher
+    ↓
+WAL generation
+    ↓
+Logical decoding
+    ↓
+Network transfer
+    ↓
+Apply worker
+    ↓
+Visible on subscriber
+
+Unlike LSN lag, a heartbeat directly measures what users care about: "How old is the data on the subscriber?"
+
+

@@ -1,0 +1,100 @@
+  /*+
+      NestedLoop(cc ccd)
+      NestedLoop(cc cc_4)
+      NestedLoop(cc frc)
+      IndexScan(cc)
+   */
+  SELECT ... -- your 3000 line query
+
+This one does not work, still, the 10 seconds
+
+The second approach works
+SET enable_hashjoin = off;
+SET enable_mergejoin = off;
+SELECT * FROM public.humana_claim_report(544,'266390013461','RTL','','','','','N','','N','','');
+Time: 2768.414 ms (00:02.768)
+
+The thrid option: plan_cache_mode
+Try setting this at the database or user level:
+  ALTER DATABASE your_db_name SET plan_cache_mode = force_custom_plan;
+This forces Postgres to re-evaluate the plan for the specific value (544) every single time, rather than trying to use a "one size fits all" plan that is optimized for
+  "average" customers.
+
+This one, scary because it suppose only work for prepared query, and each time, the plan generation take long time. 
+Did not test it. 
+
+
+This is a frustrating but well-known phenomenon called the "Optimizer Paradox."
+
+  When statistics are vague, the optimizer is cautious and often defaults to a "safe" Nested Loop. When you run ANALYZE, the optimizer becomes "confident" in its math. If
+  it sees a high volume of data (or incorrectly calculates a high volume due to a lack of multi-column statistics), it "proves" to itself that a Hash Join is
+  mathematically superior, even though in reality, the Nested Loop is faster for your specific row.
+
+  Since you cannot "copy-paste" a plan in PostgreSQL, here are the three ways to force Customer 544 to use the "320-style" plan.
+
+  Option 1: pg_hint_plan (The Surgical Approach)
+
+  This is the industry standard for forcing plans in Postgres. It allows you to add a comment to your SQL that the database treats as a command.
+
+  How to do it:
+  You add a hint at the top of your 3,000-line query. To force the Nested Loop behavior seen in the 320 plan:
+
+  /*+
+      NestedLoop(cc ccd)
+      NestedLoop(cc cc_4)
+      NestedLoop(cc frc)
+      IndexScan(cc)
+   */
+  SELECT ... -- your 3000 line query
+  - Pros: Only affects this specific query; very precise.
+  - Cons: Requires the pg_hint_plan extension to be installed on the DB server.
+
+  ---
+
+  Option 2: Session-Level "Brute Force" (The Quick Fix)
+
+  If you cannot install extensions and need a fix right now, you can tell PostgreSQL to "forget" that Hash Joins and Merge Joins exist for the duration of that specific
+  session. This forces the optimizer to fall back to Nested Loops.
+
+  Run these commands immediately before executing the query:
+  SET enable_hashjoin = off;
+  SET enable_mergejoin = off;
+
+  -- Now run your query
+  SELECT ... FROM ... WHERE customer_id = 544;
+
+  -- Reset them back to default afterwards
+  RESET enable_hashjoin;
+  RESET enable_mergejoin;
+  - Pros: No installation required; guaranteed to stop the Hash/Merge joins.
+  - Cons: If the 3,000-line query has some parts that actually need a Hash Join to be fast, those parts will also slow down.
+
+  ---
+
+  Option 3: plan_cache_mode (The Application Fix)
+
+  If your application uses Prepared Statements (which most Java/Python/Node apps do), Postgres might be using a "Generic Plan."
+
+  Try setting this at the database or user level:
+  ALTER DATABASE your_db_name SET plan_cache_mode = force_custom_plan;
+  This forces Postgres to re-evaluate the plan for the specific value (544) every single time, rather than trying to use a "one size fits all" plan that is optimized for
+  "average" customers.
+
+  ---
+
+  Which one should you choose?
+
+  ┌────────────────────────────────┬───────────────────────────┬─────────────────────────────────────────────────────────────────────────┐
+  │            Scenario            │      Recommended Fix      │                                  Why?                                   │
+  ├────────────────────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ I can install extensions       │ pg_hint_plan              │ It is the only way to "lock" a specific plan into the code permanently. │
+  ├────────────────────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ I need it fixed in 5 minutes   │ SET enable_hashjoin = off │ Immediate results with zero configuration change.                       │
+  ├────────────────────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ It happens in a production app │ force_custom_plan         │ Fixes the problem at the architectural level for all customers.         │
+  └────────────────────────────────┴───────────────────────────┴─────────────────────────────────────────────────────────────────────────┘
+
+  My Recommendation:
+  Try Option 2 first in a test window. If the query time drops from 10s to 20ms, you have confirmed that Hash/Merge joins are the enemy. Then, move to Option 1 for a
+  permanent, production-grade fix.
+

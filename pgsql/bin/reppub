@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# suppose the time table is always like
+# create table replication_heartbeat(id integer, ts timestampTZ);
+
+dblist=$(psql -At -c "select datname from pg_database where datname not in ('postgres','repmgr','template1','template0');")
+for db in $dblist
+do
+    psql -d "$db" -At -c "
+        select format(
+            'INSERT INTO %I.replication_heartbeat(id, ts) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET ts = now();',
+            schemaname
+        )
+        from (
+            select distinct schemaname
+            from pg_publication_tables
+            where tablename = 'replication_heartbeat'
+        ) s
+    " | while read -r sql
+    do
+        echo $db $sql
+        psql -d "$db" -c "$sql"
+    done
+done

@@ -1,3 +1,6 @@
+
+
+
 psql -d ods_domani -Atc "
     WITH RECURSIVE parts AS (
         SELECT c.oid, n.nspname, c.relname

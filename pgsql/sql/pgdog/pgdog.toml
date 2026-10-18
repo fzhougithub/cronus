@@ -1,0 +1,62 @@
+[general]
+host = "0.0.0.0"
+port = 6432
+auth_type = "trust"
+passthrough_auth = "enabled_plain"
+
+[admin]
+password = "mypassword123"
+
+# 1. Define the 3 Physical Shards
+[[databases]]
+name = "test2"
+host = "datamartcitushumana-db-02-alma9-huat-drx-kc.ssnc-corp.cloud"
+port = 5432
+shard = 0
+
+[[databases]]
+name = "test2"
+host = "datamartcitushumana-db-03-alma9-huat-drx-kc.ssnc-corp.cloud"
+port = 5432
+shard = 1
+
+[[databases]]
+name = "test2"
+host = "datamartcitushumana-db-04-alma9-huat-drx-kc.ssnc-corp.cloud"
+port = 5432
+shard = 2
+
+# 2. Define the sharded table (WITHOUT schema in name)
+[[sharded_tables]]
+database = "test2"
+name = "claim_core"        # ✅ Changed from 'table' to 'name'
+column = "claim_id"
+data_type = "varchar"
+
+# 3. Define range mappings (MATCH the table name exactly)
+[[sharded_mappings]]
+database = "test2"
+table = "claim_core"       # ✅ No schema prefix
+column = "claim_id"
+kind = "range"
+start = "000000000000"
+end = "330000000000"
+shard = 0
+
+[[sharded_mappings]]
+database = "test2"
+table = "claim_core"
+column = "claim_id"
+kind = "range"
+start = "330000000000"
+end = "660000000000"
+shard = 1
+
+[[sharded_mappings]]
+database = "test2"
+table = "claim_core"
+column = "claim_id"
+kind = "range"
+start = "660000000000"
+end = "999999999999"
+shard = 2

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ $# -ne 3 ]; then
+	echo "$0 <subname>,<pubname> <schemaname>"
+	echo "e.g: $0 huat_claimsprocess_humana_sub huat_claimsprocess_humana_pub claimsprocess_humana"
+	exit 1
+else
+	sub=$1
+	pub=$2
+	sch=$3
+fi
+
+pubip=$(psql -d ods_domani -At -c "SELECT (regexp_match(subconninfo, 'host=([^ ]+)'))[1] AS host FROM pg_subscription WHERE subname = '$sub'")
+pubdb=$(psql -d ods_domani -At -c "SELECT (regexp_match(subconninfo, 'dbname=([^ ]+)'))[1] AS dbname FROM pg_subscription WHERE subname = '$sub'")
+pubconn="psql -h $pubip -d $pubdb -At -c "
+subconn="psql -d ods_domani -At -c "
+
+conn=$(psql -h $pubip -d $pubdb -At -c "select 1")
+
+if [ $conn -eq 1 ]; then
+$pubconn "
+SELECT
+    'ALTER PUBLICATION $pub ADD TABLE ' || n.nspname || '.' || c.relname || ';' AS fix_cmd,
+    CASE c.relispartition
+        WHEN true THEN 'leaf_partition'
+        ELSE 'regular_table'
+    END AS table_type
+FROM pg_class c
+JOIN pg_namespace n ON c.relnamespace = n.oid
+LEFT JOIN pg_publication_tables ppt ON ppt.schemaname = n.nspname AND ppt.tablename = c.relname
+WHERE c.relkind = 'r'
+  AND n.nspname = '$sch'
+  AND ppt.tablename IS NULL;
+"
+else
+	echo "could not connect to publication node: $pubip"
+fi
+

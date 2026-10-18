@@ -1,3 +1,21 @@
+curl -s http://localhost:9187/metrics \
+| grep -B3 -A3 pg_stat_replication_pg_wal_lsn_diff
+
+pg_stat_replication_pg_current_wal_lsn_bytes{application_name="odshumana_pg16_02_cust_and_global_sub",client_addr="10.173.31.74",server="/var/run/postgresql/:5432",slot_name="795145",state="streaming"} 1.80391883300864e+14
+pg_stat_replication_pg_current_wal_lsn_bytes{application_name="prod_odshumana-db-01",client_addr="10.173.39.40",server="/var/run/postgresql/:5432",slot_name="9396",state="streaming"} 1.80391883300864e+14
+pg_stat_replication_pg_current_wal_lsn_bytes{application_name="prod_odshumana-db-01",client_addr="10.221.136.121",server="/var/run/postgresql/:5432",slot_name="1340867",state="streaming"} 1.80391883300864e+14
+# HELP pg_stat_replication_pg_wal_lsn_diff Lag in bytes between master and slave
+# TYPE pg_stat_replication_pg_wal_lsn_diff gauge
+pg_stat_replication_pg_wal_lsn_diff{application_name="odshumana_pg16_02_cust_and_global_sub",client_addr="10.173.31.74",server="/var/run/postgresql/:5432",slot_name="795145",state="streaming"} 50328
+pg_stat_replication_pg_wal_lsn_diff{application_name="prod_odshumana-db-01",client_addr="10.173.39.40",server="/var/run/postgresql/:5432",slot_name="9396",state="streaming"} 50328
+pg_stat_replication_pg_wal_lsn_diff{application_name="prod_odshumana-db-01",client_addr="10.221.136.121",server="/var/run/postgresql/:5432",slot_name="1340867",state="streaming"} 50328
+# HELP pg_stat_replication_reply_time Unknown metric from pg_stat_replication
+# TYPE pg_stat_replication_reply_time untyped
+pg_stat_replication_reply_time{application_name="odshumana_pg16_02_cust_and_global_sub",client_addr="10.173.31.74",server="/var/run/postgresql/:5432",slot_name="795145",state="streaming"} 1.784309908e+09
+
+
+
+
 To add odshumana to monitoring
 https://code.ssnc.dev/pharmacy/domanirx-infra/blob/main/kubernetes/environments/domanirx-prod/prod/devops-1/prometheus-operator/kube-prometheus-stack-values.yaml#L189
  

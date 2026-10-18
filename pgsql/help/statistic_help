@@ -1,3 +1,31 @@
+ SELECT pg_size_pretty(pg_relation_size('pg_catalog.pg_statistic'));
+
+SELECT attname, n_distinct,
+    CASE
+        WHEN n_distinct > 0 THEN n_distinct
+        ELSE round(abs(n_distinct) * c.reltuples)
+    END AS estimated_distinct_values
+FROM pg_stats s
+JOIN pg_class c
+    ON c.relname = s.tablename
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+   AND n.nspname = s.schemaname
+WHERE s.schemaname = 'datamart_humana'
+  AND s.tablename = 'claim'
+ORDER BY estimated_distinct_values;
+
+                     attname                     |   n_distinct   | estimated_distinct_values
+-------------------------------------------------+----------------+---------------------------
+ species                                         |              0 |                         0
+ patient_country_cd                              |              0 |                         0
+ drug_desi_2_change_effective_dt                 |              0 |                         0
+ patient_street_address_line_txt_2               |              0 |                         0
+ patient_street_address_line_txt_1               |              0 |                         0
+ client_pricing_mac_price_id                     |              0 |                         0
+
+analyze datamart_humana.claim_320_2025 (customer_id);
+
 SELECT pg_stat_reset();
 
 SELECT attname, null_frac, n_distinct, most_common_vals, most_common_freqs

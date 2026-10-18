@@ -10,4 +10,10 @@ ssh -R 8000:localhost:8000 fzhou@10.242.150.136
 sudo systemctl restart oddjobd.service
 sudo systemctl restart sssd.service
 
+for i in $(cn|grep odshumana|egrep '01|03|04'|grep alma9|egrep -v 'rtl|pool'|uniq);do ssh rundeck@$i 'sudo sysctl vm.dirty_bytes' 2>/dev/null;done
+vm.dirty_bytes = 1073741824
+vm.dirty_bytes = 1073741824
+vm.dirty_bytes = 1073741824
+
+
 

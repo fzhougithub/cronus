@@ -1,0 +1,16 @@
+REINDEX SYSTEM postgres;
+reindex system ods_domani;
+
+pg_amcheck \
+--all-databases \
+--install-missing \
+--verbose
+
+pg_amcheck \
+-d dbname \
+--heapallindexed
+
+pg_dumpall --schema-only \
+ > schema.sql
+
+

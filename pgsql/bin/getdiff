@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+	echo "$0 <difffile>"
+	echo "e.g: $0 count01"
+	exit 1
+elif [ ! -f $1 ]; then
+	echo "could not find file $1"
+	exit 2
+else
+	cntfile=$1
+fi
+
+awk -F'|' '{if ($NF>0) print $1}' $cntfile

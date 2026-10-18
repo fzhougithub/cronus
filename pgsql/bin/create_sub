@@ -1,0 +1,4 @@
+SELECT 'CREATE SUBSCRIPTION ' || quote_ident(subname)
+|| ' CONNECTION ' || quote_literal(subconninfo)
+|| ' PUBLICATION ' || array_to_string(subpublications, ', ') || ';'
+FROM pg_subscription;

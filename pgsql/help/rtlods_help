@@ -1,0 +1,5 @@
+aws s3 cp --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021     /pg_backups/datamart.dmp/*.* s3://db-backup-rtl/odshumana-pg16-01-alma9-hydra/    --profile db-backup-rtl --no-verify-ssl
+
+aws s3 sync --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021     s3://db-backup-rtl/odshumana-pg16-01-alma9-hydra/ /pg_backups/datamart.dmp    --profile db-backup-rtl --no-verify-ssl
+
+

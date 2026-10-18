@@ -1,0 +1,45 @@
+-- 0. check storage_id mapping
+SELECT columnar_helpers.columnar_relation_storageid('datamart_humana.claim_319'::regclass);
+ columnar_relation_storageid
+-----------------------------
+                 10000022861
+
+
+-- 1. Create the helper schema
+  CREATE SCHEMA IF NOT EXISTS columnar_helpers;
+
+  -- 2. Install the mapping function
+  -- This links the SQL function to the 'columnar' C library already loaded in your DB
+  CREATE OR REPLACE FUNCTION columnar_helpers.columnar_relation_storageid(relid oid)
+  RETURNS bigint
+  LANGUAGE C STABLE STRICT
+  AS 'columnar', $$columnar_relation_storageid$$;
+
+  -- 3. (Optional) Install the info function for more detail
+  CREATE OR REPLACE FUNCTION columnar_helpers.columnar_storage_info(
+      rel regclass,
+      version_major OUT int4,
+      version_minor OUT int4,
+      storage_id OUT int8,
+      reserved_stripe_id OUT int8,
+      reserved_row_number OUT int8,
+      reserved_offset OUT int8)
+    STRICT
+    LANGUAGE c AS 'columnar', $$columnar_storage_info$$;
+
+  The Final, Correct Query
+
+  Once you have run the commands above, you can use the function to accurately map your table name to its internal storage_id.
+
+  SELECT
+      a.attname as column_name,
+      c.attr_num,
+      max(c.value_decompressed_length) as max_chunk_len,
+      round(max(c.value_decompressed_length) / 1024.0 / 1024.0, 2) as max_len_mb
+  FROM columnar.chunk c
+  JOIN pg_attribute a ON c.attr_num = a.attnum
+  WHERE c.storage_id = columnar_helpers.columnar_relation_storageid('datamart_humana.claim'::regclass)
+    AND a.attrelid = 'datamart_humana.claim'::regclass
+    AND c.attr_num IN (1043,364,1047,104,1041,97,869,1059,175,1048)
+  GROUP BY a.attname, c.attr_num
+  ORDER BY max(c.value_decompressed_length) DESC;

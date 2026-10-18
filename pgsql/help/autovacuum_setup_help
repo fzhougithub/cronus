@@ -7,6 +7,7 @@ ALTER TABLE mytable SET (
   autovacuum_vacuum_cost_delay = 3,           
   autovacuum_vacuum_cost_limit = 3000,          
   autovacuum_freeze_table_age = 120000000,     
+  --autovacuum_freeze_min_age = 1000000
 );
 For the table size bigger than 20GB. 
 

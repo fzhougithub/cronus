@@ -1,0 +1,128 @@
+#!/bin/bash
+
+DB="$1"
+
+if [[ -z "$DB" ]]; then
+    echo "Usage: $0 <dbname>"
+    exit 1
+fi
+
+INTERVAL=5
+
+PREV=/tmp/ckioread.prev
+
+get_snapshot()
+{
+psql -XtA -F'|' -d "$DB" <<'SQL'
+SELECT
+    queryid,
+    dbid,
+    userid,
+    toplevel,
+    calls,
+    shared_blks_read,
+    round(mean_exec_time::numeric,2)
+FROM pg_stat_statements
+ORDER BY 1,2,3,4;
+SQL
+}
+
+echo "Sampling pg_stat_statements every ${INTERVAL}s"
+
+rm -f "$PREV"
+
+while true
+do
+    CUR=$(mktemp)
+
+    get_snapshot > "$CUR"
+
+    if [[ -f "$PREV" ]]; then
+
+        echo
+        echo "===== $(date) ====="
+
+        awk -F'|' '
+        NR==FNR {
+            key=$1 "|" $2 "|" $3 "|" $4
+
+            calls[key]=$5
+            reads[key]=$6
+
+            next
+        }
+
+        {
+            key=$1 "|" $2 "|" $3 "|" $4
+
+            if (key in reads) {
+
+                dcalls=$5-calls[key]
+                dread=$6-reads[key]
+
+                if (dread > 0) {
+
+                    mb=dread*8/1024
+                    mbsec=mb/5
+
+                    printf "%d|%d|%.1f|%.1f|%s|%s|%s|%s|%s\n",
+                        dread,
+                        dcalls,
+                        mb,
+                        mbsec,
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $7
+                }
+            }
+        }
+        ' "$PREV" "$CUR" |
+        sort -t'|' -k1,1nr |
+        head -20 |
+        while IFS='|' read \
+            dread \
+            dcalls \
+            mb \
+            mbsec \
+            queryid \
+            dbid \
+            userid \
+            toplevel \
+            meanms
+        do
+
+            sql=$(psql -XtA -d "$DB" <<SQL
+SELECT left(
+       regexp_replace(query,E'[[:space:]]+',' ','g'),
+       120)
+FROM pg_stat_statements
+WHERE queryid=$queryid
+  AND dbid=$dbid
+  AND userid=$userid
+LIMIT 1;
+SQL
+)
+
+            echo "queryid      : $queryid"
+            echo "userid       : $userid"
+            echo "calls_delta  : $dcalls"
+            echo "read_blks    : $dread"
+            echo "read_mb      : $mb"
+            echo "read_mb/sec  : $mbsec"
+            echo "mean_exec_ms : $meanms"
+            echo "sql          : $sql"
+            echo "-----------------------------------------------------"
+
+        done
+
+    else
+        echo "(baseline captured)"
+    fi
+
+    mv "$CUR" "$PREV"
+
+    sleep "$INTERVAL"
+
+done

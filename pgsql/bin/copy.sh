@@ -17,16 +17,18 @@ fi
 #!/bin/bash
 set -euo pipefail
 
+psql -d ods_domani -At <<SQL > ${custid}.list
+select 'datamart_humana.'||relname from pg_class where relname like '$cnd';
+SQL
+
+first_tbl=$(head -n 1 ${custid}.list)
+
 psql -d ods_domani -At <<SQL > ${custid}_cols.txt
 SELECT string_agg(format('%I', attname), E',\n' ORDER BY attnum)
 FROM pg_attribute
-WHERE attrelid = '${table}'::regclass
+WHERE attrelid = '${first_tbl}'::regclass
   AND attnum > 0
   AND NOT attisdropped;
-SQL
-
-psql -d ods_domani -At <<SQL > ${custid}.list
-select 'datamart_humana.'||relname from pg_class where relname like '$cnd';
 SQL
 
 COLS=$(cat ${custid}_cols.txt)
@@ -36,10 +38,11 @@ if [ $act == 'run' ];then
   echo "you review generated $${runfile} and dierctly run it"
 elif [ $act == 'dry' ];then
   echo "#!/bin/bash" > ${runfile}
+  echo "set -o pipefail" >> ${runfile}
   while read -r tbl; do
     #echo "echo $(date +%Y%m%d_%H%M)  \"COPY $tbl to ${table}" >> $runfile
     printf 'echo $(date +%%Y%%m%%d_%%H%%M) "COPY %s to %s"\n' "$tbl" "$table" >> "$runfile"
-    echo "psql -d ods_domani -c \"COPY (SELECT $COLS FROM $tbl) TO STDOUT\" | psql -d ods_domani -c \"COPY ${table} FROM STDIN\"" >>$runfile
+    echo "psql -d ods_domani -c \"COPY (SELECT $COLS FROM $tbl) TO STDOUT\" | psql -d ods_domani -c \"COPY ${table} ($COLS) FROM STDIN\" || echo \"$tbl\" >>failed_${custid}.txt" >>$runfile
   done < ${custid}.list
 
   echo "Please review 3 files:"

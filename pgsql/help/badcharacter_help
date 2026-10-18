@@ -1,3 +1,44 @@
+datamart_humana.claim_320_2025
+ERROR:  invalid byte sequence for encoding "UTF8": 0xdd 0x54
+CONTEXT:  COPY claim_320_2025, line 17433807, column member_street_address_line_txt_2
+
+1. Find the row
+SELECT
+    ctid,
+    encode(convert_to(member_street_address_line_txt_2,'UTF8'),'hex')
+FROM datamart_humana.claim_320_2025
+WHERE member_street_address_line_txt_2 IS NOT NULL;
+
+-- or
+
+SELECT ctid,
+       member_street_address_line_txt_2
+FROM datamart_humana.claim_320_2025
+WHERE member_street_address_line_txt_2 IS NOT NULL
+  AND length(member_street_address_line_txt_2) <>
+      octet_length(convert_to(member_street_address_line_txt_2,'UTF8'));
+
+-- or 
+
+COPY (
+   SELECT member_street_address_line_txt_2
+   FROM datamart_humana.claim_320_2025
+   OFFSET 17433790
+   LIMIT 50
+) TO STDOUT;
+OFFSET 17433800 LIMIT 10
+OFFSET 17433800 LIMIT 5
+... until get the error line
+
+-- or
+SELECT ctid,
+       member_street_address_line_txt_2
+FROM datamart_humana.claim_320_2025;
+combine with the error line number to identify the value. 
+
+
+
+
 In error log, get the restore error 
 pg_restore: error: COPY failed for table "claim_core_320_202505": ERROR:  invalid byte sequence for encoding "UTF8": 0xa8
 CONTEXT:  COPY claim_core_320_202505, line 51075231

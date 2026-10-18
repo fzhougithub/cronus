@@ -1,0 +1,5 @@
+CATS = Commit-Age-Based Transaction Scheduling.
+
+It's the algorithm PostgreSQL uses to prioritize lock waiters in some lock contention scenarios to reduce deadlocks and improve throughput. It has nothing to do with ANALYZE or table statistics.
+
+

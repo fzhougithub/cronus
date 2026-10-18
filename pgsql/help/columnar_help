@@ -1,3 +1,5 @@
+SELECT sum(deletedrows) as deleted,sum(rowcount) as rowcount FROM columnar.stats('datamart_humana.claim');
+
 
 -- show all of the columnar tables. 
 

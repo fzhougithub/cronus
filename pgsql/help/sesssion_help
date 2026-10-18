@@ -1,0 +1,27 @@
+  Modify the code that calls the query to wrap it in a transaction:
+
+  BEGIN;
+  SET LOCAL enable_hashjoin = off;
+  SET LOCAL enable_mergejoin = off;
+
+  -- Run the 3000-line query here
+  SELECT ... ;
+
+  COMMIT;
+  SET LOCAL ensures that the "No Hash Join" rule only lasts for that one specific transaction. The moment the transaction ends, the setting is wiped, and there is zero
+  risk to any other query in the system.
+
+
+
+2. Change role
+The role level change is bad
+
+  A. The User-Level Fix (Safest)
+
+  If you have a specific database user (role) that runs these reports, you can apply the "No Hash Join" rule only to that user. This prevents the risk from affecting other
+  parts of your system.
+
+  -- This only affects the 'report_user', not the whole DB
+  ALTER ROLE report_user SET enable_hashjoin = off;
+  ALTER ROLE report_user SET enable_mergejoin = off;
+  Now, whenever report_user logs in, they are automatically in "Nested Loop mode," but the rest of the application continues to use Hash Joins.

@@ -1,0 +1,17 @@
+grep -RFl "value: '%m [%p] %q%u@%d '" reporting_analysis-prod | while read -r file
+do
+    sed -i "s|value: '%m \[%p\] %q%u@%d '|value: '%m [%p] %q%u@%d txid=%x sess=%c '|g" "$file"
+done
+
+-- Or one command
+
+#grep -RFl "value: '%m [%p] %q%u@%d '" . |xargs -0 sed -i "s|value: '%m \[%p\] %q%u@%d '|value: '%m [%p] %q%u@%d txid=%x sess=%c '|g"
+grep -RFl "value: '%m [%p] %q%u@%d '" . | xargs sed -i '' "s|value: '%m \[%p\] %q%u@%d '|value: '%m [%p] %q%u@%d txid=%x sess=%c '|g"
+--Above is for apple machine
+
+
+
+
+
+
+

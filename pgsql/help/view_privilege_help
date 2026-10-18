@@ -1,0 +1,20 @@
+SELECT
+    r.rolname       AS member_role,
+    g.rolname       AS granted_group_role
+FROM pg_auth_members m
+JOIN pg_roles r ON r.oid = m.member
+JOIN pg_roles g ON g.oid = m.roleid
+WHERE r.rolname = 'hotfixpdodsfinance';
+
+    member_role     |   granted_group_role
+--------------------+-------------------------
+ hotfixpdodsfinance | finance_global_ro
+ hotfixpdodsfinance | finance_humana_ro
+ hotfixpdodsfinance | finance_other_ro
+ hotfixpdodsfinance | pct_global_ro
+ hotfixpdodsfinance | pct_humana_ro
+ hotfixpdodsfinance | pct_other_ro
+ hotfixpdodsfinance | claimsprocess_humana_ro
+ hotfixpdodsfinance | customer_ro
+(8 rows)
+

@@ -1,0 +1,17 @@
+SELECT
+    application_name,
+    client_addr,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, write_lsn))  AS write_lag,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, flush_lsn))  AS flush_lag,
+    pg_size_pretty(pg_wal_lsn_diff(sent_lsn, replay_lsn)) AS replay_lag
+FROM pg_stat_replication;
+
+         application_name          |  client_addr   | write_lag | flush_lag | replay_lag
+-----------------------------------+----------------+-----------+-----------+------------
+ claimshumana_prod_stby_002_v2_sub | 10.221.142.63  | 0 bytes   | 153 kB    | 0 bytes
+ claimshumana_prod_stby_001_v2_sub | 10.221.142.63  | 176 kB    | 176 kB    | 176 kB
+ prod_realtimepricing_sub          | 10.221.143.119 | 0 bytes   | 0 bytes   | 0 bytes
+ prod_claimshumana-pg16-03         | 10.222.108.163 | 0 bytes   | 1630 kB   | 2015 kB
+ proddr_claimshumana-pg16-04       | 10.234.109.159 | 2142 kB   | 2142 kB   | 2144 kB
+ prod_claimshumana-pg16-01         | 10.221.152.148 | 0 bytes   | 0 bytes   | 2014 kB
+(6 rows)

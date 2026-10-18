@@ -1,3 +1,5 @@
+SELECT tgname, tgenabled FROM pg_trigger WHERE tgrelid = 'subscription_table'::regclass;
+
 claimsprocess=# SELECT
     tg.tgname,
     tg.tgenabled,

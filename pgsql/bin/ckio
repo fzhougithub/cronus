@@ -3,128 +3,169 @@
 INTERVAL=1
 COUNT=10
 
-if [ $# -ne 2 ];then
-	echo "$0 <dbname> saturation_rate"
-	echo "e.g: $0 claimsprocess 90"
-	exit 1
-else
-	dbname=$1
-	saturation_rate=$2
+if [[ $# -lt 2 ]]; then
+    echo "Usage:"
+    echo "  $0 <dbname> <util_threshold> [aqusz_threshold]"
+    echo
+    echo "Example:"
+    echo "  $0 ods_domani 60 10"
+    exit 1
 fi
 
-# Print the header once
-#printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n" \
-#       "Device" "r/s" "w/s" "rkB/s" "wkB/s" "await" "svctm" "%util"
-echo "Checking ......"
+DBNAME="$1"
+UTIL_THRESHOLD="$2"
+AQSZ_THRESHOLD="${3:-10}"
 
-for ((i=1; i<=COUNT; i++)); do
-    #printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n" \
-    #"Device" "r/s" "w/s" "rkB/s" "wkB/s" "await" "svctm" "%util"
-    # Capture first snapshot
-    SNAP1=$(cat /proc/diskstats)
-    sleep $INTERVAL
-    # Capture second snapshot
-    SNAP2=$(cat /proc/diskstats)
+TMP="/tmp/ckio.$$"
+DEVFILE="/tmp/ckio.devices.$$"
 
-    # Process both snapshots together
-    awk -v intv="$INTERVAL" '
-    # Process the first snapshot (passed via stdin or named pipe)
-    # We use a simple trick: if we see the same device twice, the second one is SNAP2
-    {
-        dev=$3
-        if (!(dev in s_rd)) {
-            # First time seeing this device (SNAP1)
-            s_rd[dev]=$4;  s_rs[dev]=$6;  s_rt[dev]=$7
-            s_wr[dev]=$8;  s_ws[dev]=$10; s_wt[dev]=$11
-            s_im[dev]=$13
-        } else {
-            # Second time seeing this device (SNAP2)
-            rd = $4 - s_rd[dev];  rs = $6 - s_rs[dev]; rt = $7 - s_rt[dev]
-            wr = $8 - s_wr[dev];  ws = $10 - s_ws[dev]; wt = $11 - s_wt[dev]
-            im = $13 - s_im[dev]
+rm -f "$DEVFILE"
 
-            rsr = rd / intv
-            wsr = wr / intv
-            rk  = rs * 512 / 1024 / intv
-            wk  = ws * 512 / 1024 / intv
+echo "Collecting disk statistics..."
 
-            tot = rd + wr
-            if (tot > 0) {
-                await = (rt + wt) / tot
-                svctm = im / tot
-            } else {
-                await = 0; svctm = 0
-            }
+iostat -dx "$INTERVAL" "$COUNT" > "$TMP"
 
-            # %util = (time spent doing I/O in ms) / (interval in ms) * 100
-            util = (im / (intv * 1000)) * 100
-            if (util > 100) util = 100.0
+echo
+echo "Devices exceeding:"
+echo "  util  > ${UTIL_THRESHOLD}%"
+echo "  aqu-sz > ${AQSZ_THRESHOLD}"
+echo
 
-            if (rd > 0 || wr > 0 || util > 0) {
-                printf "%-10s %6.1f %6.1f %10.1f %10.1f %8.2f %8.2f %5.1f%%\n",
-                       dev, rsr, wsr, rk, wk, await, svctm, util
-            }
+awk \
+-v util_limit="$UTIL_THRESHOLD" \
+-v aqu_limit="$AQSZ_THRESHOLD" \
+-v devfile="$DEVFILE" '
+BEGIN {
+    header=0
+}
+
+/^(sd|dm)/ {
+
+    dev=$1
+
+    rps=$2
+    rkbs=$3
+
+    wps=$8
+    wkbs=$9
+
+    rawait=$6
+    wawait=$12
+
+    await=(rawait+wawait)/2
+
+    aqusz=$22
+    util=$23
+
+    if (util > util_limit || aqusz > aqu_limit) {
+
+        if (header == 0) {
+
+            printf "%-10s %8s %8s %12s %12s %8s %8s %8s\n",
+                   "Device",
+                   "r/s",
+                   "w/s",
+                   "rkB/s",
+                   "wkB/s",
+                   "await",
+                   "aqu-sz",
+                   "%util"
+
+            header=1
         }
-    }' <<< "$SNAP1"$'\n'"$SNAP2"
 
-    echo "---------------------------------------------------------------------------"
-done > /tmp/ioissue
+        printf "%-10s %8.1f %8.1f %12.1f %12.1f %8.2f %8.2f %8.2f\n",
+               dev,
+               rps,
+               wps,
+               rkbs,
+               wkbs,
+               await,
+               aqusz,
+               util
 
-#device=$(awk -v rate="$saturation_rate" '$NF > rate {print $1}' /tmp/ioissue | sort -u)
-#device=$(awk '$NF+0 > $saturation_rate  {print $1}' /tmp/ioissue | sort | uniq)
-device=$(awk -v rate="$saturation_rate" '$1 ~ /^dm-/ && $NF > rate {print $1}' /tmp/ioissue | sort -u)
-mapping=$(lsblk -no KNAME,MOUNTPOINT | grep "^$i " | awk '{print $1 " -> " $2}')
+        print dev >> devfile
+    }
+}
+' "$TMP"
 
+echo
+echo "============================================================"
+echo "Device Mapping"
+echo "============================================================"
 
-cond=$(echo $device|sed 's/ /|/g')
+if [[ -s "$DEVFILE" ]]; then
 
-if [ -n "$device" ]; then
-	echo "Saturation Devices:"
-	printf "%-10s %6s %6s %10s %10s %8s %8s %6s\n" \
-	"Device" "r/s" "w/s" "rkB/s" "wkB/s" "await" "svctm" "%util"
-	cat /tmp/ioissue|egrep "$cond"|sort
+    sort -u "$DEVFILE" | while read dev
+    do
+        echo
+        echo "Device: $dev"
+
+        lsblk -p -o NAME,PKNAME,FSTYPE,SIZE,MOUNTPOINT "/dev/$dev"
+    done
+
 else
-	echo "No Saturation Device"
-	exit 2
+    echo "No matching devices found."
 fi
 
-all_paths=""
-for i in $device; do
-    # Get the mount point (handles both dm-* and sd*)
-    path=$(lsblk -no MOUNTPOINT "/dev/$i" | grep -v '^$' | head -n 1)
-    if [ -n "$path" ]; then
-        all_paths+="$path "
-    fi
-done
+echo
+echo "============================================================"
+echo "PostgreSQL sessions waiting on IO"
+echo "============================================================"
 
-unique_paths=$(echo "$all_paths" | tr ' ' '\n' | sort -u)
+psql -P pager=off -d "$DBNAME" <<'SQL'
 
+SELECT
+    pid,
+    usename,
+    backend_type,
+    state,
+    wait_event_type,
+    wait_event,
+    EXTRACT(epoch FROM (now()-query_start))::int AS runtime_sec,
+    left(query,200) AS query
+FROM pg_stat_activity
+WHERE wait_event_type='IO'
+ORDER BY runtime_sec DESC;
 
-for path in $unique_paths; do
-    mapping=$(lsblk -no KNAME,MOUNTPOINT|grep $path)
-    echo "========================================================================"
-    echo "Investigating Mount Point: $mapping"
-    echo "------------------------------------------"
+SQL
 
-    psql -d "$dbname" -Axt <<EOF
-    SELECT
-        a.pid,
-        a.backend_type,
-        n.nspname || '.' || c.relname AS target_relation,
-        a.state,
-        EXTRACT(epoch FROM (now() - a.query_start))::int AS duration_sec,
-        a.query AS query_snippet
-    FROM pg_stat_activity a
-    -- Join to find tables currently being mentioned in queries or autovacuumed
-    JOIN pg_class c ON (
-        a.query ~ c.relname OR
-        (a.backend_type = 'autovacuum worker' AND a.query ~ c.relname)
-    )
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    JOIN pg_tablespace t ON c.reltablespace = t.oid
-    WHERE pg_tablespace_location(t.oid) = '$path'
-      AND (a.state = 'active' OR a.backend_type = 'autovacuum worker')
-      AND a.pid <> pg_backend_pid();
-EOF
+echo
+echo "============================================================"
+echo "DataFileRead Sessions"
+echo "============================================================"
 
-done
+psql -P pager=off -d "$DBNAME" <<'SQL'
+
+SELECT
+    pid,
+    usename,
+    backend_type,
+    EXTRACT(epoch FROM (now()-query_start))::int AS runtime_sec,
+    left(query,200)
+FROM pg_stat_activity
+WHERE wait_event='DataFileRead'
+ORDER BY runtime_sec DESC;
+
+SQL
+
+echo
+echo "============================================================"
+echo "WAL Replay"
+echo "============================================================"
+
+psql -P pager=off -d "$DBNAME" <<'SQL'
+
+SELECT
+    pg_is_in_recovery() AS standby,
+    pg_size_pretty(
+        pg_wal_lsn_diff(
+            pg_last_wal_receive_lsn(),
+            pg_last_wal_replay_lsn()
+        )
+    ) AS replay_gap,
+    now() - pg_last_xact_replay_timestamp() AS replay_delay;
+
+SQL
+
+rm -f "$TMP" "$DEVFILE"

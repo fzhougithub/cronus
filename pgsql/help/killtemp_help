@@ -1,0 +1,32 @@
+1. Identify
+
+WITH temp_usage AS (
+    SELECT regexp_replace(name, '^pgsql_tmp([0-9]+)\..*$', '\1')::int AS pid, SUM(size) AS temp_bytes
+    FROM pg_ls_tmpdir()
+    GROUP BY 1
+)
+SELECT
+    a.pid, a.usename, a.datname, a.application_name, a.state, pg_size_pretty(t.temp_bytes) AS temp_size, a.query_start, a.query
+FROM temp_usage t
+JOIN pg_stat_activity a
+    ON a.pid = t.pid
+WHERE t.temp_bytes > 10 * 1024 * 1024 * 1024
+ORDER BY t.temp_bytes DESC;
+
+2. terminate command
+
+WITH temp_usage AS (
+    SELECT
+        regexp_replace(name, '^pgsql_tmp([0-9]+)\..*$', '\1')::int AS pid,
+        SUM(size) AS temp_bytes
+    FROM pg_ls_tmpdir()
+    GROUP BY 1
+)
+SELECT
+    pg_terminate_backend(pid)
+FROM temp_usage
+WHERE temp_bytes > 10 * 1024 * 1024 * 1024
+AND pid <> pg_backend_pid();
+
+
+

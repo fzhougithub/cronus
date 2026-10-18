@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 <prod>"
+	exit 1
+fi
+
+export KUBECONFIG=domanirx-devops1-prod-oidc.config
+kubens
+
+kubectl  port-forward svc/kube-prometheus-stack-alertmanager 9093:9093 -n monitoring

@@ -1,3 +1,12 @@
+kubectl get pods -A -o wide | grep 10.173.47.199
+Then
+kubectl exec -it -n benefits my-service-7f6d89b8bb-xk2qw -- /bin/bash
+or
+ssh 10-173-47-199.ssnc-corp.cloud
+
+
+
+
 fzhou@DST-JXK2FKH0CK .kube % kubectl get prometheusrule -A
 NAMESPACE    NAME                                                         AGE
 monitoring   kube-prometheus-stack-alertmanager.rules                     2y68d

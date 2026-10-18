@@ -1,0 +1,72 @@
+node --input-type=module -e '
+import { parseFirst, toSql } from "pgsql-ast-parser";
+const ast = parseFirst(`SELECT customer_id, COUNT(*) FROM claim WHERE claim_status_cd IN (10,11) GROUP BY customer_id`);
+console.log(JSON.stringify(ast, null, 2));
+console.log("--- roundtrip ---");
+console.log(toSql.statement(ast));
+'
+
+
+
+{
+  "columns": [
+    {
+      "expr": {
+        "type": "ref",
+        "name": "customer_id"
+      }
+    },
+    {
+      "expr": {
+        "type": "call",
+        "function": {
+          "name": "count"
+        },
+        "args": [
+          {
+            "type": "ref",
+            "name": "*"
+          }
+        ]
+      }
+    }
+  ],
+  "from": [
+    {
+      "type": "table",
+      "name": {
+        "name": "claim"
+      }
+    }
+  ],
+  "groupBy": [
+    {
+      "type": "ref",
+      "name": "customer_id"
+    }
+  ],
+  "where": {
+    "type": "binary",
+    "left": {
+      "type": "ref",
+      "name": "claim_status_cd"
+    },
+    "right": {
+      "type": "list",
+      "expressions": [
+        {
+          "type": "integer",
+          "value": 10
+        },
+        {
+          "type": "integer",
+          "value": 11
+        }
+      ]
+    },
+    "op": "IN"
+  },
+  "type": "select"
+}
+--- roundtrip ---
+SELECT customer_id , (count (*) )  FROM claim   WHERE (claim_status_cd IN ((10), (11))) GROUP BY customer_id

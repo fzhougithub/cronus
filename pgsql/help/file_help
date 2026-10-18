@@ -1,4 +1,32 @@
 SELECT
+    n.nspname,
+    c.relname,
+    c.oid,
+    pg_relation_filenode(c.oid)
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE pg_relation_filenode(c.oid)=2569501618;
+ nspname  | relname |    oid     | pg_relation_filenode
+----------+---------+------------+----------------------
+ customer | h96c544 | 2522657505 |           2569501618
+(1 row)
+
+
+
+select n.nspname, c.relname, c.relkind
+from pg_class c
+join pg_namespace n
+    on c.relnamespace = n.oid
+where pg_relation_filenode(c.oid) = 2695371097;
+
+     nspname     | relname | relkind
+-----------------+---------+---------
+ datamart_humana | claim   | r
+(1 row)
+
+
+SELECT
     pg_relation_filepath('stg_customer_humana.a10') AS file_path,
     pg_relation_filenode('stg_customer_humana.a10') AS relfilenode,
     c.reltablespace AS tablespace_oid

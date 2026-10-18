@@ -1,0 +1,19 @@
+ comm -23 <(sed 's/^[[:space:]]*//;s/[[:space:]]*$//' cl_hpls | sort) <(sed 's/^[[:space:]]*//;s/[[:space:]]*$//' cl_rtl | sort)
+
+
+
+# 先排序（你的文件看起来已经排了，但保险起见）
+sort finance_humana1.tablist > /tmp/a.sorted
+sort finance_humana.tablist > /tmp/b.sorted
+
+# 只显示"在 B 中但不在 A 中"的行（第 3 列抑制，第 2 列显示）
+comm -13 /tmp/a.sorted /tmp/b.sorted
+
+参数 含义
+-1 抑制第 1 列（只在 A 中）
+-2 抑制第 2 列（只在 B 中）
+-3 抑制第 3 列（两者都有）
+
+comm -23 a b​ → 只在 A 中（A 有 B 没有）
+comm -13 a b​ → 只在 B 中（B 有 A 没有）✅ 你想要的
+comm -12 a b​ → 两者都有

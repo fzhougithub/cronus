@@ -1,3 +1,4 @@
+
 select application_name
 ,state /* startup, backup, catchup */
 ,sync_priority /* 0,1, or more */

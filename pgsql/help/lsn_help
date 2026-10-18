@@ -1,3 +1,28 @@
+SELECT slot_name, confirmed_flush_lsn, pg_current_wal_lsn() AS current_lsn, pg_size_pretty( pg_wal_lsn_diff( pg_current_wal_lsn(), confirmed_flush_lsn)) AS lag_pretty FROM pg_replication_slots WHERE slot_type = 'logical' ORDER BY slot_name;
+
+               slot_name               | confirmed_flush_lsn |  current_lsn  | lag_pretty
+---------------------------------------+---------------------+---------------+------------
+ odshumana_pg16_02_cust_and_global_sub | A41C/9C160920       | A41C/9C1EE000 | 566 kB
+(1 row)
+
+-- logical replciation lag
+SELECT r.application_name, r.state, r.replay_lsn, pg_current_wal_lsn() AS current_lsn, pg_size_pretty( pg_wal_lsn_diff( pg_current_wal_lsn(), r.replay_lsn)) AS lag_pretty FROM pg_stat_replication r JOIN pg_replication_slots s ON s.slot_name = r.application_name WHERE s.slot_type = 'logical' ORDER BY r.application_name;
+
+           application_name           |   state   | replay_lsn  | current_lsn | lag_pretty
+--------------------------------------+-----------+-------------+-------------+------------
+ odshumana_pg16_01_finance_humana_sub | catchup   | 34/F86CFFD0 | 3F/A59BF478 | 43 GB
+ odshumana_pg16_02_finance_humana_sub | streaming | 3F/A59BF478 | 3F/A59BF478 | 0 bytes
+(2 rows)
+
+
+-- all lag including physical
+SELECT application_name, replay_lsn, pg_current_wal_lsn() AS current_lsn, pg_size_pretty( pg_wal_lsn_diff( pg_current_wal_lsn(), replay_lsn)) AS lag_pretty FROM pg_stat_replication ORDER BY application_name;
+
+           application_name           | replay_lsn  | current_lsn | lag_pretty
+--------------------------------------+-------------+-------------+------------
+ odshumana_pg16_01_finance_humana_sub | 34/F5C3C118 | 3F/A5494248 | 43 GB
+
+
 A WAL filename​ in PostgreSQL (e.g. 0000000300004B2900000087) has this internal binary/hex structure:
 Part
 	

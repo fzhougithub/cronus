@@ -1,3 +1,27 @@
+strace -tt -T -f \
+  -e trace=network,poll,ppoll,select,epoll_wait,read,write,recvfrom,sendto \
+  curl -s http://localhost:9187/metrics >/dev/null
+
+strace -tt -T -e trace=network,poll,ppoll,select,epoll_wait curl -s http://localhost:9187/metrics >/dev/null
+
+-- This is the command we want to use that just check the curl running process. 
+
+strace -tt -f -p $(pidof postgres_exporter)
+--This is attach to existing process, not like using strace to folk another process
+strace -tt -f -p 3793057
+
+strace -tt -T -f \
+  -e trace=network,poll,select,epoll_wait,read,write \
+  curl -s http://localhost:9187/metrics >/dev/null
+
+timeout 15 strace -tt -T -f -p $(pidof postgres_exporter)
+--then, immediately issue
+curl http://localhost:9187/metrics >/dev/null
+
+The strace will be timeout in 15 seconds, and the curl in 12 second, you get the report. 
+strace -tt -T -p $(pidof postgres_exporter) | egrep 'epoll_wait|poll|read|write|recvfrom|sendto|futex'
+
+
 sudo strace -p 1635911 -e trace=read -f
 
 sudo iotop -aoP

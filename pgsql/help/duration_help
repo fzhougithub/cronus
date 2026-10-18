@@ -1,0 +1,28 @@
+grep duration postgresql-29.log-20260730|grep ppdpct > /var/tmp/slow_29.log
+cat -n /var/tmp/slow_29.log |awk '{print $1, $9}'|sort -k2nr > /var/tmp/slow_sort_29.log
+
+for i in $(awk '{print $1}' /var/tmp/slow_sort_29.log);do echo "sed -n '$i,${i}p' /var/tmp/slow_29.log" >> /var/tmp/get_final;done
+bash /var/tmp/get_final > /var/tmp/final.log &
+
+awk '/parameter/ {sum += length($0) + 1} END {print sum}' postgresql-29.log-20260730
+This give the total volume size of the parameter. 
+
+
+To check the grep process
+
+[postgres@pct-db-01-alma8-prod-drx-kc pg_logs]$ cat /proc/1722749/io
+rchar: 283193105241
+wchar: 3107495936
+syscr: 410776
+syscw: 758666
+read_bytes: 274819878912
+write_bytes: 3107495936
+cancelled_write_bytes: 0
+[postgres@pct-db-01-alma8-prod-drx-kc pg_logs]$ cat /proc/1722749/io
+rchar: 287734791001
+wchar: 3185328128
+syscr: 415873
+syscw: 777668
+read_bytes: 279362310144
+write_bytes: 3185328128
+cancelled_write_bytes: 0

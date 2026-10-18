@@ -1,3 +1,31 @@
+ods_domani=# SELECT
+ods_domani-#     local_id,
+ods_domani-#     external_id,
+ods_domani-#     remote_lsn
+ods_domani-# FROM pg_replication_origin_status
+ods_domani-# WHERE external_id LIKE 'pg_193095130_%'
+ods_domani-# ORDER BY remote_lsn DESC
+ods_domani-# LIMIT 5;
+ local_id |       external_id       |  remote_lsn
+----------+-------------------------+--------------
+      124 | pg_193095130_2316282598 | 834/9A5BCE08
+      123 | pg_193095130_2316284278 | 834/9A5BCDD0
+      122 | pg_193095130_2316284614 | 834/9A5BCD98
+      121 | pg_193095130_2316284838 | 834/9A5BCD60
+      120 | pg_193095130_2316283046 | 834/9A5BCD28
+(5 rows)
+
+ods_domani=# SELECT count(*)
+ods_domani-# FROM pg_replication_origin_status
+ods_domani-# WHERE external_id LIKE 'pg_193095130_%';
+ count
+-------
+   101
+(1 row)
+
+
+
+
 SELECT pg_size_pretty(pg_wal_lsn_diff(received_lsn, remote_lsn))
 FROM pg_stat_subscription s
 JOIN pg_replication_origin_status o

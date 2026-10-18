@@ -1,0 +1,32 @@
+SELECT pid, usename, application_name, client_addr, state, xact_start, now() - xact_start AS xact_age, query_start, now() - query_start AS query_age, wait_event_type, wait_event, LEFT(query, 100) AS query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY xact_start;
+
+   pid   |  usename   |  application_name   |  client_addr   | state  |          xact_start           |    xact_age     |          query_start          |    query_age    |
+ wait_event_type | wait_event |                                                query
+---------+------------+---------------------+----------------+--------+-------------------------------+-----------------+-------------------------------+-----------------+
+-----------------+------------+------------------------------------------------------------------------------------------------------
+ 2255281 |            |                     |                | active | 2026-08-13 10:08:31.43894+00  | 00:00:08.994599 | 2026-08-13 10:08:31.43894+00  | 00:00:08.994599 |
+                 |            | autovacuum: VACUUM ANALYZE finance_humana.outbound_payment
+ 2249531 | ppdfinance | ${application.name} | 10.222.173.109 | active | 2026-08-13 10:08:39.889936+00 | 00:00:00.543603 | 2026-08-13 10:08:39.889948+00 | 00:00:00.543591 |
+                 |            | update outbound_payment as op                                                                       +
+         |            |                     |                |        |                               |                 |                               |                 |
+                 |            | set payment_id= $1, process_update_by_user_id= $2, process_update_by_
+ 2254818 | postgres   | psql                |                | active | 2026-08-13 10:08:40.433539+00 | 00:00:00        | 2026-08-13 10:08:40.433539+00 | 00:00:00        |
+                 |            | SELECT pid, usename, application_name, client_addr, state, xact_start, now() - xact_start AS xact_ag
+(3 rows)
+
+
+SELECT slot_name, active, active_pid, restart_lsn, confirmed_flush_lsn, pg_size_pretty( pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS restart_wal, pg_size_pretty( pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) AS confirmed_wal, wal_status
+FROM pg_replication_slots
+WHERE slot_type = 'logical'
+ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC;
+
+              slot_name               | active | active_pid | restart_lsn  | confirmed_flush_lsn | restart_wal | confirmed_wal | wal_status
+--------------------------------------+--------+------------+--------------+---------------------+-------------+---------------+------------
+ odshumana_pg16_01_finance_humana_sub | t      |    2220915 | 14C/9A1D0B20 | 14C/AA77B600        | 84 GB       | 83 GB         | extended
+ odshumana_pg16_02_finance_humana_sub | t      |    1408552 | 15B/2BD79A0  | 15B/1C7F1AD8        | 26 GB       | 26 GB         | extended
+(2 rows)
+
+

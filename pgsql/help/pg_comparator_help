@@ -74,4 +74,3 @@ DROP FUNCTION claimsprocess.bytea(bit, integer, boolean);
 DROP FUNCTION claimsprocess.varbit2int2(bit varying, integer, boolean);
 DROP FUNCTION claimsprocess.bit2int2(bit, integer, boolean);
 
-

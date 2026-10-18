@@ -1,3 +1,14 @@
+r = ordinary table
+p = partitioned table
+i = index
+I = partitioned index
+S = sequence
+v = view
+m = materialized view
+c = composite type
+f = foreign table
+t = TOAST table
+
 SELECT
     n.nspname AS schema_name,
     c.relkind,

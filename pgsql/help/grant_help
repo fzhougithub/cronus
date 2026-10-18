@@ -1,3 +1,54 @@
+SELECT n.nspname AS schema_name,
+       c.relname AS sequence_name,
+       c.relacl
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE c.relkind = 'S'
+  AND c.relname = 'batch_job_instance_seq';
+   schema_name   |     sequence_name      |                                        relacl
+-----------------+------------------------+--------------------------------------------------------------------------------------
+ drugmgmt        | batch_job_instance_seq | {postgres=rwU/postgres,drugmgmt_ro=r/postgres,drugmgmt_rw=rwU/postgres}
+ program_mandate | batch_job_instance_seq | {postgres=rwU/postgres,program_mandate_ro=r/postgres,program_mandate_rw=rw/postgres}
+ planconfig      | batch_job_instance_seq | {postgres=rwU/postgres,planconfig_rw=rw/postgres,planconfig_ro=r/postgres}
+ lists           | batch_job_instance_seq | {postgres=rwU/postgres,lists_ro=r/postgres,lists_rw=rw/postgres}
+(4 rows)
+
+SELECT n.nspname, c.relname, grantee.rolname AS grantee, privilege_type
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+CROSS JOIN LATERAL aclexplode(coalesce(c.relacl, acldefault('s', c.relowner))) a
+JOIN pg_roles grantee
+    ON grantee.oid = a.grantee
+WHERE c.relkind = 'S'
+  AND c.relname = 'batch_job_instance_seq';
+
+     nspname     |        relname         |      grantee       | privilege_type
+-----------------+------------------------+--------------------+----------------
+ drugmgmt        | batch_job_instance_seq | drugmgmt_ro        | SELECT
+ drugmgmt        | batch_job_instance_seq | drugmgmt_rw        | USAGE
+ drugmgmt        | batch_job_instance_seq | drugmgmt_rw        | UPDATE
+ drugmgmt        | batch_job_instance_seq | drugmgmt_rw        | SELECT
+ drugmgmt        | batch_job_instance_seq | postgres           | USAGE
+ drugmgmt        | batch_job_instance_seq | postgres           | UPDATE
+ drugmgmt        | batch_job_instance_seq | postgres           | SELECT
+
+
+SELECT
+    grantee,
+    privilege_type
+FROM information_schema.role_table_grants
+WHERE table_name = 'batch_job_instance' and grantee like 'drugmgmt_%';
+   grantee   | privilege_type
+-------------+----------------
+ drugmgmt_ro | SELECT
+ drugmgmt_rw | INSERT
+ drugmgmt_rw | SELECT
+ drugmgmt_rw | UPDATE
+ drugmgmt_rw | DELETE
+
+
 SELECT
     r.rolname AS role_name,
     u.rolname AS member_name

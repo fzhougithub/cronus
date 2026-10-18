@@ -1,0 +1,629 @@
+include logical_latency_help
+
+SELECT
+    pid,
+    backend_type,
+    state,
+    wait_event_type,
+    wait_event,
+    query
+FROM pg_stat_activity
+WHERE backend_type LIKE '%logical%';
+
+   pid   |         backend_type         | state | wait_event_type |     wait_event      | query
+---------+------------------------------+-------+-----------------+---------------------+-------
+    3840 | logical replication launcher |       | Activity        | LogicalLauncherMain |
+    3878 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3893 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3906 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3921 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3178951 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3072262 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+(7 rows)
+
+2. which table is being hammered
+SELECT
+    relid::regclass,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+ORDER BY
+      n_tup_ins
+    + n_tup_upd
+    + n_tup_del DESC
+LIMIT 20;
+
+                            relid                            | n_tup_ins | n_tup_upd | n_tup_del
+-------------------------------------------------------------+-----------+-----------+-----------
+ claimsprocess_humana.a_claim_extension_1_25                 |  15283431 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_45                 |   9867757 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_55                 |   4017193 |         0 |         0
+ columnar.chunk                                              |   1113406 |         0 |   1221555
+ global.al1                                                  |   1081843 |         0 |    924512
+ claimsprocess_humana.a_claim_extension_1_26                 |   1390039 |         0 |         0
+ global.al0                                                  |    278335 |    807201 |     59982
+ claimsprocess_humana.a_claim_extension_1_24                 |    968334 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_56                 |    743664 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_44                 |    706291 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_46                 |    696747 |         0 |         0
+ iidr_rtl_ods_humana_admin.ts_bookmark                       |         0 |    532360 |         0
+
+3. Check index count
+SELECT
+    schemaname,
+    tablename,
+    count(*) AS index_count
+FROM pg_indexes
+GROUP BY 1,2
+ORDER BY 3 DESC
+LIMIT 30;
+
+      schemaname      |                        tablename                         | index_count
+----------------------+----------------------------------------------------------+-------------
+ finance              | qrtz_triggers                                            |          13
+ customer             | s56                                                      |          12
+ datamart_humana      | tmp_claim_core_2026_06_26_13_30_49_745325_05_t1_datamart |          10
+ rework               | rework_claim_detail                                      |           9
+ rework_other         | rework_claim_detail                                      |           9
+ rework_humana        | rework_claim_detail                                      |           9
+ customer             | s50                                                      |           9
+ rework_ddc           | rework_claim_detail                                      |           9
+ global               | y14                                                      |           8
+
+4. check FK status
+
+SELECT
+    conrelid::regclass,
+    count(*)
+FROM pg_constraint
+WHERE contype='f'
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 20;
+
+                  conrelid                  | count
+--------------------------------------------+-------
+ drugmgmt.dur_safety_drsf_master            |    15
+ planconfig.pdc_attribute_rule              |     9
+ finance.payment                            |     8
+ customerconfig.admin_dependent_options     |     8
+ finance.journal_entry                      |     8
+ finance.prompt_pay_approved_penalty        |     6
+ druglist.drug_list_entry                   |     5
+ finance_global.global_journal_entry        |     5
+ finance_global.payment                     |     4
+ finance.prompt_pay_claim                   |     4
+ finance.outbound_payment                   |     4
+
+
+
+   pid   |         backend_type         | state | wait_event_type |     wait_event      | query
+---------+------------------------------+-------+-----------------+---------------------+-------
+    3840 | logical replication launcher |       | Activity        | LogicalLauncherMain |
+    3878 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3893 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3906 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3921 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3178951 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3072262 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+(7 rows)
+
+2. which table is being hammered
+SELECT
+    relid::regclass,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+ORDER BY
+      n_tup_ins
+    + n_tup_upd
+    + n_tup_del DESC
+LIMIT 20;
+
+                            relid                            | n_tup_ins | n_tup_upd | n_tup_del
+-------------------------------------------------------------+-----------+-----------+-----------
+ claimsprocess_humana.a_claim_extension_1_25                 |  15283431 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_45                 |   9867757 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_55                 |   4017193 |         0 |         0
+ columnar.chunk                                              |   1113406 |         0 |   1221555
+ global.al1                                                  |   1081843 |         0 |    924512
+ claimsprocess_humana.a_claim_extension_1_26                 |   1390039 |         0 |         0
+ global.al0                                                  |    278335 |    807201 |     59982
+ claimsprocess_humana.a_claim_extension_1_24                 |    968334 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_56                 |    743664 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_44                 |    706291 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_46                 |    696747 |         0 |         0
+ iidr_rtl_ods_humana_admin.ts_bookmark                       |         0 |    532360 |         0
+
+3. Check index count
+SELECT
+    schemaname,
+    tablename,
+    count(*) AS index_count
+FROM pg_indexes
+GROUP BY 1,2
+ORDER BY 3 DESC
+LIMIT 30;
+
+      schemaname      |                        tablename                         | index_count
+----------------------+----------------------------------------------------------+-------------
+ finance              | qrtz_triggers                                            |          13
+ customer             | s56                                                      |          12
+ datamart_humana      | tmp_claim_core_2026_06_26_13_30_49_745325_05_t1_datamart |          10
+ rework               | rework_claim_detail                                      |           9
+ rework_other         | rework_claim_detail                                      |           9
+ rework_humana        | rework_claim_detail                                      |           9
+ customer             | s50                                                      |           9
+ rework_ddc           | rework_claim_detail                                      |           9
+ global               | y14                                                      |           8
+
+4. check FK status
+
+SELECT
+    conrelid::regclass,
+    count(*)
+FROM pg_constraint
+WHERE contype='f'
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 20;
+
+                  conrelid                  | count
+--------------------------------------------+-------
+ drugmgmt.dur_safety_drsf_master            |    15
+ planconfig.pdc_attribute_rule              |     9
+ finance.payment                            |     8
+ customerconfig.admin_dependent_options     |     8
+ finance.journal_entry                      |     8
+ finance.prompt_pay_approved_penalty        |     6
+ druglist.drug_list_entry                   |     5
+ finance_global.global_journal_entry        |     5
+ finance_global.payment                     |     4
+ finance.prompt_pay_claim                   |     4
+ finance.outbound_payment                   |     4
+
+
+
+   pid   |         backend_type         | state | wait_event_type |     wait_event      | query
+---------+------------------------------+-------+-----------------+---------------------+-------
+    3840 | logical replication launcher |       | Activity        | LogicalLauncherMain |
+    3878 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3893 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3906 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3921 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3178951 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3072262 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+(7 rows)
+
+2. which table is being hammered
+SELECT
+    relid::regclass,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+ORDER BY
+      n_tup_ins
+    + n_tup_upd
+    + n_tup_del DESC
+LIMIT 20;
+
+                            relid                            | n_tup_ins | n_tup_upd | n_tup_del
+-------------------------------------------------------------+-----------+-----------+-----------
+ claimsprocess_humana.a_claim_extension_1_25                 |  15283431 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_45                 |   9867757 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_55                 |   4017193 |         0 |         0
+ columnar.chunk                                              |   1113406 |         0 |   1221555
+ global.al1                                                  |   1081843 |         0 |    924512
+ claimsprocess_humana.a_claim_extension_1_26                 |   1390039 |         0 |         0
+ global.al0                                                  |    278335 |    807201 |     59982
+ claimsprocess_humana.a_claim_extension_1_24                 |    968334 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_56                 |    743664 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_44                 |    706291 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_46                 |    696747 |         0 |         0
+ iidr_rtl_ods_humana_admin.ts_bookmark                       |         0 |    532360 |         0
+
+3. Check index count
+SELECT
+    schemaname,
+    tablename,
+    count(*) AS index_count
+FROM pg_indexes
+GROUP BY 1,2
+ORDER BY 3 DESC
+LIMIT 30;
+
+      schemaname      |                        tablename                         | index_count
+----------------------+----------------------------------------------------------+-------------
+ finance              | qrtz_triggers                                            |          13
+ customer             | s56                                                      |          12
+ datamart_humana      | tmp_claim_core_2026_06_26_13_30_49_745325_05_t1_datamart |          10
+ rework               | rework_claim_detail                                      |           9
+ rework_other         | rework_claim_detail                                      |           9
+ rework_humana        | rework_claim_detail                                      |           9
+ customer             | s50                                                      |           9
+ rework_ddc           | rework_claim_detail                                      |           9
+ global               | y14                                                      |           8
+
+4. check FK status
+
+SELECT
+    conrelid::regclass,
+    count(*)
+FROM pg_constraint
+WHERE contype='f'
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 20;
+
+                  conrelid                  | count
+--------------------------------------------+-------
+ drugmgmt.dur_safety_drsf_master            |    15
+ planconfig.pdc_attribute_rule              |     9
+ finance.payment                            |     8
+ customerconfig.admin_dependent_options     |     8
+ finance.journal_entry                      |     8
+ finance.prompt_pay_approved_penalty        |     6
+ druglist.drug_list_entry                   |     5
+ finance_global.global_journal_entry        |     5
+ finance_global.payment                     |     4
+ finance.prompt_pay_claim                   |     4
+ finance.outbound_payment                   |     4
+
+
+
+   pid   |         backend_type         | state | wait_event_type |     wait_event      | query
+---------+------------------------------+-------+-----------------+---------------------+-------
+    3840 | logical replication launcher |       | Activity        | LogicalLauncherMain |
+    3878 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3893 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3906 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3921 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3178951 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3072262 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+(7 rows)
+
+2. which table is being hammered
+SELECT
+    relid::regclass,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+ORDER BY
+      n_tup_ins
+    + n_tup_upd
+    + n_tup_del DESC
+LIMIT 20;
+
+                            relid                            | n_tup_ins | n_tup_upd | n_tup_del
+-------------------------------------------------------------+-----------+-----------+-----------
+ claimsprocess_humana.a_claim_extension_1_25                 |  15283431 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_45                 |   9867757 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_55                 |   4017193 |         0 |         0
+ columnar.chunk                                              |   1113406 |         0 |   1221555
+ global.al1                                                  |   1081843 |         0 |    924512
+ claimsprocess_humana.a_claim_extension_1_26                 |   1390039 |         0 |         0
+ global.al0                                                  |    278335 |    807201 |     59982
+ claimsprocess_humana.a_claim_extension_1_24                 |    968334 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_56                 |    743664 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_44                 |    706291 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_46                 |    696747 |         0 |         0
+ iidr_rtl_ods_humana_admin.ts_bookmark                       |         0 |    532360 |         0
+
+3. Check index count
+SELECT
+    schemaname,
+    tablename,
+    count(*) AS index_count
+FROM pg_indexes
+GROUP BY 1,2
+ORDER BY 3 DESC
+LIMIT 30;
+
+      schemaname      |                        tablename                         | index_count
+----------------------+----------------------------------------------------------+-------------
+ finance              | qrtz_triggers                                            |          13
+ customer             | s56                                                      |          12
+ datamart_humana      | tmp_claim_core_2026_06_26_13_30_49_745325_05_t1_datamart |          10
+ rework               | rework_claim_detail                                      |           9
+ rework_other         | rework_claim_detail                                      |           9
+ rework_humana        | rework_claim_detail                                      |           9
+ customer             | s50                                                      |           9
+ rework_ddc           | rework_claim_detail                                      |           9
+ global               | y14                                                      |           8
+
+4. check FK status
+
+SELECT
+    conrelid::regclass,
+    count(*)
+FROM pg_constraint
+WHERE contype='f'
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 20;
+
+                  conrelid                  | count
+--------------------------------------------+-------
+ drugmgmt.dur_safety_drsf_master            |    15
+ planconfig.pdc_attribute_rule              |     9
+ finance.payment                            |     8
+ customerconfig.admin_dependent_options     |     8
+ finance.journal_entry                      |     8
+ finance.prompt_pay_approved_penalty        |     6
+ druglist.drug_list_entry                   |     5
+ finance_global.global_journal_entry        |     5
+ finance_global.payment                     |     4
+ finance.prompt_pay_claim                   |     4
+ finance.outbound_payment                   |     4
+
+
+
+   pid   |         backend_type         | state | wait_event_type |     wait_event      | query
+---------+------------------------------+-------+-----------------+---------------------+-------
+    3840 | logical replication launcher |       | Activity        | LogicalLauncherMain |
+    3878 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3893 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3906 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3921 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3178951 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3072262 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+(7 rows)
+
+2. which table is being hammered
+SELECT
+    relid::regclass,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+ORDER BY
+      n_tup_ins
+    + n_tup_upd
+    + n_tup_del DESC
+LIMIT 20;
+
+                            relid                            | n_tup_ins | n_tup_upd | n_tup_del
+-------------------------------------------------------------+-----------+-----------+-----------
+ claimsprocess_humana.a_claim_extension_1_25                 |  15283431 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_45                 |   9867757 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_55                 |   4017193 |         0 |         0
+ columnar.chunk                                              |   1113406 |         0 |   1221555
+ global.al1                                                  |   1081843 |         0 |    924512
+ claimsprocess_humana.a_claim_extension_1_26                 |   1390039 |         0 |         0
+ global.al0                                                  |    278335 |    807201 |     59982
+ claimsprocess_humana.a_claim_extension_1_24                 |    968334 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_56                 |    743664 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_44                 |    706291 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_46                 |    696747 |         0 |         0
+ iidr_rtl_ods_humana_admin.ts_bookmark                       |         0 |    532360 |         0
+
+3. Check index count
+SELECT
+    schemaname,
+    tablename,
+    count(*) AS index_count
+FROM pg_indexes
+GROUP BY 1,2
+ORDER BY 3 DESC
+LIMIT 30;
+
+      schemaname      |                        tablename                         | index_count
+----------------------+----------------------------------------------------------+-------------
+ finance              | qrtz_triggers                                            |          13
+ customer             | s56                                                      |          12
+ datamart_humana      | tmp_claim_core_2026_06_26_13_30_49_745325_05_t1_datamart |          10
+ rework               | rework_claim_detail                                      |           9
+ rework_other         | rework_claim_detail                                      |           9
+ rework_humana        | rework_claim_detail                                      |           9
+ customer             | s50                                                      |           9
+ rework_ddc           | rework_claim_detail                                      |           9
+ global               | y14                                                      |           8
+
+4. check FK status
+
+SELECT
+    conrelid::regclass,
+    count(*)
+FROM pg_constraint
+WHERE contype='f'
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 20;
+
+                  conrelid                  | count
+--------------------------------------------+-------
+ drugmgmt.dur_safety_drsf_master            |    15
+ planconfig.pdc_attribute_rule              |     9
+ finance.payment                            |     8
+ customerconfig.admin_dependent_options     |     8
+ finance.journal_entry                      |     8
+ finance.prompt_pay_approved_penalty        |     6
+ druglist.drug_list_entry                   |     5
+ finance_global.global_journal_entry        |     5
+ finance_global.payment                     |     4
+ finance.prompt_pay_claim                   |     4
+ finance.outbound_payment                   |     4
+
+
+
+   pid   |         backend_type         | state | wait_event_type |     wait_event      | query
+---------+------------------------------+-------+-----------------+---------------------+-------
+    3840 | logical replication launcher |       | Activity        | LogicalLauncherMain |
+    3878 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3893 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3906 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+    3921 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3178951 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+ 3072262 | logical replication worker   | idle  | Activity        | LogicalApplyMain    |
+(7 rows)
+
+2. which table is being hammered
+SELECT
+    relid::regclass,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+ORDER BY
+      n_tup_ins
+    + n_tup_upd
+    + n_tup_del DESC
+LIMIT 20;
+
+                            relid                            | n_tup_ins | n_tup_upd | n_tup_del
+-------------------------------------------------------------+-----------+-----------+-----------
+ claimsprocess_humana.a_claim_extension_1_25                 |  15283431 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_45                 |   9867757 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_55                 |   4017193 |         0 |         0
+ columnar.chunk                                              |   1113406 |         0 |   1221555
+ global.al1                                                  |   1081843 |         0 |    924512
+ claimsprocess_humana.a_claim_extension_1_26                 |   1390039 |         0 |         0
+ global.al0                                                  |    278335 |    807201 |     59982
+ claimsprocess_humana.a_claim_extension_1_24                 |    968334 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_56                 |    743664 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_44                 |    706291 |         0 |         0
+ claimsprocess_humana.a_claim_extension_1_46                 |    696747 |         0 |         0
+ iidr_rtl_ods_humana_admin.ts_bookmark                       |         0 |    532360 |         0
+
+3. Check index count
+SELECT
+    schemaname,
+    tablename,
+    count(*) AS index_count
+FROM pg_indexes
+GROUP BY 1,2
+ORDER BY 3 DESC
+LIMIT 30;
+
+      schemaname      |                        tablename                         | index_count
+----------------------+----------------------------------------------------------+-------------
+ finance              | qrtz_triggers                                            |          13
+ customer             | s56                                                      |          12
+ datamart_humana      | tmp_claim_core_2026_06_26_13_30_49_745325_05_t1_datamart |          10
+ rework               | rework_claim_detail                                      |           9
+ rework_other         | rework_claim_detail                                      |           9
+ rework_humana        | rework_claim_detail                                      |           9
+ customer             | s50                                                      |           9
+ rework_ddc           | rework_claim_detail                                      |           9
+ global               | y14                                                      |           8
+
+4. check FK status
+
+SELECT
+    conrelid::regclass,
+    count(*)
+FROM pg_constraint
+WHERE contype='f'
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 20;
+
+                  conrelid                  | count
+--------------------------------------------+-------
+ drugmgmt.dur_safety_drsf_master            |    15
+ planconfig.pdc_attribute_rule              |     9
+ finance.payment                            |     8
+ customerconfig.admin_dependent_options     |     8
+ finance.journal_entry                      |     8
+ finance.prompt_pay_approved_penalty        |     6
+ druglist.drug_list_entry                   |     5
+ finance_global.global_journal_entry        |     5
+ finance_global.payment                     |     4
+ finance.prompt_pay_claim                   |     4
+ finance.outbound_payment                   |     4
+
+5. Check workload, apply slow for delete/update, like insert
+
+SELECT
+    relid::regclass,
+    n_tup_ins,
+    n_tup_upd,
+    n_tup_del
+FROM pg_stat_user_tables
+ORDER BY n_tup_upd DESC
+LIMIT 20;
+
+                            relid                            | n_tup_ins | n_tup_upd | n_tup_del
+-------------------------------------------------------------+-----------+-----------+-----------
+ global.al0                                                  |    278335 |    807201 |     59982
+ iidr_rtl_ods_humana_admin.ts_bookmark                       |         0 |    532436 |         0
+ claimsprocess_humana.pos_transaction_formatted              |         3 |    248835 |         0
+ claimsprocess_humana.pos_transaction_formatted_claim_detail |         2 |    248835 |         0
+ global.ak6                                                  |     97685 |     61095 |       339
+ global.ak5                                                  |     85369 |     26934 |       521
+ global.ak9                                                  |     97600 |     22863 |     20234
+
+6. check performance using pid from step 1
+
+iostat -xm 5
+top -H -p <logical_worker_pid>
+pidstat -t 5 # if one core is pegged:100% CPU, then, you've hit the classic single-threaded logical apply limitation.
+
+7. the accumulated wal size is not the workload for logical lag!! It contains too much for the others. 
+On publication
+
+SELECT
+    slot_name,
+    spill_txns,
+    spill_count,
+    spill_bytes,
+    stream_txns,
+    stream_count,
+    stream_bytes,
+    total_txns,
+    total_bytes
+FROM pg_stat_replication_slots;
+
+             slot_name              | spill_txns | spill_count | spill_bytes | stream_txns | stream_count | stream_bytes | total_txns | total_bytes
+------------------------------------+------------+-------------+-------------+-------------+--------------+--------------+------------+-------------
+ rtlhumana_claimsprocess_humana_sub |          0 |           0 |           0 |           0 |            0 |            0 |     729470 |   294925042
+(1 row)
+
+SELECT
+    relid::regclass,
+    pg_size_pretty(pg_total_relation_size(relid))
+FROM pg_stat_user_tables
+ORDER BY pg_total_relation_size(relid) DESC
+LIMIT 20;
+
+                           relid                           | pg_size_pretty
+-----------------------------------------------------------+----------------
+ datamart.cdc_claim_core_2026r4                            | 264 GB
+ datamart_humana.claim                                     | 206 GB
+ customer.mbr_ra_bal_info                                  | 167 GB
+ claimsprocess_humana.claim_core_320_202512                | 165 GB
+ claimsprocess_humana.claim_core_320_202510                | 153 GB
+ claimsprocess_humana.claim_core_320_202509                | 152 GB
+ customer.o58                                              | 151 GB
+ claimsprocess_humana.claim_core_320_202508                | 143 GB
+ claimsprocess_humana.claim_core_320_202601                | 142 GB
+ claimsprocess_humana.claim_core_320_202511                | 135 GB
+
+
+Check the real table size on ods side, to see whether there are millions of tiny rows
+
+Then, check the running query on ods
+
+SELECT
+    pid,
+    usename,
+    state,
+    now()-xact_start AS txn_age,
+    query
+FROM pg_stat_activity
+WHERE xact_start IS NOT NULL
+ORDER BY xact_start;
+
+
+
+
+
+Then, make decision like
+1. autovacuum
+2. drop index on target side
+3. drop fk on target side
+

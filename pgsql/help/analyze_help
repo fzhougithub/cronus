@@ -1,3 +1,8 @@
+SHOW default_statistics_target;
+
+ANALYZE TABLE claim SAMPLE 1 PERCENT;
+analyze table claim (customer_id) sample 1 percent;
+
 EXPLAIN (ANALYZE, BUFFERS) SELECT Sum(claim_cnt), Sum(plan_ingredient_cost_amt), Sum(plan_total_cost_amt), customer_id, fill_dt FROM datamart_humana.claim_c_830_202512_p3 WHERE customer_id = 830 GROUP BY customer_id, fill_dt;
                                                                     QUERY PLAN
 ---------------------------------------------------------------------------------------------------------------------------------------------------

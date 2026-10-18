@@ -1,0 +1,5 @@
+ausearch -m avc -ts recent
+ausearch -m avc -ts boot
+-- many denied
+ausearch -m avc | wc -l
+

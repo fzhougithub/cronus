@@ -1,0 +1,42 @@
+ods_domani=# SELECT
+    c.relname,
+    c.relreplident
+FROM pg_class c
+JOIN pg_namespace n
+ON c.relnamespace=n.oid
+WHERE n.nspname='finance_humana'
+AND c.relname='outbound_payment';
+     relname      | relreplident
+------------------+--------------
+ outbound_payment | d
+(1 row)
+
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE schemaname='finance_humana' AND tablename='outbound_payment';
+                     indexname                     |                                                                   indexdef
+
+---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------
+------------------------
+ outbound_payment_pkey                             | CREATE UNIQUE INDEX outbound_payment_pkey ON finance_humana.outbound_payment USING btree (outbound_payment_id)
+ outbound_payment_cycle_id_finance_pharmacy_id_idx | CREATE INDEX outbound_payment_cycle_id_finance_pharmacy_id_idx ON finance_humana.outbound_payment USING btree (cycle_i
+d, finance_pharmacy_id)
+(2 rows)
+
+SELECT
+    relname, SELECT
+    relname,d,
+    n_tup_upd,upd,
+    n_tup_hot_upd,
+    round(0*n_tup_hot_upd/
+      100.0*n_tup_hot_upd/
+      nullif(n_tup_upd,0),
+      2S hot_pct
+    ) AS hot_pctr_tables
+FROM pg_stat_user_tablese_humana'
+WHERE schemaname='finance_humana'
+AND relname='outbound_payment';
+     relname      | n_tup_upd | n_tup_hot_upd | hot_pct
+------------------+-----------+---------------+---------
+ outbound_payment | 233734575 |      27040195 |   11.57
+(1 row)

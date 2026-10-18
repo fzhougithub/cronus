@@ -1,3 +1,26 @@
+SELECT spcname, pg_tablespace_location(oid) FROM pg_tablespace WHERE oid = 17073;
+  spcname  | pg_tablespace_location
+-----------+------------------------
+ tblspc_19 | /pg_tblspc_19
+
+
+SELECT
+    n.nspname,
+    c.relname,
+    COALESCE(t.spcname,'pg_default')
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid=c.relnamespace
+LEFT JOIN pg_tablespace t
+  ON t.oid=c.reltablespace
+WHERE n.nspname='customer'
+AND c.relname='w15';
+
+ nspname  | relname | coalesce
+----------+---------+-----------
+ customer | w15     | tblspc_10
+(1 row)
+
 
 SELECT
   spcname,

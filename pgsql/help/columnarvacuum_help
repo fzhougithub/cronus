@@ -1,0 +1,19 @@
+select c.relname
+FROM pg_catalog.pg_class c
+       LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+       LEFT JOIN pg_catalog.pg_am am ON am.oid = c.relam
+   WHERE c.relkind = 'r'
+         AND n.nspname <> 'pg_catalog'
+         AND n.nspname !~ '^pg_toast'
+         AND n.nspname <> 'information_schema'
+     AND pg_catalog.pg_table_is_visible(c.oid)
+     AND am.amname = 'columnar'
+     AND n.nspname = 'datamart_humana';
+ relname
+---------
+(0 rows)
+
+Time: 47.126 ms
+
+why it does not show anything? 
+

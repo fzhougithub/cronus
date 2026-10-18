@@ -1,3 +1,12 @@
+SELECT format(
+    'SELECT setval(%L, (SELECT COALESCE(MAX(%I),0) + 1 FROM %I), false);',
+    pg_get_serial_sequence('encounters_file_tracker', 'encounters_file_tracking_id'),
+    'encounters_file_tracking_id',
+    'encounters_file_tracker'
+);
+
+
+
 DELETE FROM claim
 WHERE ctid IN (
   SELECT ctid

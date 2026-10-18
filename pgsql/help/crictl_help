@@ -1,0 +1,138 @@
+Login to the node, run command
+1. find the cluster info
+cat /etc/kubernetes/kubelet.conf
+[root@10-173-47-199 ~]# grep server: /etc/kubernetes/kubelet.conf
+    server: https://k-24v25ui4r8jjpg0a2r83qffhpojsqa5q-kapi.ssnc-corp.cloud:6443
+
+cat /etc/kubernetes/kubelet.conf | grep certificate-authority-data -A2
+
+2. Find the node
+for cfg in ~/.kube/*.config
+do
+ echo "==== $cfg ===="
+ KUBECONFIG=$cfg kubectl get nodes -o wide 2>/dev/null | grep 10.173.47.199
+done
+
+k-24v25ui4r8jjpg0a2r83qffhpojsqa5q-md-00000-jb6jr-jv95w   Ready    <none>          135d     v1.25.8   10.173.47.199    <none>        CentOS Stream 8   4.18.0-486.el8.x86_64       containerd://1.6.19
+
+3. login to the node (using the web find dns)
+
+for c in $(crictl ps -q)
+do
+    pid=$(crictl inspect $c | jq -r '.info.pid')
+    pod=$(crictl inspect $c | jq -r '.status.labels["io.kubernetes.pod.name"]')
+
+    cnt=$(nsenter -t $pid -n ss -nt 2>/dev/null | grep ':5432' | wc -l)
+
+    if [ "$cnt" -gt 0 ]; then
+        echo "$cnt $pod"
+    fi
+done | sort -nr
+
+64 prodbluekc-claims-api-claimsprocessing-6b7b5d6cc9-bdq6w
+20 prodbluekc-claims-api-fir-554874948b-d8fn4
+18 prodbluekc-claims-api-claimreversal-7f4ff4b8b8-z54gc
+17 prodbluekc-claims-api-claiminquiry-6b99f9b6dc-b2dnk
+16 prodbluekc-drxclaims-api-eprescribereligibility-6bc57d86f82lxg7
+11 prodbluekc-claims-api-postmessage-54c97fdc68-hdjks
+10 prodbluekc-claims-api-memberdeductibleaccumulation-7ccb669hg8dn
+9 prodbluekc-ect-service-jobexecutor-c67db78c5-s48vh
+4 prodbluekc-claims-service-messagelistener-55c74bd657-gl2jm
+2 prodbluekc-claims-api-appeals-86555d8579-8dqht
+
+
+[root@10-173-47-199 ~]# crictl ps
+CONTAINER           IMAGE               CREATED             STATE               NAME                                      ATTEMPT             POD ID              POD
+9e1b7373edef1       65029b54cd2f8       38 hours ago        Running             claims-api-claimsprocessing               0                   d6388b57278c5       prodbluekc-claims-api-claimsprocessing-6b7b5d6cc9-bdq6w
+cb150da8637bd       3e19ff5d1543f       2 days ago          Running             proxy                                     0                   2d1e7198840a1       kong-kong-685bb98b9b-p46lz
+f05ef2fcd03c4       45b9548936f76       2 days ago          Running             ingress-controller                        0                   2d1e7198840a1       kong-kong-685bb98b9b-p46lz
+521efb806ce10       fb47722953df9       4 days ago          Running             claims-api-claimreversal                  0                   0c6aad317f253       prodbluekc-claims-api-claimreversal-7f4ff4b8b8-z54gc
+2dbfb650cb235       28e6dc6cbdfe2       5 days ago          Running             claims-service-messagelistener            0                   3eaf0be74e498       prodbluekc-claims-service-messagelistener-55c74bd657-gl2jm
+3d911e88b4bad       2c59c4438d44c       5 days ago          Running             claims-api-fir                            0                   c1007a74188c5       prodbluekc-claims-api-fir-554874948b-d8fn4
+41de9dd45aaf7       c6348fa86ba0f       5 days ago          Running             docker-login                              0                   69ba41b7ab924       node-docker-login-fgd4p
+88a405c6fa536       6b664365adc8f       5 days ago          Running             csi-ssccloud-plugin                       0                   d353d499d81eb       csi-ssccloud-node-t2q5j
+f4b8b73f577ac       b572095c12f71       5 days ago          Running             csi-node-driver-registrar                 0                   d353d499d81eb       csi-ssccloud-node-t2q5j
+5a1603d442f9b       c0c3756bbe85e       5 days ago          Running             kube-proxy                                0                   a2c5e11657c05       kube-proxy-z5tr2
+d12180992dd36       6b32938e13a42       5 days ago          Running             cilium-agent                              0                   a2288f4a6c0c3       cilium-t8rc6
+a5be65b78d2a2       a9ff3f57ff746       9 days ago          Running             ect-service-jobexecutor                   0                   f175899e10c90       prodbluekc-ect-service-jobexecutor-c67db78c5-s48vh
+809a980758571       9ab0dc82be67c       9 days ago          Running             claims-api-memberdeductibleaccumulation   0                   8959360091407       prodbluekc-claims-api-memberdeductibleaccumulation-7ccb669hg8dn
+8ee704a7174e9       59366185369eb       9 days ago          Running             drxclaims-api-eprescribereligibility      0                   89cbfeafb09f4       prodbluekc-drxclaims-api-eprescribereligibility-6bc57d86f82lxg7
+9326043876020       44ce63470659b       9 days ago          Running             claims-api-postmessage                    0                   56407a694bfa3       prodbluekc-claims-api-postmessage-54c97fdc68-hdjks
+e1d5702952079       37dbfa888e117       9 days ago          Running             claims-api-appeals                        0                   2ed6453d0fd5c       prodbluekc-claims-api-appeals-86555d8579-8dqht
+389b87e79854e       d792bc6123528       9 days ago          Running             claims-api-claiminquiry                   0                   b1b6b24aa671e       prodbluekc-claims-api-claiminquiry-6b99f9b6dc-b2dnk
+3152136a37f12       c104805a21768       2 weeks ago         Running             fluent-bit                                0                   523003883e242       fluent-bit-qdnhd
+95115e425cb6d       374ddb6ab2e38       4 months ago        Running             kube-prometheus-stack                     0                   a18d640761871       kube-prometheus-stack-operator-dcf9dbc85-lv8qd
+a6c0466d82ea6       10f8ea10f4fc0       4 months ago        Running             blackbox-exporter                         0                   48e5509f9a9ad       prometheus-blackbox-exporter-774ffd68bf-4qfjn
+a830e178282bf       9b82e0f210713       4 months ago        Running             node-exporter                             0                   bab9ec7d804dd       kube-prometheus-stack-prometheus-node-exporter-g22xw
+
+[root@10-173-47-199 ~]# ctr -n k8s.io containers ls
+CONTAINER                                                           IMAGE                                                                                                                                                RUNTIME
+0c6aad317f253f4e41d3d24c53566861f1e801e61d98cbac596865940dd16ccc    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+101c26dd0c24504adca363c70ee88f95bfef5e351f1934eb61e23cad58b821c0    quay.io/cilium/cilium@sha256:30de50c4dc0a1e1077e9e7917a54d5cab253058b3f779822aec00f5c817ca826                                                        io.containerd.runc.v2
+13dac68cc5dd174813437eecce340f9f83bd81d061d7f119e1f0fba579df5b2f    artifactory.ssnc.dev/ghcr-io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.28.1                                                   io.containerd.runc.v2
+2d1e7198840a1dfcd825037ffb5d107ec4dc71a5a67a23bd3afb6896642c7ba8    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+2dbfb650cb235155563aba20a3919ce827afd87114cde97b1a5250721d11a7df    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/claim/messagelistener:486bf8ddc92cfc1d424a2c1dc62a22a659c708d0                   io.containerd.runc.v2
+2ed6453d0fd5cb472f4e8ef8dccd535da28461853ebc6378383b5a0dadb30198    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+3152136a37f12573f36c11a3f0e83b9e614cf552c2fa9e48c666f3c3d6a73e36    artifactory.ssnc.dev/docker-remote/fluent/fluent-bit:3.0.4                                                                                           io.containerd.runc.v2
+389b87e79854e9903bc8500985e08b5940f79c9c53a109d48959ed75541b2104    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/claiminquiry:1282aa261fdda02466d9f6c41945181271ddd66f                            io.containerd.runc.v2
+3d911e88b4badebd27382fbb4b2f7d02e2046b427c68a19618621b983f837ad5    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/fir:89ffbc0fbb826b35c3fbaf1c58d0e59f95a7b250                                     io.containerd.runc.v2
+3eaf0be74e49830dfda31f910eb9ab079ebd1fb993c129e5097630ee1e9412bf    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+41de9dd45aaf765acbd72af54e7a66c817707a00805a9a34decf64c6f9d8d848    artifactory.ssnc.dev/docker-remote/busybox:latest                                                                                                    io.containerd.runc.v2
+42e26699df97d01f009cfdac389b90d1a9496b0f0155fcee0e829070c0c07e2b    ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.29.0                                                                        io.containerd.runc.v2
+48e5509f9a9ad422fec6dd7e94f5019d767dba756a718b8674dc7b0f5e472ee0    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+521efb806ce10a942853379cb6faf34de6afa3667eb136e9da8547b7003de3db    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/claimreversals:14f50479b843a9c7c8fc25cd7d1e547a496577a0                          io.containerd.runc.v2
+523003883e242858e43cfc5598628a84677f59cc1c29f959562fb1b325b461c1    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+56407a694bfa3a1fbc5f3552ea7b77cd2db56d05fb063fa6a7c0c63ceaf33a5f    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+5a1603d442f9b5ce0ab57f8ccc68e03b1f2d92ad353af66332feadb0aef6b327    registry.k8s.io/kube-proxy:v1.25.8                                                                                                                   io.containerd.runc.v2
+5ae1f6a81d8fb73f80a9b3deb31ffd0e63780a1345de87e7533e9dbcf45735c6    ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.29.0                                                                        io.containerd.runc.v2
+5da077ea79e3ff8d1bb5325c3577c943d52790d17f1da51d331090385cc2d3a7    ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.29.0                                                                        io.containerd.runc.v2
+671453308ab201de5a0ba6503dc6046358ce42cdcabc94907a816f1a9329ef17    ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.29.0                                                                        io.containerd.runc.v2
+6723614ee97ba8263e45d681451b41780425650c1793c7beaae94a1afd959d0c    quay.io/cilium/cilium@sha256:30de50c4dc0a1e1077e9e7917a54d5cab253058b3f779822aec00f5c817ca826                                                        io.containerd.runc.v2
+6889daf7023c3ec1c25042045baf57cb06f61891bcc820fc48d73c45235b6e07    ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.29.0                                                                        io.containerd.runc.v2
+69ba41b7ab9245a0e2b4e4145cbe2077b5e5a35f861fa129491e29cbc18708be    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+7129ac17e87c9fe4f82fcbd69eef39251d5311cf6ae16df04420bb3d82972138    artifactory.ssnc.dev/ghcr-io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.28.1                                                   io.containerd.runc.v2
+809a98075857178a2db41bbbef3cb0d1d2bcc0d1f49d741ebb66cf9c6cede540    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/memberdeductibleaccumulation:d7809ed43cfe1554fbf4a2e4ff9e78507e3e2fb3            io.containerd.runc.v2
+88a405c6fa53650799c031860bf29e4289319f600988932b1d623deb7e4a72d0    artifactory.ssnc.dev/cloud-docker-repo/sre/ssccloud-csi-plugin:v1.2.4                                                                                io.containerd.runc.v2
+895936009140732fdbb18b6132afb379b7f0fa9b6805deaf6c85e6b398c51627    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+89cbfeafb09f4314dcc50f07403c85af1e1f1cb35cc474c5431c3baf236412d5    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+8ee704a7174e9b13b0688a065d6692b381ebb3f55dddec08275f52ce875a63d9    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/drxclaims/api/eprescribereligibility:13ee0118b30fb2c9796e5c957c85f8f4e6ad8ea9    io.containerd.runc.v2
+9326043876020149995523da01f0c727c52210b02a410ad5553268a32e2df823    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/postmessage:fbad34d46ad2d13130661124cb4b014ca5462aa0                             io.containerd.runc.v2
+95115e425cb6d6fc5edc2c44e402f8935650892ab27a5ebaaf53152efb6a99ac    artifactory.ssnc.dev/quay.io/prometheus-operator/prometheus-operator:v0.74.0                                                                         io.containerd.runc.v2
+9e1b7373edef136ee5bca2819f02f702bfdac085d7d98c7a86f73988aa604879    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/claimsprocess/api:846217b63ddcdc44e55b9e045042d22f6ac37881                       io.containerd.runc.v2
+a18d6407618710504120a769349e9521fd2764b3d38277510952ba3e64065fc6    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+a2288f4a6c0c3a16762bab1b4aac549de3db4a46e95a9f8a925f89322e5f4608    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+a2c5e11657c0540818381551f1ed1d2736de49d7239670c4e5d388177cbc2beb    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+a2e08ed73fc3f3df6777e9420e069ff6032360f2f75689ae52c5c66b86443884    artifactory.ssnc.dev/ghcr-io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.28.1                                                   io.containerd.runc.v2
+a5be65b78d2a21405bfe29ab332b64148fb8e8f55da82df3c178df9fe9a705af    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/ectjobexecutor:48c7ac2c489926cf4b49a6643decade7e3142382                          io.containerd.runc.v2
+a6c0466d82ea6139db150eda53da564261356bf8607fd3c05f70eb49cfca6d5f    artifactory.ssnc.dev/quay.io/prometheus/blackbox-exporter:v0.24.0                                                                                    io.containerd.runc.v2
+a830e178282bf742b83e6e2fe9ea5f569dfbc3d00b383c3c64eb2fb7d7e73d62    artifactory.ssnc.dev/quay.io/prometheus/node-exporter:v1.8.0                                                                                         io.containerd.runc.v2
+b1b6b24aa671e8afd00bd8ccfb6388310705e8e372d48fd087da73a8bcd2912e    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+bab9ec7d804dde5755f56026a720c39639ffdab3ef91cfe36b9f90896fd5376c    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+bfab49217f0dbcb6b0583fcfc0cef0929bb4fc5cf60ade3cb0becee2ab5a6e69    artifactory.ssnc.dev/docker-remote/kong:3.8                                                                                                          io.containerd.runc.v2
+c1007a74188c5f4189bf96eab2b551d11b1d96cc4f011a51e3c1bbdbb66c3dcd    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+c8821a657cc2fafa8fee295915ed3d1af066d5aa2ca76271531876401e10eeba    ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:1.29.0                                                                        io.containerd.runc.v2
+cb150da8637bd940a2811adc9235618827c5c425665a4b9f0e8a9e9438ca0470    artifactory.ssnc.dev/docker-remote/kong:3.8                                                                                                          io.containerd.runc.v2
+d12180992dd36d02873f291065db7ed4ec0676085eb30a563cd117c60c1adaab    quay.io/cilium/cilium@sha256:30de50c4dc0a1e1077e9e7917a54d5cab253058b3f779822aec00f5c817ca826                                                        io.containerd.runc.v2
+d353d499d81eb1dd59b67dbda0a3cd9a8786f3b4699f8fb23b84938a2e15ab10    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+d6388b57278c5ba3ab88b82c266ae180cb90478ac6275294e8d16fb5d555765f    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+e1d57029520794aba0cbc75debf68876254b80551f1fb9c2bd8c9cf0bae27816    artifactory.ssnc.dev/pharmacy-docker-release-kc/ssnchealth/pharmacy/claims/api/appeals:90ca2f4c57dbb3b14bff36364189f22f06523567                      io.containerd.runc.v2
+e5b77b3572251f5c59b4d0fb2c3d539fc0aace813a362223b1c6078ba9befe71    quay.io/cilium/cilium@sha256:30de50c4dc0a1e1077e9e7917a54d5cab253058b3f779822aec00f5c817ca826                                                        io.containerd.runc.v2
+f05ef2fcd03c41e5724856547b1c8a16d030c6ac4e0cc3bb8dac20477f4bdd24    artifactory.ssnc.dev/docker-remote/kong/kubernetes-ingress-controller:3.3                                                                            io.containerd.runc.v2
+f0e624cd8fe42f29da8b3e2961dca6f79f67bd7330fcdc153300571d4aa852bc    artifactory.ssnc.dev/ghcr-io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.28.1                                                   io.containerd.runc.v2
+f175899e10c90cb97fbb19c67c1e87ba76678fe0d389da124108226585775f43    k8s.gcr.io/pause:3.6                                                                                                                                 io.containerd.runc.v2
+f4b8b73f577ac28e8908df6c1e7a02d7f49faad0a5da4f0abe557e4a7619839c    registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.10.0                                                                                        io.containerd.runc.v2
+f740f0672998271f42260945f27f3d201d7e6cb35144eda217112c9cf0a2af11    quay.io/cilium/cilium@sha256:30de50c4dc0a1e1077e9e7917a54d5cab253058b3f779822aec00f5c817ca826                                                        io.containerd.runc.v2
+
+Then
+
+crictl inspect <containerid> | jq .info.pid
+
+nsenter -t <pid> -n ss -ntp
+
+nsenter -t <pid> -n ss -ntp | grep 5432
+
+kubectl exec -it -n <namespace> <pod> -- ss -ntp
+
+kubectl exec -it -n <namespace> <pod> -- netstat -anp
+
+

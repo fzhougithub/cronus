@@ -1,0 +1,55 @@
+SELECT
+datname AS database_name, datfrozenxid AS minimum_frozen_xid, age(datfrozenxid) AS database_xid_age, (2000000000 - age(datfrozenxid)) AS remaining_xids_before_panic
+FROM pg_database; 
+
+
+database_name | minimum_frozen_xid | database_xid_age | remaining_xids_before_panic
+---------------+--------------------+------------------+-----------------------------
+ postgres      |          286333018 |            10668 |                  1999989332
+ template0     |          286321699 |            21987 |                  1999978013
+ template1     |          286333018 |            10668 |                  1999989332
+ ptest         |          286333018 |            10668 |                  1999989332
+ ods_domani    |           87710843 |        198632843 |                  1801367157
+ repmgr        |          286338755 |             4931 |                  1999995069
+(6 rows)
+
+VACUUM FREEZE;
+
+But, the DB level above command will run as single process, table by table, take long time and without guarantee the DB age lower down, you have to identify the efficient way to freeze certain table to make the age drop down. 
+
+0. Get all the old age table info 
+SELECT
+    n.nspname, c.relname, age(c.relfrozenxid) AS xid_age, pg_total_relation_size(c.oid)/1024/1024/1024 AS GB 
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+ORDER BY age(c.relfrozenxid) DESC
+LIMIT 50;
+
+1. Pre-cleanup the small tables first
+SELECT
+    n.nspname, c.relname, age(c.relfrozenxid) AS xid_age, pg_total_relation_size(c.oid)/1024/1024/1024 AS GB
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+WHERE c.relkind = 'r' and pg_total_relation_size(c.oid)/1024/1024/1024<1
+ORDER BY age(c.relfrozenxid) DESC
+LIMIT 50;
+
+-- Generate command (Should run it as routine) 
+SELECT 'vacuum (freeze,analyze,verbose) '||n.nspname||'.'||c.relname||';' 
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+WHERE c.relkind = 'r' and pg_total_relation_size(c.oid)/1024/1024/1024<1
+ORDER BY age(c.relfrozenxid) DESC
+LIMIT 50;
+
+2. Leave the big table for special maintenance using parallel
+
+In maintenance window, using parallel to run large table vacuum freeze; 
+
+
+
+

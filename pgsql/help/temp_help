@@ -1,3 +1,60 @@
+This is the accumulated query, not the real time
+
+SELECT datname, temp_files, pg_size_pretty(temp_bytes) AS temp_bytes
+FROM pg_stat_database
+ORDER BY temp_bytes DESC;
+     datname      | temp_files | temp_bytes
+------------------+------------+------------
+ ods_domani       |        596 | 17 GB
+ postgres         |          0 | 0 bytes
+ repmgr           |          0 | 0 bytes
+                  |          0 | 0 bytes
+ template0        |          0 | 0 bytes
+ ods_domani_ascii |          0 | 0 bytes
+ template1        |          0 | 0 bytes
+(7 rows)
+
+
+select userid,queryid,temp_blks_written,substr(query,1,60) from pg_stat_statements order by temp_blks_written desc limit 10;
+
+ userid |       queryid        | temp_blks_written |                            substr
+--------+----------------------+-------------------+--------------------------------------------------------------
+  16540 | -3376679516092744637 |           2386806 | select cc.claim_id, cc.customer_id, cc.received_dt, cc.npi_p
+  16540 | -1977894056267218638 |                 0 | SELECT cc.claim_id, cc.member_id, cc.plan_ingredient_cost_am
+  16540 | -1324822379849168909 |                 0 | SELECT                                                      +
+        |                      |                   |         c.customer_id,                                      +
+        |                      |                   |         c.claim_id,                                         +
+        |                      |                   |         c.
+
+SELECT
+    queryid,
+    temp_blks_read,
+    temp_blks_written,
+    calls
+FROM pg_stat_statements
+ORDER BY temp_blks_written DESC
+LIMIT 20;
+       queryid        | temp_blks_read | temp_blks_written | calls
+----------------------+----------------+-------------------+-------
+ -3376679516092744637 |        1203163 |           2386806 |     2
+ -1977894056267218638 |              0 |                 0 |    71
+  5180499231104246874 |              0 |                 0 |    60
+ -4998784225926637289 |              0 |                 0 |   911
+  7236206144528084253 |              0 |                 0 |     1
+ -5144448691824739295 |              0 |                 0 |     3
+ -1324822379849168909 |              0 |                 0 | 11609
+
+SELECT
+    datname,
+    temp_files,
+    pg_size_pretty(temp_bytes)
+FROM pg_stat_database
+ORDER BY temp_bytes DESC;
+  datname   | temp_files | pg_size_pretty
+------------+------------+----------------
+ ods_domani |         12 | 10 GB
+ postgres   |          0 | 0 bytes
+
 SELECT
   datname,
   temp_files,

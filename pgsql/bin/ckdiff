@@ -1,0 +1,144 @@
+#!/bin/bash
+
+if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <dbname> <schema>"
+    echo "Example: $0 ods_domani datamart_humana"
+    exit 1
+fi
+
+DB="$1"
+SCHEMA="$2"
+INTERVAL=5
+
+PREV="/tmp/pg_stat_prev_${SCHEMA}.csv"
+META_PREV="/tmp/pg_stat_meta_prev_${SCHEMA}.csv"
+
+get_stats() {
+psql -Xt -d "$DB" -At -F',' <<SQL
+SELECT
+    t.relname,
+    t.seq_scan,
+    t.idx_scan,
+    t.idx_tup_fetch,
+    t.n_tup_ins,
+    t.n_tup_upd,
+    t.n_tup_del,
+    t.n_live_tup,
+    COALESCE(s.heap_blks_read,0),
+    COALESCE(s.heap_blks_hit,0)
+FROM pg_stat_user_tables t
+LEFT JOIN pg_statio_user_tables s
+       ON t.relid = s.relid
+WHERE t.schemaname = '$SCHEMA';
+SQL
+}
+
+get_meta() {
+psql -Xt -d "$DB" -At -F',' <<SQL
+SELECT
+(
+    SELECT COALESCE(sum(calls),0)
+    FROM pg_stat_statements
+),
+(
+    SELECT xact_commit + xact_rollback
+    FROM pg_stat_database
+    WHERE datname = current_database()
+);
+SQL
+}
+
+echo "Sampling '$SCHEMA' in '$DB' every ${INTERVAL}s... (Ctrl+C to stop)"
+
+rm -f "$PREV" "$META_PREV"
+
+while true
+do
+    CUR=$(mktemp)
+    META_CUR=$(mktemp)
+
+    get_stats > "$CUR"
+    get_meta > "$META_CUR"
+
+    if [[ -s "$PREV" && -s "$META_PREV" ]]; then
+
+        read pcalls ptxns < <(awk -F',' '{print $1, $2}' "$META_PREV")
+        read ccalls ctxns < <(awk -F',' '{print $1, $2}' "$META_CUR")
+
+        dcalls=$((ccalls-pcalls))
+        dtxns=$((ctxns-ptxns))
+
+        qps=$(awk -v x="$dcalls" -v i="$INTERVAL" 'BEGIN { printf "%.1f", x/i }')
+        tps=$(awk -v x="$dtxns" -v i="$INTERVAL" 'BEGIN { printf "%.1f", x/i }')
+
+        echo
+        echo "===== Delta @ $(date +%T) ====="
+        echo "QPS: +${dcalls} (${qps}/sec)   TPS: +${dtxns} (${tps}/sec)"
+        echo
+
+        join -t',' -1 1 -2 1 \
+            <(sort "$PREV") \
+            <(sort "$CUR") 2>/dev/null |
+        while IFS=',' read -r \
+            tbl \
+            pseq pidx pfetch pins pupd pdel plive phread phhit \
+            cseq cidx cfetch cins cupd cdel clive chread chhit
+        do
+
+            dseq=$((cseq-pseq))
+            didx=$((cidx-pidx))
+            dfetch=$((cfetch-pfetch))
+
+            dins=$((cins-pins))
+            dupd=$((cupd-pupd))
+            ddel=$((cdel-pdel))
+
+            dhread=$((chread-phread))
+            dhhit=$((chhit-phhit))
+
+            if (( dhread + dhhit > 0 )); then
+                cache_pct=$(awk \
+                    -v hit="$dhhit" \
+                    -v read="$dhread" \
+                    'BEGIN { printf "%.0f", (100*hit)/(hit+read) }')
+            else
+                cache_pct="---"
+            fi
+
+            if [[ $dseq -gt 0 || \
+                  $didx -gt 100 || \
+                  $dfetch -gt 100 || \
+                  $dins -gt 0 || \
+                  $dupd -gt 0 || \
+                  $ddel -gt 0 || \
+                  $dhread -gt 100 || \
+                  $dhhit -gt 100 ]]; then
+
+                printf "%-40s | seq:%-4s | idx:%-6s | fetch:%-6s | rd:%-6s | hit:%-7s | cache:%-4s%% | ins:%-5s | upd:%-5s | del:%-4s | live:%s\n" \
+                    "$tbl" \
+                    "+$dseq" \
+                    "+$didx" \
+                    "+$dfetch" \
+                    "+$dhread" \
+                    "+$dhhit" \
+                    "$cache_pct" \
+                    "+$dins" \
+                    "+$dupd" \
+                    "+$ddel" \
+                    "$clive"
+            fi
+
+        done | sort -t'|' -k3 -rn | head -20
+
+    else
+        echo "(baseline captured, waiting ${INTERVAL}s for first delta...)"
+    fi
+
+    cp "$CUR" "$PREV"
+    cp "$META_CUR" "$META_PREV"
+
+    rm -f "$CUR" "$META_CUR"
+
+    sleep "$INTERVAL"
+
+done

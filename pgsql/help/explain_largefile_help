@@ -1,0 +1,63 @@
+You cannot run a command like EXPLAIN file.sql directly because EXPLAIN is a SQL keyword that must precede the query statement itself. However, you definitely should not
+  copy and paste 3,000 lines into a terminal.
+
+  Here are the three best ways to do this in PostgreSQL without manual copy-pasting.
+
+  Method 1: The "Shell Prepend" Trick (Recommended)
+
+  This is the fastest way if you don't want to modify your .sql file. You can use the shell to "glue" the EXPLAIN command to the front of your file and pipe the whole
+  thing into psql.
+
+  Run this from your Linux/Mac terminal:
+  (echo "EXPLAIN (ANALYZE, BUFFERS) "; cat your_query_file.sql) | psql -d your_db_name -U your_user
+
+  What this does:
+  1. (echo ...; cat ...) creates a single stream of text starting with the explain command, followed by the entire content of your file.
+  2. | psql sends that entire stream into the database as one single execution.
+  3. BUFFERS is added because it tells you exactly how many blocks were read from disk vs. memory (crucial for debugging your customer_id=544 issue).
+
+  ---
+
+  Method 2: The "Temporary Wrapper" File
+
+  If you prefer to stay within psql or want a repeatable script:
+  1. Create a new file called explain_wrapper.sql.
+  2. Put this inside:
+  EXPLAIN (ANALYZE, BUFFERS)
+  \i your_query_file.sql
+     (Note: \i is a psql command that imports the contents of another file).
+  3. Run the wrapper:
+  psql -d your_db_name -f explain_wrapper.sql
+
+  ---
+
+  Method 3: Modify the File Directly
+
+  If you own the file, simply open it in an editor (VS Code, Vim, etc.), add EXPLAIN (ANALYZE, BUFFERS) to the very first line, save it, and run:
+  psql -d your_db_name -f your_query_file.sql
+
+  ---
+
+  ⚠️ Important Warnings for 3,000-Line Queries
+
+  1. EXPLAIN vs EXPLAIN ANALYZE
+
+  - EXPLAIN: Only shows the estimate. It is instant and safe. Use this first to see if the plan looks fundamentally wrong.
+  - EXPLAIN ANALYZE: Actually executes the query to get real timings. Since your query takes 10 seconds, this is fine. But if the query were to take 1 hour, EXPLAIN
+    ANALYZE will take 1 hour to finish.
+
+  2. Save the Output to a File
+
+  An explain plan for a 3,000-line query will be massive. It will fly past your terminal screen and be impossible to read. Redirect the output to a text file so you can
+  analyze it in an editor:
+
+  (echo "EXPLAIN (ANALYZE, BUFFERS) "; cat your_query_file.sql) | psql -d your_db_name > explain_output.txt
+
+  3. Use a Visualizer
+
+  Reading a text-based Postgres plan is hard. Once you have the output in explain_output.txt, I highly recommend copying the text and pasting it into one of these free
+  visualizers:
+  - PEV (Postgres Explain Visualizer)
+  - Dalibo Explain Visualizer
+
+  These tools will highlight the "slowest" nodes in red, making it immediately obvious why customer_id=544 is slow.

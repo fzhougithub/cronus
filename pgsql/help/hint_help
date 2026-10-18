@@ -1,0 +1,16 @@
+In PostgreSQL, pg_hint_plan is not a standard feature; it is an external extension. For it to work, two things must be true:
+1. The extension must be installed on the OS.
+2. It must be added to the shared_preload_libraries setting in postgresql.conf and the server must be restarted.
+If those aren't set, PostgreSQL treats the /*+ ... */ as a regular comment and ignores it completely. This is why your plan remained the same.
+
+ pg_hint_plan
+
+ /*+
+      NestedLoop(cc ccd)
+      NestedLoop(cc cc_4)
+      NestedLoop(cc frc)
+      IndexScan(cc)
+   */
+SELECT * FROM public.humana_claim_report(544,'266390013461','RTL','','','','','N','','N','','');
+
+If it does not work, added into share_library and restart server. 

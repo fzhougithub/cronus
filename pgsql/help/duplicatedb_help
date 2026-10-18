@@ -1,0 +1,11 @@
+pg_dump -Fd -j 8 -Z0 -f /backup/sourcedb_dump sourcedb
+
+ALTER DATABASE targetdb SET synchronous_commit = off;
+
+pg_restore -j 8 -d targetdb /backup/sourcedb
+
+ALTER DATABASE targetdb RESET synchronous_commit;
+
+
+For example
+

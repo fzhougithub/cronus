@@ -1,0 +1,15 @@
+awk '
+{
+    len=length($0)
+    if (len>max) {
+        max=len
+        line=NR
+    }
+}
+END {
+    print "Line:", line
+    print "Length:", max
+}' postgresql-13.log
+
+
+

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 errorfile"
+    echo "e.g: $0 /var/tmp/ckrep.log"
+    exit 1
+fi
+
+awk '
+{
+    if ($0 ~ /subscription "/) {
+        if (match($0, /subscription "([^"]+)"/, s))
+            subname=s[1]
+    }
+}
+
+/ERROR:.*duplicate key value violates unique constraint/ {
+
+    detail=""
+    context=""
+
+    while (getline > 0) {
+
+        if ($0 ~ /DETAIL:/)
+            detail=$0
+
+        else if ($0 ~ /CONTEXT:[[:space:]]+COPY /) {
+            context=$0
+            break
+        }
+    }
+
+    if (match(detail, /Key \(([^)]+)\)=\(([^)]+)\)/, k) &&
+        match(context, /COPY ([^, ]+)/, t))
+    {
+        printf "\n-- %s\n", subname
+        printf "DELETE FROM %s WHERE (%s) = (%s);\n", t[1],k[1], k[2]
+#        printf "WHERE (%s) = (%s);\n", k[1], k[2]
+    }
+}
+' "$1"

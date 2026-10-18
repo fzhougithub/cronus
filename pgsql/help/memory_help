@@ -1,3 +1,154 @@
+for pid in $(ps -e -o pid=); do2  awk '/VmSwap/ {print $2 " " '$pid'}' /proc/$pid/status 2>/dev/null3done | sort -nr | head
+
+
+select
+    round(count(*) * 8.0 / 1024 / 1024,2) as gb_cached
+from pg_buffercache
+where relfilenode = 2695371097;
+
+ gb_cached
+-----------
+     33.55
+(1 row)
+
+select buffers_alloc
+from pg_stat_bgwriter;
+
+ buffers_alloc
+---------------
+       5029544
+(1 row)
+
+select now(), buffers_alloc
+from pg_stat_bgwriter;
+
+              now              | buffers_alloc
+-------------------------------+---------------
+ 2026-07-23 02:42:49.627873-05 |       5040265
+(1 row)
+
+grep -E 'Cached|Shmem' /proc/meminfo
+Cached:         22881240 kB
+SwapCached:      1212964 kB
+Shmem:          22686796 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+
+
+select n.nspname, c.relname, c.relkind, count(*) * 8 / 1024 as gb_in_cache
+from pg_buffercache b
+join pg_class c
+     on b.relfilenode = pg_relation_filenode(c.oid)
+join pg_namespace n
+     on c.relnamespace = n.oid
+where b.relfilenode is not null
+group by n.nspname,c.relname,c.relkind
+order by count(*) desc
+limit 30;
+
+          nspname          |             relname             | relkind | gb_in_cache
+---------------------------+---------------------------------+---------+-------------
+ datamart_humana           | claim                           | r       |       24473
+ pg_catalog                | pg_attribute                    | r       |        2610
+ columnar                  | chunk                           | r       |         595
+ pg_catalog                | pg_attribute_relid_attnum_index | i       |         411
+ columnar                  | chunk_pkey                      | i       |         338
+ pg_catalog                | pg_class                        | r       |          53
+ pg_catalog                | pg_attrdef                      | r       |          30
+ pg_catalog                | pg_subscription_rel             | r       |          30
+ pg_catalog                | pg_index                        | r       |          18
+ columnar                  | row_mask                        | r       |           9
+ pg_catalog                | pg_class_oid_index              | i       |           8
+ columnar                  | row_mask_pkey                   | i       |           8
+ pg_catalog                | pg_index_indexrelid_index       | i       |           4
+ pg_catalog                | pg_index_indrelid_index         | i       |           3
+ columnar                  | chunk_group_pkey                | i       |           3
+ columnar                  | chunk_group                     | r       |           3
+ pg_catalog                | pg_attrdef_adrelid_adnum_index  | i       |           1
+ pg_catalog                | pg_trigger                      | r       |           1
+ columnar                  | stripe                          | r       |           1
+ pg_catalog                | pg_trigger_tgrelid_tgname_index | i       |           0
+ columnar                  | row_mask_stripe_unique          | i       |           0
+ columnar                  | stripe_first_row_number_idx     | i       |           0
+ pg_catalog                | pg_proc                         | r       |           0
+ columnar                  | row_mask_chunk_unique           | i       |           0
+ iidr_rtl_ods_humana_admin | ts_bookmark                     | r       |           0
+ pg_catalog                | pg_depend_reference_index       | i       |           0
+ pg_catalog                | pg_class_relname_nsp_index      | i       |           0
+ pg_catalog                | pg_proc_proname_args_nsp_index  | i       |           0
+ pg_catalog                | pg_type_typname_nsp_index       | i       |           0
+ pg_catalog                | pg_statistic                    | r       |           0
+(30 rows)
+
+
+
+
+cat /proc/1846/status | egrep 'VmRSS|VmSize'
+VmSize:	51821628 kB
+VmRSS:	 1134392 kB
+
+create extension pg_buffercache;
+select
+    count(*) * 8192 / 1024 / 1024 as mb_used
+from pg_buffercache
+where relfilenode is not null;
+ mb_used
+---------
+   16094
+(1 row)
+
+select
+    round(100.0 * count(*) /
+          (select setting::bigint
+           from pg_settings
+           where name='shared_buffers')) as pct_used
+from pg_buffercache
+where relfilenode is not null;
+
+ pct_used
+----------
+       33
+(1 row)
+
+
+grep -E 'MemTotal|MemFree|Cached|Buffers|Shmem' /proc/meminfo
+
+MemTotal:       98420372 kB
+MemFree:        39561252 kB
+Buffers:            2396 kB
+Cached:         28213264 kB
+SwapCached:        22828 kB
+Shmem:          11917340 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+
+select sum(buffers_alloc) as buffers_alloc from pg_stat_bgwriter;
+ buffers_alloc
+---------------
+       1479139
+(1 row)
+
+ipcs -m
+
+------ Shared Memory Segments --------
+key        shmid      owner      perms      bytes      nattch     status
+0x00000000 0          zabbix     600        576        4          dest
+0x00000000 1          zabbix     600        1241056    4          dest
+0xc0000080 4          postgres   600        56         80
+
+select now(),
+       checkpoints_timed,
+       checkpoints_req,
+       buffers_checkpoint,
+       buffers_clean,
+       buffers_alloc
+from pg_stat_bgwriter;
+
+              now              | checkpoints_timed | checkpoints_req | buffers_checkpoint | buffers_clean | buffers_alloc
+-------------------------------+-------------------+-----------------+--------------------+---------------+---------------
+ 2026-07-23 01:37:50.499476-05 |                 0 |               4 |             396879 |             0 |       1632391
+(1 row)
+
 cat /proc/<PID>/smaps | grep -E "Size|Rss"
 
 

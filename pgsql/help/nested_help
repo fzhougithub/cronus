@@ -1,0 +1,810 @@
+Claude is describing a cardinality estimation error problem. This is probably the most common reason why PostgreSQL chooses a hash join or merge join when a nested loop would have been much faster.
+
+The key idea is:
+
+The optimizer does not choose join algorithms based on actual row counts. It chooses based on estimated row counts.
+
+If the estimates are wrong, the join method can be catastrophically wrong.
+
+When Nested Loop Is Better
+
+Nested loop is best when:
+
+Outer side = very small
+Inner side = can be probed efficiently by index
+
+
+Example:
+
+SELECT *
+FROM orders o
+JOIN customers c
+     ON c.customer_id = o.customer_id
+WHERE o.order_id IN (1,2,3,4,5);
+
+
+Assume:
+
+orders filtered rows = 5
+customers rows        = 100 million
+customers.customer_id indexed
+
+
+Actual work:
+
+5 index lookups
+
+
+Nested loop:
+
+5 × index seek
+
+
+Maybe only 50 page reads.
+
+Hash join:
+
+Read whole customers table
+Build hash table
+
+
+Millions of page reads.
+
+Nested loop wins by enormous margin.
+
+What Happens When Statistics Are Wrong
+
+Suppose PostgreSQL estimates:
+
+orders filtered rows
+estimated = 500,000
+actual    = 5
+
+
+Optimizer thinks:
+
+500,000 index lookups
+
+
+That sounds expensive.
+
+So it chooses:
+
+Hash Join
+
+
+because optimizer believes reading customers once is cheaper than 500,000 index lookups.
+
+But reality:
+
+actual = 5 rows
+
+
+Nested loop would have been massively faster.
+
+This is the classic case.
+
+Example of Correlated Predicates
+
+Suppose table:
+
+sales
+(
+    country,
+    state,
+    city
+)
+
+
+Data:
+
+California always belongs to USA
+Ontario always belongs to Canada
+
+
+Query:
+
+SELECT *
+FROM sales
+WHERE country='USA'
+AND state='California';
+
+
+Optimizer may assume:
+
+country selectivity = 10%
+state selectivity   = 5%
+
+result estimate = 0.5%
+
+
+Reality:
+
+all California rows are USA
+
+actual = 5%
+
+
+10x estimation error.
+
+When this error propagates through multiple joins:
+
+A
+JOIN B
+JOIN C
+JOIN D
+JOIN E
+
+
+the final estimate can be off by:
+
+100x
+1000x
+10000x
+
+
+and the join method becomes completely wrong.
+
+Why Big UNION ALL Queries Often Trigger This
+
+You mentioned:
+
+3000-line query with many UNION ALL branches
+
+This is a very common place for bad estimates.
+
+Imagine:
+
+SELECT ...
+FROM A JOIN B ...
+
+UNION ALL
+
+SELECT ...
+FROM A JOIN B ...
+
+UNION ALL
+
+...
+
+
+Suppose there are 100 branches.
+
+Planner often estimates each branch separately then combines estimates.
+
+A small error in every branch becomes huge.
+
+For example:
+
+estimated branch rows = 10,000
+actual branch rows    = 10
+
+
+Across 100 branches:
+
+planner estimate = 1,000,000
+actual           = 1,000
+
+
+Now planner believes very large joins are happening and prefers:
+
+Hash Join
+Merge Join
+
+
+while actual workload is:
+
+many tiny index probes
+
+
+which strongly favors nested loop.
+
+I've seen exactly this in reporting systems and generated SQL.
+
+A Scenario Where Hash Join Is Terrible
+
+Tables:
+
+fact_sales      = 1 billion rows
+customers       = 100 million rows
+
+
+Query:
+
+SELECT *
+FROM customers c
+JOIN fact_sales s
+ ON c.customer_id=s.customer_id
+WHERE c.customer_id=12345;
+
+
+Actual:
+
+customer rows = 1
+sales rows    = 500
+
+
+Nested loop:
+
+1 customer row
+→ index lookup into fact_sales
+→ 500 rows
+
+
+Very cheap.
+
+Bad estimate:
+
+customers = 1 million rows
+
+
+Planner chooses hash join.
+
+Hash join now:
+
+Scan all customers
+Scan all sales
+Build hash table
+
+
+Hundreds of GB processed.
+
+Runtime explodes.
+
+A Scenario Where Merge Join Is Terrible
+
+Merge join requires ordered inputs.
+
+Suppose:
+
+SELECT *
+FROM A
+JOIN B USING(id)
+WHERE A.id = 100;
+
+
+Actual:
+
+A rows = 1
+B rows = 10
+
+
+Nested loop:
+
+1 index probe into B
+
+
+Almost free.
+
+If planner believes:
+
+A rows = 10 million
+B rows = 20 million
+
+
+Merge join might do:
+
+Sort A
+Sort B
+Merge
+
+
+Huge unnecessary sorting.
+
+Nested loop would finish before the sort completes.
+
+Why Forcing Nested Loop Sometimes Gives 4x Improvement
+
+Your observation:
+
+enable_hashjoin=off
+enable_mergejoin=off
+
+
+gives
+
+4x faster
+
+
+strongly suggests:
+
+Situation 1 (most likely)
+
+Planner thinks:
+
+join output is huge
+
+
+Reality:
+
+join output is small
+
+
+Therefore nested loops with indexes are better.
+
+Situation 2
+
+Planner underestimates index usefulness.
+
+Common in:
+
+partitioned tables
+UNION ALL views
+parameterized queries
+correlated predicates
+skewed data
+
+Situation 3
+
+Generic plan problem
+
+If you're using prepared statements:
+
+PREPARE ...
+EXECUTE ...
+
+
+or application frameworks,
+
+PostgreSQL may generate a generic plan.
+
+The generic plan doesn't know actual parameter values.
+
+Example:
+
+WHERE customer_id = :id
+
+
+Planner assumes average customer.
+
+For some customers:
+
+10 rows
+
+
+For others:
+
+10 million rows
+
+
+Generic plan picks one join strategy for everyone.
+
+Often hash join wins in average costing, while nested loop wins for specific executions.
+
+This is one of the most common reasons people see:
+
+custom plan = very fast
+generic plan = much slower
+
+Rule of Thumb
+
+Think of it like this:
+
+Nested Loop
+
+Best when:
+
+Outer rows are small
+Indexes exist
+Highly selective predicates
+
+Hash Join
+
+Best when:
+
+Large joins
+Most rows participate
+No useful indexes
+
+Merge Join
+
+Best when:
+
+Large joins
+Inputs already sorted
+Range joins or large equality joins
+
+
+For your specific case (3000-line UNION ALL query, nested loop 4x faster than generic plan), my first suspicion would be:
+
+Cardinality estimation error
+        +
+Generic plan
+        +
+Many UNION ALL branches
+        +
+Highly selective predicates
+
+
+The planner likely thinks millions of rows will flow through the joins, so it picks hash/merge joins, while the actual execution only touches a tiny fraction of rows and nested loop with index lookups wins. Looking at an EXPLAIN (ANALYZE, BUFFERS) where estimated rows differ dramatically from actual rows (10x, 100x, or more) would usually confirm this immediately.
+
+That's actually a very good question. Many database engineers ask the same thing:
+
+"If the WHERE clause is highly selective, why doesn't PostgreSQL automatically realize Nested Loop is better?"
+
+The answer is:
+
+PostgreSQL absolutely tries to do that.
+
+The problem is not the join algorithm itself.
+
+The problem is that the planner often cannot accurately predict how selective the WHERE clause really is.
+
+Let's walk through why.
+
+What the planner really sees
+
+Suppose you write:
+
+SELECT *
+FROM orders o
+JOIN customers c
+  ON c.customer_id = o.customer_id
+WHERE o.region = 'US'
+  AND o.order_date = '2026-08-31';
+
+
+You know:
+
+Actual rows matching:
+region='US'
+AND order_date='2026-08-31'
+
+= 5 rows
+
+
+But PostgreSQL doesn't know that.
+
+It must estimate before execution.
+
+Maybe statistics say:
+
+region='US'        = 40%
+order_date=...     = 10%
+
+
+Then planner assumes independence:
+
+40% × 10% = 4%
+
+
+If table has:
+
+100M rows
+
+
+it estimates:
+
+4M rows
+
+
+instead of:
+
+actual = 5 rows
+
+
+Once planner believes 4 million rows will participate, Nested Loop becomes expensive in the cost model.
+
+Why doesn't PostgreSQL just execute the WHERE clause first?
+
+A common misconception is:
+
+Apply WHERE first
+See only 5 rows
+Then choose Nested Loop
+
+
+Unfortunately SQL optimization doesn't work that way.
+
+To know there are only 5 rows:
+
+WHERE region='US'
+AND order_date='2026-08-31'
+
+
+PostgreSQL would have to actually execute part of the query.
+
+But planning happens before execution.
+
+Otherwise every query would require:
+
+1. Partially run query
+2. Gather actual cardinalities
+3. Re-plan
+4. Run query
+
+
+which is often more expensive than simply planning once.
+
+Why does it work correctly most of the time?
+
+Because most statistics are "good enough."
+
+Example:
+
+WHERE customer_id = 123
+
+
+on a unique index.
+
+Statistics know:
+
+1 row
+
+
+very accurately.
+
+Planner chooses:
+
+Index Scan
+Nested Loop
+
+
+and everybody is happy.
+
+That's why most queries get reasonable plans.
+
+The bad cases are special cases.
+
+The real enemy: correlations
+
+Imagine:
+
+WHERE country='US'
+  AND state='CA'
+
+
+Actual data:
+
+Every California row is in US.
+
+
+Planner typically estimates:
+
+country='US'   = 50%
+state='CA'     = 10%
+
+estimated = 5%
+
+
+Reality:
+
+10%
+
+
+Already off by 2x.
+
+Now add:
+
+city='San Francisco'
+
+
+Maybe off by 10x.
+
+Then join five tables.
+
+The error compounds.
+
+Suddenly:
+
+estimated = 10,000,000 rows
+actual    = 100 rows
+
+
+Now the planner starts preferring Hash Join.
+
+Why hasn't PostgreSQL fixed this after 30 years?
+
+Because it's an extremely hard problem.
+
+Consider:
+
+WHERE A = ?
+AND B = ?
+AND C = ?
+AND D = ?
+
+
+To perfectly estimate selectivity PostgreSQL would need statistics for:
+
+A
+B
+C
+D
+A+B
+A+C
+A+D
+B+C
+B+D
+C+D
+A+B+C
+A+B+D
+...
+
+
+The combinations explode.
+
+For a large schema:
+
+thousands
+or
+millions
+
+
+of possible correlations.
+
+Collecting and maintaining those statistics would make:
+
+ANALYZE
+
+
+enormously expensive.
+
+So PostgreSQL uses approximations.
+
+Why is UNION ALL especially difficult?
+
+You mentioned:
+
+3000-line query
+many UNION ALL branches
+
+
+This is one of the hardest estimation scenarios.
+
+Imagine:
+
+SELECT ...
+WHERE customer_id = 1
+
+UNION ALL
+
+SELECT ...
+WHERE customer_id = 2
+
+UNION ALL
+
+...
+
+
+100 branches.
+
+Planner has to estimate:
+
+branch #1
++
+branch #2
++
+...
++
+branch #100
+
+
+Then estimate joins above the union.
+
+One small error per branch becomes a huge error at the top.
+
+I've seen plans where:
+
+estimated rows = 50 million
+actual rows    = 500
+
+
+because of this effect.
+
+At that point Hash Join starts winning in the cost model even though Nested Loop is obviously better.
+
+Generic plans make it worse
+
+In your environment I actually suspect this may be the bigger issue.
+
+Suppose:
+
+WHERE account_id = $1
+
+
+Some accounts:
+
+10 rows
+
+
+Others:
+
+10 million rows
+
+
+Generic plan cannot know which account will be passed.
+
+It therefore plans for an "average" account.
+
+Maybe average estimate is:
+
+100,000 rows
+
+
+Then Hash Join looks reasonable.
+
+But when runtime value is:
+
+account_id = 42
+
+
+and only 20 rows exist,
+
+Nested Loop would have been far better.
+
+This is one of the most common causes of:
+
+custom plan = fast
+generic plan = slow
+
+Why don't databases always choose Nested Loop just in case?
+
+Because there are cases where Nested Loop is catastrophically bad.
+
+Example:
+
+SELECT *
+FROM fact1
+JOIN fact2 USING(id);
+
+
+Both tables:
+
+500 million rows
+
+
+No highly selective filter.
+
+Nested Loop would essentially do:
+
+500M × 500M checks
+
+
+or billions of index probes.
+
+Hash Join may run in minutes.
+
+Nested Loop may run for hours.
+
+So PostgreSQL cannot simply bias toward Nested Loop.
+
+A planner that always preferred Nested Loop would perform terribly for data warehouse workloads.
+
+What your situation suggests
+
+Given:
+
+3000-line query
+lots of UNION ALL
+generic plan slower
+forcing enable_hashjoin=off
+forcing enable_mergejoin=off
+about 4x improvement
+
+My bet would be:
+
+Planner estimate:
+    hundreds of thousands or millions of rows
+
+Reality:
+    hundreds or thousands of rows
+
+
+Look at EXPLAIN ANALYZE.
+
+The smoking gun is usually something like:
+
+Hash Join
+  rows=5,000,000    <-- estimate
+  actual rows=500
+
+
+or
+
+Nested Loop
+  rows=100,000      <-- estimate
+  actual rows=50
+
+
+When I see estimate/actual errors of 100x to 10,000x in UNION-heavy queries, the wrong join choice almost always follows naturally. The join algorithm is usually not the root problem. The root problem is that the planner was given a bad estimate, and with the information it had, the hash join was actually the logical choice.

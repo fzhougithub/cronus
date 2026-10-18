@@ -1,0 +1,113 @@
+# ~/.zshrc
+
+# History configuration
+export HISTSIZE=10000
+export SAVEHIST=10000
+# Zsh options
+setopt APPEND_HISTORY             # Append commands to the history file
+setopt INC_APPEND_HISTORY         # Immediately append every command
+setopt HIST_IGNORE_ALL_DUPS       # Avoid duplicates
+setopt HIST_REDUCE_BLANKS
+setopt SHARE_HISTORY              # Share history between open sessions
+
+# Restore key bindings if needed
+bindkey "^[[A" up-line-or-history
+bindkey "^[[B" down-line-or-history
+
+# Custom alias for full history
+real_history() {
+strings ~/.zsh_sessions/history_* 2>/dev/null \
+  | sed 's/^: [0-9]*:[0-9]*;//' \
+  | sort -u \
+  | nl
+}
+gpobf() {
+  git push origin "$(git branch | grep '*' | cut -d' ' -f2)" -f
+}
+alias rhistory='real_history'
+alias cn='cat ~/*nodes'
+alias pn='cat ~/nodespgpool'
+alias cw='cat ~/.pgpass'
+alias gcam='git commit --amend --no-edit'
+alias gcam='git commit --amend -m "Your New Commit Title"'
+alias gb='git branch'
+alias gpomr='git pull origin main --rebase'
+alias gsa='git stash -a'
+alias gsp='git stash pop'
+alias gsl='git stash list'
+alias gssp='git stash show -p stash@{1}'
+
+
+# initialize gpg
+export GPG_TTY=$(tty)
+
+alias s_mvp='cd /Users/fzhou/work/DomaniRx_Data/ODS/DDL/Release/MVP\ 1.1'
+
+. ~/.zshrc_profile
+export GPG_TTY=$(tty)
+
+# Disable shared history across sessions
+unsetopt share_history
+unsetopt inc_append_history
+setopt no_share_history
+setopt no_inc_append_history
+setopt append_history  # Append commands to history file when the shell exits
+
+# Use a unique history file per iTerm2 session
+export HISTFILE="$HOME/.zsh_sessions/history_$TERM_SESSION_ID"
+
+# Save history after every command
+setopt inc_append_history_time
+PROMPT_COMMAND='history -a'
+
+export HISTFILESIZE=100000    # Number of commands to keep in the history file
+
+test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
+export PATH=$PATH:~/bin
+
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+
+#eval $(keychain --eval --quiet --agents ssh id_rsa)  # Replace `id_rsa` with your key
+eval $(keychain --eval --quiet id_rsa)
+#export PYENV_ROOT="$HOME/.pyenv"
+#command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+#eval "$(pyenv init -)"
+#export PYENV_ROOT="$HOME/.pyenv"
+#command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+#eval "$(pyenv init -)"
+#eval "$(pyenv init -)"
+
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes
+
+# Homebrew Setup
+export PATH="/opt/homebrew/bin:$PATH"
+
+# pyenv Setup (AFTER Homebrew path is set)
+#export PYENV_ROOT="$HOME/.pyenv"
+#export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+
+# >>> Yarn & npm strict version control (added via Jamf) >>>
+export YARN_SAVE_EXACT="true"
+export YARN_SAVE_PREFIX=""
+export YARN_IGNORE_SCRIPTS="true"
+export NPM_CONFIG_SAVE_EXACT="true"
+export NPM_CONFIG_SAVE_PREFIX=""
+export NPM_CONFIG_IGNORE_SCRIPTS="true"
+# <<< End Yarn/npm strict version control <<<
+
+export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+export PATH="/opt/homebrew/opt/php@8.4/bin:$PATH"
+export PATH="/opt/homebrew/opt/php@8.4/sbin:$PATH"
+export EDITOR=vim
+
+bindkey '^x^e' edit-command-line
+
+function cdbug() {
+  cd "/Users/fzhou/work/bug/$1"
+}
+
+
+

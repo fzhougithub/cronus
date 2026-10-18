@@ -1,0 +1,4 @@
+#!/bin/bash
+
+host=$(echo "$1" | tr '.' '-').ssnc-corp.cloud
+ssh rundeck@$host

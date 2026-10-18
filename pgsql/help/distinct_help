@@ -1,0 +1,12 @@
+SELECT
+    attname AS column_name,
+    CASE
+        WHEN n_distinct > 0 THEN n_distinct
+        ELSE abs(n_distinct) * c.reltuples
+    END AS estimated_distinct_values
+FROM pg_stats s
+CROSS JOIN pg_class c
+WHERE s.schemaname = 'datamart_humana'
+  AND s.tablename = 'claim'
+  AND c.relname = 'claim'
+ORDER BY estimated_distinct_values ;

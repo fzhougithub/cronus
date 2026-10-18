@@ -1,0 +1,5 @@
+#!/bin/bash
+
+pg_dumpall -h 10.222.237.45 --globals-only --no-tablespaces |psql -d ods_domani
+pg_dump -h 10.222.237.45 -d ods_domani --schema-only --no-privileges --no-owner --no-tablespaces | sed '/CREATE SUBSCRIPTION/,/;/d' | psql -d ods_domani
+#pg_dump -h 10.221.136.121 -d ods_domani --schema-only --no-privileges --no-owner |sed '/TABLESPACE/,/;/d'| psql -d ods_domani

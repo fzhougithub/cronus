@@ -1,0 +1,9 @@
+customer_id is the line of business. For example humana has customers 319, 320, 544 etc.. for their line of businesses commercial, Medicare, Medicaid, etc..
+member_id is for individuals like us
+and we have customer_set_id on top of customer_id
+
+so hierarchy goes like
+customer_id
+client_id
+group_id
+member_id

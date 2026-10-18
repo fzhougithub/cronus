@@ -1,0 +1,402 @@
+If you're integrating with Jasper properly, I'd implement it as a custom `JRQueryExecuter`. Looking at your Python code, the closest Java equivalent is a class that:
+
+1. Receives the report SQL.
+2. Finds logical tables.
+3. Discovers physical tables.
+4. Creates `tmp_result_raw`.
+5. Rewrites the final SQL.
+6. Executes it.
+7. Returns a `ResultSet` to Jasper.
+
+Below is a reasonably complete starting implementation.
+
+***
+
+# TableGroupQueryExecuter.java
+
+```java
+package com.company.jasper;
+
+import net.sf.jasperreports.engine.JRDataset;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRValueParameter;
+import net.sf.jasperreports.engine.query.JRJdbcQueryExecuter;
+import net.sf.jasperreports.engine.JasperReportsContext;
+
+import java.sql.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class TableGroupQueryExecuter extends JRJdbcQueryExecuter {
+
+    private final Map<String, String> tableGroupMap = new HashMap<>();
+
+    public TableGroupQueryExecuter(
+            JasperReportsContext jasperReportsContext,
+            JRDataset dataset,
+            Map<String, ? extends JRValueParameter> parameters
+    ) {
+        super(jasperReportsContext, dataset, parameters);
+
+        //
+        // logical table -> physical table pattern
+        //
+        tableGroupMap.put("a", "a_202%");
+    }
+
+    @Override
+    protected String getQueryString() {
+
+        String originalSql = super.getQueryString();
+
+        try {
+
+            Connection conn = getConnection();
+
+            executeTableGroupLogic(
+                    conn,
+                    originalSql
+            );
+
+            return rewriteFinalSql(
+                    originalSql,
+                    findLogicalTables(originalSql).get(0)
+            );
+
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void executeTableGroupLogic(
+            Connection conn,
+            String sqlText
+    ) throws Exception {
+
+        List<String> logicalTables =
+                findLogicalTables(sqlText);
+
+        if (logicalTables.isEmpty()) {
+            return;
+        }
+
+        if (logicalTables.size() > 1) {
+            throw new RuntimeException(
+                    "Current version supports one logical table only."
+            );
+        }
+
+        String logicalTable = logicalTables.get(0);
+
+        List<String> physicalTables =
+                getPhysicalTables(
+                        conn,
+                        logicalTable
+                );
+
+        String unionSql =
+                buildRawUnionSql(
+                        sqlText,
+                        logicalTable,
+                        physicalTables
+                );
+
+        try (Statement stmt = conn.createStatement()) {
+
+            stmt.execute(
+                    "DROP TABLE IF EXISTS tmp_result_raw"
+            );
+
+            String createSql =
+                    "CREATE TEMP TABLE tmp_result_raw AS "
+                            + unionSql;
+
+            System.out.println(createSql);
+
+            stmt.execute(createSql);
+        }
+    }
+
+    private List<String> getPhysicalTables(
+            Connection conn,
+            String logicalTable
+    ) throws SQLException {
+
+        String pattern =
+                tableGroupMap.get(logicalTable);
+
+        List<String> tables =
+                new ArrayList<>();
+
+        String sql =
+                """
+                SELECT tablename
+                FROM pg_tables
+                WHERE schemaname='public'
+                AND tablename LIKE ?
+                ORDER BY tablename
+                """;
+
+        try (
+                PreparedStatement ps =
+                        conn.prepareStatement(sql)
+        ) {
+
+            ps.setString(1, pattern);
+
+            ResultSet rs =
+                    ps.executeQuery();
+
+            while (rs.next()) {
+                tables.add(
+                        rs.getString(1)
+                );
+            }
+        }
+
+        return tables;
+    }
+
+    private List<String> findLogicalTables(
+            String sqlText
+    ) {
+
+        List<String> found =
+                new ArrayList<>();
+
+        for (String table :
+                tableGroupMap.keySet()) {
+
+            Pattern from =
+                    Pattern.compile(
+                            "\\bFROM\\s+" + table + "\\b",
+                            Pattern.CASE_INSENSITIVE
+                    );
+
+            Pattern join =
+                    Pattern.compile(
+                            "\\bJOIN\\s+" + table + "\\b",
+                            Pattern.CASE_INSENSITIVE
+                    );
+
+            if (from.matcher(sqlText).find()) {
+                found.add(table);
+                continue;
+            }
+
+            if (join.matcher(sqlText).find()) {
+                found.add(table);
+            }
+        }
+
+        return found;
+    }
+
+    private String extractWhereClause(
+            String sqlText
+    ) {
+
+        Pattern p =
+                Pattern.compile(
+                        "\\bWHERE\\b(.*?)(GROUP\\s+BY|ORDER\\s+BY|HAVING|LIMIT|$)",
+                        Pattern.CASE_INSENSITIVE
+                                | Pattern.DOTALL
+                );
+
+        Matcher m =
+                p.matcher(sqlText);
+
+        if (!m.find()) {
+            return "";
+        }
+
+        return m.group(1).trim();
+    }
+
+    private String buildRawUnionSql(
+            String sqlText,
+            String logicalTable,
+            List<String> physicalTables
+    ) {
+
+        String whereClause =
+                extractWhereClause(sqlText);
+
+        List<String> pieces =
+                new ArrayList<>();
+
+        for (String table :
+                physicalTables) {
+
+            StringBuilder part =
+                    new StringBuilder();
+
+            part.append(
+                    "SELECT * FROM "
+            );
+
+            part.append(table);
+
+            if (!whereClause.isBlank()) {
+
+                part.append(
+                        " WHERE "
+                );
+
+                part.append(
+                        whereClause
+                );
+            }
+
+            pieces.add(
+                    part.toString()
+            );
+        }
+
+        return String.join(
+                "\nUNION ALL\n",
+                pieces
+        );
+    }
+
+    private String rewriteFinalSql(
+            String sqlText,
+            String logicalTable
+    ) {
+
+        sqlText =
+                sqlText.replaceAll(
+                        "(?i)(\\bFROM\\s+)"
+                                + logicalTable
+                                + "(\\b)",
+                        "$1tmp_result_raw$2"
+                );
+
+        sqlText =
+                sqlText.replaceAll(
+                        "(?i)(\\bJOIN\\s+)"
+                                + logicalTable
+                                + "(\\b)",
+                        "$1tmp_result_raw$2"
+                );
+
+        return sqlText;
+    }
+}
+```
+
+***
+
+# TableGroupQueryExecuterFactory.java
+
+```java
+package com.company.jasper;
+
+import net.sf.jasperreports.engine.JRDataset;
+import net.sf.jasperreports.engine.JRValueParameter;
+import net.sf.jasperreports.engine.query.JRQueryExecuter;
+import net.sf.jasperreports.engine.query.JRQueryExecuterFactory;
+import net.sf.jasperreports.engine.JasperReportsContext;
+
+import java.util.Map;
+
+public class TableGroupQueryExecuterFactory
+        implements JRQueryExecuterFactory {
+
+    @Override
+    public Object[] getBuiltinParameters() {
+        return null;
+    }
+
+    @Override
+    public boolean supportsQueryParameterType(String className) {
+        return true;
+    }
+
+    @Override
+    public JRQueryExecuter createQueryExecuter(
+            JasperReportsContext context,
+            JRDataset dataset,
+            Map<String, ? extends JRValueParameter> parameters) {
+
+        return new TableGroupQueryExecuter(
+                context,
+                dataset,
+                parameters
+        );
+    }
+}
+```
+
+***
+
+# jasperreports\_extension.properties
+
+```properties
+net.sf.jasperreports.query.executer.factory.tablegroup=com.company.jasper.TableGroupQueryExecuterFactory
+```
+
+***
+
+# JRXML Usage
+
+```xml
+<queryString language="tablegroup">
+<![CDATA[
+select customer_id,
+       count(*)
+from a
+where customer_id=320
+group by customer_id
+]]>
+</queryString>
+```
+
+***
+
+# One Important Change I'd Make
+
+There's one issue with simply overriding `getQueryString()`.
+
+`JRJdbcQueryExecuter` may call it multiple times during report preparation.
+
+A cleaner production implementation is:
+
+```java
+createStatement()
+```
+
+or
+
+```java
+createDatasource()
+```
+
+perform:
+
+```java
+DROP TEMP TABLE
+CREATE TEMP TABLE
+```
+
+exactly once, then execute the rewritten query.
+
+This avoids accidentally recreating `tmp_result_raw` several times during report execution.
+
+So I'd consider the code above a **working skeleton**, but for production Jasper integration I'd move the temp table creation into the actual execution path rather than inside `getQueryString()`.
+
+Also, if this is becoming a long-lived solution, I'd strongly recommend replacing the regex parser with **JSqlParser**, because aliases such as:
+
+```sql
+from a x
+```
+
+qualified names:
+
+```sql
+from public.a
+```
+
+and nested subqueries will eventually break the regex approach.
+

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 <ticketnumber>"
+	exit 1
+else
+	ticket=$1
+fi
+
+cd ~/work/bug/$ticket
+pwd

@@ -1,4 +1,47 @@
- psql -c "select slot_name, plugin, slot_type from pg_replication_slots ;" claimsprocess
+SELECT srrelid::regclass, srsubstate
+FROM pg_subscription_rel where srsubstate<>'r'; 
+                 srrelid                  | srsubstate
+------------------------------------------+------------
+ pct_humana.pct_adjudicated_finance_claim | f
+ pct_humana.pct_data                      | f
+ pct_humana.pct_consolidated_claim_data   | f
+
+SELECT subname, pid, relid::regclass, received_lsn, latest_end_lsn
+FROM pg_stat_subscription;
+
+                 subname                  |  pid  | relid | received_lsn  | latest_end_lsn
+------------------------------------------+-------+-------+---------------+----------------
+ claimshumana_pg16_prod_ods_stby_02_sub   |  4923 |       | DB09/55028918 | DB09/55028918
+ odshumana_pg16_02_landingpage_sub        |  4924 |       | 1DB/750AECE8  | 1DB/750AECE8
+ odshumana_pg16_02_lists_sub              |  4925 |       | 738/10000060  | 738/10000060
+
+-- if there is table status='f',and get the lag alert
+-- disable and enable the subscription, then, check
+
+SELECT *
+FROM pg_stat_subscription
+WHERE subname = 'odshumana_pg16_02_finance_humana_sub'; 
+
+   subid   |               subname                |  pid  | leader_pid | relid | received_lsn |      last_msg_send_time       |    last_msg_receipt_time     | latest_end_l
+sn |        latest_end_time
+-----------+--------------------------------------+-------+------------+-------+--------------+-------------------------------+------------------------------+-------------
+---+-------------------------------
+ 599193841 | odshumana_pg16_02_finance_humana_sub | 46547 |            |       | 112/DE076B38 | 2026-08-09 05:11:03.843823-05 | 2026-08-09 05:11:18.82861-05 | 112/DCB59ED0
+   | 2026-08-09 05:10:28.617132-05
+(1 row)
+
+-- then, keep checking the status of subscription to see whether the subscription is moving
+
+SELECT subname, pid, relid::regclass, received_lsn, latest_end_lsn
+FROM pg_stat_subscription where subname='odshumana_pg16_02_finance_humana_sub';
+
+               subname                |  pid  | relid | received_lsn | latest_end_lsn
+--------------------------------------+-------+-------+--------------+----------------
+ odshumana_pg16_02_finance_humana_sub | 46547 |       | 112/E2F75B88 | 112/E2F75B88
+(1 row)
+
+
+psql -c "select slot_name, plugin, slot_type from pg_replication_slots ;" claimsprocess
 
 # Per the unapplied gap check
 

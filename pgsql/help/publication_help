@@ -1,3 +1,6 @@
+-- create publication statement:
+echo "CREATE PUBLICATION my_pub FOR TABLE $(paste -sd, tablelist.txt);"
+
 SELECT
   slot_name,
   plugin,

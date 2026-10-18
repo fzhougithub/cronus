@@ -1,0 +1,38 @@
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS object_name,
+    c.relkind,
+    pg_get_userbyid(c.relowner) AS owner
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE pg_get_userbyid(c.relowner) = 'fzhou'
+ORDER BY n.nspname, c.relkind, c.relname;
+
+
+
+
+
+
+SELECT format(
+    'ALTER %s %I.%I OWNER TO postgres;',
+    CASE c.relkind
+        WHEN 'r' THEN 'TABLE'
+        WHEN 'p' THEN 'TABLE'
+        WHEN 'S' THEN 'SEQUENCE'
+        WHEN 'v' THEN 'VIEW'
+        WHEN 'm' THEN 'MATERIALIZED VIEW'
+        WHEN 'f' THEN 'FOREIGN TABLE'
+        ELSE NULL
+    END,
+    n.nspname,
+    c.relname
+)
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE pg_get_userbyid(c.relowner) = 'fzhou'
+  AND c.relkind IN ('r','p','S','v','m','f')
+ORDER BY n.nspname, c.relname;
+
+

@@ -1,0 +1,14 @@
+SELECT n.nspname, c.relname, c.reloptions FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_am am ON am.oid = c.relam
+  WHERE am.amname = 'columnar' AND c.relkind = 'r' and c.reloptions is null;
+
+     nspname     |         relname          | reloptions
+-----------------+--------------------------+------------
+ datamart_humana | big_table                |
+ datamart_humana | claim_ccg_2025_10_p7     |
+ datamart_humana | claim_830_all            |
+ datamart_humana | narrative_member_address |
+(4 rows)
+
+Should turn off autovacuum on all of the columnar tables. 

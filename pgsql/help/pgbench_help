@@ -1,0 +1,21 @@
+brew --version
+pgbench --version
+pgbench (PostgreSQL) 17.7 (Homebrew)
+
+
+1. Single script contain different queries 
+pgbench -f workload.sql -c 100 -j 10 -T 600 mydb
+
+2. Multiple queries together
+pgbench -f query1.sql -c 50 -T 600 mydb &
+pgbench -f query2.sql -c 30 -T 600 mydb &
+pgbench -f query3.sql -c 20 -T 600 mydb &
+wait
+
+3. weighted queries
+pgbench -d mydb -f workload.sql -c 100 -j 10 -T 600 -M prepared
+
+4. Replay actual production queries
+
+pgbench -f workload.sql -M prepared -c 500 -j 50 -T 1800 mydb
+

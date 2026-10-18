@@ -1,3 +1,7 @@
+journalctl -fu postgres-exporter
+--run like tail -f
+--log.level=debug \ -- add this line into ExecStart of postgres-exporter service file
+
 journalctl -p err..alert --no-pager
 
 Look for:

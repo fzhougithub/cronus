@@ -1,3 +1,35 @@
+pgbackrest \
+  --stanza=10-222-234-181 \
+  archive-get \
+  000000010000006300000014 \
+  /tmp/000000010000006300000014
+
+lz4 -d \
+000000010000006300000014-30af1215912e1e433a364340750009d03c508aec.lz4 \
+/tmp/000000010000006300000014
+
+mkdir -p /pg_backups/analysis; cd /pg_backups/analysis
+for f in /pg_backups/archive/10-222-234-181/14-1/000000010000014F/*.lz4;do base=$(basename "$f");wal=${base%%-*}; lz4 -d "$f" "/pg_backups/analysis/$wal";done
+ls -larth 
+-rw-r-----. 1 postgres postgres 16M Aug 13 08:33 000000010000014F000000E9
+-rw-r-----. 1 postgres postgres 16M Aug 13 08:33 000000010000014F000000EA
+-rw-r-----. 1 postgres postgres 16M Aug 13 08:33 000000010000014F000000EB
+
+ pg_waldump /pg_backups/analysis/000000010000014F00000000|head -50
+rmgr: Btree       len (rec/tot):     64/    64, tx:   20929807, lsn: 14F/000000F0, prev 14E/FFFFFFF0, desc: INSERT_LEAF off 165, blkref #0: rel 1663/16386/23483 blk 16383
+rmgr: Btree       len (rec/tot):     64/    64, tx:   20929807, lsn: 14F/00000130, prev 14F/000000F0, desc: INSERT_LEAF off 81, blkref #0: rel 1663/16386/23484 blk 70275
+rmgr: Heap        len (rec/tot):     54/    54, tx:   20929807, lsn: 14F/00000170, prev 14F/00000130, desc: LOCK off 11: xid 20929807: flags 0x00 LOCK_ONLY EXCL_LOCK , blk
+
+Got the start location : 14F/000000F0
+
+for i in *;do pg_waldump $i --stats >> /var/tmp/wal_stats.log;done
+this will generate the stats report for all of the wal files. 
+
+
+-- But, the lz4 file is just 5.2M, and tons of them, better to use above pgbackrest command for it. 
+
+
+
 config for archive retension
 
 # Retain archives only until the last backup that needs them is expired

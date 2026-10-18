@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#echo "DEBUG: Detected $# arguments."
+#echo "DEBUG: Arg3 is [$3]"
+
+# This code is the framework to pipe source to the target
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <sql statement> <dry/run>"
+	echo "Example: $0  \"select customer_id,claim_id,process_create_ts from claimsprocess_humana.claim_core where process_create_ts >='2025-01-01' and process_create_ts <'2025-01-31' dry\""
+	exit 1
+else
+	sch=$(echo $1|cut -d. -f1)
+fi
+
+if [ $2 == 'dry' ];then
+	echo "$1"
+elif [ $2 == 'run' ];then
+        psql -h 10.173.43.88 -d ods_domani -U datamart -q -c "$1"
+fi

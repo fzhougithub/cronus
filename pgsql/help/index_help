@@ -1,3 +1,63 @@
+SELECT now(),
+    relname,
+    indexrelname,
+    idx_scan,
+    idx_tup_read,
+    idx_tup_fetch
+FROM pg_stat_user_indexes
+WHERE relname='u79'
+ORDER BY idx_scan DESC;
+
+              now              | relname | indexrelname | idx_scan  | idx_tup_read | idx_tup_fetch
+-------------------------------+---------+--------------+-----------+--------------+---------------
+ 2026-07-22 19:28:17.388832+00 | u79     | u79_ix1      | 333554642 |    405935718 |     403547252
+ 2026-07-22 19:28:17.388832+00 | u79     | u79_pkey     | 125758111 |   4932321187 |      22144128
+(2 rows)
+
+SELECT
+    indexname,
+    indexdef
+FROM pg_indexes
+WHERE schemaname='customer'
+AND tablename='u79';
+
+ indexname |                                              indexdef
+-----------+-----------------------------------------------------------------------------------------------------
+ u79_pkey  | CREATE UNIQUE INDEX u79_pkey ON customer.u79 USING btree (effective_network_suite_id, ratesheet_id)
+ u79_ix1   | CREATE INDEX u79_ix1 ON customer.u79 USING btree (ratesheet_id)
+(2 rows)
+
+
+SELECT
+    schemaname,
+    relname,
+    count(*) AS indexes,
+    pg_size_pretty(sum(pg_relation_size(indexrelid))) AS index_size
+FROM pg_stat_user_indexes
+WHERE schemaname LIKE 'finance%'
+GROUP BY schemaname, relname
+ORDER BY sum(pg_relation_size(indexrelid)) DESC
+LIMIT 30;
+
+   schemaname   |               relname                | indexes | index_size
+----------------+--------------------------------------+---------+------------
+ finance_humana | outbound_payment                     |       2 | 411 MB
+ finance_humana | finance_claim                        |       7 | 250 MB
+ finance_other  | finance_claim                        |       7 | 94 MB
+......
+
+
+
+SELECT
+    schemaname,
+    relname,
+    indexrelname,
+    pg_size_pretty(pg_relation_size(indexrelid))
+FROM pg_stat_user_indexes
+ORDER BY pg_relation_size(indexrelid) DESC
+LIMIT 30;
+
+
 SELECT indexrelid::regclass AS index_name,
        indisvalid,
        indisready,

@@ -1,3 +1,5 @@
+awk ... | sort -t'|' -k2 -rn -k3 -rn | head -15
+
 grep odshumana_pg16_02_cust_and_global_sub $(ls -larth |tail -1|awk '{print $9}')|awk -F'table' '{print $3}'|awk '{print $1}'|sort|uniq -c|sort -
 ......
       2 "y12"

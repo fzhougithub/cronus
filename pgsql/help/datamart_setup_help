@@ -1,0 +1,30 @@
+-- claim_core
+create or replace trigger trig_claim_core_iu after  insert or update on claimsprocess_humana.claim_core for each row execute function datamart.trigger_on_claim_core_fn();
+create or replace trigger trig_claim_core_d  before delete on           claimsprocess_humana.claim_core for each row execute function datamart.trigger_on_claim_core_fn();
+ALTER TABLE claimsprocess_humana.claim_core ENABLE ALWAYS TRIGGER trig_claim_core_iu;
+ALTER TABLE claimsprocess_humana.claim_core ENABLE ALWAYS TRIGGER trig_claim_core_d;
+-- a_claim_core
+create or replace trigger trig_a_claim_core_iu after  insert or update on claimsprocess_humana.a_claim_core for each row execute function datamart.trigger_on_a_claim_core_fn();
+create or replace trigger trig_a_claim_core_d  before delete on           claimsprocess_humana.a_claim_core for each row execute function datamart.trigger_on_a_claim_core_fn();
+ALTER TABLE claimsprocess_humana.a_claim_core ENABLE ALWAYS TRIGGER trig_a_claim_core_iu;
+ALTER TABLE claimsprocess_humana.a_claim_core ENABLE ALWAYS TRIGGER trig_a_claim_core_d;
+-- claim_core
+create or replace trigger trig_claim_core_iu after  insert or update on claimsprocess_other.claim_core for each row execute function datamart.trigger_on_claim_core_fn();
+create or replace trigger trig_claim_core_d  before delete on           claimsprocess_other.claim_core for each row execute function datamart.trigger_on_claim_core_fn();
+ALTER TABLE claimsprocess_other.claim_core ENABLE ALWAYS TRIGGER trig_claim_core_iu;
+ALTER TABLE claimsprocess_other.claim_core ENABLE ALWAYS TRIGGER trig_claim_core_d;
+-- a_claim_core
+create or replace trigger trig_a_claim_core_iu after  insert or update on claimsprocess_other.a_claim_core for each row execute function datamart.trigger_on_a_claim_core_fn();
+create or replace trigger trig_a_claim_core_d  before delete on           claimsprocess_other.a_claim_core for each row execute function datamart.trigger_on_a_claim_core_fn();
+ALTER TABLE claimsprocess_other.a_claim_core ENABLE ALWAYS TRIGGER trig_a_claim_core_iu;
+ALTER TABLE claimsprocess_other.a_claim_core ENABLE ALWAYS TRIGGER trig_a_claim_core_d;
+create or replace trigger trig_o58_iu after insert or update on customer.o58 for each row execute function datamart.trigger_on_o58_fn();
+create or replace trigger trig_o58_d  before delete on          customer.o58 for each row execute function datamart.trigger_on_o58_fn(); 
+ALTER TABLE customer.o58 ENABLE ALWAYS TRIGGER trig_o58_iu;
+ALTER TABLE customer.o58 ENABLE ALWAYS TRIGGER trig_o58_d;
+Grant access to background
+
+
+
+ select "public"."pg_background_grant_privileges"('qpdreporting', true);
+ select "public"."pg_background_grant_privileges"('datamart', true);

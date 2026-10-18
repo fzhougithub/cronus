@@ -1,12 +1,13 @@
 #!/bin/bash
 
 if [ $# -ne 3 ];then
-	echo "Usage: $0 schemaname,user,ro/rw"
+	echo "Usage: $0 schemaname,user,ro/rw/ro_nodata"
 	echo "e.g: $0 finance_humana, hplpdclaimresearch, ro"
 	exit 1
 else
 	ro=${1}_ro
 	rw=${1}_rw
+	ro_nodata=${1}_ronodata
 	user=${2}
 fi
 
@@ -46,10 +47,31 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON ALL TABLES in SCHEMA $1 to $rw;
 ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $rw;
 ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO $rw;
 GRANT $rw to $user;
--- GRANT CREATE ON SCHEMA $1 TO $user; 
--- should change owner of sequence to allow user to alter sequence. 
-
 \du+ $user
+EOF
+fi
+
+if [ $3 == 'ro_nodata' ];then
+cat <<EOF
+--\set ECHO ALL
+--\du+ $ro_nodata
+--\du+ $user
+
+CREATE ROLE $ro_nodata;
+-- CREATE ROLE $2 WITH LOGIN PASSWORD ';
+GRANT USAGE ON SCHEMA $1 TO $ro_nodata;
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA $1 FROM $ro_nodata;
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA $1 FROM $ro_nodata;
+-- GRANT SELECT ON ALL TABLES IN SCHEMA $1 TO $ro_nodata;
+-- GRANT SELECT ON ALL SEQUENCES IN SCHEMA $1 TO $ro_nodata;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT SELECT ON TABLES TO $ro;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA $1 GRANT SELECT ON SEQUENCES TO $ro;
+GRANT $ro_nodata to $user;
+\du+ $user
+
+
+-- set role $user;
+-- select * from certain table to confirm;
 EOF
 fi
 

@@ -1,0 +1,31 @@
+select calls, total_exec_time, max_exec_time,substr(query,1,50) from pg_stat_statements order by calls desc limit 10;
+
+SELECT calls, rows, round(mean_exec_time::numeric,2) AS ms, left(query,200)
+FROM pg_stat_statements
+WHERE query ILIKE '%u79%'
+ORDER BY calls DESC
+LIMIT 20;
+
+   calls    |   rows    |  ms  |                                                                                                   left
+
+------------+-----------+------+-------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------
+ 2983630212 | 142599210 | 0.04 | SELECT U79.RATESHEET_ID as rateSheetId                                          ,U80.CUSTOMER_SET_ID as customerSetId
+              ,U80.RATESHEET_SHORT_NM as rateSheetShortName
+  911283609 | 167526150 | 0.05 | SELECT U79.RATESHEET_ID as rateSheetId,U80.RATESHEET_SHORT_NM as rateSheetShortName,CI1.NETWORK_SUITE_ID as networkSuiteId,CI0.EFFECTIVE_D
+T as effectiveDate,CI0.TERMINATION_DT as terminationDate,  U78
+  835207989 |         0 | 0.43 | SELECT U79.RATESHEET_ID AS rateSheetId,    U80.RATESHEET_SHORT_NM AS rateSheetShortName,    U80.CUSTOMER_SET_ID AS customerSetId,    CI1.N
+ETWORK_SUITE_ID AS networkSuiteId,    CI0.EFFECTIVE_DT AS effe
+     297714 | 282141162 | 5.35 | SELECT
+                                                              +
+            |           |      |         U92.PHARMACY_COMPONENT_SHT_NM AS pharmacyComponent
+                                                              +
+            |           |      |         ,U78.PHARMACY_NETWORK_ID          AS networkID
+                                                              +
+            |           |      |         ,CI2.PHARMACY_NETWORK_TYPE_LNG_NM AS networkType
+                                                              +
+            |           |      |         ,U78.NETWORK_S
+      59567 |     16334 | 0.15 | SELECT U79.RATESHEET_ID as rateSheetId                                          ,U80.CUSTOMER_SET_ID as customerSetId
+              ,U80.RATESHEET_SHORT_NM as rateSheetShortName
+(5 rows)
+

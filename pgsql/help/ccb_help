@@ -1,0 +1,67 @@
+Email: Updated Deployment Approval Process Effective Immediately
+
+Effective immediately, the environment owners on record for pharmacy client environments (client facing and/or PHI content) must approve all changes to their environments.  Changes should be scheduled with as much advance notice as possible and CCB approval should not be requested until required environment owner approval is documented in the CHG Request. 
+
+Release Oversight owns the client environments listed in the below email and has provided the process for approvals of changes to those environments.  Below is a list of owners for other client environments...
+
+Environment Owner Approver
+HPLS IT Seth or Sathish
+SIT  IT Seth or Sathish
+UAT  IT Seth or Sathish
+UATDR IT Seth or Sathish
+IPROD DXP Elizabeth W or Ayondeep D
+IUAT DXP Elizabeth W or Ayondeep D
+PRODGREENKC DevOps Kris L or Sarkis C
+UATGREENKC DevOps Kris L or Sarkis C
+
+This policy also applies to RxNova environments.  A full environment list is being prepared.
+
+We are looking at options for improving the efficiency of this process and appreciate your patience and support.
+
+Thanks,
+
+Effective immediately, we will be removing the requirement for Executive Approval on code deployments. Moving forward, deployment approvals moving into any of the environments below will follow the process outlined below:
+ 
+Domani Environment RM/RO Approval Required Humana BO Approval Required
+DR (Disaster Recovery)  Yes Conditionally
+HTFX 			Yes Conditionally
+HUAT 			Yes Conditionally
+PROD 			Yes Yes
+RTL 			Yes No
+
+Conditional Humana BO Approval Requirements
+
+DR (Disaster Recovery)
+Release deployments (for example, 2026R4 release code): The Humana approval provided for promotion to Production will also satisfy the approval requirement for deployment to DR.
+Nothing should be going to DR that is not in production.
+HTFX
+Release deployments (for example, 2026R4 release code): The Humana approval provided for promotion to Production will also satisfy the approval requirement for deployment to HTFX.
+Defect fixes deployed directly to HTFX: Humana BO approval is required prior to CCB approval/ deployment.
+HUAT
+Release deployments (for example, 2026R4 release code): Humana BO approval is not required.
+Defect fixes (whether deployed during a UAT testing window or on an ad hoc basis), as well as any code promoted to HUAT outside of the scheduled release process, will require Humana BO approval prior to CCB approval/ deployment.
+ 
+Note: Humana approval only applies to tickets with Humana impact or the potential for Humana impact. For deployments that only impact SS&C there is no need for Humana approval in any environment.
+ 
+Approval Process
+As a short-term solution, approvals should be obtained via email to the appropriate Humana Business Owner (BO), with a copy sent to release_oversight@sscinc.com.
+The subject line of the email should state:
+Formal Migration Approval Request for installing <JIRA ticket> to <environment>
+Example: Formal Migration approval Request for installing ADJCOM-xxxxx to HUAT
+ if approval is being sought on multiple tickets in a single request, indicate “multiple tickets” in the subject line and list the tickets in the body of the email.
+If the appropriate Humana BO is not known, please indicate that in your approval request. The Release Oversight team will assist in identifying the correct approver.
+Once the required approvals are received:
+The Release Oversight team will document the approval in Jira, including:
+The name of the approving Humana BO
+Release Oversight approval
+This approval documentation must be completed before a CCB request is submitted.
+The approval email should be attached to the CCB request as supporting documentation.
+Note: This process is intended to be temporary while we evaluate and implement more automated approval workflows. 
+ 
+This process closely mirrors the process currently in place for the RxNova environments, which will also no longer require executive approval for deployment and will be returned to the established processes.
+ 
+If you have any questions regarding this change or the updated approval requirements, please contact release_oversight@sscinc.com.
+ 
+Thank you for your partnership and support as we continue to improve and streamline our release management processes.
+ 
+Best regards,

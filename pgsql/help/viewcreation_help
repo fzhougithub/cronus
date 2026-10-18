@@ -1,0 +1,3 @@
+SELECT pg_get_viewdef('misc_humana.pde_claim_detail_vw'::regclass, true);
+
+

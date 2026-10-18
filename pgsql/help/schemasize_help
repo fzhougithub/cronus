@@ -1,4 +1,42 @@
 SELECT
+    n.nspname AS schema_name,
+    pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_size,
+    ROUND((SUM(pg_total_relation_size(c.oid))::numeric / (1024::numeric^3)), 2) AS total_size_gb
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND n.nspname NOT LIKE 'pg_toast%'
+GROUP BY n.nspname
+ORDER BY SUM(pg_total_relation_size(c.oid)) DESC;
+
+        schema_name        | total_size | total_size_gb
+---------------------------+------------+---------------
+ claimsprocess_humana      | 5052 GB    |       5052.15
+ datamart_humana           | 816 GB     |        816.30
+ datamart                  | 410 GB     |        409.62
+ columnar                  | 24 GB      |         23.76
+ misc                      | 5410 MB    |          5.28
+ customerconfig            | 1293 MB    |          1.26
+ eligibility_humana        | 987 MB     |          0.96
+ fdb_medknowledge_enhanced | 218 MB     |          0.21
+ finance_global            | 128 MB     |          0.12
+ pct_global                | 65 MB      |          0.06
+ planconfig                | 14 MB      |          0.01
+ lists                     | 12 MB      |          0.01
+ finance_humana            | 4088 kB    |          0.00
+ finance_other             | 4088 kB    |          0.00
+ program_mandate           | 4072 kB    |          0.00
+ customer_contact          | 272 kB     |          0.00
+ foundations_builder       | 264 kB     |          0.00
+ misc_humana               | 128 kB     |          0.00
+ public                    | 0 bytes    |          0.00
+(19 rows)
+
+
+
+
+SELECT
     pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_size,
     SUM(pg_total_relation_size(c.oid)) / 1024 / 1024 / 1024 AS total_size_gb
 FROM pg_class c
@@ -39,17 +77,26 @@ GROUP BY
 ORDER BY
     SUM(pg_total_relation_size(c.oid)) DESC; -- Order by size, largest first
 
+       schema_name        | total_schema_size
+--------------------------+-------------------
+ claimsprocess_other      | 3305 GB
+ claimsprocess            | 1263 GB
+ claimsprocess_humana     | 2541 MB
+ public                   | 3408 kB
+ rework                   | 2400 kB
+ rework_ddc               | 2376 kB
+ rework_humana            | 2208 kB
+ rework_other             | 2208 kB
+ realtimepricing          | 480 kB
+ claims_ews               | 224 kB
+ batch                    | 160 kB
+ iidr_uatpls_claims_admin | 80 kB
+(12 rows)
 
 
-SELECT
-    n.nspname AS schema_name,
-    pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_schema_size
-FROM
-    pg_class c
+SELECT n.nspname AS schema_name, pg_size_pretty(SUM(pg_total_relation_size(c.oid))) AS total_schema_size
+FROM pg_class c
 JOIN
     pg_namespace n ON n.oid = c.relnamespace
-WHERE
-    c.relkind IN ('r', 'i', 'm', 't', 'S') -- r: table, i: index, m: materialized view, t: TOAST table, S: sequence
-    and n.nspname = 'pct_global' -- Replace with the actual schema name (e.g., 'public', 'app_data')
-GROUP BY
-    n.nspname;
+WHERE c.relkind IN ('r', 'i', 'm', 't', 'S') -- r: table, i: index, m: materialized view, t: TOAST table, S: sequence and n.nspname = 'pct_global' -- Replace with the actual schema name (e.g., 'public', 'app_data')
+GROUP BY n.nspname;

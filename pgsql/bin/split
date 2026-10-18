@@ -1,0 +1,12 @@
+./split_single.sh datamart_humana.claim_320_2025_01 "where fill_dt >= '2025-01-01' and fill_dt < '2025-02-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_02 "where fill_dt >= '2025-02-01' and fill_dt < '2025-03-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_03 "where fill_dt >= '2025-03-01' and fill_dt < '2025-04-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_04 "where fill_dt >= '2025-04-01' and fill_dt < '2025-05-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_05 "where fill_dt >= '2025-05-01' and fill_dt < '2025-06-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_06 "where fill_dt >= '2025-06-01' and fill_dt < '2025-07-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_07 "where fill_dt >= '2025-07-01' and fill_dt < '2025-08-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_08 "where fill_dt >= '2025-08-01' and fill_dt < '2025-09-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_09 "where fill_dt >= '2025-09-01' and fill_dt < '2025-10-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_10 "where fill_dt >= '2025-10-01' and fill_dt < '2025-11-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_11 "where fill_dt >= '2025-11-01' and fill_dt < '2025-12-01'" dry
+./split_single.sh datamart_humana.claim_320_2025_12 "where fill_dt >= '2025-12-01' and fill_dt < '2026-01-01'" dry

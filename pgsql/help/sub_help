@@ -1,3 +1,85 @@
+SELECT subname, publication
+FROM (
+    SELECT subname, unnest(subpublications) AS publication
+    FROM pg_subscription
+) t
+WHERE publication LIKE '%sub';
+
+                 subname                 |               publication
+-----------------------------------------+-----------------------------------------
+ dev_accumulator_humana_sub              | dev_accumulator_humana_sub
+ dev_accumulator_humana_accum_config_sub | dev_accumulator_humana_accum_config_sub
+ dev_accumulator_other_sub               | dev_accumulator_other_sub
+ dev_encounters_global_sub               | dev_encounters_global_sub
+ dev_encounters_other_sub                | dev_encounters_other_sub
+ dev_communication_humana_sub            | dev_communication_humana_sub
+ dev_communication_other_sub             | dev_communication_other_sub
+(7 rows)
+
+
+SELECT s.subname, a.pid, a.backend_xid, now()-a.xact_start age, a.wait_event_type, a.wait_event
+FROM pg_stat_subscription s
+JOIN pg_stat_activity a
+ON s.pid=a.pid
+WHERE a.pid IS NOT NULL;
+
+                  subname                  |   pid   | backend_xid |       age        | wait_event_type |    wait_event
+-------------------------------------------+---------+-------------+------------------+-----------------+------------------
+  prod_pct_humana_sub                       |    5762 |   192273671 | -00:00:00.015296 |                 |
+ odshumana_pg16_01_audit_event_sub         |    5730 |             |                  | Activity        | LogicalApplyMain
+ odshumana_pg16_01_planconfig_sub          | 2304261 |             |                  | Activity        | LogicalApplyMain
+ odshumana_pg16_01_eligibility_humana_sub  | 2304262 |             |                  | Activity        | LogicalApplyMain
+ claimshumana_prod_stby_002_v2_sub         | 2301094 |             |                  | Activity        | LogicalApplyMain
+ claimshumana_prod_stby_001_v2_sub         | 2301095 |   192273643 | 00:00:00.088832  | IO              | DataFileRead
+ odshumana_pg16_01_foundations_builder_sub | 2304263 |             |                  | Activity        | LogicalApplyMain
+ prod_finance_global_sub                   |   24764 |             |                  | Activity        | LogicalApplyMain
+ odshumana_pg16_01_finance_humana_sub      |  325424 |   192266943 | 00:00:28.264665  |                 |
+(19 rows)
+
+SELECT subname,srsubstate, count(*)
+FROM pg_subscription_rel r
+JOIN pg_subscription s
+    ON s.oid = r.srsubid
+GROUP BY 1,2 ORDER BY 3 desc;
+
+                  subname                  | srsubstate | count
+-------------------------------------------+------------+-------
+ rtlhumana01_claimsprocess_humana_sub      | r          |  6477
+ rtlhumana01_planconfig_sub                | r          |   130
+ rtlhumana01_finance_global_sub            | r          |   125
+ rtlhumana01_customerconfig_sub            | r          |    46
+ rtlhumana01_lists_sub                     | r          |    40
+ rtlhumana01_program_mandate_sub           | r          |    34
+ rtlhumana01_pct_global_sub                | r          |    26
+ rtlhumana01_eligibility_humana_sub        | r          |    24
+ rtlhumana01_fdb_medknowledge_enhanced_sub | r          |    14
+ rtlhumana01_claimsprocess_humana_sub      | d          |    10
+ rtlhumana01_foundations_builder_sub       | r          |     6
+ rtlhumana01_customer_contact_sub          | r          |     6
+(12 rows)
+
+SELECT srrelid::regclass, srsubstate
+FROM pg_subscription_rel r
+JOIN pg_subscription s
+    ON s.oid = r.srsubid
+WHERE s.subname = 'huat_pct_humana_sub'
+AND srsubstate <> 'r' ORDER BY 1;
+
+                srrelid                 | srsubstate
+----------------------------------------+------------
+ pct_humana.pct_consolidated_claim_data | d
+ pct_humana.pct_data                    | d
+ pct_humana.pct_staging_data            | d
+(3 rows)
+
+
+
+
+SELECT subname, substream
+FROM pg_subscription;
+
+ALTER SUBSCRIPTION odshumana_pg16_01_finance_humana_sub SET (streaming = on);
+
 ALTER SUBSCRIPTION claimshumana_prod_stby_002_v2_sub SET (streaming = parallel);
 
 select subname,count(1) from pg_stat_subscription group by 1 order by 2 desc;

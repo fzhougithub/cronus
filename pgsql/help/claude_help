@@ -1,0 +1,19 @@
+claude --resume
+
+ls -larth ~/.claude
+
+-- rename the session
+/rename auth-refactor
+or
+start the session with name
+claude -n auth-refactor
+
+
+curl -fsSL https://claude.ai/install.sh | bash
+get the key and modify the downloaded settings.jason, with the key
+
+claude
+
+claude --resume 14119efa-6424-42ac-8432-9c2f25aee137
+
+

@@ -1,0 +1,2 @@
+./gen_or_refresh_pg2pg.sh -h 10.222.15.239 -s lists -d benefits -D ods_domani -n rtlhumana01_lists -w ptemp -A SETUP
+

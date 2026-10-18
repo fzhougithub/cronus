@@ -1,0 +1,8 @@
+ods_domani=# SELECT *
+FROM pg_stat_replication_slots;
+               slot_name               | spill_txns | spill_count | spill_bytes  | stream_txns | stream_count | stream_bytes | total_txns |  total_bytes  | stats_reset
+---------------------------------------+------------+-------------+--------------+-------------+--------------+--------------+------------+---------------+-------------
+ odshumana_pg16_02_cust_and_global_sub |        126 |       11767 | 780769134621 |           0 |            0 |            0 |  118455770 | 2203802529080 |
+(1 row)
+
+

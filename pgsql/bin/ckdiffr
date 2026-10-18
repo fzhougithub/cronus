@@ -1,0 +1,142 @@
+#!/bin/bash
+
+
+#seq     = seq_scan delta
+#idx     = idx_scan delta
+#sread   = seq_tup_read delta
+#fetch   = idx_tup_fetch delta
+#rd      = heap_blks_read delta
+#hit     = heap_blks_hit delta
+
+if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <dbname> <schema>"
+    echo "Example: $0 ods_domani customer"
+    exit 1
+fi
+
+DB="$1"
+SCHEMA="$2"
+INTERVAL=5
+
+PREV="/tmp/pg_stat_replica_prev_${SCHEMA}.csv"
+META_PREV="/tmp/pg_stat_replica_meta_prev_${SCHEMA}.csv"
+
+get_stats() {
+psql -Xt -d "$DB" -At -F',' <<SQL
+SELECT
+    t.relname,
+    t.seq_scan,
+    t.idx_scan,
+    t.seq_tup_read,
+    t.idx_tup_fetch,
+    COALESCE(s.heap_blks_read,0),
+    COALESCE(s.heap_blks_hit,0)
+FROM pg_stat_user_tables t
+LEFT JOIN pg_statio_user_tables s
+       ON t.relid = s.relid
+WHERE t.schemaname = '$SCHEMA';
+SQL
+}
+
+get_meta() {
+psql -Xt -d "$DB" -At -F',' <<SQL
+SELECT
+    COALESCE(sum(calls),0)
+FROM pg_stat_statements;
+SQL
+}
+
+echo "Replica read monitor"
+echo "Database : $DB"
+echo "Schema   : $SCHEMA"
+echo "Interval : ${INTERVAL}s"
+
+rm -f "$PREV" "$META_PREV"
+
+while true
+do
+    CUR=$(mktemp)
+    META_CUR=$(mktemp)
+
+    get_stats > "$CUR"
+    get_meta > "$META_CUR"
+
+    if [[ -s "$PREV" && -s "$META_PREV" ]]; then
+
+        pcalls=$(cat "$META_PREV")
+        ccalls=$(cat "$META_CUR")
+
+        dcalls=$((ccalls-pcalls))
+
+        qps=$(awk -v x="$dcalls" -v i="$INTERVAL" \
+            'BEGIN { printf "%.1f", x/i }')
+
+        echo
+        echo "===== Replica Delta @ $(date +%T) ====="
+        echo "Read QPS: +${dcalls} (${qps}/sec)"
+        echo
+
+        join -t',' -1 1 -2 1 \
+            <(sort "$PREV") \
+            <(sort "$CUR") 2>/dev/null |
+        while IFS=',' read -r \
+            tbl \
+            pseq pidx pseqread pfetch phread phhit \
+            cseq cidx cseqread cfetch chread chhit
+        do
+
+            dseq=$((cseq-pseq))
+            didx=$((cidx-pidx))
+
+            dseqread=$((cseqread-pseqread))
+            dfetch=$((cfetch-pfetch))
+
+            dhread=$((chread-phread))
+            dhhit=$((chhit-phhit))
+
+            total_io=$((dhread+dhhit))
+
+            if (( total_io > 0 )); then
+                cache_pct=$(awk \
+                    -v h="$dhhit" \
+                    -v r="$dhread" \
+                    'BEGIN { printf "%.0f",(100*h)/(h+r) }')
+            else
+                cache_pct="---"
+            fi
+
+            heat=$((dhread+dhhit))
+
+            if [[ $dseq -gt 0 || \
+                  $didx -gt 0 || \
+                  $dseqread -gt 0 || \
+                  $dfetch -gt 0 || \
+                  $dhread -gt 0 || \
+                  $dhhit -gt 0 ]]; then
+
+                printf "%-36s | seq:%-6s | idx:%-8s | sread:%-9s | fetch:%-9s | rd:%-7s | hit:%-8s | cache:%-4s%% | io:%s\n" \
+                    "$tbl" \
+                    "+$dseq" \
+                    "+$didx" \
+                    "+$dseqread" \
+                    "+$dfetch" \
+                    "+$dhread" \
+                    "+$dhhit" \
+                    "$cache_pct" \
+                    "$heat"
+            fi
+
+        done | sort -t'|' -k9 -rn | head -20
+
+    else
+        echo "(baseline captured, waiting ${INTERVAL}s for first delta...)"
+    fi
+
+    cp "$CUR" "$PREV"
+    cp "$META_CUR" "$META_PREV"
+
+    rm -f "$CUR" "$META_CUR"
+
+    sleep "$INTERVAL"
+
+done

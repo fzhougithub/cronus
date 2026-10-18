@@ -1,3 +1,56 @@
+watch -n 2 "
+psql -d ods_domani -c \"
+select pid,usename,now()-xact_start,substr(query,1,50) from pg_stat_activity where state='active' and pid <> pg_backend_pid() order by 3 desc;
+\""
+
+--Apply monitor
+
+watch -n 2 "
+psql -d ods_domani -c \"
+SELECT
+relation::regclass,
+mode
+FROM pg_locks
+WHERE pid=325424
+AND relation IS NOT NULL;
+\""
+
+Every 2.0s:                                                                                                         10-221-142-63.ssnc-corp.cloud: Fri Jul 17 12:45:54 2026
+
+                             relation  	                      |	  mode
+------------------------------------------------------------------+------------------
+ finance_humana.outbound_payment_cycle_id_finance_pharmacy_id_idx | RowExclusiveLock
+ finance_humana.outbound_payment_pkey                             | RowExclusiveLock
+ finance_humana.outbound_payment                                  | RowExclusiveLock
+(3 rows)
+
+
+watch -n 1 "
+psql -d ods_domani -c \"
+SELECT wait_event,count(*)
+FROM pg_stat_activity
+WHERE backend_type='logical replication worker'
+GROUP BY wait_event;
+\""
+
+watch -n 5 "
+psql -d ods_domani -c \"
+SELECT s.subname, st.pid, a.backend_xid, now()-a.xact_start AS age, a.state, a.wait_event
+FROM pg_stat_subscription st
+JOIN pg_subscription s ON s.oid=st.subid
+JOIN pg_stat_activity a ON a.pid=st.pid
+WHERE s.subname LIKE 'odshumana_pg16_%finance_humana_sub';
+\"
+"
+
+Every 5.0s:                                                                                                         10-221-142-63.ssnc-corp.cloud: Fri Jul 17 09:38:18 2026
+
+               subname                |  pid   | backend_xid |       age       | state  | wait_event
+--------------------------------------+--------+-------------+-----------------+--------+------------
+ odshumana_pg16_01_finance_humana_sub | 296757 |   191607295 | 00:00:02.919343 | active |
+(1 row)
+
+
 watch -n 1 "psql -At -d ods_domani -c \"SELECT xact_commit+xact_rollback FROM pg_stat_database WHERE datname='ods_domani';\""
 
 watch -n 1 "cat /proc/meminfo | grep -E 'Dirty|Writeback'"

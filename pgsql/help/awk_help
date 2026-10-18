@@ -1,3 +1,110 @@
+-- Convert to seconds
+awk -F: '{print $1*3600 + $2*60 + $3}'
+
+
+awk 'NR==FNR {a[$0]; next} !($0 in a)' finance_humana1.tablist finance_humana.tablist
+-- find the line in b not in a, no need to sort 
+
+0. Get the value > 10%
+
+grep Total wal_stats_1.log |
+awk '{
+    gsub(/[\[\]%]/,"",$6)
+    if (($6+0) > 10)
+        print $5, $6
+}' 
+
+7181464 43.21
+11708952 70.31
+7310176 44.00
+13331260 79.95
+6628584 39.89
+13916576 83.47
+8600912 51.71
+10843068 65.14
+6900812 41.54
+13307560 79.80
+14828912 88.82
+10120596 60.79
+3792556 22.86
+5426980 32.65
+
+This means the FPI issue also combined. 
+
+
+
+1. Get the histogram
+
+awk '
+{
+    bucket=int($3/100)*100
+    cnt[bucket]++
+}
+END {
+    for (b in cnt)
+        printf "%10d %d\n", b, cnt[b]
+}' duration_list | sort -n
+       100 253
+       200 62
+       300 28
+       400 1690
+       500 1428
+       600 2470
+       700 5741
+       800 6438
+       900 282
+      1000 164
+      1100 26
+      1200 13
+
+2. Get the count per 10 minutes. 
+awk '
+/automatic aggressive vacuum to prevent wraparound/ {
+    key=substr($1,1,10)" "substr($2,1,2)
+    cnt[key]++
+}
+END {
+    for (k in cnt)
+        print k ":00", cnt[k]
+}' /var/tmp/prevent_vacuum.log | sort
+2026-07-28 00:00 1
+2026-07-28 01:00 10
+2026-07-28 03:00 1
+
+
+
+
+awk '
+{
+    t=$NF
+
+    if      (t<100)      b="<100ms"
+    else if (t<500)      b="100-500ms"
+    else if (t<1000)     b="0.5-1s"
+    else if (t<5000)     b="1-5s"
+    else if (t<10000)    b="5-10s"
+    else if (t<30000)    b="10-30s"
+    else if (t<60000)    b="30-60s"
+    else                 b=">60s"
+
+    cnt[b]++
+}
+END {
+    for (b in cnt)
+        printf "%-10s %8d\n", b,cnt[b]
+}
+' /var/tmp/issue_query_0728.log|sort -k 2
+
+100-500ms    133818
+0.5-1s        14982
+1-5s          19202
+5-10s          2019
+30-60s            3
+10-30s          433
+
+
+
+
 awk '
 /automatic vacuum of table/ {
     ts=$1" "$2

@@ -1,3 +1,10 @@
+systemctl enable --now sysstat
+
+sar -u -f /var/log/sa/sa29
+sar -u ALL -f /var/log/sa/sa29
+pidstat -u -p ALL -h 60
+journalctl --since "2026-07-29 00:00" --until "2026-07-29 01:00"
+
 sar -u              # CPU
 sar -r              # 内存
 sar -b              # IO TPS
@@ -38,3 +45,381 @@ Average:         18      6.45      0.00      2.55      0.11      0.00     90.88
 Average:         19      0.38      0.00      0.38      0.34      0.00     98.90
 
 Finally, rebuild single column BRIN index works. magic, speed up from hourly waiting to 3 minutes. 
+
+
+For PostgreSQL troubleshooting, sar is one of the most valuable Linux tools because it answers:
+
+Is the problem CPU, memory, disk, network, swapping, paging, or load?
+
+Most DBAs only use top, but sar provides historical and subsystem-specific metrics.
+
+1. CPU Analysis
+Overall CPU
+sar -u 1 10
+
+
+Example:
+
+%user    %system   %iowait   %idle
+33.42    30.91      0.01     35.66
+
+
+Meaning:
+
+Field	Meaning%user	User-space workload (Postgres queries)
+%system	Kernel activity
+%iowait	Waiting for disk
+%idle	Unused CPU
+Interpretation
+
+Good query workload:
+
+user=80%
+system=10%
+
+
+Storage bottleneck:
+
+user=10%
+system=5%
+iowait=70%
+
+
+Kernel-heavy workload:
+
+user=30%
+system=30%
+
+
+(your spike looked like this)
+
+Per CPU
+sar -P ALL 1 5
+
+
+Find:
+
+one overloaded core
+uneven CPU distribution
+
+Example:
+
+CPU0 95%
+CPU1 2%
+
+
+Often indicates single-thread bottleneck.
+
+2. Memory Analysis
+Memory usage
+sar -r 1 10
+
+
+Example:
+
+kbmemfree
+kbavail
+%memused
+
+
+Useful to verify:
+
+actual available memory
+Linux cache effects
+Page Faults
+sar -B 1 10
+
+
+You already ran this.
+
+Example:
+
+fault/s
+majflt/s
+
+Important
+
+Minor faults:
+
+fault/s
+
+
+Usually harmless.
+
+Major faults:
+
+majflt/s
+
+
+Dangerous.
+
+Your system:
+
+fault/s ≈ 5000
+majflt/s = 0
+
+
+Healthy.
+
+Swapping
+sar -W 1 10
+
+
+Example:
+
+pswpin/s
+pswpout/s
+
+
+Healthy:
+
+0
+0
+
+
+Your system:
+
+0
+0
+
+
+No swap pressure.
+
+3. Disk Analysis
+Block devices
+sar -d 1 10
+
+
+Important columns:
+
+tps
+rkB/s
+wkB/s
+await
+aqu-sz
+%util
+
+Most useful fields
+await
+
+Average response time:
+
+<5 ms
+
+
+Excellent.
+
+20-50 ms
+
+
+Concerning.
+
+100+ ms
+
+
+Storage issue.
+
+%util
+90-100%
+
+
+Storage saturated.
+
+Example:
+
+Device await util
+dm-10   120  99%
+
+
+Storage bottleneck.
+
+4. Network Analysis
+Network interfaces
+sar -n DEV 1 10
+
+
+Shows:
+
+rxkB/s
+txkB/s
+
+
+Useful for:
+
+replication traffic
+export jobs
+ETL
+TCP activity
+sar -n TCP,ETCP 1 10
+
+
+Shows:
+
+active/s
+passive/s
+retrans/s
+
+Connection storm detection
+
+Large values:
+
+active/s
+
+
+can indicate:
+
+Java pool issue
+connection churn
+load balancer issue
+5. Load Average
+Run Queue
+sar -q 1 10
+
+
+Example:
+
+runq-sz
+plist-sz
+ldavg-1
+
+Interpretation
+
+On a 20 CPU box:
+
+runq-sz = 3
+
+
+Healthy.
+
+runq-sz = 40
+
+
+CPU contention.
+
+You observed:
+
+load average:
+31.85
+
+
+with
+
+20 CPUs
+
+
+which indicates many runnable tasks.
+
+6. Context Switches
+
+Very useful for database systems.
+
+sar -w 1 10
+
+
+Output:
+
+proc/s
+cswch/s
+
+High values indicate
+connection storms
+many short queries
+polling loops
+Java thread explosion
+
+Example:
+
+cswch/s = 200000
+
+
+often indicates application behavior rather than PostgreSQL.
+
+7. Process Creation
+sar -w
+
+
+Also shows:
+
+proc/s
+
+
+If you suddenly see:
+
+5000 proc/s
+
+
+something is constantly spawning processes.
+
+8. Historical Investigation
+
+This is where sar shines.
+
+Yesterday:
+
+sar -u -f /var/log/sa/sa01
+
+
+Two days ago:
+
+sar -u -f /var/log/sa/sa30
+
+
+CPU at 4 PM:
+
+sar -u -f /var/log/sa/sa02 -s 16:00:00 -e 16:30:00
+
+PostgreSQL Incident Workflow
+
+When Grafana reports high CPU:
+
+Step 1
+sar -u 1 10
+
+
+CPU?
+
+Step 2
+sar -q 1 10
+
+
+Run queue?
+
+Step 3
+sar -B 1 10
+sar -W 1 10
+
+
+Memory pressure?
+
+Step 4
+sar -d 1 10
+
+
+Disk bottleneck?
+
+Step 5
+pidstat -u 1
+
+
+Who is burning CPU?
+
+Step 6
+SELECT *
+FROM pg_stat_activity
+WHERE state='active';
+
+
+Which queries?
+
+For your specific investigation, the most valuable commands are:
+
+sar -u 1 10
+sar -q 1 10
+sar -w 1 10
+sar -B 1 10
+sar -W 1 10
+sar -d 1 10
+pidstat -u 1
+
+
+Those seven commands will identify about 90% of Linux/PostgreSQL performance problems.

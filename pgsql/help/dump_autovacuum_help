@@ -1,0 +1,18 @@
+SELECT format(
+    'ALTER TABLE %I.%I SET (%s);',
+    n.nspname,
+    c.relname,
+    array_to_string(c.reloptions, ', ')
+)
+FROM pg_class c
+JOIN pg_namespace n
+    ON n.oid = c.relnamespace
+WHERE n.nspname = 'your_schema'
+  AND c.relkind = 'r'
+  AND c.reloptions IS NOT NULL
+  AND EXISTS (
+      SELECT 1
+      FROM unnest(c.reloptions) opt
+      WHERE opt LIKE 'autovacuum%'
+   )
+ORDER BY 1;

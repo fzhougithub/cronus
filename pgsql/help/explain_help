@@ -1,3 +1,23 @@
+-- Force generic plan
+SET plan_cache_mode = force_generic_plan;
+
+-- Explain with bind variable
+-- Create the prepared statement
+PREPARE my_query AS
+SELECT *
+FROM claimsprocess_humana.claim_other_amount_paid
+WHERE customer_id = $1;
+
+-- Explain it (generic plan, no bind value used)
+EXPLAIN EXECUTE my_query('C001');
+
+-- Or with ANALYZE (actually runs it!)
+EXPLAIN ANALYZE EXECUTE my_query('C001');
+
+
+EXPLAIN (ANALYZE, BUFFERS)
+
+
 ALTER SYSTEM SET auto_explain.log_min_duration = '5s';
 ALTER SYSTEM SET auto_explain.log_analyze = on;
 ALTER SYSTEM SET auto_explain.log_buffers = on;

@@ -1,0 +1,8 @@
+Operator	Meaning
+-f	Is a regular file (ignores size)
+-s	File exists and is not empty​
+-e	File/dir exists (any type)
+-r	Readable
+-w	Writable
+-x	Executable
+-nt	Newer than (file1 -nt file2)

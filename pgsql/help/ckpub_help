@@ -1,0 +1,21 @@
+SELECT n.nspname || '.' || c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON c.relnamespace = n.oid
+LEFT JOIN pg_publication_tables ppt
+  ON ppt.schemaname = n.nspname
+ AND ppt.tablename = c.relname
+WHERE c.relkind = 'r'                           -- ordinary tables only
+  AND n.nspname = 'claimsprocess_other'          -- your schema
+  AND ppt.tablename IS NULL                     -- not in any publication
+ORDER BY c.relname;
+
+                  table_name
+----------------------------------------------
+ claimsprocess_other.a_claim_message
+ claimsprocess_other.claim_message
+ claimsprocess_other.claim_message_tracking
+ claimsprocess_other.t_claim_message
+ claimsprocess_other.t_claim_message_tracking
+(5 rows)
+
+

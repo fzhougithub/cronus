@@ -1,0 +1,9 @@
+while ((1==1));do psql -d financials -At -c "select now(),pg_current_wal_lsn()";sleep 5;done
+2026-07-17 08:39:20.563563+00|3E/7349F318
+2026-07-17 08:39:25.574601+00|3E/736CDD08
+
+while ((1==1));do psql -d financials -At -c "select application_name,replay_lsn from pg_stat_replication where application_name like 'odshumana_pg16_%'";sleep 5;done
+odshumana_pg16_01_finance_humana_sub|32/38B57128
+odshumana_pg16_02_finance_humana_sub|34/1E5F3960
+
+

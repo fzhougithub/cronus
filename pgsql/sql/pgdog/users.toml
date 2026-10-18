@@ -1,0 +1,5 @@
+[[users]]
+name = "postgres"
+database = "*"        # Use a single star string, NO brackets
+password = ""
+schema_admin = true

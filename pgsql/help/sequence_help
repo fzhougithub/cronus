@@ -1,3 +1,56 @@
+SELECT sequence_schema,
+       sequence_name
+FROM information_schema.sequences
+WHERE sequence_schema = 'customer'
+ORDER BY sequence_name;
+
+SELECT
+    n.nspname AS schema_name,
+    t.relname AS table_name,
+    a.attname AS column_name,
+    s.relname AS sequence_name
+FROM pg_class s
+JOIN pg_namespace n
+  ON n.oid = s.relnamespace
+JOIN pg_depend d
+  ON d.objid = s.oid
+JOIN pg_class t
+  ON d.refobjid = t.oid
+JOIN pg_attribute a
+  ON a.attrelid = t.oid
+ AND a.attnum = d.refobjsubid
+WHERE s.relkind = 'S'
+  AND n.nspname = 'customer'
+ORDER BY t.relname, a.attname;
+
+
+SELECT schemaname, sequencename, sequenceowner
+FROM pg_sequences
+WHERE sequencename = 'batch_job_instance_seq';
+
+   schemaname    |      sequencename      | sequenceowner
+-----------------+------------------------+---------------
+ drugmgmt        | batch_job_instance_seq | postgres
+ program_mandate | batch_job_instance_seq | postgres
+ planconfig      | batch_job_instance_seq | postgres
+ lists           | batch_job_instance_seq | postgres
+(4 rows)
+
+SELECT grantee,
+       privilege_type
+FROM information_schema.role_usage_grants
+WHERE object_type = 'SEQUENCE'
+  AND object_name = 'batch_job_instance_seq';
+ grantee  | privilege_type
+----------+----------------
+ postgres | USAGE
+ postgres | USAGE
+ postgres | USAGE
+ postgres | USAGE
+(4 rows)
+
+-- Someone did not create the sequence grant correctly 
+
 SELECT 
     pg_get_serial_sequence('drugmgmt.dur_safety_block_edit', 'dur_safety_block_edit_id') AS sequence_name;
 

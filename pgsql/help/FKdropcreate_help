@@ -1,7 +1,5 @@
 WITH schema_tables AS (
-    SELECT 
-        c.oid AS table_oid,
-        n.nspname || '.' || c.relname AS full_table_name
+    SELECT c.oid AS table_oid, n.nspname || '.' || c.relname AS full_table_name
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'claimsprocess_humana'
@@ -12,10 +10,7 @@ WITH schema_tables AS (
       )
 ),
 fk_constraints AS (
-    SELECT 
-        con.conrelid,
-        con.conname AS fk_name,
-        st.full_table_name
+    SELECT con.conrelid, con.conname AS fk_name, st.full_table_name
     FROM pg_constraint con
     JOIN schema_tables st ON con.conrelid = st.table_oid
     WHERE con.contype = 'f'
@@ -24,6 +19,15 @@ SELECT
     'ALTER TABLE ' || full_table_name || ' DROP CONSTRAINT IF EXISTS ' || fk_name || ';'
 FROM fk_constraints
 ORDER BY full_table_name, fk_name;
+
+                                                                ?column?
+----------------------------------------------------------------------------------------------------------------------------------------
+ ALTER TABLE finance_humana.brms_rules_attribute DROP CONSTRAINT IF EXISTS rules_attributes_fk1;
+ ALTER TABLE finance_humana.brms_rules_attribute DROP CONSTRAINT IF EXISTS rules_attributes_fk2;
+ ALTER TABLE finance_humana.brms_rules_meta_attribute DROP CONSTRAINT IF EXISTS rules_meta_attributes_fk;
+......
+
+
 
 WITH schema_tables AS (
     SELECT 

@@ -1,3 +1,31 @@
+SELECT n.nspname||'.'||c.relname AS table_name, (2000000000 - age(c.relfrozenxid)) AS remaining_xids_until_panic, age(c.relfrozenxid) AS xid_age, c.relfrozenxid,pg_size_pretty(pg_relation_size(c.oid)) AS data_size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r' -- regular tables
+AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+ORDER BY xid_age DESC,pg_relation_size(c.oid) desc LIMIT 10;
+
+
+normal vacuum : just cleanup dead tuples
+
+SELECT pid, relid::regclass AS table_name, phase,heap_blks_total,heap_blks_scanned,heap_blks_vacuumed
+FROM pg_stat_progress_vacuum;
+
+ods_domani=# show vacuum_freeze_table_age;
+ vacuum_freeze_table_age
+-------------------------
+ 150000000
+(1 row)
+This one starts aggressive freezing earlier. The next vacuum becomes an aggressive vacuum. Instead of skipping pages marked all-visible in the visibility map, PostgreSQL scans much more of the table looking for old tuples that need freezing. ""I need to inspect almost everything and freeze old XIDs.""
+
+ods_domani=# show autovacuum_freeze_max_age;
+ autovacuum_freeze_max_age
+---------------------------
+ 200000000
+(1 row)
+This one trigger the "to prevent wraparound" message in log. PostgreSQL stops waiting for normal vacuum triggers, schedules a vacuum anyway
+
+
 SELECT
 datname AS database_name,
 datfrozenxid AS minimum_frozen_xid,
@@ -16,7 +44,98 @@ pg_database
  claimsprocess |          188446712 |        197711857 |                  1802288143
 (5 rows)
 
+
+Which table are causing wraparound issue? 
+
+SELECT n.nspname||'.'||c.relname, c.relfrozenxid,age(c.relfrozenxid) AS xid_age
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE c.relfrozenxid=143769806;
+
+                         ?column?                         | relfrozenxid |  xid_age
+----------------------------------------------------------+--------------+-----------
+ claimsprocess_humana.t_claim_component_block_information |    143769806 | 165668358
+(1 row)
+
+SELECT
+    n.nspname,
+    c.relname,
+    age(c.relfrozenxid) AS xid_age
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE c.relkind IN ('r','t')
+ORDER BY age(c.relfrozenxid) DESC
+LIMIT 30;
+
+       nspname        |               relname                |  xid_age
+----------------------+--------------------------------------+-----------
+ pg_toast             | pg_toast_4209313445                  | 168372495
+ claimsprocess_humana | t_claim_extension_2                  | 167957618
+ finance_other        | inbound_payment                      | 167920489
+ claimsprocess_humana | t_claim_component_block_information  | 165283305
+ claimsprocess_humana | t_claim_extension_1                  | 164976561
+ customer             | ded_pde07_clm_26                     | 161386066
+ customer             | ded_pde07_clm_55                     | 160826707
+ claimsprocess_humana | claim_core_320_202505                | 158000829
+ customer             | ded_pde07_clmdtl_46                  | 156825079
+ customer             | ded_pde07_clmdtl_56                  | 156824925
+ customer             | mbr_ra_bal_info_319_default          | 156614810
+ customer             | mbr_ra_bal_info_320_1                | 156594865
+ customer             | ded_pde07_clmdtl_26                  | 156044590
+ customer             | ded_pde07_clm_46                     | 155683465
+ claimsprocess_humana | claim_extension_1_55                 | 155305850
+ customer             | f04                                  | 155270267
+ global               | ak5                                  | 154815110
+ global               | ak6                                  | 154797471
+ global               | al2                                  | 154796817
+ global               | al0                                  | 154762796
+ global               | al1                                  | 154762238
+ global               | an2                                  | 154723421
+ customer             | b52_320_2                            | 154262997
+ customer             | ded_pde07_clmdtl_24                  | 154231218
+ claimsprocess_humana | claim_extension_2_44                 | 154231166
+ claimsprocess_humana | claim_extension_2_24                 | 154231166
+ claimsprocess_humana | claim_extension_1_54                 | 154231165
+ claimsprocess_humana | claim_component_block_information_24 | 154231165
+ customer             | b52_320_3                            | 154223026
+ claimsprocess_humana | claim_extension_2_54                 | 154210583
+(30 rows)
+
+
+SELECT
+    relname,
+    age(relfrozenxid)
+FROM pg_class
+WHERE relname IN (
+    'instant_eligibility_member_submitted',
+    'instant_eligibility_member_submitted_tmp'
+);
+
+                 relname                  |  age
+------------------------------------------+-------
+ instant_eligibility_member_submitted     |  7293
+ instant_eligibility_member_submitted_tmp | 13438
+(2 rows)
+
+SHOW autovacuum_freeze_max_age;
+SHOW vacuum_freeze_table_age;
+SHOW vacuum_failsafe_age;
+
 -- Is replication slot hold the old xid? 
+SELECT slot_name,
+       active,
+       catalog_xmin
+FROM pg_replication_slots;
+               slot_name               | active | catalog_xmin
+---------------------------------------+--------+--------------
+ odshumana_pg16_04_alma9_prod          | t      |
+ odshumana_pg16_03_alma9_prod          | t      |
+ odshumana_pg16_02_cust_and_global_sub | t      |    280785897
+ odshumana_pg16_06_standby             | t      |
+(4 rows)
+
 SELECT
     slot_name,
     active,
@@ -25,11 +144,44 @@ SELECT
     restart_lsn
 FROM pg_replication_slots
 ORDER BY xmin_age DESC;
-          slot_name           | active |    xmin    | xmin_age  |  restart_lsn
-------------------------------+--------+------------+-----------+---------------
- pg_basebackup_1101652        | t      |            |           | AAB7/EE000000
- claimshumana_prod_002_sub    | t      |            |           | A65C/CCF9A3B0
- claimshumana_pg16_02_standby | f      | 3276132873 | 234376148 | A5A3/3BA16000
+               slot_name               | active |   xmin    | xmin_age |  restart_lsn
+---------------------------------------+--------+-----------+----------+---------------
+ odshumana_pg16_02_cust_and_global_sub | t      |           |          | BF0F/772406F8
+ odshumana_pg16_04_alma9_prod          | t      | 280807141 |      971 | BF0F/7A7D6000
+ odshumana_pg16_03_alma9_prod          | t      | 280807141 |      971 | BF0F/7A7D6000
+ odshumana_pg16_06_standby             | t      | 280807503 |      609 | BF0F/7A7D6000
+(4 rows)
+
+SELECT slot_name,
+       plugin,
+       slot_type,
+       restart_lsn,
+       confirmed_flush_lsn,
+       catalog_xmin
+FROM pg_replication_slots;
+               slot_name               |  plugin  | slot_type |  restart_lsn  | confirmed_flush_lsn | catalog_xmin
+---------------------------------------+----------+-----------+---------------+---------------------+--------------
+ odshumana_pg16_04_alma9_prod          |          | physical  | BF0F/81344000 |                     |
+ odshumana_pg16_03_alma9_prod          |          | physical  | BF0F/81344000 |                     |
+ odshumana_pg16_02_cust_and_global_sub | pgoutput | logical   | BF0F/7E07D898 | BF0F/81343FD8       |    280810427
+ odshumana_pg16_06_standby             |          | physical  | BF0F/81344000 |                     |
+(4 rows)
+
+4. which backend xmin is
+SELECT pid,
+       backend_xmin,
+       age(backend_xmin) AS xmin_age,
+       backend_type,
+       state
+FROM pg_stat_activity
+WHERE backend_xmin IS NOT NULL
+ORDER BY age(backend_xmin) DESC;
+
+  pid   | backend_xmin | xmin_age |  backend_type  | state
+--------+--------------+----------+----------------+--------
+ 794416 |    280874502 |        9 | client backend | active
+ 791885 |    280874502 |        9 | client backend | active
+(2 rows)
 
 -- Use below to generate list
 SELECT n.nspname || '.' || c.relname AS relation,
@@ -41,14 +193,15 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relfrozenxid != 0  -- Skip relations without frozen XIDs (e.g., some system ones)
   AND c.relkind='r'
   AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-ORDER BY age(c.relfrozenxid) desc;
-                              relation                               | frozen_age |    size
----------------------------------------------------------------------+------------+------------
- claimsprocess_humana.claim_dur_history_851_p19                      |  234375817 | 24 kB
- claimsprocess_humana.a_claim_compound_ndc_details                   |  234375817 | 212 MB
- realtimepricing.task_lock                                           |  234375817 | 8192 bytes
- realtimepricing.task_task_batch                                     |  234375817 | 0 bytes
- claimsprocess_humana.claim_dur_history_837_p92                      |  234375817 | 24 kB
+ORDER BY age(c.relfrozenxid) desc,pg_total_relation_size(c.oid) desc;
+                                   relation                                   | relkind |    age    | pg_size_pretty
+------------------------------------------------------------------------------+---------+-----------+----------------
+ claimsprocess_humana.claim_core_320_202607                                   | r       | 177294420 | 256 GB
+ claimsprocess_humana.claim_core_830_202607                                   | r       | 177293024 | 1154 MB
+ claimsprocess_humana.claim_message_tracking_status                           | r       | 177261515 | 1227 MB
+ pde_humana.adjudication_claim                                                | r       | 177257838 | 1109 MB
+ claimsprocess_humana.claim_core_829_202607                                   | r       | 175852057 | 654 MB
+ claimsprocess_humana.claim_cob_benefit_stage                                 | r       | 174802692 | 532 MB
 
 select
     n.nspname || '.' || c.relname as relation,
@@ -146,23 +299,12 @@ LIMIT 100; -- Show the top 100 oldest tables
 -- Run this query to find tables approaching the wraparound limit (default is 200 million).
 -- The output is sorted by 'xid_age', showing the most critical tables first.
 
-SELECT
-n.nspname AS schema_name,
-c.relname AS table_name,
-(2000000000 - age(c.relfrozenxid)) AS remaining_xids_until_panic,
-age(c.relfrozenxid) AS xid_age,
-c.relfrozenxid,
-pg_size_pretty(pg_relation_size(c.oid)) AS data_size
-FROM
-pg_class c
-JOIN
-pg_namespace n ON n.oid = c.relnamespace
-WHERE
-c.relkind = 'r' -- regular tables
+SELECT n.nspname AS schema_name, c.relname AS table_name, (2000000000 - age(c.relfrozenxid)) AS remaining_xids_until_panic, age(c.relfrozenxid) AS xid_age, c.relfrozenxid,pg_size_pretty(pg_relation_size(c.oid)) AS data_size
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r' -- regular tables
 AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
-ORDER BY
-xid_age DESC
-LIMIT 10;
+ORDER BY xid_age DESC LIMIT 10;
      
 
      schema_name      |      table_name       | remaining_xids_until_panic |  xid_age  | relfrozenxid | data_size
@@ -312,3 +454,13 @@ WHERE
 c.relkind = 'r'
 -- AND n.nspname = 'your_schema_name' -- !!! REPLACE SCHEMA NAME HERE !!!
 -- AND c.relname = 'your_table_name';  -- !!! REPLACE TABLE NAME HERE !!!
+
+
+-- Generate the vacuum list for schema
+
+SELECT format('VACUUM (FREEZE, VERBOSE) %I.%I;', schemaname, tablename)
+FROM pg_tables
+WHERE schemaname = 'datamart_humana'
+ORDER BY tablename;
+
+

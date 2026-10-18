@@ -1,0 +1,6 @@
+\a
+\t
+\o lumi_queries.sql
+
+SELECT regexp_replace(query, '\s+', ' ', 'g')
+FROM pg_stat_statements;

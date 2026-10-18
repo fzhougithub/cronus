@@ -1,0 +1,13 @@
+select c.relname,s.bytes_processed/1024/1024/1024 from pg_class c join pg_stat_progress_copy s on s.relid=c.oid order by 2 desc;
+        relname        | ?column?
+-----------------------+----------
+ o58                   |       63
+ claim_core_320_202509 |       47
+ claim_core_320_202601 |       35
+ ad9                   |       30
+ dedbl_mbr_dtl         |       29
+ w15                   |        8
+ mb2                   |        2
+ pharm_info            |        0
+ s50                   |        0
+(9 rows)

@@ -1,0 +1,45 @@
+No. pg_class holds only relation-like objects. Triggers and functions have their own catalogs.
+
+What pg_class contains (distinguished by relkind):
+
+relkind	Object
+r	ordinary table
+i	index
+S	sequence
+t	TOAST table
+v	view
+m	materialized view
+c	composite type
+f	foreign table
+p	partitioned table
+I	partitioned index
+
+Where the others live
+
+Object	Catalog	Useful view
+Functions / procedures / aggregates	pg_proc	information_schema.routines
+Triggers	pg_trigger (tgrelid links to pg_class.oid)	information_schema.triggers
+Constraints	pg_constraint (conrelid links to pg_class.oid)	information_schema.table_constraints
+Columns	pg_attribute (attrelid links to pg_class.oid)	information_schema.columns
+Types	pg_type	
+Schemas	pg_namespace	
+Index details	pg_index (indexrelid / indrelid link to pg_class.oid)	pg_indexes
+Dependencies	pg_depend
+
+How they relate: a trigger is attached to a table, so pg_trigger.tgrelid points to pg_class.oid, and pg_trigger.tgfoid points to the trigger function in pg_proc.oid. A function is a standalone object and is not in pg_class at all.
+
+Example queries (triggers on a table, with their functions):
+
+sql
+select c.relnamespace::regnamespace as schema,
+       c.relname as table_name,
+       t.tgname as trigger_name,
+       p.proname as function_name,
+       pg_get_triggerdef(t.oid) as definition
+from pg_trigger t
+join pg_class c on c.oid = t.tgrelid
+join pg_proc  p on p.oid = t.tgfoid
+where not t.tgisinternal
+order by 1, 2, 3;
+
+not t.tgisinternal filters out the internal triggers PostgreSQL creates for foreign keys.

@@ -1,3 +1,9 @@
+SELECT nspname AS schema_name,
+       pg_catalog.pg_get_userbyid(nspowner) AS owner
+FROM pg_namespace;
+
+
+
 SELECT
     schemaname,
     matviewname,

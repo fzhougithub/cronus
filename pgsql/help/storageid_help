@@ -1,0 +1,34 @@
+-- SELECT columnar_helpers.columnar_relation_storageid('datamart_humana.claim'::regclass);
+
+  WITH stats AS (
+      -- Dynamically get the max to ensure the buckets are perfectly scaled
+      SELECT max(value_decompressed_length) as max_val FROM columnar.chunk where storage_id=
+  ),
+  bucket_data AS (
+      SELECT
+          width_bucket(value_decompressed_length, 0, (SELECT max_val FROM stats), 20) as bucket_id,
+          value_decompressed_length
+      FROM columnar.chunk
+  ),
+  histogram AS (
+      SELECT
+          bucket_id,
+          count(*) as freq,
+          -- Calculate the human-readable range for each bucket
+          (bucket_id - 1) * ((SELECT max_val FROM stats) / 20.0) as range_start,
+          bucket_id * ((SELECT max_val FROM stats) / 20.0) as range_end
+      FROM bucket_data
+      GROUP BY bucket_id
+      ORDER BY bucket_id
+  )
+  SELECT
+      bucket_id,
+      -- Format the range to be more readable (e.g., 0 - 130KB)
+      format('%s - %s',
+             round(range_start / 1024)::text || 'KB',
+             round(range_end / 1024)::text || 'KB') as bucket_range,
+      freq as count,
+      -- Create a simple text-based bar chart
+      -- Adjust the '100' divisor based on your total row count to fit the screen
+      repeat('■', (freq * 50 / (SELECT sum(freq) FROM histogram))::int) as bar
+  FROM histogram;

@@ -1,0 +1,10 @@
+pg_stat_user_tablesis cumulative since stats reset / server start.
+	
+seq_scan/ seq_tup_read
+idx_scan/ idx_tup_fetch
+n_tup_ins/ n_tup_upd/ n_tup_del
+n_live_tup
+
+Have to use the script, no single command solution
+
+

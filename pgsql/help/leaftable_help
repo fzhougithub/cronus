@@ -1,3 +1,43 @@
+-- get pure leaf tables
+
+SELECT n.nspname||'.'||c.relname
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind IN ('r','p')
+  AND NOT EXISTS (
+      SELECT 1
+      FROM pg_inherits i
+      WHERE i.inhparent = c.oid
+  )
+ORDER BY c.relname;
+ claimsprocess_humana | t_claim_medicare_partd_98
+ claimsprocess_humana | t_claim_medicare_partd_99
+ claimsprocess_humana | t_claim_medicare_partd_associated_claim
+ claimsprocess_humana | t_claim_message
+
+
+-- get the paranet tables
+
+SELECT n.nspname AS schema_name,
+       c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE n.nspname = 'claimsprocess_humana'
+  AND c.relkind = 'p'      -- partitioned table
+ORDER BY c.relname;
+
+     schema_name      |               table_name
+----------------------+----------------------------------------
+ claimsprocess_humana | a_claim_additional_message
+ claimsprocess_humana | a_claim_approved_message
+ claimsprocess_humana | a_claim_core
+ claimsprocess_humana | a_claim_error
+
+
+
 WITH RECURSIVE partition_tree AS (
     -- Anchor: direct children of t_p
     SELECT

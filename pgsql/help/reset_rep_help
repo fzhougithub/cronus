@@ -1,0 +1,3 @@
+for i in $(<schema.list);do psql -h ods-pg16-01-alma9-sit-drx-kc.ssnc-corp.cloud -d ods_domani -At -c "select 'truncate table $i.'||tablename||' restart indentity cascade;' from pg_tables where schemaname='$i'" > truncate_$i.sql; cat truncate_$i.sql; echo ---; done
+
+-- turn off the timing and role set in psqlrc file. 

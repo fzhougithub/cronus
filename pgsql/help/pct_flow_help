@@ -1,0 +1,95 @@
+generateFixedWidthReportJob — full flow (release/2026R2.3)
+
+  JOB START
+  │
+  ├─ fetchJobConfigFlow                                    ~seconds   ✅ cheap
+  │    ├─ fetchLayoutFieldStep      (layout fields)
+  │    └─ fetchJobCriteriaStep      (job criteria)
+  │
+  ├─ fetchPharmacyIdListStep        → builds PHARMACY LIST (35,437)   ~seconds ✅
+  │
+  └─ processClaimDataFlow
+       │
+       ├─ pharmacyDataProcessDecider ──(zero/none/create)
+       ├─ createFileStep             (open file)                      ~sec ✅
+       ├─ furnishCarrierRecordStep   (file-level carrier record)      ~sec ✅
+       │
+       ├─ ★ pharmacyPartitionMasterStep  ── gridSize = min(list,20) = 20 partitions
+       │    │  round-robins 35,437 pharmacies → 20 threads (~1,750 each)
+       │    │  taskExecutor = virtual threads
+       │    │
+       │    └─ each partition thread runs:  pharmacyPartitionProcessorSlaveStep
+       │         = processPharmacyClaimsDataFlow  ◄══════════ THE HOTSPOT (Phase 1)
+       │           │
+       │           │   ┌──────────── LOOP: one pharmacy per pass ────────────┐
+       │           │   │  partitionedPharmacyDecider  (currentIndex++)         │
+       │           │   │    → consolidateClaimDataFlow                         │
+       │           │   │        fetchPCTDataStep            [tx] ◄─ 10,333 s   │
+       │           │   │        processIncludeExcludeStep   [tx] ◄─  2,760 s   │
+       │           │   │        processOnClaimCoreStep      [tx] (conditional) │
+       │           │   │        updateOtherSourcesDataStep  [tx] (conditional) │
+       │           │   │        processSystemFieldFlow      [tx] ◄─  4,962 s   │
+       │           │   │    → applyRulesFlow                [tx]               │
+       │           │   │    → afterRulesPharmacyClaimsCheckStep [tx] ◄─ 2,543 s│
+       │           │   │    → back to decider (next pharmacy)                  │
+       │           │   └──────── repeats ~1,750× per thread ──────────────────┘
+       │           │        each step reads/writes pct_staging_data
+       │           │        WHERE job_instance_id=? AND pharmacy_id=<ONE>
+       │
+       ├─ pharmacyAfterPartitionProcessDecider ─(loop per pharmacy)
+       │
+       ├─ processPharmacyClaimsToFixedWidthFileFlow  ◄─────── Phase 2 (file write, sequential)
+       │    per pharmacy:
+       │      furnishPharmacyRecordStep        (pharmacy header record)   ⚠ boundary
+       │      processPCTDataStep               (staging → fixed-width rows)
+       │         + PaymentProcessListener / PharmacyClaimsConsolidation   ⚠ boundary
+       │      furnishPharmacyBatchRecordStep   (pharmacy batch trailer)   ⚠ boundary
+       │
+       └─ processFinalFileFlow
+            afterRulesFileFlowCheckStep
+            furnishFileBatchRecordStep         (file trailer)
+            uploadPctFileStep                  (→ S3, cleanup)
+  JOB END
+
+  Where the time goes (measured, exec 106 — 605,559 claims / 35,437 pharmacies)
+
+  ┌───────────────────────────────────┬─────────────┬───────────┬────────────────┬───────────────────────────────────────────────────────────────────────────────────────────┐
+  │               Step                │    Runs     │   Total   │ % of leaf time │                                       Why it's slow                                       │
+  ├───────────────────────────────────┼─────────────┼───────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────┤
+  │ fetchPCTDataStep                  │ 35,437×     │ 10,333 s  │ 50%            │ Re-launched once per pharmacy; ~292 ms/launch mostly fixed per-launch cost, not bulk work │
+  ├───────────────────────────────────┼─────────────┼───────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────┤
+  │ populateSystemFieldsDataStep      │ 35,437×     │ 4,962 s   │ 24%            │ Per-pharmacy relaunch + per-claim ODS lookups (N+1)                                       │
+  ├───────────────────────────────────┼─────────────┼───────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────┤
+  │ processIncludeExcludeStep         │ 35,437×     │ 2,760 s   │ 13%            │ Per-pharmacy tasklet                                                                      │
+  ├───────────────────────────────────┼─────────────┼───────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────┤
+  │ afterRulesPharmacyClaimsCheckStep │ 35,436×     │ 2,543 s   │ 12%            │ Per-pharmacy tasklet                                                                      │
+  ├───────────────────────────────────┼─────────────┼───────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────┤
+  │ setup + file steps                │ 1× each     │ ~12 s     │ ~0%            │ Cheap                                                                                     │
+  ├───────────────────────────────────┼─────────────┼───────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Leaf total                        │ ~142K execs │ ~20,600 s │ 100%           │ —                                                                                         │
+  └───────────────────────────────────┴─────────────┴───────────┴────────────────┴───────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Wall clock ≈ 14 h vs ~5.7 h serialized leaf work — the gap is Spring Batch metadata (141,752 BATCH_STEP_EXECUTION rows written to OLTP), flow transitions, transaction overhead, and
+  the per-partition serial tail.
+
+  The one-sentence diagnosis
+
+  Cost is NOT data volume (605K claims is small — 59 claims/s).
+  Cost IS iteration overhead: the enrichment flow re-launches 35,437 times
+  (once per pharmacy) inside the partition, when it could run ONCE per
+  partition over pharmacy_id IN (partition's ~1,750 pharmacies).
+
+  The critical structural fact for any fix
+
+    Phase 1 (enrichment)        Phase 2 (file writing)
+    ─────────────────────       ──────────────────────
+    ~100% of the cost           ~0% of the cost
+    per-pharmacy loop is        per-pharmacy boundary is
+    NOT load-bearing            LOAD-BEARING (headers/
+    (just filters staging       trailers, per-pharmacy
+    rows by pharmacy_id)        consolidation, ordering)
+          │                             │
+          └── safe to make bulk         └── must NOT be touched
+              (pharmacy_id IN …)            (byte-for-byte identical)
+
+  So the step-change (bulk per partition) lives entirely in Phase 1, which doesn't affect the output file's structure — Phase 2 keeps writing pharmacy-by-pharmacy exactly as today.

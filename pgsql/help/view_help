@@ -1,3 +1,19 @@
+SELECT pg_get_viewdef('misc.some_view'::regclass, true);
+
+SELECT
+    dependent_ns.nspname AS dependent_schema,
+    dependent_view.relname AS dependent_view,
+    source_ns.nspname AS source_schema,
+    source_table.relname AS source_object
+FROM pg_depend d
+JOIN pg_rewrite r ON d.objid = r.oid
+JOIN pg_class dependent_view ON r.ev_class = dependent_view.oid
+JOIN pg_namespace dependent_ns ON dependent_view.relnamespace = dependent_ns.oid
+JOIN pg_class source_table ON d.refobjid = source_table.oid
+JOIN pg_namespace source_ns ON source_table.relnamespace = source_ns.oid
+WHERE dependent_view.relname = '<view_name>';
+
+
 SELECT
     viewowner AS owner_name,
     schemaname AS schema_name,

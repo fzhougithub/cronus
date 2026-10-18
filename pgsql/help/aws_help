@@ -1,3 +1,20 @@
+aws s3 sync /pg_backups/datamart_dump s3://domanirx-db-backup-rtl/datamart_dump/  --endpoint-url https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud  --profile domanirx-db-backup-rtl --no-verify-ssl > datamart_dump.sync_log 2>&1
+
+aws s3 ls s3://domanirx-db-backup-rtl/datamart_dump/  --endpoint-url https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud  --profile domanirx-db-backup-rtl --no-verify-ssl --recursive --human-readable --summarize
+....
+Total Objects: 32958
+   Total Size: 1.4 TiB
+find /pg_backups/datamart_dump -type f | wc -l
+32958
+du -sh /pg_backups/datamart_dump
+1.5T	/pg_backups/datamart_dump
+
+
+
+-- Using new key. 
+
+
+aws s3 ls s3://db-backup-rtl/datamart_dump/ --endpoint-url https://wdc-ecs-01-dtn.dstcorp.net:9021 --profile db-backup-rtl --no-verify-ssl --recursive --human-readable --summarize
 
 aws s3 cp --endpoint-url https://wdc-pure-fb-01-data-vif01.ssnc-corp.cloud s3://etl-prod-phi/prod/C52.UNLOAD.D250911.S9.ZIP . --profile etl_prod_phi
 

@@ -1,0 +1,34 @@
+SELECT
+    pt.relid::regclass AS partition_name,
+    substring(
+        pg_get_expr(c.relpartbound,c.oid)
+        FROM 'FROM \(''([^'']+)'
+    )::date AS start_dt,
+    substring(
+        pg_get_expr(c.relpartbound,c.oid)
+        FROM 'TO \(''([^'']+)'
+    )::date AS end_dt
+FROM pg_partition_tree('claim_ccg') pt
+JOIN pg_class c
+  ON c.oid = pt.relid
+WHERE not pt.isleaf;
+  partition_name   |  start_dt  |   end_dt
+-------------------+------------+------------
+ claim_ccg         |            |
+ claim_ccg_2022_01 | 2022-01-01 | 2022-02-01
+ claim_ccg_2022_02 | 2022-02-01 | 2022-03-01
+ claim_ccg_2022_03 | 2022-03-01 | 2022-04-01
+ claim_ccg_2022_04 | 2022-04-01 | 2022-05-01
+ claim_ccg_2022_05 | 2022-05-01 | 2022-06-01
+ claim_ccg_2022_06 | 2022-06-01 | 2022-07-01
+ claim_ccg_2022_07 | 2022-07-01 | 2022-08-01
+ claim_ccg_2022_08 | 2022-08-01 | 2022-09-01
+ claim_ccg_2022_09 | 2022-09-01 | 2022-10-01
+ claim_ccg_2022_10 | 2022-10-01 | 2022-11-01
+ claim_ccg_2022_11 | 2022-11-01 | 2022-12-01
+ claim_ccg_2022_12 | 2022-12-01 | 2023-01-01
+ claim_ccg_2023_01 | 2023-01-01 | 2023-02-01
+ claim_ccg_2023_02 | 2023-02-01 | 2023-03-01
+ claim_ccg_2023_03 | 2023-03-01 | 2023-04-01
+ claim_ccg_2023_04 | 2023-04-01 | 2023-05-01
+ claim_ccg_2023_05 | 2023-05-01 | 2023-06-01

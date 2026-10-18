@@ -1,3 +1,88 @@
+A: Increase the existing device size
+echo 1 > /sys/class/block/sdb/device/rescan
+echo 1 > /sys/class/block/sdc/device/rescan
+lsblk
+/usr/bin/rescan-scsi-bus.sh --resize
+
+pvresize /dev/sdc
+pvresize /dev/sdc
+
+pvs -o pv_name,vg_name,pv_size,pv_free
+  PV         VG        PSize    PFree
+  /dev/sda2  rootvg      41.50g  <5.86g
+  /dev/sdb   appsvg    <301.00g 200.00g
+  /dev/sdc   backupsvg <302.00g 200.00g
+  /dev/sdd   logsvg    <103.00g      0
+
+vgs -o vg_name,vg_size,vg_free
+  VG        VSize    VFree
+  appsvg    <301.00g 200.00g
+  backupsvg <302.00g 200.00g
+  logsvg    <103.00g      0
+  rootvg      41.50g  <5.86g
+
+lvdisplay /dev/appsvg/appslv
+  --- Logical volume ---
+  LV Path                /dev/appsvg/appslv
+  LV Name                appslv
+  VG Name                appsvg
+  LV UUID                2NLLmP-7rje-MWqv-3W9D-RCZB-o375-32XuVc
+  LV Write Access        read/write
+  LV Creation host, time 10-173-14-15.ssnc-corp.cloud, 2024-07-16 12:36:10 +0000
+  LV Status              available
+  # open                 1
+  LV Size                <101.00 GiB
+  Current LE             25855
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     8192
+  Block device           253:3
+
+[root@pde-db-01-alma8-huat-drx-kc ~]$ lvextend -l +100%FREE /dev/appsvg/appslv
+  Size of logical volume appsvg/appslv changed from <101.00 GiB (25855 extents) to <301.00 GiB (77055 extents).
+  Logical volume appsvg/appslv successfully resized.
+
+[root@pde-db-01-alma8-huat-drx-kc ~]$ lvextend -l +100%FREE /dev/backupsvg/backupslv
+  Size of logical volume backupsvg/backupslv changed from <102.00 GiB (26111 extents) to <302.00 GiB (77311 extents).
+  Logical volume backupsvg/backupslv successfully resized.
+
+[root@pde-db-01-alma8-huat-drx-kc ~]$ lvs -o lv_name,vg_name,lv_size,data_percent
+  LV        VG        LSize    Data%
+  appslv    appsvg    <301.00g
+  backupslv backupsvg <302.00g
+  logslv    logsvg    <103.00g
+  homevol   rootvg       1.95g
+  logvol    rootvg       7.81g
+  rootvol   rootvg     <14.65g
+  swap      rootvg       1.95g
+  tmpvol    rootvg       1.46g
+  vartmpvol rootvg       7.81g
+
+xfs_growfs /pg_backups
+xfs_growfs /apps
+
+[root@pde-db-01-alma8-huat-drx-kc ~]$ df -h
+Filesystem                       Size  Used Avail Use% Mounted on
+devtmpfs                         7.7G     0  7.7G   0% /dev
+tmpfs                            7.7G  644K  7.7G   1% /dev/shm
+tmpfs                            7.7G   50M  7.7G   1% /run
+tmpfs                            7.7G     0  7.7G   0% /sys/fs/cgroup
+/dev/mapper/rootvg-rootvol        15G  8.4G  6.4G  57% /
+/dev/sda1                       1014M  372M  643M  37% /boot
+/dev/mapper/rootvg-tmpvol        1.5G   43M  1.5G   3% /tmp
+/dev/mapper/rootvg-vartmpvol     7.9G   89M  7.8G   2% /var/tmp
+/dev/mapper/rootvg-homevol       2.0G   47M  1.9G   3% /home
+/dev/mapper/rootvg-logvol        7.9G  489M  7.4G   7% /var/log
+/dev/mapper/appsvg-appslv        301G   74G  228G  25% /apps
+/dev/mapper/backupsvg-backupslv  302G  104G  199G  35% /pg_backups
+/dev/mapper/logsvg-logslv        103G  975M  102G   1% /pg_logs
+tmpfs                            1.6G     0  1.6G   0% /run/user/1001
+
+
+
+B: Create new volume, and make it work without shutdown
+
 lvextend -r -l +100%FREE /dev/mapper/appsvg-appslv
 lvextend -r -l +100%FREE /dev/mapper/backupsvg-backupslv
 
@@ -110,7 +195,7 @@ After apply complete, go to portal instance to check the volume change from 3T t
 lsblk -- but, we could not see the new space
 
 Now, we need to run 
-/usr/bin/rescan-scsi-bus.sh
+/usr/bin/rescan-scsi-bus.sh --resize
 
 Still, after the command, still could not see the new space, so we need to restart the VM
 

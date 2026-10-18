@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#echo "DEBUG: Detected $# arguments."
+#echo "DEBUG: Arg3 is [$3]"
+
+# This code is the framework to pipe source to the target
+
+if [ $# -ne 2 ];then
+	echo "Usage: $0 <schemaname.tablename> <dry/run>"
+	echo "Example: $0 datamart_humana.claim_core_cdc dry\""
+	exit 1
+else
+	sch=$(echo $1|cut -d. -f1)
+	if [ "$sch" != "datamart_humana" ]; then
+	   echo "Only allow to put datamart_humana table to ODS primary"
+	   exit 2
+	fi
+fi
+
+if [ $2 == 'dry' ];then
+	#echo "psql -h 10.221.142.63 -d ods_domani -c \"TRUNCATE TABLE IF EXISTS $1\" 2>/dev/null"
+	echo "pg_dump -d ods_domani -t $1 --clean --data-only --no-owner --no-privileges | psql -h 10.221.142.63 -d ods_domani -U datamart"
+elif [ $2 == 'run' ];then
+	#psql -h 10.221.142.63 -d ods_domani -c "TRUNCATE TABLE IF EXISTS $1" 2>/dev/null
+	pg_dump -d ods_domani -t $1 --clean --no-owner --no-privileges | psql -h 10.221.142.63 -d ods_domani -U datamart
+fi

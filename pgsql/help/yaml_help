@@ -1,0 +1,2 @@
+python3 -c "import yaml,sys; yaml.safe_load(open('/etc/postgres_exporter/queries.yaml'))" \
+  && echo '✓ YAML valid'

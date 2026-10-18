@@ -1,0 +1,67 @@
+SELECT
+    datname,
+    xact_commit,
+    xact_rollback
+FROM pg_stat_database
+WHERE datname = current_database();
+
+  datname   | xact_commit | xact_rollback
+------------+-------------+---------------
+ ods_domani |       18144 |            42
+(1 row)
+
+SELECT
+    calls,
+    total_exec_time,
+    mean_exec_time,
+    rows,
+    left(query,120)
+FROM pg_stat_statements
+ORDER BY calls DESC
+LIMIT 20;
+
+SELECT
+    xact_commit,
+    xact_rollback,
+    blks_read,
+    blks_hit,
+    tup_returned,
+    tup_fetched
+FROM pg_stat_database
+WHERE datname = current_database();
+
+ xact_commit | xact_rollback | blks_read |  blks_hit  | tup_returned | tup_fetched
+-------------+---------------+-----------+------------+--------------+-------------
+       18365 |            43 |   8396639 | 1644628149 |   7702297815 |  6230047266
+(1 row)
+
+
+SELECT
+    calls,
+    round(total_exec_time::numeric,0) total_ms,
+    round(mean_exec_time::numeric,2) avg_ms,
+    rows,
+    left(query,150)
+FROM pg_stat_statements
+ORDER BY total_exec_time DESC
+LIMIT 20;
+
+SELECT
+    calls,
+    mean_exec_time,
+    rows,
+    query
+FROM pg_stat_statements
+WHERE query LIKE '%pg_stat_user_tables%'
+ORDER BY calls DESC;
+
+
+SELECT
+    calls,
+    mean_exec_time,
+    rows,
+    query
+FROM pg_stat_statements
+WHERE query LIKE '%pg_statio_user_tables%'
+ORDER BY calls DESC;
+

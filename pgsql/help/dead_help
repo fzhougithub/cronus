@@ -1,0 +1,17 @@
+[root@pct-db-01-alma8-huat-drx-kc pgsql]$ lsof +L1|grep delete
+......
+pg_dump   546846   postgres    1w   REG  253,7 346749063168     0 67109301 /apps/lib/pgsql/pct.sql (deleted)
+
+ps -ef|grep 546846
+postgres  546846  546729  1 15:50 pts/1    00:05:55 pg_dump -d pct
+root      570386  570168  0 21:41 pts/3    00:00:00 grep --color=auto 546846
+
+[root@pct-db-01-alma8-huat-drx-kc pgsql]$ kill -9 546846
+[root@pct-db-01-alma8-huat-drx-kc pgsql]$ lsof +L1|grep delete
+
+[root@pct-db-01-alma8-huat-drx-kc pgsql]$ df -h /apps/lib/pgsql/
+Filesystem                 Size  Used Avail Use% Mounted on
+/dev/mapper/appsvg-appslv  801G  446G  356G  56% /apps
+
+
+

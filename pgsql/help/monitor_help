@@ -1,1 +1,4 @@
 kubectl  port-forward svc/kube-prometheus-stack-alertmanager 9093:9093 -n monitoring
+
+ps -ef|grep -E --color=auto -i 'zabbix|exporter|prometheus|grafana|telegraf|collectd|checkmk|nagios'
+

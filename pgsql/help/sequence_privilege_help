@@ -1,0 +1,12 @@
+SELECT n.nspname, c.relname, c.relacl
+FROM pg_class c
+JOIN pg_namespace n
+  ON n.oid = c.relnamespace
+WHERE c.relkind = 'S' AND n.nspname = 'drugmgmt';
+
+ drugmgmt | medicaid_state_level_rules_medicaid_state_level_rules_id_seq    | {postgres=rwU/postgres,drugmgmt_ro=r/postgres,drugmgmt_rw=rwU/postgres}
+ drugmgmt | workflow_case_watcher_workflow_case_watcher_id_seq              | {postgres=rwU/postgres,drugmgmt_ro=r/postgres,drugmgmt_rw=rwU/postgres}
+ drugmgmt | workflow_task_watcher_workflow_task_watcher_id_seq              | {postgres=rwU/postgres,drugmgmt_ro=r/postgres,drugmgmt_rw=rwU/postgres}
+ drugmgmt | prior_auth_smartpass_type_dru_prior_auth_smartpass_type_dru_seq | {postgres=rwU/postgres,drugmgmt_ro=r/postgres,drugmgmt_rw=rwU/postgres}
+
+

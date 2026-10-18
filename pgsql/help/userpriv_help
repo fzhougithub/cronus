@@ -1,0 +1,66 @@
+\drg dt235679
+                      List of role grants
+ Role name |        Member of        |   Options    | Grantor
+-----------+-------------------------+--------------+----------
+ dt235679  | claimsprocess_humana_rw | INHERIT, SET | postgres
+ dt235679  | claimsprocess_other_rw  | INHERIT, SET | postgres
+ dt235679  | claimsprocess_rw        | INHERIT, SET | postgres
+ dt235679  | rework_humana_rw        | INHERIT, SET | postgres
+ dt235679  | rework_other_rw         | INHERIT, SET | postgres
+(5 rows)
+
+0. dblevel 
+
+SELECT has_database_privilege(
+    'claimsprocess_ro',
+    current_database(),
+    'CONNECT'
+);
+
+1. schema level
+SELECT
+    grantee,
+    privilege_type
+FROM information_schema.role_schema_grants
+WHERE schema_name = 'claimsprocess'
+  AND grantee = 'claimsprocess_ro';
+
+SELECT has_schema_privilege(
+    'claimsprocess_humana_ro',
+    'claimsprocess_humana',
+    'USAGE'
+);
+ has_schema_privilege
+----------------------
+ t
+(1 row)
+
+SELECT COUNT(*) AS tables_without_select
+FROM pg_tables
+WHERE schemaname = 'claimsprocess_humana'
+  AND NOT has_table_privilege(
+        'claimsprocess_humana_ro',
+        quote_ident(schemaname)||'.'||quote_ident(tablename),
+        'SELECT'
+      );
+ tables_without_select
+-----------------------
+                     0
+(1 row)
+
+3. table level priv
+SELECT
+    table_schema,
+    table_name,
+    privilege_type
+FROM information_schema.role_table_grants
+WHERE grantee = 'claimsprocess_ro'
+  AND table_schema = 'claimsprocess'
+ORDER BY table_name;
+
+4. default for future
+
+SELECT *
+FROM pg_default_acl;
+
+

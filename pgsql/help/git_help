@@ -1,3 +1,5 @@
+git ls-files --others --exclude-standard|xargs rm -f
+
 git fetch
 git checkout DEVOPS-16447-dev-ods-pg14-pg16-upgrade
 # If need to add anything do

@@ -1,0 +1,13 @@
+If your goal is analytical (OLAP) queries across distributed PostgreSQL data:
+
+Trino/PrestoDB: Query engine that connects to multiple PostgreSQL sources and performs columnar processing itself (doesn't store columnar in Postgres)
+ClickHouse MaterializedPostgreSQL engine: Replicates from multiple PostgreSQL sources into ClickHouse's native columnar format
+Apache Doris/StarRocks: MPP databases that can query PostgreSQL external tables using columnar execution
+Summary Table
+Project	Distributed	Columnar	Notes
+Greenplum	Yes	Yes	Fork, not standard Postgres
+Citus	Yes	No	Columnar deprecated
+TimescaleDB	No (discontinued)	Yes	Single-node focus now
+Postgres-XL	Yes	No	Maintenance mode
+DuckDB (attached Postgres)	No	Yes	Single-node analytics
+Bottom line: If you need a production system today that is both columnar and distributed across PostgreSQL-compatible nodes, Greenplum is essentially your only option, despite it being an integrated system rather than a loose federation of PostgreSQL servers. For a true "many separate PostgreSQL servers with columnar tables" architecture, you would need to build custom middleware or use a federated query engine like Trino.

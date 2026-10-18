@@ -1,3 +1,18 @@
+while read -r script; do
+    screen -dmS "$script" bash -c "
+        ./$script > ${script}.log 2>&1
+        echo
+        echo Finished. Press Ctrl-D to exit.
+        exec bash
+    "
+done < backlist
+
+~/.screenrc
+defscrollback 50000
+Ctrl-a Esc can enter the scroll mode, q exit
+
+
+
 screen -x 1404124.pts-2.10-173-31-74
 
 # Force the session to detach from its ghost viewer first

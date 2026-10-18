@@ -1,3 +1,99 @@
+  WITH stats AS (
+      -- Dynamically get the max to ensure the buckets are perfectly scaled
+      SELECT max(value_decompressed_length) as max_val FROM columnar.chunk
+  ),
+  bucket_data AS (
+      SELECT
+          width_bucket(value_decompressed_length, 0, (SELECT max_val FROM stats), 20) as bucket_id,
+          value_decompressed_length
+      FROM columnar.chunk
+  ),
+  histogram AS (
+      SELECT
+          bucket_id,
+          count(*) as freq,
+          -- Calculate the human-readable range for each bucket
+          (bucket_id - 1) * ((SELECT max_val FROM stats) / 20.0) as range_start,
+          bucket_id * ((SELECT max_val FROM stats) / 20.0) as range_end
+      FROM bucket_data
+      GROUP BY bucket_id
+      ORDER BY bucket_id
+  )
+  SELECT
+      bucket_id,
+      -- Format the range to be more readable (e.g., 0 - 130KB)
+      format('%s - %s',
+             round(range_start / 1024)::text || 'KB',
+             round(range_end / 1024)::text || 'KB') as bucket_range,
+      freq as count,
+      -- Create a simple text-based bar chart
+      -- Adjust the '100' divisor based on your total row count to fit the screen
+      repeat('■', (freq * 50 / (SELECT sum(freq) FROM histogram))::int) as bar
+  FROM histogram;
+
+ bucket_id |  bucket_range   |   count   |                      bar
+-----------+-----------------+-----------+-----------------------------------------------
+         1 | 0KB - 127KB     | 175690113 | ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+         2 | 127KB - 254KB   |  17411989 | ■■■■
+         3 | 254KB - 381KB   |   2465585 | ■
+         4 | 381KB - 508KB   |    594720 |
+         5 | 508KB - 635KB   |    106419 |
+         6 | 635KB - 762KB   |     15838 |
+         7 | 762KB - 889KB   |    108165 |
+         8 | 889KB - 1016KB  |      2552 |
+         9 | 1016KB - 1143KB |      1856 |
+        10 | 1143KB - 1270KB |      1710 |
+        11 | 1270KB - 1396KB |      1873 |
+        12 | 1396KB - 1523KB |      1639 |
+        13 | 1523KB - 1650KB |      1662 |
+        14 | 1650KB - 1777KB |      1890 |
+        15 | 1777KB - 1904KB |      1959 |
+        16 | 1904KB - 2031KB |      1823 |
+        17 | 2031KB - 2158KB |      2190 |
+        18 | 2158KB - 2285KB |      2357 |
+        19 | 2285KB - 2412KB |      2992 |
+        20 | 2412KB - 2539KB |     23528 |
+        21 | 2539KB - 2666KB |     56493 |
+(21 rows)
+
+
+SELECT
+      attr_num,
+      count(*) as poison_chunk_count,
+      max(value_decompressed_length) as max_len
+  FROM columnar.chunk
+  WHERE value_decompressed_length > 500000 -- Focus only on chunks > 1MB
+  GROUP BY attr_num
+  ORDER BY poison_chunk_count DESC;
+
+ attr_num | poison_chunk_count | max_len
+----------+--------------------+---------
+     1043 |             130027 | 1043836
+      364 |             102676 | 2600000
+     1047 |             101793 | 1985084
+      104 |               7207 | 2600000
+     1041 |               4482 |  999140
+       97 |               3527 |  560000
+      869 |                674 | 1316300
+     1059 |                 15 |  559888
+      175 |                  4 |  519984
+     1048 |                  2 |  567796
+(10 rows)
+
+
+SELECT
+      attnum,
+      attname
+  FROM pg_attribute
+  WHERE attrelid = 'datamart_humana.claim'::regclass and attnum in (1043,364);
+ attnum |                 attname
+--------+------------------------------------------
+    364 | response_message_txt
+   1043 | global_generic_defined_field_long_nm_set
+(2 rows)
+
+
+
 The first is the manual bucket solution, always good, slow
 The second is the width bucket, different algorithm, 13=12 manual because the max will be throw out. 
 

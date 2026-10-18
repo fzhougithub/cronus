@@ -1,0 +1,10 @@
+python3 -m pip install pglast
+It is different than the pip3 install pglast, because the pip3 and python3 are for different env. 
+
+pip3 --version
+pip 26.2.1 from /Users/fzhou/work/p3/lib/python3.14/site-packages/pip (python 3.14)
+fzhou@DST-JXK2FKH0CK 18007 % python3 --version
+Python 3.13.7
+
+So, in this case, could not directly using pip3, have to use python3 -m pip install pglast to install combined module. 
+

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [ $# -ne 3 ]; then
+	echo "$0 <subname>,<pubname> <countfile>"
+	echo "e.g: $0 rtlhumana_claimsprocess_humana_sub rtlhumana_claimsprocess_humana_pub count20"
+	exit 1
+else
+	sub=$1
+	pub=$2
+	difffile=$3.diff
+	awk -F'|' '{if ($NF!=0) print $1}' $3 > $difffile
+fi
+
+pubip=$(psql -d ods_domani -At -c "SELECT (regexp_match(subconninfo, 'host=([^ ]+)'))[1] AS host FROM pg_subscription WHERE subname = '$sub'")
+pubdb=$(psql -d ods_domani -At -c "SELECT (regexp_match(subconninfo, 'dbname=([^ ]+)'))[1] AS host FROM pg_subscription WHERE subname = '$sub'")
+pubconn="psql -h $pubip -d $pubdb -At -c "
+subconn="psql -d ods_domani -At -c "
+
+reset_table() {
+echo "$pubconn 'alter publication $pub drop table $tbl'"
+echo "$subconn 'alter subscription $sub refresh publication'"
+echo "$subconn 'truncate table $tbl'"
+echo "$pubconn 'alter publication $pub add table $tbl'"
+echo "$subconn 'alter subscription $sub refresh publication'"
+}
+
+for tbl in $(<$difffile); do echo "#fix $tbl"; reset_table;done

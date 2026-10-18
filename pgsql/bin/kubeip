@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];then
+	echo "Usage: $0 <ip>"
+	exit 1
+fi
+
+for cfg in ~/.kube/*.config
+do
+    result=$(KUBECONFIG=$cfg kubectl get nodes -o wide 2>/dev/null | grep $1)
+
+    if [ -n "$result" ]; then
+        echo "FOUND IN: $cfg"
+        echo "$result"
+	echo "${1//./-}".ssnc-corp.cloud
+        echo
+	break
+    fi
+done
+
+cat <<'EOF'
+for c in $(crictl ps -q)
+do
+    pid=$(crictl inspect $c | jq -r '.info.pid')
+    pod=$(crictl inspect $c | jq -r '.status.labels["io.kubernetes.pod.name"]')
+
+    cnt=$(nsenter -t $pid -n ss -nt 2>/dev/null | grep ':5432' | wc -l)
+
+    if [ "$cnt" -gt 0 ]; then
+        echo "$cnt $pod"
+    fi
+done | sort -nr
+EOF
+
+
+

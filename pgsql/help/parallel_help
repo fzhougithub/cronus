@@ -1,3 +1,13 @@
+parallel -j 10 'psql -d claimsprocess -c "vacuum(freeze,DISABLE_PAGE_SKIPPING,verbose) {}"' :::: large.lst  > large.lst.log 2>&1
+
+
+parallel -j 10 -q psql -h claimshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud -d claimsprocess -c "vacuum(freeze,DISABLE_PAGE_SKIPPING,verbose ) {}" :::: large.lst 
+
+Test generated command first
+parallel --dry-run -j 10 'psql -h claimshumana-pg16-01-alma9-prod-drx-kc.ssnc-corp.cloud -d claimsprocess -c "VACUUM (FREEZE, DISABLE_PAGE_SKIPPING, VERBOSE) {};"' :::: large.lst
+
+
+
 parallel -j 10 -q psql -d ods_domani -c "select count(1) from {}" :::: /tmp/claim.tablist > /tmp/check_claim.log 2>&1
 
 parallel -j 10 -q psql -d ods_domani -c"ANALYZE verbose {}" :::: claim.tablist
